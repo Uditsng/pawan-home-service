@@ -1,0 +1,87 @@
+/* Brand Identity Theme Config */
+
+/* Bricolage Grotesque integration alongside existing defaults */
+.brand-identity {
+  font-family: var(--font-bricolage), sans-serif;
+  --color-primary: #2AF598; /* Electric Mint */
+  --color-primary-container: #0CE581;
+  --color-on-primary: #0F172A;
+  
+  --color-secondary: #1E293B; /* Midnight Indigo */
+  --color-on-secondary: #F8FAFC;
+
+  --color-surface: #F8FAFC; /* Pearl White */
+  --color-surface-container: #F1F5F9;
+  --color-surface-container-low: #F8FAFC;
+  --color-surface-container-lowest: #FFFFFF;
+  --color-surface-container-high: #E2E8F0;
+  --color-surface-variant: #CBD5E1;
+
+  --color-on-surface: #0F172A;
+  --color-on-surface-variant: #475569;
+
+  --color-outline: #94A3B8;
+  --color-outline-variant: #CBD5E1;
+}
+
+/* Ensure global element styling follows the brand identity inside the mobile frame */
+.brand-identity {
+  background-color: var(--color-surface);
+  color: var(--color-on-surface);
+}
+
+.brand-identity h1, 
+.brand-identity h2, 
+.brand-identity h3, 
+.brand-identity h4, 
+.brand-identity h5, 
+.brand-identity h6 {
+  font-family: var(--font-bricolage), sans-serif;
+}
+
+/* Overriding specific UI bits if they rely heavily on arbitrary tailwind colors */
+.brand-identity .bg-surface { background-color: var(--color-surface); }
+.brand-identity .bg-surface-container { background-color: var(--color-surface-container); }
+.brand-identity .bg-surface-container-low { background-color: var(--color-surface-container-low); }
+.brand-identity .bg-surface-container-lowest { background-color: var(--color-surface-container-lowest); }
+.brand-identity .bg-surface-container-high { background-color: var(--color-surface-container-high); }
+
+.brand-identity .text-on-surface { color: var(--color-on-surface); }
+.brand-identity .text-on-surface-variant { color: var(--color-on-surface-variant); }
+
+/* Buttons & Accents */
+.brand-identity .text-primary { color: var(--color-primary); }
+.brand-identity .bg-primary { background-color: var(--color-primary); color: var(--color-on-primary); }
+.brand-identity .bg-primary\/10 { background-color: rgba(0, 230, 168, 0.1); }
+
+/* The 10% CTA - Midnight Indigo */
+/* Create a dedicated button override or class */
+.brand-identity .btn-cta {
+  background-color: var(--color-secondary) !important;
+  color: var(--color-on-secondary) !important;
+  box-shadow: 0 8px 24px rgba(30, 41, 59, 0.3) !important;
+}
+
+/* Make sure text borders and dividers match the dark theme */
+.brand-identity .border-outline-variant\/10,
+.brand-identity .border-outline-variant,
+.brand-identity .border-outline {
+  border-color: var(--color-outline-variant);
+}
+
+/* Any white containers get properly mapped back into charcoal */
+.brand-identity .bg-white { background-color: var(--color-surface-container); }
+.brand-identity .text-slate-900 { color: var(--color-on-surface); }
+.brand-identity .text-slate-800 { color: var(--color-on-surface); }
+.brand-identity .text-slate-700 { color: var(--color-on-surface-variant); }
+.brand-identity .text-slate-600 { color: var(--color-on-surface-variant); }
+.brand-identity .text-slate-500 { color: var(--color-on-surface-variant); }
+
+/* Force scrollbar hiding explicitly inside the brand container just in case */
+.brand-identity ::-webkit-scrollbar {
+  display: none;
+}
+.brand-identity {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

@@ -1,0 +1,52 @@
+import { createClient } from "@/utils/supabase/server";
+import Image from "next/image";
+import Link from "next/link";
+
+export default async function CustomerHeader() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let profile = { full_name: "Guest", avatar_url: "" };
+
+  if (user) {
+    const { data } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', user.id).single();
+    if (data) profile = data;
+  }
+
+  const firstName = profile.full_name ? profile.full_name.split(" ")[0] : "There";
+
+  return (
+    <header className="sticky top-0 w-full z-50 bg-surface/90 backdrop-blur-lg">
+      <div className="flex justify-between items-center w-full px-4 md:px-6 py-3 md:py-4 max-w-7xl mx-auto">
+        <div className="flex items-center gap-4 md:gap-6">
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <Image
+              src="/logo.jpg"
+              alt="PavanHomeServices Logo"
+              className="h-12 md:h-14 w-auto rounded-lg shadow-sm"
+              width={40}
+              height={40}
+            />
+          </Link>
+          <div className="flex items-center gap-2 text-teal-800 font-black text-xl">
+            <span className="material-symbols-outlined text-success">location_on</span>
+            <span className="font-manrope text-xs md:text-sm font-bold tracking-tight text-on-surface">Roorkee, UK</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 md:gap-4">
+          <button className="relative hover:opacity-80 transition-all p-1.5 md:p-2 text-on-surface-variant">
+            <span className="material-symbols-outlined">notifications</span>
+            <span className="absolute top-1.5 md:top-2 right-1.5 md:right-2 w-2 h-2 bg-secondary rounded-full"></span>
+          </button>
+          <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-surface-container-high overflow-hidden border border-outline-variant/20 flex items-center justify-center font-bold text-primary shrink-0 relative">
+            {profile.avatar_url ? (
+              <Image src={profile.avatar_url} alt={firstName} fill className="object-cover" sizes="40px" />
+            ) : (
+              firstName.charAt(0).toUpperCase()
+            )}
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}

@@ -1,0 +1,6 @@
+Color Palette:
+60% Base (#F8FAFC): Applied to all backgrounds and containers—transforming the mobile frames into a clean, Pearl White theme.
+30% Secondary (#2AF598): Kept as Electric Mint for your active states, highlights, and icons.
+10% Action (#1E293B): Applied explicitly as Midnight Indigo to your heavy titles and ".btn-cta" call-to-action buttons.
+
+Font: Bricolage Grotesque

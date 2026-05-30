@@ -3,6 +3,7 @@ import BottomNav from "@/components/BottomNav";
 import Image from "next/image";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
+import LogoutButton from "@/components/LogoutButton";
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -71,7 +72,7 @@ export default async function ProfilePage() {
         <div className="bg-white rounded-[16px] md:rounded-[20px] shadow-sm overflow-hidden flex flex-col">
           <Link href="/profile/addresses" className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
             <div className="flex items-center gap-3 md:gap-4">
-              <span className="material-symbols-outlined text-slate-500 text-[18px] md:text-[20px]">menu_book</span>
+              <span className="material-symbols-outlined text-slate-500 text-[18px] md:text-[20px]">location_on</span>
               <span className="font-semibold text-[13px] md:text-[15px] text-[#1c2438]">Saved addresses</span>
             </div>
             <span className="material-symbols-outlined text-slate-300 text-[18px] md:text-[20px] group-hover:text-slate-400 transition-colors">chevron_right</span>
@@ -109,13 +110,7 @@ export default async function ProfilePage() {
             <span className="material-symbols-outlined text-slate-300 text-[18px] md:text-[20px] group-hover:text-slate-400 transition-colors">chevron_right</span>
           </Link>
 
-          <button className="flex items-center justify-between p-4 md:p-5 hover:bg-slate-50 transition-colors w-full text-left group">
-            <div className="flex items-center gap-3 md:gap-4">
-              <span className="material-symbols-outlined text-slate-500 text-[18px] md:text-[20px]">logout</span>
-              <span className="font-semibold text-[13px] md:text-[15px] text-[#1c2438]">Log out</span>
-            </div>
-            <span className="material-symbols-outlined text-slate-300 text-[18px] md:text-[20px] group-hover:text-slate-400 transition-colors">chevron_right</span>
-          </button>
+          <LogoutButton variant="list" />
         </div>
 
         {/* Footer */}

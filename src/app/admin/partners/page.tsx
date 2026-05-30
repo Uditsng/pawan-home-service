@@ -1,106 +1,318 @@
 import { createClient } from "@/utils/supabase/server";
-import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
-import { Card } from "@/components/ui/Card";
+import { PartnersConsole } from "./PartnersConsole";
+
+export interface PartnerBooking {
+  id: string;
+  status: string;
+  total_amount: number;
+  created_at: string;
+  scheduled_date: string | null;
+  pincode: string | null;
+  city: string | null;
+  services: {
+    title: string;
+    category: string;
+  } | null;
+  customer: {
+    full_name: string | null;
+  } | null;
+}
+
+export interface PartnerReview {
+  id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  bookings: {
+    services: {
+      title: string;
+    } | null;
+  } | null;
+  customer: {
+    full_name: string | null;
+    avatar_url: string | null;
+  } | null;
+}
+
+export interface PendingBooking {
+  id: string;
+  status: string;
+  created_at: string;
+  pincode: string | null;
+  city: string | null;
+  services: {
+    title: string;
+  } | null;
+}
+
+export interface SerializedPartner {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  avatar_url: string | null;
+  status: 'active' | 'offline' | 'busy' | 'suspended';
+  service_tier: 'premium' | 'standard';
+  kyc_status: 'approved' | 'rejected' | 'pending';
+  kyc_rejection_reason: string | null;
+  kyc_documents: any | null;
+  rating_avg: number;
+  jobs_done: number;
+  jobs_cancelled: number;
+  reliability_rate: number;
+  skills: string[];
+  categories: string[];
+  cities: string[];
+  pincodes: string[];
+  bookings: PartnerBooking[];
+  reviews: PartnerReview[];
+}
 
 export default async function AdminPartnersPage() {
   const supabase = await createClient();
 
-  // Fetch partners with stats
-  const { data: partners } = await supabase
+  let partners: any[] = [];
+  let isSchemaError = false;
+
+  // Fetch pending bookings for the emergency dispatch feature
+  const { data: pendingBookingsData } = await supabase
+    .from('bookings')
+    .select(`
+      id,
+      status,
+      created_at,
+      pincode,
+      city,
+      services:services(title)
+    `)
+    .eq('status', 'pending');
+
+  const pendingBookings: PendingBooking[] = (pendingBookingsData || []).map((b: any) => ({
+    id: b.id,
+    status: b.status,
+    created_at: b.created_at,
+    pincode: b.pincode || null,
+    city: b.city || null,
+    services: b.services ? {
+      title: b.services.title || "Home Service"
+    } : null
+  }));
+
+  // Try fetching profiles joined with services, service areas, bookings, and reviews
+  const { data, error } = await supabase
     .from('profiles')
-    .select('*')
+    .select(`
+      *,
+      partner_services:partner_services(
+        services:services(id, title, category)
+      ),
+      partner_service_areas:partner_service_areas(
+        id,
+        pincode,
+        city
+      ),
+      bookings:bookings!bookings_partner_id_fkey(
+        id,
+        status,
+        total_amount,
+        created_at,
+        scheduled_date,
+        pincode,
+        city,
+        services:services(title, category),
+        customer:profiles!bookings_customer_id_fkey(full_name)
+      ),
+      reviews:reviews!reviews_partner_id_fkey(
+        id,
+        rating,
+        comment,
+        created_at,
+        bookings:bookings!reviews_booking_id_fkey(
+          services:services(title)
+        ),
+        customer:profiles!reviews_customer_id_fkey(full_name, avatar_url)
+      )
+    `)
     .eq('role', 'partner');
 
+  if (error) {
+    // Catch missing columns error (code 42703 or message check) and fallback
+    if (error.code === '42703' || error.message?.includes('service_tier') || error.message?.includes('kyc_status')) {
+      isSchemaError = true;
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('profiles')
+        .select(`
+          id,
+          full_name,
+          email,
+          phone,
+          created_at,
+          status,
+          avatar_url,
+          rating_avg,
+          rating_count,
+          jobs_offered_count,
+          jobs_accepted_count,
+          jobs_cancelled_count,
+          acceptance_rate,
+          cancellation_rate,
+          is_available,
+          partner_services:partner_services(
+            services:services(id, title, category)
+          ),
+          partner_service_areas:partner_service_areas(
+            id,
+            pincode,
+            city
+          ),
+          bookings:bookings!bookings_partner_id_fkey(
+            id,
+            status,
+            total_amount,
+            created_at,
+            scheduled_date,
+            pincode,
+            city,
+            services:services(title, category),
+            customer:profiles!bookings_customer_id_fkey(full_name)
+          ),
+          reviews:reviews!reviews_partner_id_fkey(
+            id,
+            rating,
+            comment,
+            created_at,
+            bookings:bookings!reviews_booking_id_fkey(
+              services:services(title)
+            ),
+            customer:profiles!reviews_customer_id_fkey(full_name, avatar_url)
+          )
+        `)
+        .eq('role', 'partner');
+
+      if (!fallbackError && fallbackData) {
+        partners = fallbackData.map(p => ({
+          ...p,
+          service_tier: 'standard',
+          kyc_status: 'pending',
+          kyc_rejection_reason: null,
+          kyc_documents: null
+        }));
+      } else {
+        console.error("Fallback query also failed:", fallbackError);
+      }
+    } else {
+      console.error("Query error:", error);
+    }
+  } else if (data) {
+    partners = data;
+  }
+
+  // Preprocess and safely type partners list
+  const processedPartners: SerializedPartner[] = (partners || []).map((p: any) => {
+    // Flatten skills and categories
+    const skills = p.partner_services?.map((ps: any) => ps.services?.title).filter(Boolean) || [];
+    const serviceCategories = p.partner_services?.map((ps: any) => ps.services?.category).filter(Boolean) || [];
+    const uniqueCategories = Array.from(new Set(serviceCategories)) as string[];
+
+    // Extract coverage locations
+    const citiesCovered = p.partner_service_areas?.map((sa: any) => sa.city).filter(Boolean) || [];
+    const uniqueCities = Array.from(new Set(citiesCovered)) as string[];
+    const pincodesCovered = p.partner_service_areas?.map((sa: any) => sa.pincode).filter(Boolean) || [];
+
+    // Flatten bookings and reviews safely
+    const bookings: PartnerBooking[] = (p.bookings || []).map((b: any) => ({
+      id: b.id,
+      status: b.status,
+      total_amount: Number(b.total_amount || 0),
+      created_at: b.created_at,
+      scheduled_date: b.scheduled_date || null,
+      pincode: b.pincode || null,
+      city: b.city || null,
+      services: b.services ? {
+        title: b.services.title || "Home Service",
+        category: b.services.category || ""
+      } : null,
+      customer: b.customer ? {
+        full_name: b.customer.full_name || "Unknown Customer"
+      } : null
+    }));
+
+    const reviews: PartnerReview[] = (p.reviews || []).map((r: any) => ({
+      id: r.id,
+      rating: Number(r.rating || 5),
+      comment: r.comment || null,
+      created_at: r.created_at,
+      bookings: r.bookings ? {
+        services: r.bookings.services ? {
+          title: r.bookings.services.title || "Home Service"
+        } : null
+      } : null,
+      customer: r.customer ? {
+        full_name: r.customer.full_name || "Anonymous",
+        avatar_url: r.customer.avatar_url || null
+      } : null
+    }));
+
+    // Calculate reliable rates
+    const accepted = p.jobs_accepted_count || bookings.filter(b => b.status !== 'cancelled' && b.status !== 'pending').length;
+    const offered = p.jobs_offered_count || bookings.length;
+    const reliabilityRate = offered > 0 ? Math.round((accepted / offered) * 100) : 98;
+
+    return {
+      id: p.id,
+      full_name: p.full_name || "Unknown Professional",
+      email: p.email || "No email",
+      phone: p.phone || "No phone",
+      avatar_url: p.avatar_url || null,
+      status: p.status || 'offline',
+      service_tier: p.service_tier || 'standard',
+      kyc_status: p.kyc_status || 'pending',
+      kyc_rejection_reason: p.kyc_rejection_reason || null,
+      kyc_documents: p.kyc_documents || null,
+      rating_avg: p.rating_avg || 4.8,
+      jobs_done: accepted || p.jobs_accepted_count || 0,
+      jobs_cancelled: p.jobs_cancelled_count || bookings.filter(b => b.status === 'cancelled').length || 0,
+      reliability_rate: reliabilityRate,
+      skills,
+      categories: uniqueCategories,
+      cities: uniqueCities,
+      pincodes: pincodesCovered,
+      bookings,
+      reviews
+    };
+  });
+
   return (
-    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <h1 className="text-4xl font-bold tracking-tighter text-primary font-headline">Fleet Control</h1>
-          <p className="text-on-surface-variant font-medium mt-1.5 opacity-60 italic">Quality assurance, fulfillment metrics, and partner verification.</p>
+          <h1 className="text-2xl font-bold tracking-tighter text-primary font-headline">Partners</h1>
+          <p className="text-on-surface-variant font-medium mt-1 opacity-60 text-sm">Manage partner profiles, assignments, and onboarding.</p>
         </div>
-        <Button variant="primary" size="lg" className="shadow-xl shadow-primary/20 hover:scale-105 transition-all text-xs uppercase tracking-widest gap-3 rounded-[20px] px-8 py-4">
-          <span className="material-symbols-outlined text-lg">person_add</span> Onboard Partner
-        </Button>
       </div>
 
-      {/* Fleet KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-         <div className="bg-primary p-8 rounded-[32px] text-white shadow-ambient relative overflow-hidden">
-            <div className="absolute right-0 bottom-0 w-24 h-24 bg-secondary/10 rounded-tl-[64px]"></div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50">Fleet Capacity</p>
-            <h2 className="text-3xl font-bold font-headline mt-4">{partners?.length || 0} Professionals</h2>
-            <div className="mt-4 flex items-center gap-2">
-               <span className="text-[10px] font-black text-secondary uppercase tracking-widest">Across 4 Cities</span>
+      {/* Graceful Database Schema Warning Banner */}
+      {isSchemaError && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-[20px] p-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-4 animate-pulse-slow">
+            <div className="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-amber-700">warning</span>
             </div>
-         </div>
-         <div className="bg-surface-container-lowest p-8 rounded-[32px] border border-outline-variant/20 shadow-sm">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant opacity-60">Avg. Fleet Rating</p>
-            <div className="flex items-end gap-3 mt-4">
-               <h2 className="text-3xl font-bold text-primary font-headline">4.8</h2>
-               <div className="flex gap-0.5 mb-1.5 text-secondary">
-                  {[1,2,3,4,5].map(i => <span key={i} className="material-symbols-outlined text-[14px]">star</span>)}
-               </div>
-            </div>
-         </div>
-         <div className="bg-surface-container-lowest p-8 rounded-[32px] border border-outline-variant/20 shadow-sm">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant opacity-60">Avg. Acceptance Rate</p>
-            <h2 className="text-3xl font-bold text-primary font-headline mt-4">92.4%</h2>
-            <p className="text-[10px] font-bold text-secondary uppercase tracking-widest mt-2 flex items-center gap-1">
-               <span className="material-symbols-outlined text-xs">trending_up</span> Optimized
-            </p>
-         </div>
-      </div>
-
-      {/* Partner Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        {partners?.map(partner => (
-          <div key={partner.id} className="bg-surface-container-lowest rounded-[40px] border border-outline-variant/20 shadow-sm hover:shadow-ambient transition-all group overflow-hidden">
-            <div className="p-8 flex flex-col sm:flex-row gap-8">
-               <div className="relative shrink-0">
-                  <div className="w-24 h-24 rounded-[32px] bg-primary/5 flex items-center justify-center text-primary font-black text-2xl border border-primary/5 shadow-inner">
-                     {partner.full_name?.split(' ').map((n: string) => n[0]).join('')}
-                  </div>
-                  <div className="absolute -bottom-2 -right-2 w-10 h-10 rounded-2xl bg-secondary flex items-center justify-center border-4 border-surface shadow-lg">
-                     <span className="material-symbols-outlined text-primary text-xl">verified</span>
-                  </div>
-               </div>
-
-               <div className="flex-1 space-y-6">
-                  <div className="flex justify-between items-start">
-                     <div>
-                        <h3 className="text-xl font-bold text-primary tracking-tight font-headline uppercase">{partner.full_name}</h3>
-                        <p className="text-xs font-bold text-on-surface-variant/60 uppercase tracking-widest mt-1.5">Premium Partner • {partner.city || 'Roorkee'}</p>
-                     </div>
-                     <Badge variant="success">Active</Badge>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-6 pt-6 border-t border-outline-variant/10">
-                     <div>
-                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-on-surface-variant/40">Rating</p>
-                        <p className="text-base font-bold text-primary mt-1">4.92</p>
-                     </div>
-                     <div>
-                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-on-surface-variant/40">Jobs</p>
-                        <p className="text-base font-bold text-primary mt-1">124</p>
-                     </div>
-                     <div>
-                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-on-surface-variant/40">Reliability</p>
-                        <p className="text-base font-bold text-primary mt-1">98%</p>
-                     </div>
-                  </div>
-
-                  <div className="flex gap-3 pt-2">
-                     <Button variant="primary" className="flex-1 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-[1.02]">Command Profile</Button>
-                     <Button variant="ghost" size="icon" className="w-14 h-14 rounded-2xl bg-surface-container text-on-surface-variant hover:bg-secondary hover:text-primary transition-all shadow-sm">
-                        <span className="material-symbols-outlined text-xl">more_horiz</span>
-                     </Button>
-                  </div>
-               </div>
+            <div>
+              <h4 className="text-sm font-black text-amber-800 uppercase tracking-tight">Database Schema Upgrade Required</h4>
+              <p className="text-xs text-amber-700 mt-1 font-medium leading-relaxed">
+                The profiles table is missing the columns <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold">service_tier</code>, <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold font-black text-[11px]">kyc_status</code>, <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold font-black text-[11px]">kyc_rejection_reason</code>, and <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold font-black text-[11px]">kyc_documents</code>. Please run the migration query inside your Supabase Dashboard SQL editor to unlock compliance flows.
+              </p>
             </div>
           </div>
-        ))}
-      </div>
+          <div className="shrink-0 w-full sm:w-auto bg-amber-500/20 hover:bg-amber-500/30 text-amber-800 font-black text-[10px] uppercase tracking-widest px-4 py-2.5 rounded-xl border border-amber-500/25 transition-all text-center">
+            Schema Pending
+          </div>
+        </div>
+      )}
+
+      {/* Interactive Fleet Control Dashboard Console */}
+      <PartnersConsole initialPartners={processedPartners} pendingBookings={pendingBookings} />
     </div>
   );
 }

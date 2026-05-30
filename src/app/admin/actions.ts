@@ -74,7 +74,21 @@ export async function deleteService(serviceId: string) {
     .delete()
     .eq('id', serviceId);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (error.code === '23503') {
+      // Foreign key violation: this service is tied to existing bookings.
+      // We will perform a soft delete by marking it inactive instead.
+      const { error: updateError } = await supabase
+        .from('services')
+        .update({ is_active: false })
+        .eq('id', serviceId);
+      
+      if (updateError) throw new Error(updateError.message);
+      
+      throw new Error("SERVICE_DEACTIVATED: This service has existing bookings and cannot be hard-deleted. It has been deactivated instead.");
+    }
+    throw new Error(error.message);
+  }
 
   revalidatePath('/admin/services');
 }

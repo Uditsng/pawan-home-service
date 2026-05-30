@@ -12,22 +12,29 @@ export async function completeOnboarding(formData: FormData) {
   }
 
   const serviceIds = formData.getAll("services") as string[];
-  const pincodesStr = formData.get("service_pincodes") as string;
+  const serviceAreasStr = formData.get("service_areas") as string;
 
   if (serviceIds.length === 0) {
     redirect("/partner/onboarding?error=Please select at least one service.");
   }
 
-  if (!pincodesStr || pincodesStr.trim() === "") {
-    redirect("/partner/onboarding?error=Please enter at least one pincode.");
+  let serviceAreas: {pincode: string, locality: string, city: string}[] = [];
+  if (serviceAreasStr) {
+    try {
+      serviceAreas = JSON.parse(serviceAreasStr);
+    } catch (e) {
+      console.error(e);
+    }
   }
 
-  const pincodes = pincodesStr
-    .split(",")
-    .map(p => p.trim())
-    .filter(p => p.length > 0);
+  if (serviceAreas.length === 0) {
+    redirect("/partner/onboarding?error=Please select at least one service area.");
+  }
 
   // 1. Insert into partner_services
+  // Try to delete existing first (in case of re-onboarding), ignore error if RLS blocks delete
+  await supabase.from('partner_services').delete().eq('partner_id', user.id);
+  
   const partnerServices = serviceIds.map(service_id => ({
     partner_id: user.id,
     service_id
@@ -35,26 +42,28 @@ export async function completeOnboarding(formData: FormData) {
 
   const { error: psError } = await supabase
     .from('partner_services')
-    .upsert(partnerServices, { onConflict: 'partner_id, service_id' });
+    .upsert(partnerServices, { onConflict: 'partner_id, service_id', ignoreDuplicates: true });
 
   if (psError) {
-    console.error(psError);
+    console.error('PS Error:', psError);
     redirect("/partner/onboarding?error=Failed to save services.");
   }
 
   // 2. Insert into partner_service_areas
-  const partnerAreas = pincodes.map(pincode => ({
+  await supabase.from('partner_service_areas').delete().eq('partner_id', user.id);
+  
+  const partnerAreas = serviceAreas.map(area => ({
     partner_id: user.id,
-    pincode,
-    city: 'Lucknow' // Defaulting to Lucknow for now, or you could pass it in
+    pincode: area.pincode,
+    city: area.locality // Saving locality to city column to display it correctly later
   }));
 
   const { error: paError } = await supabase
     .from('partner_service_areas')
-    .upsert(partnerAreas, { onConflict: 'partner_id, pincode' });
+    .upsert(partnerAreas, { onConflict: 'partner_id, pincode', ignoreDuplicates: true });
 
   if (paError) {
-    console.error(paError);
+    console.error('PA Error:', paError);
     redirect("/partner/onboarding?error=Failed to save service areas.");
   }
 

@@ -1,132 +1,358 @@
 import { createClient } from "@/utils/supabase/server";
-import { format } from "date-fns";
-import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
+import { BookingsCommand } from "./BookingsCommand";
 
-export default async function AdminBookingsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ status?: string; city?: string }>;
-}) {
+// ─── Typed Interfaces (exported for client component) ────────
+
+export interface SerializedBooking {
+  id: string;
+  status: string;
+  total_amount: number;
+  city: string | null;
+  pincode: string | null;
+  address: string | null;
+  payment_method: string | null;
+  scheduled_date: string | null;
+  created_at: string;
+  accepted_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  cancelled_at: string | null;
+  cancelled_by: string | null;
+  cancellation_reason: string | null;
+  customer_id: string | null;
+  partner_id: string | null;
+  service: {
+    id: string;
+    title: string;
+    category: string;
+  } | null;
+  customer: {
+    id: string;
+    full_name: string;
+    email: string | null;
+    phone: string | null;
+    avatar_url: string | null;
+  } | null;
+  partner: {
+    id: string;
+    full_name: string;
+    email: string | null;
+    phone: string | null;
+    avatar_url: string | null;
+    status: string;
+  } | null;
+}
+
+export interface AvailablePartner {
+  id: string;
+  full_name: string;
+  email: string | null;
+  phone: string | null;
+  avatar_url: string | null;
+  status: string;
+  rating_avg: number;
+  jobs_done: number;
+  reliability_rate: number;
+  cities: string[];
+  pincodes: string[];
+  skills: string[];
+}
+
+export interface BookingStatusCounts {
+  all: number;
+  pending: number;
+  confirmed: number;
+  accepted: number;
+  in_progress: number;
+  completed: number;
+  cancelled: number;
+}
+
+// ─── Server Component ────────────────────────────────────────
+
+export default async function AdminBookingsPage() {
   const supabase = await createClient();
-  const { status, city } = await searchParams;
 
-  let query = supabase
+  let bookingsRaw: Record<string, unknown>[] = [];
+  let isSchemaError = false;
+
+  // ─── 1. Primary Bookings Query (full relational join) ──────
+  const { data, error } = await supabase
     .from("bookings")
     .select(`
       id,
       status,
-      scheduled_date,
       total_amount,
       city,
+      pincode,
+      address,
+      payment_method,
+      scheduled_date,
       created_at,
-      services:service_id (title),
-      customer:customer_id (full_name, phone),
-      partner:partner_id (full_name)
+      accepted_at,
+      started_at,
+      completed_at,
+      cancelled_at,
+      cancelled_by,
+      cancellation_reason,
+      customer_id,
+      partner_id,
+      service:service_id (id, title, category),
+      customer:customer_id (id, full_name, email, phone, avatar_url),
+      partner:partner_id (id, full_name, email, phone, avatar_url, status)
     `)
     .order("created_at", { ascending: false });
 
-  if (status && status !== 'all') query = query.eq('status', status);
-  if (city && city !== 'all') query = query.eq('city', city);
+  if (error) {
+    // Schema fallback: if new columns don't exist yet, retry without them
+    if (
+      error.code === "42703" ||
+      error.message?.includes("address") ||
+      error.message?.includes("payment_method")
+    ) {
+      isSchemaError = true;
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from("bookings")
+        .select(`
+          id,
+          status,
+          total_amount,
+          city,
+          pincode,
+          scheduled_date,
+          created_at,
+          accepted_at,
+          started_at,
+          completed_at,
+          cancelled_at,
+          cancelled_by,
+          cancellation_reason,
+          customer_id,
+          partner_id,
+          service:service_id (id, title, category),
+          customer:customer_id (id, full_name, email, phone, avatar_url),
+          partner:partner_id (id, full_name, email, phone, avatar_url, status)
+        `)
+        .order("created_at", { ascending: false });
 
-  const { data: bookings } = await query;
+      if (!fallbackError && fallbackData) {
+        bookingsRaw = fallbackData.map((b) => ({
+          ...b,
+          address: null,
+          payment_method: "UPI",
+        }));
+      } else {
+        console.error("Fallback bookings query also failed:", fallbackError);
+      }
+    } else {
+      console.error("Bookings query error:", error);
+    }
+  } else if (data) {
+    bookingsRaw = data;
+  }
+
+  // ─── 2. Serialize bookings with safe typing ────────────────
+
+  const bookings: SerializedBooking[] = bookingsRaw.map((b: Record<string, unknown>) => {
+    const svc = b.service as Record<string, unknown> | null;
+    const cust = b.customer as Record<string, unknown> | null;
+    const part = b.partner as Record<string, unknown> | null;
+
+    return {
+      id: String(b.id || ""),
+      status: String(b.status || "pending"),
+      total_amount: Number(b.total_amount || 0),
+      city: (b.city as string) || null,
+      pincode: (b.pincode as string) || null,
+      address: (b.address as string) || null,
+      payment_method: (b.payment_method as string) || "UPI",
+      scheduled_date: (b.scheduled_date as string) || null,
+      created_at: String(b.created_at || ""),
+      accepted_at: (b.accepted_at as string) || null,
+      started_at: (b.started_at as string) || null,
+      completed_at: (b.completed_at as string) || null,
+      cancelled_at: (b.cancelled_at as string) || null,
+      cancelled_by: (b.cancelled_by as string) || null,
+      cancellation_reason: (b.cancellation_reason as string) || null,
+      customer_id: (b.customer_id as string) || null,
+      partner_id: (b.partner_id as string) || null,
+      service: svc
+        ? {
+            id: String(svc.id || ""),
+            title: String(svc.title || "Home Service"),
+            category: String(svc.category || "General"),
+          }
+        : null,
+      customer: cust
+        ? {
+            id: String(cust.id || ""),
+            full_name: String(cust.full_name || "Unknown Customer"),
+            email: (cust.email as string) || null,
+            phone: (cust.phone as string) || null,
+            avatar_url: (cust.avatar_url as string) || null,
+          }
+        : null,
+      partner: part
+        ? {
+            id: String(part.id || ""),
+            full_name: String(part.full_name || "Unknown Professional"),
+            email: (part.email as string) || null,
+            phone: (part.phone as string) || null,
+            avatar_url: (part.avatar_url as string) || null,
+            status: String(part.status || "offline"),
+          }
+        : null,
+    };
+  });
+
+  // ─── 3. Status Counts ─────────────────────────────────────
+
+  const statusCounts: BookingStatusCounts = {
+    all: bookings.length,
+    pending: bookings.filter((b) => b.status === "pending").length,
+    confirmed: bookings.filter((b) => b.status === "confirmed").length,
+    accepted: bookings.filter((b) => b.status === "accepted").length,
+    in_progress: bookings.filter((b) => b.status === "in_progress").length,
+    completed: bookings.filter((b) => b.status === "completed").length,
+    cancelled: bookings.filter((b) => b.status === "cancelled").length,
+  };
+
+  // ─── 4. Operational Metrics ────────────────────────────────
+
+  const totalGmv = bookings.reduce((acc, b) => acc + b.total_amount, 0);
+  const unassignedCount = bookings.filter(
+    (b) => b.status === "pending" && !b.partner_id
+  ).length;
+
+  // ─── 5. Filter Options (distinct categories & cities) ──────
+
+  const serviceCategories = Array.from(
+    new Set(bookings.map((b) => b.service?.category).filter(Boolean))
+  ) as string[];
+
+  const cities = Array.from(
+    new Set(bookings.map((b) => b.city).filter(Boolean))
+  ) as string[];
+
+  // ─── 6. Available Partners for Manual Assign Drawer ────────
+
+  const { data: partnersData } = await supabase
+    .from("profiles")
+    .select(`
+      id,
+      full_name,
+      email,
+      phone,
+      avatar_url,
+      status,
+      rating_avg,
+      jobs_accepted_count,
+      jobs_offered_count,
+      jobs_cancelled_count,
+      partner_services:partner_services(
+        services:services(title)
+      ),
+      partner_service_areas:partner_service_areas(
+        pincode,
+        city
+      )
+    `)
+    .eq("role", "partner")
+    .in("status", ["active", "offline"]);
+
+  const availablePartners: AvailablePartner[] = (partnersData || []).map(
+    (p: Record<string, unknown>) => {
+      const serviceAreas = (p.partner_service_areas as Record<string, unknown>[]) || [];
+      const partnerServices = (p.partner_services as Record<string, unknown>[]) || [];
+
+      const accepted = Number(p.jobs_accepted_count || 0);
+      const offered = Number(p.jobs_offered_count || 1);
+      const reliability = offered > 0 ? Math.round((accepted / offered) * 100) : 98;
+
+      return {
+        id: String(p.id || ""),
+        full_name: String(p.full_name || "Unknown Professional"),
+        email: (p.email as string) || null,
+        phone: (p.phone as string) || null,
+        avatar_url: (p.avatar_url as string) || null,
+        status: String(p.status || "offline"),
+        rating_avg: Number(p.rating_avg || 4.8),
+        jobs_done: accepted,
+        reliability_rate: reliability,
+        cities: Array.from(
+          new Set(serviceAreas.map((sa) => sa.city as string).filter(Boolean))
+        ),
+        pincodes: serviceAreas
+          .map((sa) => sa.pincode as string)
+          .filter(Boolean),
+        skills: partnerServices
+          .map(
+            (ps) =>
+              ((ps.services as Record<string, unknown>)?.title as string) || ""
+          )
+          .filter(Boolean),
+      };
+    }
+  );
+
+  // ─── 7. Render ─────────────────────────────────────────────
 
   return (
-    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Ops Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <h1 className="text-4xl font-bold tracking-tighter text-primary font-headline">Operations Command</h1>
-          <p className="text-on-surface-variant font-medium mt-1.5 opacity-60 italic">Real-time lifecycle tracking and manual command overrides.</p>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex bg-surface-container p-1 rounded-2xl border border-outline-variant/10 shadow-inner overflow-x-auto no-scrollbar max-w-full">
-             {['all', 'pending', 'confirmed', 'completed', 'cancelled'].map(s => (
-               <button 
-                 key={s}
-                 className={`px-5 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap ${
-                   (status || 'all') === s ? 'bg-primary text-white shadow-xl shadow-primary/20' : 'text-on-surface-variant hover:text-primary'
-                 }`}
-               >
-                 {s}
-               </button>
-             ))}
-          </div>
+          <h1 className="text-2xl font-bold tracking-tighter text-primary font-headline">
+            Bookings
+          </h1>
+          <p className="text-on-surface-variant font-medium mt-1 opacity-60 text-sm">
+            Track all bookings, assign partners, and manage orders.
+          </p>
         </div>
       </div>
 
-      {/* Bookings Ledger */}
-      <div className="bg-surface-container-lowest rounded-[40px] border border-outline-variant/20 shadow-ambient overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-surface-container-low/50 border-b border-outline-variant/10">
-                <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant opacity-50">Operational ID</th>
-                <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant opacity-50">Client / Zone</th>
-                <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant opacity-50">Service Engine</th>
-                <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant opacity-50">Deployment</th>
-                <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant opacity-50">Lifecycle State</th>
-                <th className="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant opacity-50 text-right">Volume</th>
-                <th className="px-10 py-6"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant/10">
-              {bookings?.map(booking => (
-                <tr key={booking.id} className="hover:bg-surface-container-low/30 transition-colors group">
-                  <td className="px-10 py-8">
-                    <p className="text-sm font-black text-primary font-mono tracking-tighter">BK-{booking.id.slice(0, 8).toUpperCase()}</p>
-                    <p className="text-[10px] font-black text-on-surface-variant/40 uppercase tracking-widest mt-1.5">{format(new Date(booking.created_at), 'MMM dd')}</p>
-                  </td>
-                  <td className="px-10 py-8">
-                    <p className="text-sm font-black text-primary uppercase tracking-tight">{(booking.customer as any)?.full_name || 'Guest'}</p>
-                    <p className="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-widest flex items-center gap-1.5 mt-1.5">
-                      <span className="material-symbols-outlined text-sm text-secondary">location_on</span> {booking.city}
-                    </p>
-                  </td>
-                  <td className="px-10 py-8">
-                    <p className="text-sm font-black text-primary uppercase tracking-tight">{(booking.services as any)?.title}</p>
-                    <p className="text-[10px] font-black text-secondary uppercase tracking-widest flex items-center gap-1.5 mt-1.5">
-                      <span className="material-symbols-outlined text-sm">handshake</span> {(booking.partner as any)?.full_name || 'Unassigned'}
-                    </p>
-                  </td>
-                  <td className="px-10 py-8">
-                    <p className="text-xs font-black text-primary tracking-tight">{booking.scheduled_date ? format(new Date(booking.scheduled_date), 'MMM dd, HH:mm') : 'Unscheduled'}</p>
-                  </td>
-                  <td className="px-10 py-8">
-                    <Badge variant={
-                      booking.status === 'pending' ? 'warning' :
-                      booking.status === 'completed' ? 'success' :
-                      booking.status === 'cancelled' ? 'danger' :
-                      'primary'
-                    }>
-                      <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-                        booking.status === 'pending' ? 'bg-[#D97706] animate-pulse' :
-                        booking.status === 'completed' ? 'bg-secondary' :
-                        booking.status === 'cancelled' ? 'bg-red-500' : 'bg-primary animate-pulse'
-                      }`}></span>
-                      {booking.status}
-                    </Badge>
-                  </td>
-                  <td className="px-10 py-8 text-right">
-                    <p className="text-lg font-bold text-primary font-headline tracking-tighter">₹{Number(booking.total_amount).toLocaleString()}</p>
-                  </td>
-                  <td className="px-10 py-8 text-right">
-                    <Button variant="ghost" size="icon" className="w-10 h-10 rounded-2xl bg-surface-container text-on-surface-variant hover:bg-primary hover:text-white transition-all opacity-0 group-hover:opacity-100 shadow-sm">
-                      <span className="material-symbols-outlined text-[20px]">farsight_2</span>
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-              {(!bookings || bookings.length === 0) && (
-                <tr>
-                  <td colSpan={7} className="px-10 py-20 text-center text-on-surface-variant/40 text-sm font-black uppercase tracking-widest">No operational data matches filters.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {/* Graceful Schema Warning Banner */}
+      {isSchemaError && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-[20px] p-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-amber-700">
+                warning
+              </span>
+            </div>
+            <div>
+              <h4 className="text-sm font-black text-amber-800 uppercase tracking-tight">
+                Database Schema Upgrade Required
+              </h4>
+              <p className="text-xs text-amber-700 mt-1 font-medium leading-relaxed">
+                The bookings table is missing the columns{" "}
+                <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold">
+                  payment_method
+                </code>{" "}
+                and{" "}
+                <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold">
+                  address
+                </code>
+                . Please execute the migration queries inside your Supabase
+                Dashboard SQL editor.
+              </p>
+            </div>
+          </div>
+          <div className="shrink-0 w-full sm:w-auto bg-amber-500/20 hover:bg-amber-500/30 text-amber-800 font-black text-[10px] uppercase tracking-widest px-4 py-2.5 rounded-xl border border-amber-500/25 transition-all text-center">
+            Schema Pending
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Interactive Bookings Command Client Application */}
+      <BookingsCommand
+        initialBookings={bookings}
+        statusCounts={statusCounts}
+        totalGmv={totalGmv}
+        unassignedCount={unassignedCount}
+        serviceCategories={serviceCategories}
+        cities={cities}
+        availablePartners={availablePartners}
+      />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import PartnerBottomNav from "@/components/PartnerBottomNav";
+import LogoutButton from "@/components/LogoutButton";
 import type { PartnerProfile } from "@/lib/types";
 
 export default async function PartnerProfilePage() {
@@ -136,13 +137,7 @@ export default async function PartnerProfilePage() {
             <span className="material-symbols-outlined text-slate-300 text-[18px] md:text-[20px] group-hover:text-slate-400 transition-colors">chevron_right</span>
           </Link>
 
-          <button className="flex items-center justify-between p-4 md:p-5 hover:bg-slate-50 transition-colors w-full text-left group">
-            <div className="flex items-center gap-3 md:gap-4">
-              <span className="material-symbols-outlined text-slate-500 text-[18px] md:text-[20px]">logout</span>
-              <span className="font-semibold text-[13px] md:text-[15px] text-[#1c2438]">Log out</span>
-            </div>
-            <span className="material-symbols-outlined text-slate-300 text-[18px] md:text-[20px] group-hover:text-slate-400 transition-colors">chevron_right</span>
-          </button>
+          <LogoutButton variant="list" />
         </div>
 
         {/* Footer */}

@@ -1,16 +1,30 @@
 import { createClient } from "@/utils/supabase/server";
 import Image from "next/image";
 import Link from "next/link";
+import HeaderLocationDisplay from "./HeaderLocationDisplay";
 
 export default async function CustomerHeader() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   let profile = { full_name: "Guest", avatar_url: "" };
+  let defaultAddress: { label: string; city: string; formatted_address: string } | null = null;
 
   if (user) {
     const { data } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', user.id).single();
     if (data) profile = data;
+
+    // Fetch user's default address
+    const { data: addressData } = await supabase
+      .from('user_addresses')
+      .select('label, city, formatted_address')
+      .eq('user_id', user.id)
+      .eq('is_default', true)
+      .single();
+
+    if (addressData) {
+      defaultAddress = addressData;
+    }
   }
 
   const firstName = profile.full_name ? profile.full_name.split(" ")[0] : "There";
@@ -21,17 +35,14 @@ export default async function CustomerHeader() {
         <div className="flex items-center gap-4 md:gap-6">
           <Link href="/dashboard" className="flex items-center gap-2">
             <Image
-              src="/logo.jpg"
+              src="/PHS.png"
               alt="PavanHomeServices Logo"
-              className="h-12 md:h-14 w-auto rounded-lg shadow-sm"
+              className="h-12 md:h-14 w-auto"
               width={40}
               height={40}
             />
           </Link>
-          <div className="flex items-center gap-2 text-teal-800 font-black text-xl">
-            <span className="material-symbols-outlined text-success">location_on</span>
-            <span className="font-manrope text-xs md:text-sm font-bold tracking-tight text-on-surface">Roorkee, UK</span>
-          </div>
+          <HeaderLocationDisplay defaultAddress={defaultAddress} />
         </div>
         <div className="flex items-center gap-3 md:gap-4">
           <button className="relative hover:opacity-80 transition-all p-1.5 md:p-2 text-on-surface-variant">

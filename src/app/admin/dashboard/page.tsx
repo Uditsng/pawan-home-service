@@ -1,226 +1,620 @@
 import { createClient } from "@/utils/supabase/server";
 import { format, startOfDay, startOfWeek, startOfMonth } from "date-fns";
+import Link from "next/link";
+import { Badge } from "@/components/ui/Badge";
+import { ExportButton } from "./ExportButton";
+
+// ─── Helpers ─────────────────────────────────────────────────
+
+function demandSignal(bookings: number, partners: number): { label: string; color: string; icon: string } {
+  if (partners === 0 && bookings > 0)
+    return { label: "No Coverage", color: "bg-red-500/10 text-red-600 border-red-500/20", icon: "error" };
+  if (partners === 0 && bookings === 0)
+    return { label: "Inactive", color: "bg-surface-container text-on-surface-variant border-outline-variant/20", icon: "radio_button_unchecked" };
+  const ratio = bookings / partners;
+  if (ratio > 5)
+    return { label: "Critical", color: "bg-red-500/10 text-red-600 border-red-500/20", icon: "warning" };
+  if (ratio > 2)
+    return { label: "High", color: "bg-amber-500/10 text-amber-700 border-amber-500/20", icon: "trending_up" };
+  return { label: "Balanced", color: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20", icon: "check_circle" };
+}
+
+// ─── Server Component ────────────────────────────────────────
 
 export default async function AdminDashboardPage() {
   const supabase = await createClient();
-
-  // 1. Fetch Bookings for Metrics
   const now = new Date();
   const todayStart = startOfDay(now).toISOString();
   const weekStart = startOfWeek(now).toISOString();
   const monthStart = startOfMonth(now).toISOString();
 
+  // Previous month boundaries for MoM growth
+  const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevMonthStart = startOfMonth(prevMonthDate).toISOString();
+
+  // ─── 1. Current month bookings ─────────────────────────────
+
   const { data: bookings } = await supabase
-    .from('bookings')
-    .select('*, services(title, category)')
-    .gte('created_at', monthStart);
+    .from("bookings")
+    .select("*, services(title, category), customer:customer_id(full_name), partner:partner_id(full_name)")
+    .gte("created_at", monthStart);
 
-  const dailyBookings = bookings?.filter(b => b.created_at >= todayStart) || [];
-  const weeklyBookings = bookings?.filter(b => b.created_at >= weekStart) || [];
   const monthlyBookings = bookings || [];
+  const dailyBookings = monthlyBookings.filter((b) => b.created_at >= todayStart);
+  const weeklyBookings = monthlyBookings.filter((b) => b.created_at >= weekStart);
 
+  const monthlyGMV = monthlyBookings.reduce((acc, b) => acc + Number(b.total_amount || 0), 0);
   const dailyGMV = dailyBookings.reduce((acc, b) => acc + Number(b.total_amount || 0), 0);
   const weeklyGMV = weeklyBookings.reduce((acc, b) => acc + Number(b.total_amount || 0), 0);
-  const monthlyGMV = monthlyBookings.reduce((acc, b) => acc + Number(b.total_amount || 0), 0);
 
-  const cancellationRate = monthlyBookings.length > 0 
-    ? (monthlyBookings.filter(b => b.status === 'cancelled').length / monthlyBookings.length) * 100 
-    : 0;
+  // ─── 2. Previous month bookings (for MoM growth) ──────────
 
-  const { count: activePartners } = await supabase
-    .from('profiles')
-    .select('*', { count: 'exact', head: true })
-    .eq('role', 'partner');
+  const { data: prevBookings } = await supabase
+    .from("bookings")
+    .select("total_amount")
+    .gte("created_at", prevMonthStart)
+    .lt("created_at", monthStart);
 
-  const alerts = [];
-  if (cancellationRate > 15) {
-    alerts.push({ id: 1, type: 'critical', message: `High Cancellation Rate: ${cancellationRate.toFixed(1)}%`, icon: 'warning' });
+  const prevMonthGMV = (prevBookings || []).reduce((acc, b) => acc + Number(b.total_amount || 0), 0);
+  const momGrowth = prevMonthGMV > 0 ? ((monthlyGMV - prevMonthGMV) / prevMonthGMV) * 100 : 0;
+  const momGrowthStr = momGrowth >= 0 ? `+${momGrowth.toFixed(1)}%` : `${momGrowth.toFixed(1)}%`;
+
+  // ─── 3. Status counts ─────────────────────────────────────
+
+  const pendingCount = monthlyBookings.filter((b) => b.status === "pending").length;
+  const confirmedCount = monthlyBookings.filter((b) => b.status === "confirmed").length;
+  const inProgressCount = monthlyBookings.filter((b) => b.status === "in_progress").length;
+  const acceptedCount = monthlyBookings.filter((b) => b.status === "accepted").length;
+  const completedCount = monthlyBookings.filter((b) => b.status === "completed").length;
+  const cancelledCount = monthlyBookings.filter((b) => b.status === "cancelled").length;
+  const activeBookings = confirmedCount + inProgressCount + acceptedCount;
+
+  const totalNonPending = monthlyBookings.filter((b) => b.status !== "pending").length;
+  const successRate = totalNonPending > 0 ? (completedCount / totalNonPending) * 100 : 100;
+
+  // ─── 4. Partner fleet breakdown ────────────────────────────
+
+  const { data: partnerProfiles } = await supabase
+    .from("profiles")
+    .select("id, status")
+    .eq("role", "partner");
+
+  const allPartners = partnerProfiles || [];
+  const totalPartners = allPartners.length;
+  const activePartnerCount = allPartners.filter((p) => p.status === "active").length;
+  const offlinePartnerCount = allPartners.filter((p) => p.status === "offline").length;
+  const busyPartnerCount = allPartners.filter((p) => p.status === "busy").length;
+  const suspendedPartnerCount = allPartners.filter((p) => p.status === "suspended").length;
+  const fleetUtilization = totalPartners > 0 ? Math.round((activePartnerCount / totalPartners) * 100) : 0;
+
+  // ─── 5. Customer count ─────────────────────────────────────
+
+  const { count: customerCount } = await supabase
+    .from("profiles")
+    .select("*", { count: "exact", head: true })
+    .eq("role", "customer");
+
+  // ─── 6. Partner service areas (for zone mapping) ───────────
+
+  const { data: partnerAreas } = await supabase
+    .from("partner_service_areas")
+    .select("partner_id, city, pincode");
+
+  // ─── 7. Service performance ────────────────────────────────
+
+  const servicePerf: Record<string, { count: number; revenue: number; category: string }> = {};
+  monthlyBookings.forEach((b) => {
+    const title = b.services?.title || "Unknown";
+    const cat = b.services?.category || "General";
+    if (!servicePerf[title]) servicePerf[title] = { count: 0, revenue: 0, category: cat };
+    servicePerf[title].count += 1;
+    servicePerf[title].revenue += Number(b.total_amount || 0);
+  });
+
+  const topServices = Object.entries(servicePerf)
+    .sort(([, a], [, b]) => b.count - a.count)
+    .slice(0, 6);
+  const maxServiceCount = topServices.length > 0 ? topServices[0][1].count : 1;
+
+  // ─── 8. Geographic zone analytics ──────────────────────────
+
+  const cityBookings: Record<string, { count: number; revenue: number }> = {};
+  monthlyBookings.forEach((b) => {
+    const city = b.city || "Unknown";
+    if (!cityBookings[city]) cityBookings[city] = { count: 0, revenue: 0 };
+    cityBookings[city].count += 1;
+    cityBookings[city].revenue += Number(b.total_amount || 0);
+  });
+
+  // Count partners per city from service areas
+  const cityPartners: Record<string, Set<string>> = {};
+  (partnerAreas || []).forEach((area) => {
+    const city = (area as Record<string, unknown>).city as string;
+    const pid = (area as Record<string, unknown>).partner_id as string;
+    if (city) {
+      if (!cityPartners[city]) cityPartners[city] = new Set();
+      cityPartners[city].add(pid);
+    }
+  });
+
+  const allCities = Array.from(new Set([...Object.keys(cityBookings), ...Object.keys(cityPartners)])).filter(
+    (c) => c !== "Unknown"
+  );
+
+  const zoneData = allCities
+    .map((city) => {
+      const bData = cityBookings[city] || { count: 0, revenue: 0 };
+      const pCount = cityPartners[city]?.size || 0;
+      const aov = bData.count > 0 ? Math.round(bData.revenue / bData.count) : 0;
+      const signal = demandSignal(bData.count, pCount);
+      return { city, bookings: bData.count, partners: pCount, aov, signal };
+    })
+    .sort((a, b) => b.bookings - a.bookings)
+    .slice(0, 6);
+
+  // ─── 9. Ops Strategy alerts ────────────────────────────────
+
+  interface OpsAlert {
+    severity: "critical" | "warning" | "info";
+    message: string;
+    icon: string;
+    color: string;
+  }
+  const opsAlerts: OpsAlert[] = [];
+
+  zoneData.forEach((z) => {
+    if (z.bookings > 0 && z.partners === 0) {
+      opsAlerts.push({
+        severity: "critical",
+        message: `${z.city} has ${z.bookings} booking${z.bookings > 1 ? "s" : ""} but 0 active partners online`,
+        icon: "error",
+        color: "bg-red-500/10 border-red-500/20 text-red-700",
+      });
+    } else if (z.partners > 0 && z.bookings / z.partners > 5) {
+      opsAlerts.push({
+        severity: "warning",
+        message: `${z.city} has ${z.bookings}:${z.partners} booking-to-partner ratio — consider recruitment`,
+        icon: "warning",
+        color: "bg-amber-500/10 border-amber-500/20 text-amber-700",
+      });
+    } else if (z.partners > 0 && z.bookings / z.partners <= 2) {
+      opsAlerts.push({
+        severity: "info",
+        message: `${z.city} fleet is balanced at ${z.bookings}:${z.partners} ratio`,
+        icon: "check_circle",
+        color: "bg-emerald-500/10 border-emerald-500/20 text-emerald-700",
+      });
+    }
+  });
+
+  if (cancelledCount > 0 && cancelledCount / monthlyBookings.length > 0.15) {
+    opsAlerts.push({
+      severity: "critical",
+      message: `High cancellation rate: ${((cancelledCount / monthlyBookings.length) * 100).toFixed(1)}% this month`,
+      icon: "cancel",
+      color: "bg-red-500/10 border-red-500/20 text-red-700",
+    });
   }
 
-  const serviceCounts: Record<string, number> = {};
-  monthlyBookings.forEach(b => {
-    const title = b.services?.title || 'Unknown';
-    serviceCounts[title] = (serviceCounts[title] || 0) + 1;
-  });
-  const topServices = Object.entries(serviceCounts)
-    .sort(([, a], [, b]) => b - a)
+  if (pendingCount > 3) {
+    opsAlerts.push({
+      severity: "warning",
+      message: `${pendingCount} bookings pending partner assignment — manual override may be needed`,
+      icon: "pending_actions",
+      color: "bg-amber-500/10 border-amber-500/20 text-amber-700",
+    });
+  }
+
+  // Sort: critical first, then warning, then info
+  const severityOrder: Record<string, number> = { critical: 0, warning: 1, info: 2 };
+  opsAlerts.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+  const displayAlerts = opsAlerts.slice(0, 4);
+
+  // ─── 10. Recent completed payouts ─────────────────────────
+
+  const recentPayouts = monthlyBookings
+    .filter((b) => b.status === "completed")
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 3);
 
+  // ─── 11. Recent bookings for Ops Ledger ────────────────────
+
+  const recentBookings = [...monthlyBookings]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 8);
+
+  // ─── RENDER ────────────────────────────────────────────────
+
   return (
-    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Alert System */}
-      {alerts.length > 0 && (
-        <div className="space-y-3">
-          {alerts.map(alert => (
-            <div key={alert.id} className="flex items-center gap-4 p-4 rounded-2xl bg-primary text-white shadow-ambient border border-white/10 overflow-hidden relative group">
-              <div className="absolute inset-0 bg-linear-to-r from-secondary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <span className="material-symbols-outlined text-secondary">{alert.icon}</span>
-              <p className="text-sm font-bold tracking-tight relative z-10">{alert.message}</p>
-              <button className="ml-auto text-[10px] font-black uppercase tracking-widest text-secondary hover:underline relative z-10">Resolve Now</button>
-            </div>
-          ))}
-        </div>
-      )}
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* ─── SECTION 1: COMPACT METRIC MATRIX ──────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
 
-      {/* Hero Metrics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* KPI: Monthly GMV */}
-        <div className="bg-primary p-8 rounded-[32px] text-white shadow-ambient relative overflow-hidden group">
-          <div className="absolute -right-4 -top-4 w-24 h-24 bg-secondary/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50 mb-6">Total GMV (Monthly)</p>
-          <h2 className="text-4xl font-bold font-headline tracking-tighter">₹{monthlyGMV.toLocaleString()}</h2>
-          <div className="mt-4 flex items-center gap-2">
-            <span className="text-[10px] font-black text-secondary bg-secondary/10 px-2.5 py-1 rounded-lg">+12.5%</span>
-            <span className="text-[10px] text-white/40 font-bold uppercase tracking-widest">Growth</span>
+        {/* KPI 1: Monthly GMV */}
+        <Link href="/admin/finance" className="bg-primary p-5 rounded-2xl text-white shadow-ambient relative overflow-hidden group hover:shadow-xl transition-all">
+          <div className="absolute -right-3 -top-3 w-16 h-16 bg-secondary/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
+          <p className="text-[9px] font-black uppercase tracking-widest text-white/50 mb-2">This Month's Revenue</p>
+          <h2 className="text-2xl font-bold font-headline tracking-tighter">₹{monthlyGMV.toLocaleString()}</h2>
+          <div className="mt-2 flex items-center gap-2">
+            <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg ${
+              momGrowth >= 0 ? "text-secondary bg-secondary/15" : "text-red-300 bg-red-500/15"
+            }`}>
+              {momGrowthStr}
+            </span>
+            <span className="text-[8px] text-white/35 font-bold uppercase tracking-widest">vs Last Month</span>
           </div>
-        </div>
+          <div className="flex items-center gap-3 mt-2.5 text-[8px] font-bold text-white/40 uppercase tracking-wider">
+            <span>Today: ₹{dailyGMV.toLocaleString()}</span>
+            <span className="w-px h-3 bg-white/15"></span>
+            <span>Week: ₹{weeklyGMV.toLocaleString()}</span>
+          </div>
+        </Link>
 
-        {/* KPI: Active Bookings */}
-        <div className="bg-surface-container-low p-8 rounded-[32px] border border-outline-variant/20 shadow-sm hover:shadow-ambient transition-all group">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant mb-6">Active Bookings</p>
+        {/* KPI 2: Pipeline Bookings */}
+        <Link href="/admin/bookings" className="bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant/15 shadow-sm hover:shadow-ambient transition-all group">
+          <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/60 mb-2">Active Bookings</p>
           <div className="flex items-end justify-between">
-            <h2 className="text-4xl font-bold font-headline tracking-tighter text-primary">
-              {monthlyBookings.filter(b => b.status === 'confirmed' || b.status === 'in_progress').length}
+            <h2 className="text-2xl font-bold font-headline tracking-tighter text-primary">{activeBookings}</h2>
+            <span className="material-symbols-outlined text-secondary text-xl opacity-30 group-hover:opacity-100 transition-opacity">calendar_month</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5 mt-2.5">
+            {pendingCount > 0 && (
+              <span className="text-[7px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-700 border border-amber-500/15">{pendingCount} Pending</span>
+            )}
+            {confirmedCount > 0 && (
+              <span className="text-[7px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 border border-emerald-500/15">{confirmedCount} Confirmed</span>
+            )}
+            {inProgressCount > 0 && (
+              <span className="text-[7px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-700 border border-blue-500/15">{inProgressCount} Active</span>
+            )}
+            {activeBookings === 0 && pendingCount === 0 && (
+              <span className="text-[7px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-surface-container text-on-surface-variant">No Active</span>
+            )}
+          </div>
+        </Link>
+
+        {/* KPI 3: Fleet Capacity */}
+        <Link href="/admin/partners" className="bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant/15 shadow-sm hover:shadow-ambient transition-all group">
+          <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/60 mb-2">Partner Team</p>
+          <div className="flex items-end justify-between">
+            <h2 className="text-2xl font-bold font-headline tracking-tighter text-primary">
+              {activePartnerCount}<span className="text-sm text-on-surface-variant/40 font-bold ml-1">/ {totalPartners}</span>
             </h2>
-            <span className="material-symbols-outlined text-secondary text-3xl opacity-20 group-hover:opacity-100 transition-opacity">calendar_month</span>
-          </div>
-          <p className="text-[10px] font-bold text-on-surface-variant/40 mt-4 uppercase tracking-widest">In Pipeline</p>
-        </div>
-
-        {/* KPI: Partner Fleet */}
-        <div className="bg-surface-container-low p-8 rounded-[32px] border border-outline-variant/20 shadow-sm hover:shadow-ambient transition-all group">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant mb-6">Partner Fleet</p>
-          <div className="flex items-end justify-between">
-            <h2 className="text-4xl font-bold font-headline tracking-tighter text-primary">{activePartners}</h2>
-            <div className="flex items-center gap-1.5 mb-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-secondary animate-pulse"></span>
-              <span className="text-[10px] font-black text-secondary uppercase tracking-widest">Live</span>
+            <div className="flex items-center gap-1 mb-0.5">
+              <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+              <span className="text-[8px] font-black text-secondary uppercase tracking-widest">Active</span>
             </div>
           </div>
-          <p className="text-[10px] font-bold text-on-surface-variant/40 mt-4 uppercase tracking-widest">Operational</p>
-        </div>
+          {/* Capacity bar */}
+          <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden mt-2.5">
+            <div className="bg-secondary h-full rounded-full transition-all duration-700" style={{ width: `${fleetUtilization}%` }}></div>
+          </div>
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {offlinePartnerCount > 0 && (
+              <span className="text-[7px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-surface-container text-on-surface-variant">{offlinePartnerCount} Offline</span>
+            )}
+            {busyPartnerCount > 0 && (
+              <span className="text-[7px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-700">{busyPartnerCount} Busy</span>
+            )}
+            {suspendedPartnerCount > 0 && (
+              <span className="text-[7px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-red-500/10 text-red-600">{suspendedPartnerCount} Suspended</span>
+            )}
+          </div>
+        </Link>
 
-        {/* KPI: Success Rate */}
-        <div className="bg-surface-container-low p-8 rounded-[32px] border border-outline-variant/20 shadow-sm hover:shadow-ambient transition-all group">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant mb-6">Success Rate</p>
+        {/* KPI 4: Success Rate */}
+        <div className="bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant/15 shadow-sm hover:shadow-ambient transition-all group relative overflow-hidden">
+          <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/60 mb-2">Success Rate</p>
           <div className="flex items-end justify-between">
-            <h2 className="text-4xl font-bold font-headline tracking-tighter text-primary">{(100 - cancellationRate).toFixed(1)}%</h2>
-            <span className="material-symbols-outlined text-secondary text-3xl opacity-20 group-hover:opacity-100 transition-opacity">task_alt</span>
+            <h2 className={`text-2xl font-bold font-headline tracking-tighter ${
+              successRate >= 90 ? "text-primary" : successRate >= 70 ? "text-amber-700" : "text-red-600"
+            }`}>
+              {successRate.toFixed(1)}%
+            </h2>
+            {/* CSS-only progress ring */}
+            <div className="relative w-10 h-10 shrink-0">
+              <svg className="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
+                <path
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  className="text-surface-container"
+                />
+                <path
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeDasharray={`${successRate}, 100`}
+                  strokeLinecap="round"
+                  className={successRate >= 90 ? "text-secondary" : successRate >= 70 ? "text-amber-500" : "text-red-500"}
+                />
+              </svg>
+            </div>
           </div>
-          <p className="text-[10px] font-bold text-on-surface-variant/40 mt-4 uppercase tracking-widest">Platform Quality</p>
+          <div className="flex items-center gap-3 mt-2 text-[8px] font-bold text-on-surface-variant/50 uppercase tracking-wider">
+            <span>{completedCount} Done</span>
+            <span className="w-px h-3 bg-outline-variant/20"></span>
+            <span>{cancelledCount} Cancelled</span>
+            <span className="w-px h-3 bg-outline-variant/20"></span>
+            <span>{customerCount || 0} Customers</span>
+          </div>
         </div>
       </div>
 
-      {/* Business Intelligence Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Revenue Distribution */}
-        <div className="lg:col-span-2 glass-panel p-10 rounded-[40px] space-y-10 border border-outline-variant/20">
+      {/* ─── SECTION 2 + 3: INTELLIGENCE PANELS ────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+
+        {/* ─── LEFT: Revenue Intelligence Engine (2/3) ──────── */}
+        <div className="lg:col-span-2 bg-surface-container-lowest rounded-2xl border border-outline-variant/15 p-5 space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-2xl font-bold tracking-tight text-primary font-headline">Revenue Intelligence</h3>
-            <button className="w-10 h-10 rounded-xl bg-surface-container-high text-primary flex items-center justify-center hover:bg-secondary transition-all shadow-sm">
-              <span className="material-symbols-outlined text-[20px]">download</span>
-            </button>
+            <div>
+              <h3 className="text-base font-bold tracking-tight text-primary font-headline">Revenue Overview</h3>
+              <p className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40 mt-0.5">This month's summary · {format(now, "MMM yyyy")}</p>
+            </div>
+            <ExportButton />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-             <div className="space-y-8">
-                <div className="p-6 rounded-[24px] bg-primary/5 border border-primary/10 group hover:bg-primary transition-all duration-500">
-                   <p className="text-[10px] font-black uppercase tracking-widest text-primary/60 group-hover:text-white/60">Platform Net (20%)</p>
-                   <p className="text-3xl font-bold text-primary font-headline mt-2 group-hover:text-white">₹{(monthlyGMV * 0.2).toLocaleString()}</p>
-                </div>
-                <div className="p-6 rounded-[24px] bg-secondary/10 border border-secondary/20 group hover:bg-secondary transition-all duration-500">
-                   <p className="text-[10px] font-black uppercase tracking-widest text-secondary/80 group-hover:text-primary/60">Partner Payouts (80%)</p>
-                   <p className="text-3xl font-bold text-primary font-headline mt-2">₹{(monthlyGMV * 0.8).toLocaleString()}</p>
-                </div>
-             </div>
+          {/* Row A: Platform Split Ledger */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
+              <p className="text-[9px] font-black uppercase tracking-widest text-primary/50">Our Earnings (20%)</p>
+              <p className="text-xl font-bold text-primary font-headline mt-1.5 tracking-tighter">₹{(monthlyGMV * 0.2).toLocaleString()}</p>
+            </div>
+            <div className="p-4 rounded-xl bg-secondary/10 border border-secondary/20">
+              <p className="text-[9px] font-black uppercase tracking-widest text-secondary/70">Partner Payments (80%)</p>
+              <p className="text-xl font-bold text-primary font-headline mt-1.5 tracking-tighter">₹{(monthlyGMV * 0.8).toLocaleString()}</p>
+            </div>
+          </div>
 
-             <div className="space-y-6">
-                <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-on-surface-variant/60">Dominant Services</h4>
-                <div className="space-y-5">
-                   {topServices.map(([title, count], idx) => (
-                     <div key={title} className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                           <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-black ${
-                             idx === 0 ? 'bg-secondary text-primary' : 'bg-surface-container-high text-on-surface-variant'
-                           }`}>{idx + 1}</span>
-                           <span className="text-sm font-bold text-primary tracking-tight">{title}</span>
-                        </div>
-                        <span className="text-xs font-black text-on-surface-variant">{count} Volume</span>
-                     </div>
-                   ))}
-                </div>
-             </div>
+          {/* Row A.5: Recent Payout Log */}
+          {recentPayouts.length > 0 && (
+            <div className="border border-outline-variant/10 rounded-xl overflow-hidden">
+              <div className="bg-surface-dim/30 px-4 py-2 flex items-center justify-between">
+                <p className="text-[8px] font-black uppercase tracking-widest text-on-surface-variant/50">Recent Payouts</p>
+                <Link href="/admin/finance" className="text-[8px] font-black uppercase tracking-widest text-secondary hover:underline">View All →</Link>
+              </div>
+              <div className="divide-y divide-outline-variant/10">
+                {recentPayouts.map((p) => (
+                  <Link key={p.id} href="/admin/finance" className="flex items-center justify-between px-4 py-2.5 hover:bg-surface-container-low/30 transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-[9px] font-black text-on-surface-variant/40 font-mono tracking-tighter shrink-0">TX-{p.id.slice(0, 6).toUpperCase()}</span>
+                      <span className="text-[10px] font-bold text-primary truncate">{(p.partner as Record<string, unknown>)?.full_name as string || "Partner"}</span>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-xs font-bold text-secondary tracking-tighter">₹{(Number(p.total_amount) * 0.8).toLocaleString()}</span>
+                      <span className="text-[8px] text-on-surface-variant/40 font-bold">{format(new Date(p.created_at), "dd MMM")}</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Row B: Dominant Services Bar Chart */}
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/50 mb-3">Top Services</p>
+            {topServices.length === 0 ? (
+              <div className="text-center py-6 text-on-surface-variant/40">
+                <span className="material-symbols-outlined text-2xl mb-1 block opacity-40">analytics</span>
+                <p className="text-xs font-semibold">No service data available yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {topServices.map(([title, data]) => {
+                  const barWidth = Math.max(8, Math.round((data.count / maxServiceCount) * 100));
+                  return (
+                    <Link key={title} href="/admin/bookings" className="flex items-center gap-3 group hover:bg-surface-container-low/30 rounded-lg px-2 py-1.5 -mx-2 transition-colors">
+                      <span className="text-[10px] font-bold text-primary w-[120px] truncate shrink-0 tracking-tight group-hover:text-secondary transition-colors">{title}</span>
+                      <div className="flex-1 h-4 bg-surface-container rounded-full overflow-hidden relative">
+                        <div
+                          className="h-full bg-primary/70 rounded-full transition-all duration-700 group-hover:bg-secondary"
+                          style={{ width: `${barWidth}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-[9px] font-black text-on-surface-variant/60 w-12 text-right shrink-0">{data.count} bookings</span>
+                      <span className="text-[9px] font-bold text-primary w-16 text-right shrink-0 tracking-tighter">₹{data.revenue.toLocaleString()}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Geographic Demand */}
-        <div className="glass-panel p-10 rounded-[40px] border border-outline-variant/20 flex flex-col">
-          <h3 className="text-2xl font-bold tracking-tight text-primary font-headline mb-8">Service Density</h3>
-          <div className="space-y-8 flex-1">
-             {[
-               { city: 'Roorkee', val: 85, color: 'bg-primary' },
-               { city: 'Chandigarh', val: 12, color: 'bg-primary/60' },
-               { city: 'Haridwar', val: 3, color: 'bg-primary/30' }
-             ].map(item => (
-               <div key={item.city} className="space-y-3">
-                  <div className="flex justify-between text-[11px] font-black uppercase tracking-widest text-on-surface-variant">
-                    <span>{item.city}</span>
-                    <span>{item.val}%</span>
-                  </div>
-                  <div className="h-2.5 w-full bg-surface-container rounded-full overflow-hidden">
-                    <div className={`${item.color} h-full rounded-full transition-all duration-1000`} style={{ width: `${item.val}%` }}></div>
-                  </div>
-               </div>
-             ))}
+        {/* ─── RIGHT: Geographic & Service Density (1/3) ───── */}
+        <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 p-5 space-y-4 flex flex-col">
+          <div>
+            <h3 className="text-base font-bold tracking-tight text-primary font-headline">City Performance</h3>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40 mt-0.5">Bookings & partners by city</p>
           </div>
 
-          <div className="mt-10 p-5 rounded-3xl bg-secondary/10 border border-secondary/10">
-             <p className="text-[10px] font-black text-secondary uppercase tracking-widest flex items-center gap-2">
-               <span className="material-symbols-outlined text-[16px]">insights</span> Ops Strategy
-             </p>
-             <p className="text-[11px] text-primary/80 mt-3 font-bold leading-relaxed">
-               Chandigarh demand up <b>12%</b>. Suggest boosting partner density in central sectors.
-             </p>
+          {/* Zone Data Table */}
+          {zoneData.length === 0 ? (
+            <div className="text-center py-8 text-on-surface-variant/40 flex-1 flex flex-col items-center justify-center">
+              <span className="material-symbols-outlined text-2xl mb-1 opacity-40">location_off</span>
+              <p className="text-xs font-semibold">No geographic data available.</p>
+              <p className="text-[10px] text-on-surface-variant/30 mt-1">Zone data populates as bookings come in.</p>
+            </div>
+          ) : (
+            <div className="border border-outline-variant/10 rounded-xl overflow-hidden flex-1">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-surface-dim/40 border-b border-outline-variant/15">
+                    <th className="px-3 py-2.5 text-[8px] font-black uppercase tracking-widest text-on-surface-variant/50">City</th>
+                    <th className="px-2 py-2.5 text-[8px] font-black uppercase tracking-widest text-on-surface-variant/50 text-center">Orders</th>
+                    <th className="px-2 py-2.5 text-[8px] font-black uppercase tracking-widest text-on-surface-variant/50 text-center">Pros</th>
+                    <th className="px-2 py-2.5 text-[8px] font-black uppercase tracking-widest text-on-surface-variant/50 text-right">Avg.</th>
+                    <th className="px-3 py-2.5 text-[8px] font-black uppercase tracking-widest text-on-surface-variant/50 text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-outline-variant/10">
+                  {zoneData.map((z) => (
+                    <tr key={z.city} className="hover:bg-surface-container-low/30 transition-colors">
+                      <td className="px-3 py-2.5">
+                        <Link href="/admin/partners" className="text-[10px] font-bold text-primary hover:text-secondary transition-colors uppercase tracking-tight">{z.city}</Link>
+                      </td>
+                      <td className="px-2 py-2.5 text-center text-[10px] font-black text-primary">{z.bookings}</td>
+                      <td className="px-2 py-2.5 text-center text-[10px] font-black text-primary">{z.partners}</td>
+                      <td className="px-2 py-2.5 text-right text-[10px] font-bold text-on-surface-variant">₹{z.aov.toLocaleString()}</td>
+                      <td className="px-3 py-2.5 text-right">
+                        <span className={`inline-flex items-center gap-1 text-[7px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border ${z.signal.color}`}>
+                          <span className="material-symbols-outlined text-[10px]">{z.signal.icon}</span>
+                          {z.signal.label}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Ops Strategy Alert Queue */}
+          <div className="space-y-2">
+            <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/50 flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[14px] text-secondary">insights</span>
+              Alerts & Actions
+            </p>
+            {displayAlerts.length === 0 ? (
+              <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-xl p-3 text-center">
+                <p className="text-[10px] font-bold text-emerald-700">Everything looks good. No alerts right now.</p>
+              </div>
+            ) : (
+              displayAlerts.map((alert, idx) => (
+                <Link key={idx} href="/admin/partners" className={`flex items-start gap-2.5 p-3 rounded-xl border transition-colors hover:brightness-95 ${alert.color}`}>
+                  <span className="material-symbols-outlined text-sm mt-px shrink-0">{alert.icon}</span>
+                  <p className="text-[10px] font-bold leading-snug">{alert.message}</p>
+                </Link>
+              ))
+            )}
           </div>
         </div>
       </div>
 
-      {/* Live Ops Ledger */}
-      <div className="bg-surface-container-lowest rounded-[40px] border border-outline-variant/20 shadow-ambient overflow-hidden">
-        <div className="px-10 py-8 border-b border-outline-variant/10 flex justify-between items-center">
-           <div>
-              <h3 className="text-xl font-bold text-primary font-headline tracking-tight">Live Ops Ledger</h3>
-              <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant mt-1.5 opacity-60">Most Recent Transactions</p>
-           </div>
-           <button className="px-5 py-2.5 bg-primary text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-primary/20 hover:bg-primary/90 transition-all">Command View</button>
+      {/* ─── SECTION 4: LIVE OPS LEDGER ────────────────────── */}
+      <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 shadow-sm overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-outline-variant/10 flex justify-between items-center">
+          <div>
+            <h3 className="text-sm font-bold text-primary font-headline tracking-tight">Recent Bookings</h3>
+            <p className="text-[8px] font-black uppercase tracking-widest text-on-surface-variant/40 mt-0.5">Latest booking activity</p>
+          </div>
+          <Link href="/admin/bookings" className="px-4 py-2 bg-primary text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md shadow-primary/15 hover:bg-primary/90 transition-all">
+            View All →
+          </Link>
         </div>
-        <div className="divide-y divide-outline-variant/10">
-          {monthlyBookings
-            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-            .slice(0, 5)
-            .map(booking => (
-              <div key={booking.id} className="px-10 py-6 flex items-center gap-8 hover:bg-surface-container-low transition-colors group cursor-pointer">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all group-hover:scale-105 ${
-                  booking.status === 'completed' ? 'bg-secondary/10 text-secondary' : 
-                  booking.status === 'cancelled' ? 'bg-red-50 text-red-500' : 'bg-primary/5 text-primary'
-                }`}>
-                  <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-                    {booking.status === 'completed' ? 'verified' : booking.status === 'cancelled' ? 'error' : 'schedule'}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-black text-primary truncate uppercase tracking-tighter">BK-{booking.id.slice(0, 8).toUpperCase()}</p>
-                  <p className="text-[11px] font-bold text-on-surface-variant/60 mt-1 truncate">{booking.services?.title} • {booking.city}</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-lg font-bold text-primary font-headline tracking-tight">₹{Number(booking.total_amount).toLocaleString()}</p>
-                  <p className="text-[10px] font-black text-on-surface-variant/40 uppercase tracking-widest mt-1">
-                    {format(new Date(booking.created_at), 'HH:mm a')}
-                  </p>
-                </div>
-                <span className="material-symbols-outlined text-on-surface-variant/20 group-hover:text-secondary transition-colors">chevron_right</span>
-              </div>
-            ))}
+
+        {/* Desktop Table */}
+        <div className="hidden md:block">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-surface-dim/30 border-b border-outline-variant/10">
+                <th className="px-5 py-3 text-[8px] font-black uppercase tracking-widest text-on-surface-variant/40">Booking ID</th>
+                <th className="px-4 py-3 text-[8px] font-black uppercase tracking-widest text-on-surface-variant/40">Service · City</th>
+                <th className="px-4 py-3 text-[8px] font-black uppercase tracking-widest text-on-surface-variant/40">Customer</th>
+                <th className="px-4 py-3 text-[8px] font-black uppercase tracking-widest text-on-surface-variant/40 text-right">Amount</th>
+                <th className="px-4 py-3 text-[8px] font-black uppercase tracking-widest text-on-surface-variant/40 text-center">Status</th>
+                <th className="px-5 py-3 text-[8px] font-black uppercase tracking-widest text-on-surface-variant/40 text-right">Time</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-outline-variant/10">
+              {recentBookings.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-5 py-10 text-center text-on-surface-variant/40 text-xs font-semibold">
+                    No booking transactions recorded this month.
+                  </td>
+                </tr>
+              ) : (
+                recentBookings.map((booking) => {
+                  const statusVariant: Record<string, "warning" | "primary" | "success" | "danger" | "surface"> = {
+                    pending: "warning",
+                    confirmed: "primary",
+                    accepted: "primary",
+                    in_progress: "primary",
+                    completed: "success",
+                    cancelled: "danger",
+                  };
+                  return (
+                    <tr key={booking.id} className="hover:bg-surface-container-low/30 transition-colors group">
+                      <td className="px-5 py-3.5">
+                        <Link href="/admin/bookings" className="text-[10px] font-black text-primary font-mono tracking-tighter uppercase hover:text-secondary transition-colors">
+                          BK-{booking.id.slice(0, 8).toUpperCase()}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <p className="text-[10px] font-bold text-primary tracking-tight truncate max-w-[160px]">{booking.services?.title || "Service"}</p>
+                        <p className="text-[8px] font-bold text-on-surface-variant/40 uppercase tracking-wider mt-0.5 flex items-center gap-0.5">
+                          <span className="material-symbols-outlined text-[10px] text-secondary">location_on</span>
+                          {booking.city || "N/A"}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <Link href="/admin/customers" className="text-[10px] font-bold text-primary hover:text-secondary transition-colors uppercase tracking-tight truncate block max-w-[120px]">
+                          {(booking.customer as Record<string, unknown>)?.full_name as string || "Customer"}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        <p className="text-xs font-bold text-primary font-headline tracking-tighter">₹{Number(booking.total_amount).toLocaleString()}</p>
+                      </td>
+                      <td className="px-4 py-3.5 text-center">
+                        <Badge variant={statusVariant[booking.status] || "primary"}>
+                          {booking.status === "in_progress" ? "Active" : booking.status}
+                        </Badge>
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <p className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-wider">
+                          {format(new Date(booking.created_at), "dd MMM · hh:mm a")}
+                        </p>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile Cards */}
+        <div className="block md:hidden divide-y divide-outline-variant/10">
+          {recentBookings.length === 0 ? (
+            <div className="px-5 py-10 text-center text-on-surface-variant/40 text-xs font-semibold">
+              No booking transactions recorded this month.
+            </div>
+          ) : (
+            recentBookings.map((booking) => {
+              const statusVariant: Record<string, "warning" | "primary" | "success" | "danger" | "surface"> = {
+                pending: "warning",
+                confirmed: "primary",
+                accepted: "primary",
+                in_progress: "primary",
+                completed: "success",
+                cancelled: "danger",
+              };
+              return (
+                <Link key={booking.id} href="/admin/bookings" className="flex items-center gap-3 px-5 py-3 hover:bg-surface-container-low/30 transition-colors">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                    booking.status === "completed" ? "bg-secondary/10 text-secondary" :
+                    booking.status === "cancelled" ? "bg-red-50 text-red-500" : "bg-primary/5 text-primary"
+                  }`}>
+                    <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>
+                      {booking.status === "completed" ? "verified" : booking.status === "cancelled" ? "error" : "schedule"}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-black text-primary truncate uppercase tracking-tighter">BK-{booking.id.slice(0, 8).toUpperCase()}</p>
+                    <p className="text-[9px] font-bold text-on-surface-variant/50 truncate">{booking.services?.title} · {booking.city}</p>
+                  </div>
+                  <div className="text-right shrink-0 space-y-1">
+                    <p className="text-xs font-bold text-primary font-headline tracking-tighter">₹{Number(booking.total_amount).toLocaleString()}</p>
+                    <Badge variant={statusVariant[booking.status] || "primary"}>
+                      {booking.status === "in_progress" ? "Active" : booking.status}
+                    </Badge>
+                  </div>
+                </Link>
+              );
+            })
+          )}
         </div>
       </div>
     </div>

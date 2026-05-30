@@ -2,20 +2,60 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import Image from "next/image";
 
+interface ServicePageContent {
+  about_text?: string;
+  included_features?: string[];
+  excluded_features?: string[];
+  faqs?: { question: string; answer: string }[];
+  why_choose_us?: { icon: string; title: string; desc: string }[];
+  how_to_book_steps?: { step: number; title: string; desc: string }[];
+}
+
+interface ServiceWithSubcategory {
+  id: string;
+  title: string;
+  description: string;
+  base_price: number;
+  image_url?: string;
+  category?: string;
+  page_content: ServicePageContent;
+  subcategory_id: string;
+  price_breakdown: string | null;
+  subcategories: {
+    subcategory_name: string;
+    icon_name: string;
+    categories: {
+      category_name: string;
+    };
+  } | null;
+}
+
 export default async function ServiceDetailsPage({ params }: { params: Promise<{ category: string, serviceId: string }> }) {
   const resolvedParams = await params;
   const supabase = await createClient();
 
   const { data: service } = await supabase
     .from("services")
-    .select("*")
+    .select(`
+      *,
+      subcategories (
+        subcategory_name,
+        icon_name,
+        categories (
+          category_name
+        )
+      )
+    `)
     .eq("id", resolvedParams.serviceId)
-    .single();
+    .single() as { data: ServiceWithSubcategory | null };
 
   if (!service) {
     return (
       <div className="min-h-screen flex items-center justify-center font-body bg-surface text-on-surface">
         <div className="text-center">
+          <div className="w-20 h-20 bg-surface-container rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="material-symbols-outlined text-4xl text-on-surface-variant/40">error_outline</span>
+          </div>
           <h1 className="text-xl md:text-2xl font-bold mb-4 font-headline">Service Not Found</h1>
           <Link href={`/services/${resolvedParams.category}`} className="text-primary hover:underline font-bold">Go back to category</Link>
         </div>
@@ -24,6 +64,9 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
   }
 
   const content = service.page_content || {};
+  const iconName = service.subcategories?.icon_name || "home_repair_service";
+  const subcatName = service.subcategories?.subcategory_name || "Service";
+  const catName = service.subcategories?.categories?.category_name || resolvedParams.category;
 
   const catImageMap: Record<string, string> = {
     'pest_control': '/assets/indian_pest_control_pro_1776155620526.png',
@@ -34,10 +77,7 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
     'landscaping': '/assets/indian_gardening_pro_1776693713648.png'
   };
 
-  const displayImage = service.image_url || catImageMap[service.category] || '/assets/hero_cleaning_1773410829223.png';
-
-  const defaultIncludes = ["Comprehensive Professional Service", "Standard Tools & Equipment", "Trusted & Background verified experts"];
-  const defaultExcludes = ["Spare Parts not included", "Any masonry work required"];
+  const displayImage = service.image_url || catImageMap[service.category || ''] || '/assets/hero_cleaning_1773410829223.png';
 
   return (
     <div className="bg-surface font-body text-on-surface antialiased min-h-screen pb-28 md:pb-32">
@@ -45,7 +85,26 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
       <div className="bg-surface-container pt-6 md:pt-10 px-4 md:px-6 relative overflow-hidden">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-6 md:gap-12 items-center justify-between relative z-10">
           <div className="flex-1 w-full">
-            <h1 className="text-2xl md:text-4xl lg:text-5xl font-extrabold text-on-surface font-headline mb-3 md:mb-4 tracking-tight">{service.title}</h1>
+            {/* Breadcrumb */}
+            {/* <div className="flex items-center gap-2 text-xs text-on-surface-variant mb-4">
+              <Link href="/dashboard" className="hover:text-primary transition-colors">Home</Link>
+              <span className="material-symbols-outlined text-[12px]">chevron_right</span>
+              <Link href={`/services/${resolvedParams.category}`} className="hover:text-primary transition-colors">{catName}</Link>
+              <span className="material-symbols-outlined text-[12px]">chevron_right</span>
+              <span className="text-on-surface font-semibold">{service.title}</span>
+            </div> */}
+
+            {/* Icon + Title */}
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-14 h-14 md:w-16 md:h-16 bg-green-500/10 rounded-2xl flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-2xl md:text-3xl text-[#059669] drop-shadow-sm">{iconName}</span>
+              </div>
+              <div>
+                <h1 className="text-2xl md:text-4xl lg:text-5xl font-extrabold text-on-surface font-headline tracking-tight">{service.title}</h1>
+                {/* <p className="text-xs md:text-sm text-on-surface-variant font-medium mt-1">{subcatName}</p> */}
+              </div>
+            </div>
+
             <p className="text-sm md:text-lg text-on-surface-variant mb-5 md:mb-8 max-w-lg leading-relaxed">
               {content.about_text?.split('.')[0] || service.description || "Professional and top-tier services tailored to you."}
             </p>
@@ -63,11 +122,11 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
           </div>
           <div className="flex-1 w-full md:w-auto">
             <div className="relative w-full h-[200px] md:h-[300px] lg:h-[350px] max-w-lg mx-auto md:mx-0">
-              <Image 
-                src={displayImage} 
-                alt={service.title} 
+              <Image
+                src={displayImage}
+                alt={service.title}
                 fill
-                className="rounded-2xl md:rounded-3xl shadow-xl object-cover border border-outline-variant/20" 
+                className="rounded-2xl md:rounded-3xl shadow-xl object-cover border border-outline-variant/20"
               />
             </div>
           </div>
@@ -87,7 +146,7 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
                 <span className="material-symbols-outlined rounded-full bg-primary/20 text-primary p-1 text-[18px] md:text-[24px]">check</span> What&apos;s Included
               </h3>
               <ul className="space-y-2">
-                {(content.included_features || defaultIncludes).map((item: string, i: number) => (
+                {(content.included_features && content.included_features.length > 0 ? content.included_features : ["Comprehensive Professional Service", "Standard Tools & Equipment", "Trusted & Background verified experts"]).map((item: string, i: number) => (
                   <li key={i} className="flex gap-2 md:gap-3 text-on-surface-variant">
                     <span className="material-symbols-outlined text-primary shrink-0 text-lg md:text-xl">done</span>
                     <span className="text-xs md:text-[15px] font-medium">{item}</span>
@@ -101,7 +160,7 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
                 <span className="material-symbols-outlined rounded-full bg-red-100 text-red-600 p-1 text-[18px] md:text-[24px]">close</span> What&apos;s Excluded
               </h3>
               <ul className="space-y-2">
-                {(content.excluded_features || defaultExcludes).map((item: string, i: number) => (
+                {(content.excluded_features && content.excluded_features.length > 0 ? content.excluded_features : ["Spare Parts not included", "Any masonry work required"]).map((item: string, i: number) => (
                   <li key={i} className="flex gap-2 md:gap-3 text-on-surface-variant">
                     <span className="material-symbols-outlined text-red-400 shrink-0 text-lg md:text-xl">close</span>
                     <span className="text-xs md:text-[15px] font-medium">{item}</span>
@@ -112,12 +171,62 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
           </div>
         </section>
 
+        {/* Pricing Details */}
+        {service.price_breakdown && (
+          <section className="max-w-3xl mx-auto">
+            <div className="bg-surface-container-low border border-outline-variant/20 rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-xs">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/5 rounded-full blur-2xl pointer-events-none" />
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-1.5 bg-secondary/10 px-3 py-1 rounded-full text-secondary font-bold text-xs border border-secondary/20">
+                    <span className="material-symbols-outlined text-xs font-bold">payments</span> Pricing Details
+                  </div>
+                  <h3 className="text-xl md:text-2xl font-extrabold text-on-surface font-headline tracking-tighter">
+                    Transparent Pricing & Rates
+                  </h3>
+                  <p className="text-xs md:text-sm text-on-surface-variant leading-relaxed max-w-md">
+                    We charge a standard base rate for our expert service. Additional work, custom parts, or special requirements are billed transparently as per the rate details.
+                  </p>
+                </div>
+                <div className="bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant/20 min-w-[220px] shadow-xs flex flex-col justify-center">
+                  <span className="text-[10px] md:text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1">Base Price</span>
+                  <div className="text-3xl font-black text-primary font-headline tracking-tighter mb-2">₹{service.base_price}</div>
+                  <div className="border-t border-outline-variant/30 pt-2 mt-2">
+                    <span className="text-[10px] text-on-surface-variant/80 font-bold uppercase tracking-wider block mb-1">Rate Details</span>
+                    <span className="text-xs md:text-sm text-on-surface font-medium leading-tight block">{service.price_breakdown}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Why Choose Us */}
+        {content.why_choose_us && content.why_choose_us.length > 0 && (
+          <section className="max-w-4xl mx-auto">
+            <h2 className="text-2xl md:text-3xl font-extrabold text-center mb-8 md:mb-10 font-headline tracking-tighter">Why Choose Us</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {content.why_choose_us.map((item, i) => (
+                <div key={i} className="flex items-start gap-4 p-4 md:p-6 bg-surface-container-lowest rounded-xl border border-outline-variant/10">
+                  <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-[#059669] drop-shadow-sm">{item.icon}</span>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-on-surface text-sm md:text-base mb-1">{item.title}</h4>
+                    <p className="text-xs md:text-sm text-on-surface-variant">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* FAQ */}
         {content.faqs && content.faqs.length > 0 && (
           <section className="max-w-3xl mx-auto">
             <h2 className="text-2xl md:text-3xl font-extrabold text-center mb-8 md:mb-10 font-headline tracking-tighter">Frequently Asked Questions</h2>
             <div className="space-y-3 md:space-y-4">
-              {content.faqs.map((faq: any, i: number) => (
+              {content.faqs.map((faq, i) => (
                 <details key={i} className="group bg-surface-container-low rounded-xl md:rounded-2xl border border-outline-variant/20 [&_summary::-webkit-details-marker]:hidden cursor-pointer">
                   <summary className="flex items-center justify-between p-4 md:p-6 font-bold text-base md:text-lg select-none text-on-surface">
                     {faq.question}
@@ -135,11 +244,20 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
       </main>
 
       {/* Floating Bottom Bar */}
-      <div className="fixed bottom-0 w-full bg-surface-container-lowest border-t border-outline-variant/30 p-3 md:p-4 z-50 flex items-center justify-between shadow-[0_-10px_20px_rgba(0,0,0,0.05)] pb-safe">
+      <div className="fixed bottom-0 w-full bg-surface-container-lowest border-t border-outline-variant/30 p-3 md:p-4 z-50 flex items-center justify-between shadow-[0_-10px_20px_rgba(0,0,0,0.05)] pb-2">
         <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
           <div>
-            <div className="text-lg md:text-xl font-extrabold font-headline text-on-surface tracking-tighter">₹{service.base_price}</div>
-            <div className="text-[10px] md:text-xs text-on-surface-variant font-medium">Standard Fix Rate</div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-lg md:text-xl font-extrabold font-headline text-on-surface tracking-tighter">₹{service.base_price}</span>
+              {service.price_breakdown && (
+                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-secondary bg-secondary/10 px-1.5 py-0.5 rounded-full border border-secondary/20">
+                  Rates Apply
+                </span>
+              )}
+            </div>
+            <div className="text-[10px] md:text-xs text-on-surface-variant font-medium">
+              {service.price_breakdown ? "Base Price" : "Standard Fix Rate"}
+            </div>
           </div>
           <Link href={`/checkout/schedule?serviceId=${service.id}`} className="btn-cta px-6 md:px-8 py-3 md:py-3.5 rounded-full font-bold shadow-lg font-headline transition-transform active:scale-95 block text-center text-sm md:text-base">
             Book Now

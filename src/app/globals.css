@@ -1,25 +1,25 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #1E293B;
-  --color-primary-container: #1E293B;
+  --color-primary: #002261;
+  --color-primary-container: #002261;
   --color-on-primary: #F8FAFC;
   --color-on-primary-container: #F8FAFC;
 
-  --color-primary-fixed: #1E293B;
-  --color-primary-fixed-dim: #1E293B;
+  --color-primary-fixed: #002261;
+  --color-primary-fixed-dim: #002261;
   --color-on-primary-fixed: #F8FAFC;
-  --color-on-primary-fixed-variant: #1E293B;
+  --color-on-primary-fixed-variant: #002261;
 
-  --color-secondary: #2AF598;
+  --color-secondary: #a6ce37;
   --color-secondary-container: #E6F7F0;
-  --color-on-secondary: #1E293B;
-  --color-on-secondary-container: #1E293B;
+  --color-on-secondary: #002261;
+  --color-on-secondary-container: #002261;
 
   --color-secondary-fixed: #E6F7F0;
   --color-secondary-fixed-dim: #B5F5D8;
-  --color-on-secondary-fixed: #1E293B;
-  --color-on-secondary-fixed-variant: #1E293B;
+  --color-on-secondary-fixed: #002261;
+  --color-on-secondary-fixed-variant: #002261;
 
   --color-surface: #F8FAFC;
   --color-surface-dim: #EFF3F6;
@@ -34,11 +34,11 @@
   --color-outline: #94A3B8;
   --color-outline-variant: #CBD5E1;
 
-  --color-on-surface: #1E293B;
+  --color-on-surface: #002261;
   --color-on-surface-variant: #475569;
 
   --color-background: #F8FAFC;
-  --color-on-background: #1E293B;
+  --color-on-background: #002261;
 
   /* Fonts */
   --font-headline: var(--font-bricolage), sans-serif;
@@ -68,6 +68,10 @@
   @keyframes slideIn {
     from { transform: translateX(-100%); }
     to { transform: translateX(0); }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(100%); }
+    to { opacity: 1; transform: translateY(0); }
   }
   
   /* 3D Animations */
@@ -122,11 +126,11 @@ body {
     letter-spacing: -0.02em;
   }
    .bg-primary-gradient {
-     background: linear-gradient(135deg, #1E293B 0%, #1E293B 100%);
+     background: linear-gradient(135deg, #002261 0%, #002261 100%);
    }
 
    .btn-cta {
-     background: #1E293B;
+     background: #002261;
      color: #F8FAFC;
      font-weight: 700;
      padding: 0.75rem 1.5rem;
@@ -157,10 +161,10 @@ body {
    }
 
    .text-primary {
-     color: #1E293B;
+     color: #002261;
    }
    .text-secondary {
-     color: #2AF598;
+     color: #a6ce37;
    }
    .bg-base {
      background: #F8FAFC;

@@ -1,64 +1,79 @@
-import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { createClient } from "@/utils/supabase/server";
+import { SettingsConsole } from "./SettingsConsole";
 
-export default function AdminSettingsPage() {
+export default async function AdminSettingsPage() {
+  const supabase = await createClient();
+  let isSchemaError = false;
+
+  // 1. Fetch bookings count to display seeding status
+  const { count: dbBookingsCount } = await supabase
+    .from('bookings')
+    .select('id', { count: 'exact', head: true });
+
+  // 2. Fetch platform_settings
+  const { data, error } = await supabase
+    .from('platform_settings')
+    .select('*');
+
+  if (error) {
+    if (error.code === '42P01') {
+      isSchemaError = true;
+    } else {
+      console.error("Settings query error:", error);
+    }
+  }
+
+  // Parse fields or fall back to defaults
+  const settingsMap = (data || []).reduce((acc: any, row) => {
+    try {
+      acc[row.key] = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+    } catch {
+      acc[row.key] = row.value;
+    }
+    return acc;
+  }, {});
+
+  const taxRate = settingsMap['tax_rate'] || "18%";
+  const cancellationWindow = settingsMap['free_cancellation_window'] || "2 Hours";
+  const penaltyRate = settingsMap['partner_penalty_rate'] || "10%";
+  const serviceAreas = settingsMap['service_areas'] || ['Roorkee', 'Chandigarh', 'Dehradun', 'Haridwar'];
+
   return (
-    <div className="p-4 md:p-8 space-y-8 max-w-7xl mx-auto">
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div>
-        <h1 className="text-3xl font-black tracking-tighter text-primary font-headline">Platform Settings</h1>
-        <p className="text-on-surface-variant font-medium">Global configurations, tax rules, and operational boundaries.</p>
+        <h1 className="text-2xl font-black tracking-tighter text-primary font-headline">Settings</h1>
+        <p className="text-on-surface-variant font-medium mt-1 opacity-60 text-sm">Manage platform rules, default rates, and serviceable areas.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Tax & Currency */}
-        <Card variant="solid" className="space-y-6">
-           <h3 className="text-lg font-bold tracking-tight text-primary font-headline">Financial Rules</h3>
-           <div className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60">Platform Tax (GST)</label>
-                <input type="text" defaultValue="18%" className="w-full p-3 rounded-xl bg-surface-container border border-outline-variant/20 text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60">Default Currency</label>
-                <input type="text" defaultValue="INR (₹)" disabled className="w-full p-3 rounded-xl bg-surface-container-low border border-outline-variant/20 text-sm font-bold text-on-surface-variant" />
-              </div>
-           </div>
-        </Card>
+      {/* Database Schema Warning Banner */}
+      {isSchemaError && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-[20px] p-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-amber-700">warning</span>
+            </div>
+            <div>
+              <h4 className="text-sm font-black text-amber-800 uppercase tracking-tight">Database Schema Upgrade Required</h4>
+              <p className="text-xs text-amber-700 mt-1 font-medium leading-relaxed">
+                The <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold">platform_settings</code> table is missing. 
+                Please apply the migration files or run the SQL in your Supabase dashboard editor to enable persistence. Falls back to simulated defaults.
+              </p>
+            </div>
+          </div>
+          <div className="shrink-0 w-full sm:w-auto bg-amber-500/20 text-amber-800 font-black text-[10px] uppercase tracking-widest px-4 py-2.5 rounded-xl border border-amber-500/25 text-center">
+            Schema Pending
+          </div>
+        </div>
+      )}
 
-        {/* Policies */}
-        <Card variant="solid" className="space-y-6">
-           <h3 className="text-lg font-bold tracking-tight text-primary font-headline">Cancellation & SLAs</h3>
-           <div className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60">Free Cancellation Window</label>
-                <input type="text" defaultValue="2 Hours before" className="w-full p-3 rounded-xl bg-surface-container border border-outline-variant/20 text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60">Partner Penalty Rate</label>
-                <input type="text" defaultValue="10% of job" className="w-full p-3 rounded-xl bg-surface-container border border-outline-variant/20 text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20" />
-              </div>
-           </div>
-        </Card>
-
-        {/* Zones */}
-        <Card variant="solid" className="space-y-6">
-           <h3 className="text-lg font-bold tracking-tight text-primary font-headline">Service Areas</h3>
-           <div className="flex flex-wrap gap-2">
-              {['Roorkee', 'Chandigarh', 'Dehradun', 'Haridwar'].map(city => (
-                <span key={city} className="px-3 py-1.5 rounded-xl bg-surface-container-high text-on-surface text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                  {city} <span className="material-symbols-outlined text-[10px] cursor-pointer hover:text-red-500">close</span>
-                </span>
-              ))}
-              <button className="px-3 py-1.5 rounded-xl border border-dashed border-outline-variant/30 text-on-surface-variant/60 text-[10px] font-black uppercase tracking-widest hover:border-primary hover:text-primary transition-all">
-                + Add City
-              </button>
-           </div>
-        </Card>
-      </div>
-
-      <div className="flex justify-end gap-4">
-         <Button variant="primary" size="lg" className="shadow-xl">Save Global Configurations</Button>
-      </div>
+      {/* Settings console interface */}
+      <SettingsConsole
+        initialTaxRate={taxRate}
+        initialCancellationWindow={cancellationWindow}
+        initialPenaltyRate={penaltyRate}
+        initialServiceAreas={serviceAreas}
+        dbBookingsCount={dbBookingsCount || 0}
+      />
     </div>
   );
 }

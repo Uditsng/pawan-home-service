@@ -1,6 +1,7 @@
 import { signup } from "@/app/auth.actions";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 
 export default async function RegisterPage({
   searchParams,
@@ -15,7 +16,7 @@ export default async function RegisterPage({
         __html: `
         @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap');
         
-        body { font-family: 'Bricolage Grotesque', sans-serif; background: #F8FAFC; color: #1E293B; overflow-x: hidden; }
+        body { font-family: 'Bricolage Grotesque', sans-serif; background: #F8FAFC; color: #002261; overflow-x: hidden; }
         
         /* 3D Floating Animations */
         @keyframes float-3d-1 {
@@ -75,7 +76,7 @@ export default async function RegisterPage({
         <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-24 relative overflow-hidden">
 
           {/* Animated Background Orbs for Depth */}
-          <div className="absolute top-[-10%] left-[-10%] w-[300px] h-[300px] rounded-full bg-[radial-gradient(circle,#2AF598_0%,transparent_70%)] blur-[80px] opacity-20 animate-spin-slow pointer-events-none"></div>
+          <div className="absolute top-[-10%] left-[-10%] w-[300px] h-[300px] rounded-full bg-[radial-gradient(circle,#a6ce37_0%,transparent_70%)] blur-[80px] opacity-20 animate-spin-slow pointer-events-none"></div>
           <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] rounded-full bg-[radial-gradient(circle,#c4b5fd_0%,transparent_70%)] blur-[80px] opacity-20 animate-[spin-slow_25s_linear_infinite_reverse] pointer-events-none"></div>
 
           {/* Mobile Floating 3D Elements */}
@@ -133,14 +134,7 @@ export default async function RegisterPage({
 
               <div className="space-y-1.5 group">
                 <label className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-widest group-focus-within:text-secondary transition-colors">Password</label>
-                <input
-                  className="w-full px-4 py-3.5 bg-white/50 rounded-xl text-sm font-semibold text-primary focus:outline-none focus:ring-4 focus:ring-secondary/20 transition-all border border-white focus:border-secondary/50 shadow-sm placeholder:text-outline"
-                  type="password"
-                  name="password"
-                  placeholder="••••••••"
-                  required
-                  minLength={6}
-                />
+                <PasswordInput name="password" placeholder="••••••••" required minLength={6} />
               </div>
 
               {/* 3D Interactive Button */}

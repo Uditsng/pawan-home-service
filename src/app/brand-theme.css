@@ -3,11 +3,11 @@
 /* Bricolage Grotesque integration alongside existing defaults */
 .brand-identity {
   font-family: var(--font-bricolage), sans-serif;
-  --color-primary: #2AF598; /* Electric Mint */
+  --color-primary: #a6ce37; /* Electric Mint */
   --color-primary-container: #0CE581;
   --color-on-primary: #0F172A;
   
-  --color-secondary: #1E293B; /* Midnight Indigo */
+  --color-secondary: #002261; /* Midnight Indigo */
   --color-on-secondary: #F8FAFC;
 
   --color-surface: #F8FAFC; /* Pearl White */

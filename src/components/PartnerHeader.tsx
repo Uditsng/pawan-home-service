@@ -13,7 +13,7 @@ export default function PartnerHeader() {
         {/* Platform Logo */}
         <Link href="/partner/dashboard" className="flex items-center gap-2">
           <Image
-            src="/logo.jpg"
+            src="/PHS.png"
             alt="PavanHomeServices Logo"
             className="h-12 md:h-14 w-auto rounded-lg shadow-sm"
             width={40}

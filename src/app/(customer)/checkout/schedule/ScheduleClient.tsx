@@ -2,9 +2,60 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useMemo, useEffect } from "react";
+import { createClient } from "@/utils/supabase/client";
+import AddAddressModal from "@/components/AddAddressModal";
 
-export default function ScheduleClient({ service }: { service: { id: string; duration_minutes: number } }) {
+interface Address {
+  id: string;
+  label: string;
+  formatted_address: string;
+  address_line_1: string;
+  address_line_2: string | null;
+  city: string;
+  state: string;
+  pincode: string;
+  is_default: boolean;
+}
+
+export default function ScheduleClient({ 
+  service, 
+  initialAddresses 
+}: { 
+  service: { id: string; duration_minutes: number };
+  initialAddresses: Address[];
+}) {
   const router = useRouter();
+
+  const [addresses, setAddresses] = useState<Address[]>(initialAddresses);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>(() => {
+    const def = initialAddresses.find(a => a.is_default);
+    if (def) return def.id;
+    return initialAddresses[0]?.id || "";
+  });
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [isAddressSelectorExpanded, setIsAddressSelectorExpanded] = useState(false);
+
+  const fetchFreshAddresses = async () => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("user_addresses")
+      .select("*")
+      .order("is_default", { ascending: false });
+    
+    if (data) {
+      setAddresses(data as Address[]);
+      if (!selectedAddressId || !data.some((a: any) => a.id === selectedAddressId)) {
+        const defaultOrFirst = data.find((a: any) => a.is_default) || data[0];
+        if (defaultOrFirst) {
+          setSelectedAddressId(defaultOrFirst.id);
+        }
+      }
+    }
+  };
+
+  const selectedAddress = useMemo(() => {
+    return addresses.find(a => a.id === selectedAddressId) || null;
+  }, [addresses, selectedAddressId]);
 
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -66,7 +117,7 @@ export default function ScheduleClient({ service }: { service: { id: string; dur
   }, [filteredMorningSlots, filteredAfternoonSlots, selectedTime, isCustomMode, selectedFullDate]);
 
   const handleContinue = () => {
-    if (!selectedTime) return;
+    if (!selectedTime || !selectedAddressId) return;
 
     const year = selectedFullDate.getFullYear();
     const formattedMonth = (selectedFullDate.getMonth() + 1).toString().padStart(2, '0');
@@ -76,6 +127,7 @@ export default function ScheduleClient({ service }: { service: { id: string; dur
       serviceId: service.id,
       date: `${year}-${formattedMonth}-${formattedDate}`,
       time: selectedTime,
+      addressId: selectedAddressId,
     });
     router.push(`/checkout/payment?${payload.toString()}`);
   };
@@ -88,6 +140,114 @@ export default function ScheduleClient({ service }: { service: { id: string; dur
           <h1 className="font-headline text-3xl md:text-4xl font-extrabold tracking-tight text-on-surface leading-tight mb-2">
             When should <br />we come?
           </h1>
+        </section>
+
+        {/* Service Location Confirmation Card */}
+        <section className="mb-10 bg-surface-container-low border border-outline-variant/20 rounded-3xl p-5 md:p-6 relative overflow-hidden shadow-xs">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-secondary/5 rounded-full blur-xl pointer-events-none" />
+          
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-xl font-bold">location_on</span>
+              <h2 className="font-headline text-lg font-bold">Service Location</h2>
+            </div>
+            {addresses.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setIsAddressSelectorExpanded(!isAddressSelectorExpanded)}
+                className="text-xs font-bold text-primary hover:text-primary/80 transition-colors p-2 rounded-full border border-outline-variant/20 bg-surface-container-lowest"
+              >
+                {isAddressSelectorExpanded ? "Done" : "Confirm / Change"}
+              </button>
+            )}
+          </div>
+
+          {selectedAddress ? (
+            <div className="space-y-4">
+              <div className="flex items-start justify-between gap-3 p-4 bg-surface-container-lowest rounded-2xl border border-outline-variant/10 shadow-xs">
+                <div className="flex gap-3 min-w-0">
+                  <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-[#059669] text-xl">
+                      {selectedAddress.label === "Home" ? "home" : selectedAddress.label === "Work" ? "work" : "location_on"}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-sm font-bold text-on-surface">{selectedAddress.label} Address</span>
+                      {selectedAddress.is_default && (
+                        <span className="inline-flex items-center text-[9px] font-bold text-secondary bg-secondary/10 px-1.5 py-0.5 rounded-full border border-secondary/20">Default</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-on-surface-variant font-medium leading-relaxed truncate">
+                      {selectedAddress.address_line_1}
+                      {selectedAddress.address_line_2 ? `, ${selectedAddress.address_line_2}` : ''}
+                    </p>
+                    <p className="text-xs text-on-surface-variant leading-relaxed line-clamp-1 opacity-70">
+                      {selectedAddress.formatted_address}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 bg-green-500/10 text-[#059669] px-2.5 py-1 rounded-full shrink-0 border border-green-500/20">
+                  <span className="material-symbols-outlined text-xs font-bold">check_circle</span>
+                  <span className="text-[9px] font-bold uppercase tracking-wider">Confirmed</span>
+                </div>
+              </div>
+
+              {/* Address selector inline when expanded */}
+              {isAddressSelectorExpanded && (
+                <div className="pt-4 border-t border-outline-variant/30 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Select Address</p>
+                  <div className="space-y-2">
+                    {addresses.map((addr) => {
+                      const isAddrSelected = addr.id === selectedAddressId;
+                      return (
+                        <button
+                          key={addr.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedAddressId(addr.id);
+                            setIsAddressSelectorExpanded(false);
+                          }}
+                          className={`w-full text-left p-3.5 rounded-xl border transition-all flex items-start gap-3 active:scale-[0.99]
+                            ${isAddrSelected
+                              ? "bg-primary/5 border-primary text-primary shadow-xs"
+                              : "bg-surface border-outline-variant/10 text-on-surface hover:bg-surface-container-low"
+                            }`}
+                        >
+                          <span className="material-symbols-outlined text-[20px] mt-0.5 shrink-0">
+                            {isAddrSelected ? "radio_button_checked" : "radio_button_unchecked"}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold mb-0.5">{addr.label} Address</p>
+                            <p className="text-xs leading-normal opacity-80 truncate">{addr.formatted_address}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddressModalOpen(true)}
+                    className="w-full py-3 bg-surface border border-dashed border-outline-variant rounded-xl text-xs font-bold text-primary hover:bg-surface-container-low transition-colors flex items-center justify-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-sm">add</span> Add Another Address
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-6 bg-surface-container-lowest rounded-2xl border border-outline-variant/10">
+              <span className="material-symbols-outlined text-3xl opacity-30 mb-2 block">location_off</span>
+              <p className="text-xs text-on-surface-variant font-medium mb-4">No saved addresses found. Please add your location to proceed.</p>
+              <button
+                type="button"
+                onClick={() => setIsAddressModalOpen(true)}
+                className="px-6 py-2.5 bg-primary text-white text-xs font-bold rounded-xl shadow-md shadow-primary/20 hover:scale-105 transition-all"
+              >
+                Add Your Address
+              </button>
+            </div>
+          )}
         </section>
 
         {/* 7-Days & Custom Toggle Section */}
@@ -272,15 +432,22 @@ export default function ScheduleClient({ service }: { service: { id: string; dur
           </div>
           <button
             onClick={handleContinue}
-            disabled={!selectedTime}
-            className={`w-full py-3.5 md:py-4 rounded-xl md:rounded-2xl font-headline font-extrabold text-base md:text-lg flex items-center justify-center gap-2 md:gap-3 transition-all
-              ${!selectedTime ? 'bg-surface-container text-on-surface/30 cursor-not-allowed' : 'bg-secondary text-white shadow-[0_12px_32px_rgba(253,118,26,0.25)] hover:opacity-90 active:scale-[0.98]'}`}
+            disabled={!selectedTime || !selectedAddressId}
+            className={`mb-2 w-full py-3.5 md:py-4 rounded-xl md:rounded-2xl font-headline font-extrabold text-base md:text-lg flex items-center justify-center gap-2 md:gap-3 transition-all
+              ${(!selectedTime || !selectedAddressId) ? 'bg-surface-container text-on-surface/30 cursor-not-allowed' : 'bg-secondary text-white shadow-[0_12px_32px_rgba(253,118,26,0.25)] hover:opacity-90 active:scale-[0.98]'}`}
           >
             Continue To Payment
             <span className="material-symbols-outlined text-[20px] md:text-[24px]">arrow_forward</span>
           </button>
         </div>
       </footer>
+
+      {/* Add Address Modal */}
+      <AddAddressModal
+        isOpen={isAddressModalOpen}
+        onClose={() => setIsAddressModalOpen(false)}
+        onSaved={fetchFreshAddresses}
+      />
     </div>
   );
 }

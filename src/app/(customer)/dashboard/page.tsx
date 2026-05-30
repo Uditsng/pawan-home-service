@@ -4,22 +4,56 @@ import { createClient } from "@/utils/supabase/server";
 import DashboardCarousel from "./DashboardCarousel";
 import CustomerHeader from "@/components/CustomerHeader";
 
+interface ServiceWithSubcategory {
+  id: string;
+  title: string;
+  base_price: number;
+  category?: string;
+  subcategory_id: string;
+  subcategories: {
+    subcategory_name: string;
+    icon_name: string;
+    categories: {
+      category_name: string;
+    };
+  } | null;
+}
+
+interface BookingWithService {
+  id: string;
+  status: string;
+  created_at: string;
+  city: string;
+  total_amount: number;
+  services: {
+    title: string;
+    category?: string;
+  } | null;
+}
+
 export default async function CustomerDashboard() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let activeBookings: any[] = [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let availableServices: any[] = [];
+  let activeBookings: BookingWithService[] = [];
 
+  // Fetch services WITH subcategory + category relational data (dynamic icons)
   const { data: services } = await supabase
     .from('services')
-    .select('*')
+    .select(`
+      *,
+      subcategories (
+        subcategory_name,
+        icon_name,
+        categories (
+          category_name
+        )
+      )
+    `)
     .eq('is_active', true)
-    .limit(8);
+    .limit(8) as { data: ServiceWithSubcategory[] | null };
 
-  if (services) availableServices = services;
+  const availableServices = services || [];
 
   if (user) {
     const { data: bookings } = await supabase
@@ -29,7 +63,7 @@ export default async function CustomerDashboard() {
       .order('created_at', { ascending: false })
       .limit(5);
 
-    if (bookings) activeBookings = bookings;
+    if (bookings) activeBookings = bookings as BookingWithService[];
   }
 
   return (
@@ -43,22 +77,27 @@ export default async function CustomerDashboard() {
 
         {/* Service Categories Bento Grid */}
         <section className="mb-8 md:mb-12">
+          {/* <div className="flex justify-between items-end mb-4">
+            <div>
+              <h3 className="font-headline text-lg md:text-xl font-extrabold text-on-surface">Our Services</h3>
+              <p className="text-on-surface-variant text-xs md:text-sm">Browse and book what you need</p>
+            </div>
+            <Link href="/services" className="text-secondary text-xs md:text-sm font-bold flex items-center gap-1 hover:underline">
+              View All <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+            </Link>
+          </div> */}
           <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
             {availableServices.map((service) => {
-              const catIconMap: Record<string, string> = {
-                'cleaning': 'cleaning_services',
-                'repair': 'build',
-                'plumbing': 'plumbing',
-                'electrical': 'bolt',
-                'pest_control': 'pest_control',
-                'hvac': 'ac_unit',
-                'landscaping': 'grass'
-              };
+              // Use the dynamic icon_name from the DB subcategory relation
+              const iconName = service.subcategories?.icon_name || "handyman";
+              // Build category slug from relational data
+              const catSlug = (service.subcategories?.categories?.category_name || service.category || "services")
+                .toLowerCase().replace(/\s+/g, "-").replace(/&/g, "and");
 
               return (
-                <Link href={`/services/${service.category}/${service.id}`} key={service.id} className="bg-surface-container-low p-3 md:p-5 rounded-xl flex flex-col items-center justify-center text-center hover:bg-surface-container-high transition-colors group cursor-pointer border border-outline-variant/10 shadow-sm">
-                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-primary/10 mb-2 md:mb-3 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                    <span className="material-symbols-outlined text-success drop-shadow-sm">{catIconMap[service.category] || 'handyman'}</span>
+                <Link href={`/services/${catSlug}/${service.id}`} key={service.id} className="bg-surface-container-low p-3 md:p-5 rounded-xl flex flex-col items-center justify-center text-center hover:bg-surface-container-high transition-colors group cursor-pointer border border-outline-variant/10 shadow-sm">
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-green-500/10 mb-2 md:mb-3 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <span className="material-symbols-outlined text-[#059669] drop-shadow-sm">{iconName}</span>
                   </div>
                   <span className="font-headline font-bold text-xs md:text-sm text-on-surface line-clamp-2 leading-tight">{service.title}</span>
                   <span className="text-[10px] md:text-[11px] text-primary mt-1 md:mt-1.5 font-bold tracking-tight">₹{service.base_price}</span>
@@ -81,7 +120,7 @@ export default async function CustomerDashboard() {
               <h3 className="font-headline text-lg md:text-xl font-extrabold text-on-surface">Your Recent Bookings</h3>
               <p className="text-on-surface-variant text-xs md:text-sm">Track your live services</p>
             </div>
-            {activeBookings.length > 0 && <button className="text-primary text-xs md:text-sm font-bold">View History</button>}
+            {activeBookings.length > 0 && <Link href="/bookings" className="text-primary text-xs md:text-sm font-bold">View History</Link>}
           </div>
 
           <div className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar pb-4 -mx-4 px-4 md:-mx-6 md:px-6">
@@ -89,7 +128,7 @@ export default async function CustomerDashboard() {
               <div className="w-full bg-surface-container-lowest p-6 md:p-8 rounded-xl text-center border border-outline-variant/10 shadow-sm">
                 <span className="material-symbols-outlined text-3xl md:text-4xl text-outline-variant mb-2">event_busy</span>
                 <p className="text-on-surface-variant font-medium text-xs md:text-sm">You have no recent bookings.</p>
-                <p className="text-xs text-primary mt-2 font-bold cursor-pointer hover:underline">Explore Services</p>
+                <Link href="/services" className="text-xs text-primary mt-2 font-bold cursor-pointer hover:underline inline-block">Explore Services</Link>
               </div>
             ) : (
               activeBookings.map((b) => (

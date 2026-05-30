@@ -17,6 +17,17 @@ export default async function CheckoutSchedulePage({ searchParams }: { searchPar
     .eq("id", serviceId)
     .single();
 
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    redirect('/login');
+  }
+
+  const { data: savedAddresses } = await supabase
+    .from("user_addresses")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("is_default", { ascending: false });
+
   if (error) {
     console.error("Supabase Error Details:", {
       message: error.message,
@@ -43,5 +54,10 @@ export default async function CheckoutSchedulePage({ searchParams }: { searchPar
     duration_minutes: (serviceData as Service).duration_minutes || 60
   };
 
-  return <ScheduleClient service={service as { id: string; duration_minutes: number }} />;
+  return (
+    <ScheduleClient 
+      service={service as { id: string; duration_minutes: number }} 
+      initialAddresses={savedAddresses || []} 
+    />
+  );
 }

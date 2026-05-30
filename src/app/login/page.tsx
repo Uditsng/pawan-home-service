@@ -1,106 +1,7 @@
-// import { login } from "@/app/auth.actions";
-// import Link from "next/link";
-// import { Button } from "@/components/ui/Button";
-
-// export default async function LoginPage({
-//   searchParams,
-// }: {
-//   searchParams: Promise<{ message: string, error?: string }>;
-// }) {
-//   const resolvedParams = await searchParams;
-//   return (
-//     <div className="flex bg-surface min-h-screen">
-//       {/* Left side: Visual/Brand */}
-//       <div className="hidden lg:flex w-1/2 p-4 object-cover relative">
-//         <div
-//           className="w-full h-full rounded-4xl bg-cover bg-center overflow-hidden"
-//           style={{ backgroundImage: "url('https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&q=80')" }}
-//         >
-//           <div className="absolute inset-0 bg-primary/40 mix-blend-multiply"></div>
-//           <div className="absolute inset-x-8 bottom-12 text-white">
-//             <h1 className="text-4xl font-headline font-black mb-4 tracking-tighter">Your home, perfectly managed.</h1>
-//             <p className="text-lg opacity-90 max-w-md">Access premium home services, manage your properties, or join our network of elite service professionals.</p>
-//           </div>
-//         </div>
-//       </div>
-
-//       {/* Right side: Form */}
-//       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-24 relative">
-//         <Link href="/" className="absolute top-8 right-8 text-sm font-bold uppercase tracking-widest text-primary hover:bg-primary/5 px-4 py-2 rounded-xl transition-all">Back to Home</Link>
-
-//         <div className="w-full max-w-sm space-y-8">
-//           <div>
-//             <h2 className="text-3xl font-black font-headline tracking-tighter text-on-surface">Welcome back</h2>
-//             <p className="text-on-surface-variant font-medium mt-1">Sign in to your account</p>
-//           </div>
-
-//           <form action={login} className="space-y-5">
-//             <div className="space-y-1">
-//               <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Email</label>
-//               <input
-//                 className="w-full px-4 py-3 bg-surface-container rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all border border-transparent focus:border-primary/50"
-//                 name="email"
-//                 placeholder="you@example.com"
-//                 required
-//               />
-//             </div>
-
-//             <div className="space-y-1">
-//               <div className="flex justify-between items-center">
-//                 <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Password</label>
-//                 <Link href="#" className="text-[10px] text-primary font-bold hover:underline">Forgot?</Link>
-//               </div>
-//               <input
-//                 className="w-full px-4 py-3 bg-surface-container rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all border border-transparent focus:border-primary/50"
-//                 type="password"
-//                 name="password"
-//                 placeholder="••••••••"
-//                 required
-//               />
-//             </div>
-
-//             {/* Portal Destination Mocker */}
-//             <div className="space-y-1">
-//               <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Portal Destination (For Demo)</label>
-//               <select name="role" className="w-full px-4 py-3 bg-surface-container rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all border border-transparent focus:border-primary/50 cursor-pointer">
-//                 <option value="customer">Customer Dashboard</option>
-//                 <option value="partner">Partner Dashboard</option>
-//                 <option value="admin">Admin Dashboard</option>
-//               </select>
-//             </div>
-
-//             <Button variant="gradient" className="w-full">
-//               Sign In
-//             </Button>
-
-//             {resolvedParams?.error && (
-//               <p className="mt-4 p-4 bg-error/10 text-error text-center text-sm font-bold rounded-xl border border-error/20">
-//                 {resolvedParams.error}
-//               </p>
-//             )}
-
-//             {resolvedParams?.message && (
-//               <p className="mt-4 p-4 bg-surface-container-high text-on-surface text-center text-sm font-bold rounded-xl">
-//                 {resolvedParams.message}
-//               </p>
-//             )}
-//           </form>
-
-//           <p className="text-center text-sm font-medium text-on-surface-variant">
-//             Don&apos;t have an account? <Link href="/register" className="text-primary font-bold hover:underline">Sign up</Link>
-//           </p>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-
-
-
 import { login } from "@/app/auth.actions";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 
 export default async function LoginPage({
   searchParams,
@@ -115,7 +16,7 @@ export default async function LoginPage({
         __html: `
         @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap');
         
-        body { font-family: 'Bricolage Grotesque', sans-serif; background: #F8FAFC; color: #1E293B; overflow-x: hidden; }
+        body { font-family: 'Bricolage Grotesque', sans-serif; background: #F8FAFC; color: #002261; overflow-x: hidden; }
         
         /* 3D Floating Animations */
         @keyframes float-3d-1 {
@@ -175,7 +76,7 @@ export default async function LoginPage({
         <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-24 relative overflow-hidden">
 
           {/* Animated Background Orbs for Depth */}
-          <div className="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] rounded-full bg-[radial-gradient(circle,#2AF598_0%,transparent_70%)] blur-[80px] opacity-20 animate-spin-slow pointer-events-none"></div>
+          <div className="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] rounded-full bg-[radial-gradient(circle,#a6ce37_0%,transparent_70%)] blur-[80px] opacity-20 animate-spin-slow pointer-events-none"></div>
           <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] rounded-full bg-[radial-gradient(circle,#c4b5fd_0%,transparent_70%)] blur-[80px] opacity-20 animate-[spin-slow_25s_linear_infinite_reverse] pointer-events-none"></div>
 
           {/* Mobile Floating 3D Elements */}
@@ -215,13 +116,7 @@ export default async function LoginPage({
                   <label className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-widest group-focus-within:text-secondary transition-colors">Password</label>
                   <Link href="#" className="text-[10px] text-success font-bold hover:underline">Forgot?</Link>
                 </div>
-                <input
-                  className="w-full px-4 py-3.5 bg-white/50 rounded-xl text-sm font-semibold text-primary focus:outline-none focus:ring-4 focus:ring-secondary/20 transition-all border border-white focus:border-secondary/50 shadow-sm placeholder:text-[#94a3b8]"
-                  type="password"
-                  name="password"
-                  placeholder="••••••••"
-                  required
-                />
+                <PasswordInput name="password" placeholder="••••••••" required />
               </div>
 
 

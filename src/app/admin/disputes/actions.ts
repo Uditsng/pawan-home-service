@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { requireAdmin } from "@/utils/supabase/auth-checks";
 
 /**
  * Update a ticket's status, priority, and admin internal notes
@@ -12,6 +13,7 @@ export async function updateTicketStatusAndNotes(
   priority: "low" | "medium" | "high",
   internalNotes: string
 ) {
+  await requireAdmin();
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -36,6 +38,7 @@ export async function updateTicketStatusAndNotes(
  * Refund and cancel a booking associated with a dispute ticket
  */
 export async function escalateOrRefundBooking(bookingId: string) {
+  await requireAdmin();
   const supabase = await createClient();
 
   // 1. Update booking status to cancelled

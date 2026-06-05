@@ -32,13 +32,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link href="/" className="flex items-center gap-3 group">
                 <Image
                   src="/PHS.png"
-                  alt="PavanHome Logo"
+                  alt="PHS Logo"
                   width={40}
                   height={40}
                   className="w-10 h-10 object-contain group-hover:scale-105 transition-transform drop-shadow-sm"
                 />
                 <div>
-                  <h1 className="text-xl font-bold tracking-tight text-primary leading-none">PavanHome</h1>
+                  <h1 className="text-xl font-bold tracking-tight text-primary leading-none">PHS Company</h1>
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant mt-1">Admin Ops</p>
                 </div>
               </Link>
@@ -77,13 +77,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Link href="/" className="flex items-center gap-4 group">
             <Image
               src="/PHS.png"
-              alt="PavanHome Logo"
+              alt="PHS Logo"
               width={48}
               height={48}
               className="w-12 h-12 object-contain group-hover:scale-105 transition-transform drop-shadow-sm"
             />
             <div>
-              <h1 className="text-2xl font-bold tracking-tighter text-primary leading-none">PavanHome</h1>
+              <h1 className="text-2xl font-bold tracking-tighter text-primary leading-none">PHS Company</h1>
               <p className="text-[11px] font-black uppercase tracking-[0.2em] text-on-surface-variant mt-1.5 opacity-60">Operations</p>
             </div>
           </Link>
@@ -109,17 +109,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             );
           })}
         </nav>
-
-        {/* Admin Identity */}
-        <div className="mt-10 pt-8 border-t border-outline-variant/20">
-          <div className="flex items-center gap-4 p-3 rounded-2xl bg-surface-container-low border border-outline-variant/10">
-            <div className="w-10 h-10 rounded-xl bg-secondary text-primary flex items-center justify-center font-black text-xs shadow-inner">AR</div>
-            <div className="overflow-hidden">
-              <p className="text-xs font-black text-primary truncate uppercase tracking-widest">Pavan</p>
-              <p className="text-[9px] text-on-surface-variant font-bold uppercase tracking-widest opacity-60">Administrator</p>
-            </div>
-          </div>
-        </div>
       </aside>
 
       {/* Main Content Area */}
@@ -133,17 +122,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
               <span className="material-symbols-outlined">menu</span>
             </button>
-            <h2 className="text-lg font-bold text-primary font-headline tracking-tight hidden sm:block">Control Center</h2>
+            <h2 className="text-lg font-bold text-primary font-headline tracking-tight hidden sm:block">Welcome <span className="text-secondary font-bold text-xl">Pavan</span></h2>
           </div>
 
           <div className="flex items-center gap-3 md:gap-5">
             <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-2xl bg-surface-container-low border border-outline-variant/20 text-xs font-black text-on-surface-variant uppercase tracking-widest">
               <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span> Platform Live
             </div>
-            <button className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-2xl bg-surface-container text-on-surface-variant hover:bg-secondary hover:text-primary transition-all relative">
-              <span className="material-symbols-outlined">notifications</span>
-              <span className="absolute top-3 right-3 w-2 h-2 bg-secondary rounded-full border-2 border-surface"></span>
-            </button>
             <LogoutButton variant="icon" />
           </div>
         </header>

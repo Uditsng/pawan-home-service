@@ -40,14 +40,14 @@ export default async function PartnerProfilePage() {
         <div className="flex items-center gap-3 md:gap-4 max-w-3xl mx-auto w-full">
           <div className="w-[60px] h-[60px] md:w-[76px] md:h-[76px] rounded-full overflow-hidden bg-surface-container-low flex items-center justify-center shrink-0 relative">
             {profile.avatar_url ? (
-              <Image src={profile.avatar_url} alt={profile.full_name || "Partner"} fill className="object-cover" sizes="76px" />
+              <Image src={profile.avatar_url} alt={profile.full_name || "Technician"} fill className="object-cover" sizes="76px" />
             ) : (
               <span className="material-symbols-outlined text-[32px] md:text-[40px] text-slate-400">person</span>
             )}
           </div>
           <div>
             <div className="flex items-center gap-2 mb-0.5 md:mb-1">
-              <h1 className="text-[18px] md:text-[22px] font-extrabold tracking-wide">{profile.full_name || "Partner"}</h1>
+              <h1 className="text-[18px] md:text-[22px] font-extrabold tracking-wide">{profile.full_name || "Technician"}</h1>
               <span className="bg-success text-on-success text-[9px] font-extrabold px-1.5 py-0.5 rounded-[4px] uppercase">Available</span>
             </div>
             <p className="text-[12px] md:text-[13px] text-on-primary/70 font-medium break-all">ID: #{profile.id.substring(0, 8).toUpperCase()}</p>
@@ -93,14 +93,6 @@ export default async function PartnerProfilePage() {
             <div className="flex items-center gap-3 md:gap-4">
               <span className="material-symbols-outlined text-slate-500 text-[18px] md:text-[20px]">work</span>
               <span className="font-semibold text-[13px] md:text-[15px] text-[#1c2438]">Services & Areas</span>
-            </div>
-            <span className="material-symbols-outlined text-slate-300 text-[18px] md:text-[20px] group-hover:text-slate-400 transition-colors">chevron_right</span>
-          </Link>
-
-          <Link href="/partner/profile/documents" className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
-            <div className="flex items-center gap-3 md:gap-4">
-              <span className="material-symbols-outlined text-slate-500 text-[18px] md:text-[20px]">badge</span>
-              <span className="font-semibold text-[13px] md:text-[15px] text-[#1c2438]">Documents & Verification</span>
             </div>
             <span className="material-symbols-outlined text-slate-300 text-[18px] md:text-[20px] group-hover:text-slate-400 transition-colors">chevron_right</span>
           </Link>

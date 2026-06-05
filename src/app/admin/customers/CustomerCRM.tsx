@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useTransition, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { format, formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -64,7 +65,26 @@ export function CustomerCRM({
 
   // Pagination States
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+
+  // Portal-based dropdown state for specific row actions to prevent overflow clipping
+  const [dropdownMenu, setDropdownMenu] = useState<{
+    customerId: string;
+    rect: DOMRect;
+    customer: Customer;
+  } | null>(null);
+
+  useEffect(() => {
+    const handleClose = () => {
+      setDropdownMenu(null);
+    };
+    window.addEventListener("scroll", handleClose, true);
+    window.addEventListener("resize", handleClose, true);
+    return () => {
+      window.removeEventListener("scroll", handleClose, true);
+      window.removeEventListener("resize", handleClose, true);
+    };
+  }, []);
 
   // Filter Logic
   const filteredCustomers = customers.filter(customer => {
@@ -203,10 +223,10 @@ export function CustomerCRM({
   const highRiskCount = customers.filter(c => c.riskLevel === "High").length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Dynamic Action Error Banner */}
       {actionError && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-[20px] p-5 flex items-center justify-between gap-4 text-xs font-semibold text-red-700 animate-in fade-in slide-in-from-top-4 duration-300">
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center justify-between gap-4 text-xs font-semibold text-red-700 animate-in fade-in slide-in-from-top-4 duration-300">
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined text-red-600 text-lg">error</span>
             <p className="leading-relaxed">{actionError}</p>
@@ -222,42 +242,42 @@ export function CustomerCRM({
       )}
       
       {/* Dynamic Operational Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        <div className="bg-surface-container-lowest p-6 rounded-[24px] border border-outline-variant/15 shadow-sm relative overflow-hidden group">
-          <div className="absolute right-0 top-0 w-24 h-24 bg-primary/5 rounded-bl-[64px] transition-transform group-hover:scale-105"></div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm relative overflow-hidden group">
+          <div className="absolute right-0 top-0 w-20 h-20 bg-primary/5 rounded-bl-[48px] transition-transform group-hover:scale-105"></div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">Total Monitored Users</p>
-          <h2 className="text-3xl font-bold text-primary font-headline mt-3">{customers.length} Customers</h2>
-          <div className="flex gap-4 mt-2 text-xs text-on-surface-variant/80 font-normal">
+          <h2 className="text-2xl font-bold text-primary font-headline mt-1.5">{customers.length} Customers</h2>
+          <div className="flex gap-3 mt-1.5 text-xs text-on-surface-variant/80 font-normal">
             <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#a6ce37]"></span>{activeCount} Active</span>
             <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>{highRiskCount} High Risk</span>
           </div>
         </div>
 
-        <div className="bg-surface-container-lowest p-6 rounded-[24px] border border-outline-variant/15 shadow-sm relative overflow-hidden group">
-          <div className="absolute right-0 top-0 w-24 h-24 bg-secondary/5 rounded-bl-[64px] transition-transform group-hover:scale-105"></div>
+        <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm relative overflow-hidden group">
+          <div className="absolute right-0 top-0 w-20 h-20 bg-secondary/5 rounded-bl-[48px] transition-transform group-hover:scale-105"></div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">Avg. Life-Time Value</p>
-          <h2 className="text-3xl font-bold text-primary font-headline mt-3">₹{Math.round(avgLtv).toLocaleString()}</h2>
-          <p className="text-xs text-on-surface-variant/85 mt-2 font-normal">Accumulated spend across booking catalog</p>
+          <h2 className="text-2xl font-bold text-primary font-headline mt-1.5">₹{Math.round(avgLtv).toLocaleString()}</h2>
+          <p className="text-[11px] text-on-surface-variant/85 mt-1 font-normal">Accumulated spend across booking catalog</p>
         </div>
 
-        <div className="bg-surface-container-lowest p-6 rounded-[24px] border border-outline-variant/15 shadow-sm relative overflow-hidden group">
+        <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm relative overflow-hidden group">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">CRM Stickiness Rate</p>
-          <h2 className="text-3xl font-bold text-secondary font-headline mt-3">78.5%</h2>
-          <p className="text-xs text-on-surface-variant/85 mt-2 font-normal">Percent of customers returning within 45 days</p>
+          <h2 className="text-2xl font-bold text-secondary font-headline mt-1.5">78.5%</h2>
+          <p className="text-[11px] text-on-surface-variant/85 mt-1 font-normal">Percent of customers returning within 45 days</p>
         </div>
       </div>
 
       {/* SEARCH, FILTERING, & CONTROLS ROW */}
-      <div className="bg-surface-container-lowest p-5 rounded-[24px] border border-outline-variant/15 shadow-sm space-y-4">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <h3 className="font-bold text-base text-primary font-headline flex items-center gap-2">
-            <span className="material-symbols-outlined text-secondary">tune</span>
+      <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm space-y-3">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+          <h3 className="font-bold text-sm text-primary font-headline flex items-center gap-2">
+            <span className="material-symbols-outlined text-secondary text-lg">tune</span>
             Operational Filter Console
           </h3>
           <div className="flex bg-surface-container p-1 rounded-xl border border-outline-variant/10 shadow-inner w-full md:w-auto">
             <button
               onClick={() => setActiveSegment("All")}
-              className={`grow md:grow-0 px-5 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
+              className={`grow md:grow-0 px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
                 activeSegment === "All" 
                   ? "bg-primary text-white shadow-md shadow-primary/20" 
                   : "text-on-surface-variant hover:text-primary"
@@ -267,7 +287,7 @@ export function CustomerCRM({
             </button>
             <button
               onClick={() => setActiveSegment("HighValue")}
-              className={`grow md:grow-0 px-5 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
+              className={`grow md:grow-0 px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
                 activeSegment === "HighValue" 
                   ? "bg-primary text-white shadow-md shadow-primary/20" 
                   : "text-on-surface-variant hover:text-primary"
@@ -278,16 +298,20 @@ export function CustomerCRM({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           {/* Query Search */}
-          <div className="relative">
-            <span className="material-symbols-outlined absolute left-3 top-3.5 text-on-surface-variant/60 text-lg">search</span>
+          <div className="relative" suppressHydrationWarning={true}>
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 text-lg">search</span>
             <input
               type="text"
-              placeholder="Search Name, Email, Phone, Booking ID..."
+              placeholder="Search Name, Email, Phone..."
               value={searchTerm}
               onChange={handleSearchChange}
-              className="w-full border border-outline-variant/20 rounded-xl py-3 pl-10 pr-4 bg-surface-container focus:ring-2 focus:ring-primary/20 outline-none text-xs transition-all placeholder:text-on-surface-variant/50"
+              autoComplete="off"
+              name="search"
+              id="customer-crm-search"
+              suppressHydrationWarning={true}
+              className="w-full border border-outline-variant/20 rounded-lg py-2 pl-9 pr-4 bg-surface-container focus:ring-1 focus:ring-primary/50 outline-none text-xs transition-all placeholder:text-on-surface-variant/50"
             />
           </div>
 
@@ -296,7 +320,7 @@ export function CustomerCRM({
             <select
               value={riskFilter}
               onChange={(e) => handleFilterChange(setRiskFilter, e.target.value)}
-              className="w-full border border-outline-variant/20 rounded-xl p-3 bg-surface-container focus:ring-2 focus:ring-primary/20 outline-none text-xs text-on-surface-variant transition-all"
+              className="w-full border border-outline-variant/20 rounded-lg py-2 px-3 bg-surface-container focus:ring-1 focus:ring-primary/50 outline-none text-xs text-on-surface-variant transition-all cursor-pointer"
             >
               <option value="All">⚠️ All Risk Profiles</option>
               <option value="Low">🟢 Low Risk</option>
@@ -310,7 +334,7 @@ export function CustomerCRM({
             <select
               value={statusFilter}
               onChange={(e) => handleFilterChange(setStatusFilter, e.target.value)}
-              className="w-full border border-outline-variant/20 rounded-xl p-3 bg-surface-container focus:ring-2 focus:ring-primary/20 outline-none text-xs text-on-surface-variant transition-all"
+              className="w-full border border-outline-variant/20 rounded-lg py-2 px-3 bg-surface-container focus:ring-1 focus:ring-primary/50 outline-none text-xs text-on-surface-variant transition-all cursor-pointer"
             >
               <option value="All">🔒 All Account Statuses</option>
               <option value="Active">Active Accounts</option>
@@ -325,23 +349,23 @@ export function CustomerCRM({
               type="date"
               value={dateFilter}
               onChange={(e) => handleFilterChange(setDateFilter, e.target.value)}
-              className="w-full border border-outline-variant/20 rounded-xl p-3 bg-surface-container focus:ring-2 focus:ring-primary/20 outline-none text-xs text-on-surface-variant transition-all"
+              className="w-full border border-outline-variant/20 rounded-lg py-2 px-3 bg-surface-container focus:ring-1 focus:ring-primary/50 outline-none text-xs text-on-surface-variant transition-all cursor-pointer"
             />
           </div>
         </div>
       </div>
 
       {/* OPERATIONAL CUSTOMER DATA TABLE */}
-      <div className="bg-surface-container-lowest rounded-[32px] border border-outline-variant/15 shadow-ambient overflow-hidden">
+      <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/15 shadow-sm overflow-hidden">
         <div className="overflow-x-auto w-full">
           <table className="w-full min-w-[1000px] text-left border-collapse">
             <thead>
               <tr className="bg-surface-container-low/50 border-b border-outline-variant/10">
-                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/80">Customer Details</th>
-                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/80">Engagement Details</th>
-                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/80">LTV / Average Spend</th>
-                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/80">Risk Assessment</th>
-                <th className="px-8 py-5 text-right text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/80">Status & Actions</th>
+                <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/80">Customer Details</th>
+                <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/80">Engagement Details</th>
+                <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/80">LTV / Average Spend</th>
+                <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/80">Risk Assessment</th>
+                <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/80">Status & Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/10">
@@ -363,38 +387,38 @@ export function CustomerCRM({
                   return (
                     <tr key={customer.id} className="hover:bg-surface-container-low/20 transition-colors group">
                       {/* Identity Column */}
-                      <td className="px-8 py-5">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-[12px] bg-primary/5 flex items-center justify-center text-primary font-bold text-xs border border-primary/10">
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-primary/5 flex items-center justify-center text-primary font-bold text-xs border border-primary/10 shrink-0">
                             {customer.full_name ? customer.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : "U"}
                           </div>
                           <div>
-                            <p className="text-xs font-semibold text-primary uppercase tracking-tight">{customer.full_name || "Unknown Customer"}</p>
-                            <p className="text-[11px] text-on-surface-variant/70 font-normal mt-0.5">{customer.email || "No email linked"}</p>
-                            <p className="text-[10px] text-on-surface-variant/50 font-normal mt-0.5">{customer.phone || "No phone added"}</p>
+                            <p className="text-xs font-bold text-primary uppercase tracking-tight leading-none mb-0.5">{customer.full_name || "Unknown Customer"}</p>
+                            <p className="text-[10px] text-on-surface-variant/70 font-normal leading-none mt-0.5">{customer.email || "No email linked"}</p>
+                            <p className="text-[9px] text-on-surface-variant/50 font-normal leading-none mt-0.5">{customer.phone || "No phone added"}</p>
                           </div>
                         </div>
                       </td>
 
                       {/* Engagement Column */}
-                      <td className="px-8 py-5">
-                        <p className="text-xs font-bold text-primary">{customer.totalBookings} Completed Jobs</p>
-                        <p className="text-[10px] font-semibold text-on-surface-variant/70 mt-1">{lastActiveText}</p>
+                      <td className="px-4 py-2">
+                        <p className="text-xs font-semibold text-primary">{customer.totalBookings} Completed Jobs</p>
+                        <p className="text-[9px] text-on-surface-variant/70 mt-0.5">{lastActiveText}</p>
                       </td>
 
                       {/* LTV & Spend Column */}
-                      <td className="px-8 py-5">
-                        <p className="text-base font-bold text-primary font-headline">₹{customer.spent.toLocaleString()}</p>
-                        <p className="text-[10px] font-semibold text-secondary mt-0.5">Avg: ₹{Math.round(avgSpend).toLocaleString()} / job</p>
+                      <td className="px-4 py-2">
+                        <p className="text-sm font-bold text-primary font-headline">₹{customer.spent.toLocaleString()}</p>
+                        <p className="text-[9px] font-semibold text-secondary mt-0.5">Avg: ₹{Math.round(avgSpend).toLocaleString()} / job</p>
                       </td>
 
                       {/* Risk Indicators Column */}
-                      <td className="px-8 py-5">
-                        <div className="space-y-1">
+                      <td className="px-4 py-2">
+                        <div className="space-y-0.5">
                           <Badge variant={
                             customer.riskLevel === 'High' ? 'danger' :
                             customer.riskLevel === 'Medium' ? 'warning' : 'success'
-                          }>
+                          } className="text-[9px] px-1.5 py-0">
                             <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
                               customer.riskLevel === 'High' ? 'bg-red-500 animate-pulse' :
                               customer.riskLevel === 'Medium' ? 'bg-[#D97706]' : 'bg-[#a6ce37]'
@@ -410,10 +434,10 @@ export function CustomerCRM({
                       </td>
 
                       {/* Context Actions Column */}
-                      <td className="px-8 py-5 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                      <td className="px-4 py-2 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
                           {/* Current Account Status Badge */}
-                          <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full ${
+                          <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${
                             customer.status === 'suspended' ? 'bg-red-100 text-red-700' :
                             customer.status === 'flagged' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'
                           }`}>
@@ -424,52 +448,30 @@ export function CustomerCRM({
                             variant="slate"
                             size="sm"
                             onClick={() => openDrawer(customer)}
-                            className="bg-surface-container hover:bg-primary hover:text-white rounded-lg px-3 py-1 font-bold text-xs"
+                            className="bg-surface-container hover:bg-primary hover:text-white rounded-lg px-2 py-1 font-bold text-[11px]"
                           >
                             View Profile
                           </Button>
 
-                          {/* Quick Admin Overrides Dropdown */}
-                          <div className="relative group/menu">
-                            <button className="p-2 rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-colors">
-                              <span className="material-symbols-outlined text-sm font-bold block">more_vert</span>
+                          <div className="relative">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                if (dropdownMenu?.customerId === customer.id) {
+                                  setDropdownMenu(null);
+                                } else {
+                                  setDropdownMenu({
+                                    customerId: customer.id,
+                                    rect,
+                                    customer
+                                  });
+                                }
+                              }}
+                              className="p-1 rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-[16px] font-bold block">more_vert</span>
                             </button>
-                            <div className="absolute right-0 top-8 w-48 bg-surface-container-lowest border border-outline-variant/20 rounded-xl shadow-lg py-2 hidden group-hover/menu:block z-20 text-left">
-                              {customer.status !== 'suspended' && (
-                                <button 
-                                  onClick={() => openConfirmation(customer, "suspend")}
-                                  className="w-full text-left px-4 py-2 text-xs text-error font-semibold hover:bg-red-50 flex items-center gap-2"
-                                >
-                                  <span className="material-symbols-outlined text-sm">block</span>
-                                  Suspend Account
-                                </button>
-                              )}
-                              {customer.status !== 'flagged' && (
-                                <button 
-                                  onClick={() => openConfirmation(customer, "flag")}
-                                  className="w-full text-left px-4 py-2 text-xs text-[#D97706] font-semibold hover:bg-amber-50 flex items-center gap-2"
-                                >
-                                  <span className="material-symbols-outlined text-sm">flag</span>
-                                  Flag for Review
-                                </button>
-                              )}
-                              {customer.status !== 'active' && (
-                                <button 
-                                  onClick={() => openConfirmation(customer, "reactivate")}
-                                  className="w-full text-left px-4 py-2 text-xs text-success font-semibold hover:bg-green-50 flex items-center gap-2"
-                                >
-                                  <span className="material-symbols-outlined text-sm">check_circle</span>
-                                  Reactivate Account
-                                </button>
-                              )}
-                              <button 
-                                onClick={() => openDrawer(customer)}
-                                className="w-full text-left px-4 py-2 text-xs text-primary font-semibold hover:bg-surface-container-low flex items-center gap-2 border-t border-outline-variant/10 mt-1"
-                              >
-                                <span className="material-symbols-outlined text-sm">chat_bubble</span>
-                                Add Internal Note
-                              </button>
-                            </div>
                           </div>
                         </div>
                       </td>
@@ -478,9 +480,9 @@ export function CustomerCRM({
                 })
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-10 py-16 text-center">
-                    <span className="material-symbols-outlined text-4xl text-on-surface-variant/40 animate-bounce">search_off</span>
-                    <p className="text-sm font-semibold text-on-surface-variant/70 mt-3">No matching customers found</p>
+                  <td colSpan={5} className="px-10 py-12 text-center">
+                    <span className="material-symbols-outlined text-3xl text-on-surface-variant/40 animate-bounce">search_off</span>
+                    <p className="text-sm font-semibold text-on-surface-variant/70 mt-2">No matching customers found</p>
                     <p className="text-xs text-on-surface-variant/40 mt-1">Refine your filters or queries and try again.</p>
                   </td>
                 </tr>
@@ -490,18 +492,36 @@ export function CustomerCRM({
         </div>
 
         {/* Dynamic Pagination Footer */}
-        {totalPages > 1 && (
-          <div className="px-8 py-4 bg-surface-container-low/50 border-t border-outline-variant/10 flex justify-between items-center">
+        <div className="px-4 py-3 bg-surface-container-low/50 border-t border-outline-variant/10 flex flex-col sm:flex-row justify-between items-center gap-3">
+          <div className="flex items-center gap-3">
             <p className="text-xs text-on-surface-variant/70">
-              Showing <span className="font-bold">{startIndex + 1}</span> to <span className="font-bold">{Math.min(startIndex + itemsPerPage, filteredCustomers.length)}</span> of <span className="font-bold">{filteredCustomers.length}</span> entries
+              Showing <span className="font-bold">{filteredCustomers.length === 0 ? 0 : startIndex + 1}</span> to <span className="font-bold">{Math.min(startIndex + itemsPerPage, filteredCustomers.length)}</span> of <span className="font-bold">{filteredCustomers.length}</span> entries
             </p>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-on-surface-variant/30">·</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="px-2 py-1 bg-surface-container rounded-lg border border-outline-variant/20 text-xs text-on-surface-variant outline-none cursor-pointer"
+              >
+                <option value={10}>10 per page</option>
+                <option value={25}>25 per page</option>
+                <option value={50}>50 per page</option>
+                <option value={100}>100 per page</option>
+              </select>
+            </div>
+          </div>
+          {totalPages > 1 && (
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                className="rounded-lg font-bold"
+                className="rounded-lg font-bold text-xs"
               >
                 Previous
               </Button>
@@ -510,13 +530,13 @@ export function CustomerCRM({
                 size="sm"
                 disabled={currentPage === totalPages}
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                className="rounded-lg font-bold"
+                className="rounded-lg font-bold text-xs"
               >
                 Next
               </Button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* SEAMLESS PROFILE DETAILS DRAWER */}
@@ -814,6 +834,85 @@ export function CustomerCRM({
             </div>
           </div>
         </div>
+      )}
+
+      {/* ─── PORTAL-BASED ROW ACTIONS DROPDOWN ────────────────── */}
+      {dropdownMenu && createPortal(
+        <>
+          {/* Backdrop for outside click */}
+          <div 
+            className="fixed inset-0 z-[9998] bg-transparent" 
+            onClick={() => setDropdownMenu(null)} 
+          />
+          
+          {/* Menu container */}
+          <div 
+            className="fixed w-44 bg-white border border-outline-variant/30 rounded-xl shadow-lg z-[9999] p-1 divide-y divide-outline-variant/10 text-left animate-in fade-in duration-100"
+            style={{
+              top: `${
+                dropdownMenu.rect.bottom + 150 > window.innerHeight
+                  ? dropdownMenu.rect.top - 155
+                  : dropdownMenu.rect.bottom + 4
+              }px`,
+              left: `${dropdownMenu.rect.right - 176}px`
+            }}
+          >
+            <div className="py-1">
+              <p className="text-[8px] font-black uppercase text-on-surface-variant/40 px-2.5 py-0.5 tracking-wider">Management</p>
+              {dropdownMenu.customer.status !== 'suspended' && (
+                <button 
+                  onClick={() => {
+                    openConfirmation(dropdownMenu.customer, "suspend");
+                    setDropdownMenu(null);
+                  }}
+                  className="w-full text-left px-2.5 py-1.5 text-xs text-error font-semibold hover:bg-error/10 rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">block</span>
+                  Suspend Account
+                </button>
+              )}
+              {dropdownMenu.customer.status !== 'flagged' && (
+                <button 
+                  onClick={() => {
+                    openConfirmation(dropdownMenu.customer, "flag");
+                    setDropdownMenu(null);
+                  }}
+                  className="w-full text-left px-2.5 py-1.5 text-xs text-[#D97706] font-semibold hover:bg-amber-500/10 rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">flag</span>
+                  Flag for Review
+                </button>
+              )}
+              {dropdownMenu.customer.status !== 'active' && (
+                <button 
+                  onClick={() => {
+                    openConfirmation(dropdownMenu.customer, "reactivate");
+                    setDropdownMenu(null);
+                  }}
+                  className="w-full text-left px-2.5 py-1.5 text-xs text-success font-semibold hover:bg-success/10 rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">check_circle</span>
+                  Reactivate Account
+                </button>
+              )}
+            </div>
+
+            <div className="py-1">
+              <button 
+                onClick={() => {
+                  openDrawer(dropdownMenu.customer);
+                  setActiveDrawerTab("notes");
+                  setDropdownMenu(null);
+                }}
+                className="w-full text-left px-2.5 py-1.5 text-xs text-primary font-semibold hover:bg-surface-container-low rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-sm">chat_bubble</span>
+                Add Internal Note
+              </button>
+            </div>
+          </div>
+        </>,
+        document.body
       )}
 
     </div>

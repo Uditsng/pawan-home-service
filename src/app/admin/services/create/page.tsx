@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { CreateServiceForm } from "./CreateServiceForm";
+import { requireAdmin } from "@/utils/supabase/auth-checks";
 
 export default async function AdminCreateServicePage() {
   const supabase = await createClient();
@@ -28,6 +29,7 @@ export default async function AdminCreateServicePage() {
 
   async function createServiceAction(prevState: any, formData: FormData) {
     "use server";
+    await requireAdmin();
     const db = await createClient();
 
     // Core details
@@ -36,6 +38,7 @@ export default async function AdminCreateServicePage() {
     const base_price = parseFloat(formData.get("base_price") as string);
     const price_breakdown = formData.get("price_breakdown") as string;
     const description = formData.get("description") as string;
+    const image_url = formData.get("image_url") as string || null;
 
     // Arrays separated by newline
     const includedRaw = formData.get("included_features") as string;
@@ -76,6 +79,7 @@ export default async function AdminCreateServicePage() {
       description,
       is_active: true,
       page_content,
+      image_url,
     });
 
     if (error) {

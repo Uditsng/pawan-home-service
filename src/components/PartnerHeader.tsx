@@ -14,7 +14,7 @@ export default function PartnerHeader() {
         <Link href="/partner/dashboard" className="flex items-center gap-2">
           <Image
             src="/PHS.png"
-            alt="PavanHomeServices Logo"
+            alt="PHS Company Logo"
             className="h-12 md:h-14 w-auto rounded-lg shadow-sm"
             width={40}
             height={40}
@@ -32,11 +32,6 @@ export default function PartnerHeader() {
             <span className="font-label text-[11px] font-bold tracking-widest uppercase text-primary">
               {isOnline ? 'ONLINE' : 'OFFLINE'}
             </span>
-          </button>
-
-          {/* Notification icon */}
-          <button className="h-10 w-10 flex flex-col justify-center items-center text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors active:scale-95 text-2xl">
-            <span className="material-symbols-outlined">notifications</span>
           </button>
         </div>
       </div>

@@ -45,6 +45,8 @@ export function DisputesConsole({ initialTickets }: DisputesConsoleProps) {
   const [activeTab, setActiveTab] = useState<"open" | "resolved">("open");
   const [searchTerm, setSearchTerm] = useState("");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   
   // Drawer / Review State
   const [selectedTicket, setSelectedTicket] = useState<DisputeTicket | null>(null);
@@ -84,6 +86,10 @@ export function DisputesConsole({ initialTickets }: DisputesConsoleProps) {
 
     return tabMatch && searchMatch && priorityMatch;
   });
+
+  const totalPages = Math.ceil(filteredTickets.length / itemsPerPage);
+  const displayedPage = Math.max(1, Math.min(currentPage, totalPages));
+  const paginatedTickets = filteredTickets.slice((displayedPage - 1) * itemsPerPage, displayedPage * itemsPerPage);
 
   const handleOpenReview = (ticket: DisputeTicket) => {
     setSelectedTicket(ticket);
@@ -181,7 +187,7 @@ export function DisputesConsole({ initialTickets }: DisputesConsoleProps) {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-surface-container-low/50 p-3 rounded-2xl border border-outline-variant/10">
         <div className="flex items-center gap-2 bg-surface p-1 rounded-xl border border-outline-variant/15">
           <button
-            onClick={() => setActiveTab("open")}
+            onClick={() => { setActiveTab("open"); setCurrentPage(1); }}
             className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
               activeTab === "open"
                 ? "bg-primary text-white shadow-md shadow-primary/10"
@@ -191,7 +197,7 @@ export function DisputesConsole({ initialTickets }: DisputesConsoleProps) {
             Open Cases ({openCount})
           </button>
           <button
-            onClick={() => setActiveTab("resolved")}
+            onClick={() => { setActiveTab("resolved"); setCurrentPage(1); }}
             className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
               activeTab === "resolved"
                 ? "bg-primary text-white shadow-md shadow-primary/10"
@@ -208,7 +214,7 @@ export function DisputesConsole({ initialTickets }: DisputesConsoleProps) {
               type="text"
               placeholder="Search people, tickets..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               className="w-full pl-9 pr-4 py-2 rounded-xl bg-surface border border-outline-variant/20 text-xs font-bold text-primary outline-none focus:ring-2 focus:ring-secondary/40"
             />
             <span className="material-symbols-outlined absolute left-3 top-2.5 text-sm text-on-surface-variant/40">search</span>
@@ -216,7 +222,7 @@ export function DisputesConsole({ initialTickets }: DisputesConsoleProps) {
 
           <select
             value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value)}
+            onChange={(e) => { setPriorityFilter(e.target.value); setCurrentPage(1); }}
             className="px-3 py-2 rounded-xl bg-surface border border-outline-variant/20 text-xs font-bold text-primary outline-none"
           >
             <option value="all">All Priorities</option>
@@ -242,7 +248,7 @@ export function DisputesConsole({ initialTickets }: DisputesConsoleProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/10">
-              {filteredTickets.map(ticket => (
+              {paginatedTickets.map(ticket => (
                 <tr key={ticket.id} className="hover:bg-surface-container-low/30 transition-colors group">
                   <td className="px-6 py-4.5">
                     <p className="text-sm font-black text-primary font-mono tracking-tighter">DISP-{ticket.id.slice(0, 6).toUpperCase()}</p>
@@ -300,6 +306,40 @@ export function DisputesConsole({ initialTickets }: DisputesConsoleProps) {
             </tbody>
           </table>
         </div>
+        
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row justify-between items-center px-6 py-4 bg-surface-container-low/30 border-t border-outline-variant/10 gap-4 text-xs font-semibold text-on-surface-variant">
+            <div>
+              Showing <span className="font-bold text-primary">{(displayedPage - 1) * itemsPerPage + 1}</span> to{" "}
+              <span className="font-bold text-primary">
+                {Math.min(displayedPage * itemsPerPage, filteredTickets.length)}
+              </span>{" "}
+              of <span className="font-bold text-primary">{filteredTickets.length}</span> tickets
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={displayedPage === 1}
+              >
+                Previous
+              </Button>
+              <span className="px-3 text-xs font-bold text-primary">
+                Page {displayedPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={displayedPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Slide-over Review Details Drawer */}

@@ -2,14 +2,15 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
+import HeroConversationalCard from "@/components/HeroConversationalCard";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300; // ISR: revalidate every 5 minutes
 
 interface ServiceWithSubcategory {
   id: string;
   title: string;
   base_price: number;
-  duration_minutes: number;
+  duration_minutes?: number;
   category?: string;
   subcategory_id: string;
   subcategories: {
@@ -26,7 +27,7 @@ export default async function Home() {
   const { data: popularServices } = await supabase
     .from('services')
     .select(`
-      *,
+      id, title, base_price, subcategory_id,
       subcategories (
         subcategory_name,
         icon_name,
@@ -36,29 +37,11 @@ export default async function Home() {
       )
     `)
     .eq('is_active', true)
-    .limit(6) as { data: ServiceWithSubcategory[] | null };
-
-  // Derive unique categories from relational data
-  const categoryMap = new Map<string, { name: string; icon: string; slug: string }>();
-  if (popularServices) {
-    for (const s of popularServices) {
-      const catName = s.subcategories?.categories?.category_name;
-      if (catName && !categoryMap.has(catName)) {
-        categoryMap.set(catName, {
-          name: catName,
-          icon: s.subcategories?.icon_name || 'home_repair_service',
-          slug: catName.toLowerCase().replace(/\s+/g, '-').replace(/&/g, 'and'),
-        });
-      }
-    }
-  }
-  const uniqueCategories = Array.from(categoryMap.values());
+    .order('title', { ascending: true })
+    .limit(12) as { data: ServiceWithSubcategory[] | null };
 
   // Shared Glassmorphism styles
   const glassBg = "glass-panel";
-
-  // 3D Hover Effect for Cards
-  const card3DHover = "transition-all duration-500 hover:-translate-y-2 hover:shadow-ambient-hover hover:border-secondary/50 will-change-transform";
 
   return (
     <>      <Header />
@@ -96,106 +79,36 @@ export default async function Home() {
 
           </div>
 
-          {/* Interactive 3D Promo Banner */}
+          {/* Interactive 3D Conversational Promo Banner */}
           <div className="flex-1 w-full hidden md:block relative perspective-[1000px]">
-            <div className="relative rounded-[36px] overflow-hidden h-[360px] shadow-[0_20px_50px_rgba(30,41,59,0.15)] w-full group cursor-pointer transform-3d hover:rotate-y-2 hover:-rotate-x-2 transition-transform duration-700 ease-out">
-
-              {/* Moving Background Gradient */}
-              <div className="absolute inset-0 bg-linear-to-br from-primary via-[#0f172a] to-[#0d3342] bg-size-[200%_200%] animate-[gradient_8s_ease_infinite]"></div>
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_50%,rgba(42,245,152,0.25)_0%,transparent_60%)]"></div>
-
-              {/* Rotating 3D Rings */}
-              <div className="absolute w-[350px] h-[350px] rounded-full border border-secondary/20 -right-20 -top-20 animate-spin-slow"></div>
-              <div className="absolute w-[250px] h-[250px] rounded-full border-2 border-dashed border-secondary/10 right-0 -top-5 animate-[spin-slow_15s_linear_infinite_reverse]"></div>
-
-              {/* Floating Element inside Card */}
-              <div className="absolute right-8 top-1/2 -translate-y-1/2 text-8xl opacity-90 animate-float-1 drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)]">🏠</div>
-
-              <div className="relative z-10 p-10 h-full flex flex-col justify-center items-start transform translate-z-[30px]">
-                <div className="inline-flex items-center gap-2 bg-secondary/20 backdrop-blur-sm border border-secondary/40 rounded-full px-3 py-1.5 text-xs font-bold text-secondary uppercase tracking-wider mb-5 shadow-[0_0_15px_rgba(42,245,152,0.2)]">
-                  <div className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></div>
-                  Limited Offer
-                </div>
-                <h3 className="text-3xl lg:text-4xl font-extrabold text-white leading-tight mb-3 drop-shadow-md">First Clean<br />Free on Us</h3>
-                <p className="text-white/70 text-sm font-medium mb-8 max-w-[200px]">New users get one deep clean at absolutely no charge.</p>
-                <button className="bg-linear-to-r from-secondary to-[#08e07a] text-primary px-6 py-3 rounded-full text-sm font-extrabold hover:scale-105 shadow-[0_10px_20px_rgba(42,245,152,0.3)] active:scale-95 transition-all">
-                  Claim Now →
-                </button>
-              </div>
-            </div>
+            <HeroConversationalCard />
           </div>
         </section>
-
-        {/* Section 2: Browse Services (Categories) */}
-        {uniqueCategories.length > 0 && (
-          <section className="w-full">
-            <div className="flex items-center justify-between mb-2 md:mb-4">
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-primary">Browse Services</h2>
-              <Link href="/services" className="text-xs sm:text-sm font-bold text-secondary hover:underline flex items-center gap-1">
-                See all <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-              </Link>
-            </div>
-            {/* Snap Scrolling for Mobile */}
-            <div className="flex gap-1 sm:gap-1 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-2 mx-1 px-2 sm:mx-0 sm:px-0">
-              {uniqueCategories.map((cat, idx) => (
-                <Link
-                  key={idx}
-                  href={`/services/${cat.slug}`}
-                  className={`snap-start shrink-0 flex items-center gap-2 sm:gap-3 px-4 sm:px-5 py-2.5 sm:py-3 rounded-full group ${glassBg} hover:-translate-y-1 hover:border-secondary/40 hover:shadow-[0_8px_20px_rgba(42,245,152,0.15)] transition-all`}
-                >
-                  <span className="material-symbols-outlined text-[#059669] group-hover:text-secondary group-hover:scale-110 transition-all text-sm sm:text-base">{cat.icon}</span>
-                  <span className="text-[13px] sm:text-sm font-bold text-primary capitalize whitespace-nowrap">{cat.name}</span>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
 
         {/* Section 3: Popular Services (3D Cards) */}
         {popularServices && popularServices.length > 0 && (
           <section className="w-full">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-primary mb-4 md:mb-6">Popular Near You</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
+            <div className="flex items-center justify-between mb-4 md:mb-6">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-primary">Popular Near You</h2>
+              <Link href="/services" className="text-xs sm:text-sm font-bold text-secondary hover:underline flex items-center gap-1">
+                See all <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+              </Link>
+            </div>
+            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
               {popularServices.map((service, idx) => {
                 const iconName = service.subcategories?.icon_name || 'home_repair_service';
-                const catSlug = (service.subcategories?.categories?.category_name || service.category || 'services')
-                  .toLowerCase().replace(/\s+/g, '-').replace(/&/g, 'and');
 
                 return (
-                <Link
-                  key={service.id}
-                  href={`/services/${catSlug}/${service.id}`}
-                  className={`relative p-5 sm:p-6 rounded-[24px] sm:rounded-[28px] overflow-hidden block ${glassBg} ${card3DHover} ${idx === 0 ? 'sm:col-span-2 lg:col-span-2 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6' : 'flex flex-col'}`}
-                >
-                  {/* Subtle 3D Light Reflection */}
-                  <div className="absolute inset-0 bg-linear-to-br from-white/40 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
-
-                  <div className="absolute top-4 right-4 bg-secondary/15 border border-secondary/30 rounded-full px-2.5 py-1 text-[10px] font-bold text-success uppercase tracking-wider z-10 shadow-sm">
-                    {idx === 0 ? '⭐ Top Pick' : 'Popular'}
-                  </div>
-
-                  <div className={`rounded-[20px] bg-green-500/10 border border-secondary/20 flex items-center justify-center shrink-0 shadow-inner group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300 z-10 relative ${idx === 0 ? 'w-16 h-16 sm:w-20 sm:h-20 text-3xl sm:text-4xl' : 'w-14 h-14 mb-4 text-2xl'}`}>
-                    <span className="material-symbols-outlined text-[#059669] drop-shadow-sm">{iconName}</span>
-                  </div>
-
-                  <div className={`relative z-10 flex flex-col flex-1 w-full ${idx === 0 ? '' : 'mt-auto'}`}>
-                    <h4 className={`font-bold text-primary mb-1 leading-tight ${idx === 0 ? 'text-lg sm:text-xl md:text-2xl' : 'text-[17px] sm:text-lg'}`}>
-                      {service.title}
-                    </h4>
-                    <p className="text-[13px] text-on-surface-variant font-medium mb-4">
-                      {service.duration_minutes} mins · Professional Service
-                    </p>
-                    <div className="flex items-center justify-between w-full mt-auto">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-[11px] text-on-surface-variant font-semibold uppercase">at just</span>
-                        <span className="text-lg sm:text-xl font-extrabold text-primary">₹{service.base_price}</span>
-                      </div>
-                      <button className="bg-primary text-white rounded-full px-4 sm:px-5 py-2 sm:py-2.5 text-xs font-bold hover:bg-secondary hover:text-primary active:scale-95 shadow-md transition-all duration-200 flex items-center gap-1">
-                        Book <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-                      </button>
+                  <div
+                    key={service.id}
+                    className={`bg-surface-container-low p-3 md:p-5 rounded-xl flex flex-col items-center justify-center text-center hover:bg-surface-container-high transition-colors group cursor-pointer border border-outline-variant/10 shadow-sm ${idx >= 10 ? 'lg:hidden' : ''}`}
+                  >
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-green-500/10 mb-2 md:mb-3 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <span className="material-symbols-outlined text-[#059669] drop-shadow-sm">{iconName}</span>
                     </div>
+                    <span className="font-headline font-bold text-xs md:text-sm text-on-surface line-clamp-2 leading-tight">{service.title}</span>
+                    <span className="text-[10px] md:text-[11px] text-primary mt-1 md:mt-1.5 font-bold tracking-tight">₹{service.base_price}</span>
                   </div>
-                </Link>
                 );
               })}
             </div>
@@ -250,14 +163,14 @@ export default async function Home() {
           <div className="relative z-10 flex flex-col items-center transform-3d hover:translate-z-[10px] transition-transform duration-500">
             <div className="text-4xl sm:text-5xl mb-4 animate-float-1">✨</div>
             <h2 className="text-2xl sm:text-3xl md:text-5xl font-extrabold text-white mb-3 leading-tight tracking-tight">
-              Earn with us as a <br className="hidden sm:block" /><span className="text-secondary drop-shadow-[0_0_15px_rgba(42,245,152,0.4)]">Service Partner</span>
+              Trusted Home Services <br className="hidden sm:block" /><span className="text-secondary">At Your Doorstep</span>
             </h2>
             <p className="text-[13px] sm:text-sm md:text-base text-white/70 mb-6 sm:mb-8 max-w-md font-medium px-4">
-              Access a steady stream of high-quality bookings, flexible schedules, and professional training.
+              Book cleaning, pest control, repairs, maintenance, and more from verified professionals in just a few clicks.
             </p>
-            <Link href="/register" className="inline-flex items-center justify-center gap-2 bg-secondary rounded-full px-6 sm:px-8 py-3 sm:py-4 text-[14px] sm:text-[15px] font-extrabold text-primary hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(42,245,152,0.5)] active:scale-95 transition-all w-full sm:w-auto">
-              <span className="material-symbols-outlined text-[18px]">rocket_launch</span>
-              Join as Partner Now
+            <Link href="/services" className="inline-flex items-center justify-center gap-2 bg-secondary rounded-full px-6 sm:px-8 py-3 sm:py-4 text-[14px] sm:text-[15px] font-extrabold text-primary hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(42,245,152,0.5)] active:scale-95 transition-all w-full sm:w-auto">
+              <span className="material-symbols-outlined text-[18px]">calendar_month</span>
+              Book a Service Now
             </Link>
           </div>
         </section>

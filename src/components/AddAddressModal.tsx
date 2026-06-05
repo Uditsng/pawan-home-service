@@ -1,9 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import AddressAutocomplete, { extractAddressComponent } from "./AddressAutocomplete";
+import { useState } from "react";
 import { saveAddress } from "@/app/actions/address";
-import type { PlaceDetails } from "@/lib/types/address";
 
 interface AddAddressModalProps {
   isOpen: boolean;
@@ -21,53 +19,66 @@ const LABEL_CONFIG: { label: AddressLabel; icon: string }[] = [
 
 export default function AddAddressModal({ isOpen, onClose, onSaved }: AddAddressModalProps) {
   const [selectedLabel, setSelectedLabel] = useState<AddressLabel>("Home");
-  const [selectedPlace, setSelectedPlace] = useState<PlaceDetails | null>(null);
-  const [addressLine2, setAddressLine2] = useState("");
+  const [houseFlat, setHouseFlat] = useState("");
+  const [buildingSociety, setBuildingSociety] = useState("");
+  const [areaColony, setAreaColony] = useState("");
+  const [landmark, setLandmark] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [pincode, setPincode] = useState("");
+  
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [makeDefault, setMakeDefault] = useState(false);
 
-  const handleAddressSelect = useCallback((details: PlaceDetails) => {
-    setSelectedPlace(details);
-    setError("");
-  }, []);
-
-  const handleSave = async () => {
-    if (!selectedPlace) {
-      setError("Please search and select a valid address");
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validations
+    if (!houseFlat.trim()) {
+      setError("House / Flat Number is required");
+      return;
+    }
+    if (!buildingSociety.trim()) {
+      setError("Building / Society Name is required");
+      return;
+    }
+    if (!areaColony.trim()) {
+      setError("Area / Colony is required");
+      return;
+    }
+    if (!city.trim()) {
+      setError("City is required");
+      return;
+    }
+    if (!state.trim()) {
+      setError("State is required");
+      return;
+    }
+    if (!pincode.trim()) {
+      setError("Pincode is required");
+      return;
+    }
+    
+    // India Pincode Validation (6 digits, doesn't start with 0)
+    const pinRegex = /^[1-9][0-9]{5}$/;
+    if (!pinRegex.test(pincode.trim())) {
+      setError("Please enter a valid 6-digit Indian Pincode");
       return;
     }
 
     setIsSaving(true);
     setError("");
 
-    const components = selectedPlace.address_components;
-    const city =
-      extractAddressComponent(components, "locality") ||
-      extractAddressComponent(components, "administrative_area_level_2");
-    const state = extractAddressComponent(components, "administrative_area_level_1");
-    const pincode = extractAddressComponent(components, "postal_code");
-
-    // Build address_line_1 from street number + route
-    const streetNumber = extractAddressComponent(components, "street_number");
-    const route = extractAddressComponent(components, "route");
-    const sublocality = extractAddressComponent(components, "sublocality_level_1") ||
-      extractAddressComponent(components, "sublocality");
-    const addressLine1 = [streetNumber, route, sublocality]
-      .filter(Boolean)
-      .join(", ") || selectedPlace.formatted_address.split(",")[0];
-
     const result = await saveAddress({
       label: selectedLabel,
-      formatted_address: selectedPlace.formatted_address,
-      address_line_1: addressLine1,
-      address_line_2: addressLine2 || undefined,
-      city,
-      state,
-      pincode,
-      latitude: selectedPlace.geometry.location.lat,
-      longitude: selectedPlace.geometry.location.lng,
-      place_id: selectedPlace.place_id,
+      house_flat: houseFlat.trim(),
+      building_society: buildingSociety.trim(),
+      area_colony: areaColony.trim(),
+      landmark: landmark.trim() || undefined,
+      city: city.trim(),
+      state: state.trim(),
+      pincode: pincode.trim(),
       is_default: makeDefault,
     });
 
@@ -79,8 +90,13 @@ export default function AddAddressModal({ isOpen, onClose, onSaved }: AddAddress
     }
 
     // Reset form
-    setSelectedPlace(null);
-    setAddressLine2("");
+    setHouseFlat("");
+    setBuildingSociety("");
+    setAreaColony("");
+    setLandmark("");
+    setCity("");
+    setState("");
+    setPincode("");
     setSelectedLabel("Home");
     setMakeDefault(false);
     onSaved?.();
@@ -103,7 +119,7 @@ export default function AddAddressModal({ isOpen, onClose, onSaved }: AddAddress
         <div className="w-10 h-1 bg-outline-variant rounded-full mx-auto mb-4 sm:hidden" />
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-6 ">
+        <div className="flex items-center justify-between mb-6">
           <h2 className="text-[18px] font-bold text-on-surface">Add New Address</h2>
           <button
             onClick={onClose}
@@ -113,126 +129,190 @@ export default function AddAddressModal({ isOpen, onClose, onSaved }: AddAddress
           </button>
         </div>
 
-        {/* Label selector */}
-        <div className="mb-4">
-          <p className="text-[12px] font-semibold text-on-surface-variant uppercase tracking-widest mb-2">
-            Save as
-          </p>
-          <div className="flex gap-2">
-            {LABEL_CONFIG.map(({ label, icon }) => (
-              <button
-                key={label}
-                type="button"
-                onClick={() => setSelectedLabel(label)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-200
-                  ${selectedLabel === label
-                    ? "bg-primary text-on-primary shadow-md"
-                    : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container"
-                  }`}
-              >
-                <span className="material-symbols-outlined text-[16px]">{icon}</span>
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Autocomplete search */}
-        <div className="mb-4">
-          <p className="text-[12px] font-semibold text-on-surface-variant uppercase tracking-widest mb-2">
-            Search address
-          </p>
-          <AddressAutocomplete
-            onAddressSelect={handleAddressSelect}
-            placeholder="Type your street, area or landmark..."
-          />
-        </div>
-
-        {/* Selected address preview */}
-        {selectedPlace && (
-          <div className="mb-4 p-4 bg-secondary/5 border border-secondary/20 rounded-xl animate-[slideDown_0.2s_ease-out]">
-            <div className="flex items-start gap-3">
-              <span className="material-symbols-outlined text-secondary text-[20px] mt-0.5 shrink-0">
-                check_circle
-              </span>
-              <div className="min-w-0">
-                <p className="text-[13px] font-semibold text-on-surface mb-0.5">
-                  Verified Address
-                </p>
-                <p className="text-[12px] text-on-surface-variant leading-relaxed">
-                  {selectedPlace.formatted_address}
-                </p>
-                <p className="text-[10px] text-on-surface-variant/60 mt-1 font-mono">
-                  {selectedPlace.geometry.location.lat.toFixed(6)}, {selectedPlace.geometry.location.lng.toFixed(6)}
-                </p>
-              </div>
+        <form onSubmit={handleSave} className="space-y-4">
+          {/* Label selector */}
+          <div>
+            <p className="text-[12px] font-semibold text-on-surface-variant uppercase tracking-widest mb-2">
+              Save address as
+            </p>
+            <div className="flex gap-2">
+              {LABEL_CONFIG.map(({ label, icon }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => setSelectedLabel(label)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-200 cursor-pointer
+                    ${selectedLabel === label
+                      ? "bg-primary text-on-primary shadow-md"
+                      : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container"
+                    }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">{icon}</span>
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
-        )}
 
-        {/* Additional address details */}
-        <div className="mb-4">
-          <p className="text-[12px] font-semibold text-on-surface-variant uppercase tracking-widest mb-2">
-            Floor / Flat / Landmark <span className="text-on-surface-variant/40">(optional)</span>
-          </p>
-          <input
-            type="text"
-            value={addressLine2}
-            onChange={(e) => setAddressLine2(e.target.value)}
-            placeholder="e.g. Flat 201, 2nd Floor, Near Park"
-            className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-[14px] text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-secondary transition-all"
-          />
-        </div>
+          {/* Form Fields */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2">
+              <label className="block text-[12px] font-semibold text-on-surface-variant uppercase tracking-widest mb-1.5">
+                House / Flat Number *
+              </label>
+              <input
+                type="text"
+                required
+                value={houseFlat}
+                onChange={(e) => setHouseFlat(e.target.value)}
+                placeholder="e.g. Flat 302, 3rd Floor"
+                className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-[14px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-secondary/45 focus:border-secondary transition-all"
+              />
+            </div>
 
-        {/* Default address toggle */}
-        {/* <label className="flex items-center gap-3 mb-6 cursor-pointer group">
-          <div
-            className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all duration-200
-              ${makeDefault ? "bg-primary border-primary" : "border-outline-variant group-hover:border-primary/40"}`}
-          >
-            {makeDefault && (
-              <span className="material-symbols-outlined text-on-primary text-[14px]">check</span>
-            )}
+            <div className="sm:col-span-2">
+              <label className="block text-[12px] font-semibold text-on-surface-variant uppercase tracking-widest mb-1.5">
+                Building / Society Name *
+              </label>
+              <input
+                type="text"
+                required
+                value={buildingSociety}
+                onChange={(e) => setBuildingSociety(e.target.value)}
+                placeholder="e.g. Sunshine Apartments"
+                className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-[14px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-secondary/45 focus:border-secondary transition-all"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-[12px] font-semibold text-on-surface-variant uppercase tracking-widest mb-1.5">
+                Area / Colony *
+              </label>
+              <input
+                type="text"
+                required
+                value={areaColony}
+                onChange={(e) => setAreaColony(e.target.value)}
+                placeholder="e.g. Gomti Nagar"
+                className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-[14px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-secondary/45 focus:border-secondary transition-all"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-[12px] font-semibold text-on-surface-variant uppercase tracking-widest mb-1.5">
+                Landmark <span className="text-on-surface-variant/50 font-normal">(Optional)</span>
+              </label>
+              <input
+                type="text"
+                value={landmark}
+                onChange={(e) => setLandmark(e.target.value)}
+                placeholder="e.g. Near City Mall"
+                className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-[14px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-secondary/45 focus:border-secondary transition-all"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[12px] font-semibold text-on-surface-variant uppercase tracking-widest mb-1.5">
+                City *
+              </label>
+              <input
+                type="text"
+                required
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="e.g. Lucknow"
+                className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-[14px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-secondary/45 focus:border-secondary transition-all"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[12px] font-semibold text-on-surface-variant uppercase tracking-widest mb-1.5">
+                State *
+              </label>
+              <input
+                type="text"
+                required
+                value={state}
+                onChange={(e) => setState(e.target.value)}
+                placeholder="e.g. Uttar Pradesh"
+                className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-[14px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-secondary/45 focus:border-secondary transition-all"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-[12px] font-semibold text-on-surface-variant uppercase tracking-widest mb-1.5">
+                Pincode *
+              </label>
+              <input
+                type="text"
+                required
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                value={pincode}
+                onChange={(e) => setPincode(e.target.value.replace(/\D/g, ""))}
+                placeholder="6-digit pincode"
+                className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-[14px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-secondary/45 focus:border-secondary transition-all font-mono"
+              />
+            </div>
           </div>
-          <span className="text-[13px] font-medium text-on-surface-variant">
-            Set as default address
-          </span>
-        </label> */}
 
-        {/* Error display */}
-        {error && (
-          <div className="mb-4 p-3 bg-error/10 border border-error/20 rounded-xl flex items-center gap-2">
-            <span className="material-symbols-outlined text-error text-[18px]">error</span>
-            <p className="text-[12px] text-error font-medium">{error}</p>
+          {/* Default Toggle */}
+          <label className="flex items-center gap-3 py-2 cursor-pointer group select-none">
+            <div className="relative shrink-0">
+              <input
+                type="checkbox"
+                checked={makeDefault}
+                onChange={(e) => setMakeDefault(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-5 h-5 rounded border-2 border-outline-variant group-hover:border-primary peer-checked:border-secondary peer-checked:bg-secondary flex items-center justify-center transition-all">
+                <span className="material-symbols-outlined text-white text-sm font-bold scale-0 peer-checked:scale-100 transition-transform">
+                  check
+                </span>
+              </div>
+            </div>
+            <span className="text-[13px] font-medium text-on-surface-variant group-hover:text-on-surface transition-colors">
+              Set as default address
+            </span>
+          </label>
+
+          {/* Error display */}
+          {error && (
+            <div className="p-3 bg-error/10 border border-error/20 rounded-xl flex items-center gap-2 animate-[slideDown_0.2s_ease-out]">
+              <span className="material-symbols-outlined text-error text-[18px]">error</span>
+              <p className="text-[12px] text-error font-medium">{error}</p>
+            </div>
+          )}
+
+          {/* Action buttons */}
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-3 rounded-xl text-[14px] font-semibold text-on-surface-variant bg-surface-container-low hover:bg-surface-container transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="flex-1 py-3 rounded-xl text-[14px] font-bold text-on-primary bg-primary hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+            >
+              {isSaving ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-on-primary/30 border-t-on-primary rounded-full animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-[18px]">save</span>
+                  Save Address
+                </>
+              )}
+            </button>
           </div>
-        )}
-
-        {/* Action buttons */}
-        <div className="flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 py-3 rounded-xl text-[14px] font-semibold text-on-surface-variant bg-surface-container-low hover:bg-surface-container transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={isSaving || !selectedPlace}
-            className="flex-1 py-3 rounded-xl text-[14px] font-bold text-on-primary bg-primary hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {isSaving ? (
-              <>
-                <div className="w-4 h-4 border-2 border-on-primary/30 border-t-on-primary rounded-full animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <span className="material-symbols-outlined text-[18px]">save</span>
-                Save Address
-              </>
-            )}
-          </button>
-        </div>
+        </form>
       </div>
     </div>
   );

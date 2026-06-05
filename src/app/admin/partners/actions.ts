@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { requireAdmin } from "@/utils/supabase/auth-checks";
 
 /**
  * Helper to check schema column exceptions and throw user-friendly instructions.
@@ -28,6 +29,7 @@ export async function updatePartnerStatusAction(
   partnerId: string,
   status: 'active' | 'offline' | 'busy' | 'suspended'
 ) {
+  await requireAdmin();
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -50,6 +52,7 @@ export async function updatePartnerTierAction(
   partnerId: string,
   tier: 'premium' | 'standard'
 ) {
+  await requireAdmin();
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -73,6 +76,7 @@ export async function reviewKycAction(
   status: 'approved' | 'rejected' | 'pending',
   reason?: string
 ) {
+  await requireAdmin();
   const supabase = await createClient();
 
   const updateData: Record<string, any> = {
@@ -100,39 +104,134 @@ export async function onboardPartnerAction(data: {
   full_name: string;
   email: string;
   phone: string;
+  password?: string;
   city: string;
   service_tier: 'premium' | 'standard';
+  services: string[];
+  pincodes: string[];
 }) {
+  await requireAdmin();
   const supabase = await createClient();
-  const partnerId = crypto.randomUUID();
 
-  // Create a stub partner profile
-  const { error } = await supabase
-    .from('profiles')
-    .insert({
-      id: partnerId,
-      email: data.email,
-      full_name: data.full_name,
-      phone: data.phone,
-      role: 'partner',
-      status: 'offline', // Default offline until onboarding finished
-      city: data.city,
-      service_tier: data.service_tier,
-      kyc_status: 'pending',
-      rating_avg: 4.8,
-      rating_count: 1,
-      jobs_offered_count: 0,
-      jobs_accepted_count: 0,
-      jobs_cancelled_count: 0,
-      acceptance_rate: 1.0,
-      cancellation_rate: 0.0,
-      is_available: true
-    });
+  const generatedPassword = data.password || "PavanStaff123!";
 
-  if (error) {
-    return handleDatabaseError(error);
+  // Create a stub partner profile and auth user via RPC
+  const { data: partnerId, error: rpcError } = await supabase.rpc('create_staff_user', {
+    p_email: data.email,
+    p_password: generatedPassword,
+    p_phone: data.phone,
+    p_full_name: data.full_name,
+    p_city: data.city,
+    p_service_tier: data.service_tier
+  });
+
+  if (rpcError || !partnerId) {
+    return handleDatabaseError(rpcError || new Error("Failed to generate staff user ID."));
+  }
+
+  // Insert assigned services
+  if (data.services.length > 0) {
+    const partnerServices = data.services.map(service_id => ({
+      partner_id: partnerId,
+      service_id
+    }));
+    const { error: psError } = await supabase
+      .from('partner_services')
+      .insert(partnerServices);
+    if (psError) return handleDatabaseError(psError);
+  }
+
+  // Insert assigned pincodes
+  if (data.pincodes.length > 0) {
+    const partnerAreas = data.pincodes.map(pincode => ({
+      partner_id: partnerId,
+      pincode,
+      city: data.city
+    }));
+    const { error: paError } = await supabase
+      .from('partner_service_areas')
+      .insert(partnerAreas);
+    if (paError) return handleDatabaseError(paError);
   }
 
   revalidatePath('/admin/partners');
   return { success: true, partnerId };
+}
+
+/**
+ * Edit a Partner Profile details, services and service areas
+ */
+export async function editPartnerAction(data: {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  password?: string;
+  city: string;
+  service_tier: 'premium' | 'standard';
+  status: 'active' | 'offline' | 'busy' | 'suspended';
+  is_available: boolean;
+  services: string[];
+  pincodes: string[];
+}) {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  // Call update_staff_user RPC
+  const { error: rpcError } = await supabase.rpc('update_staff_user', {
+    p_id: data.id,
+    p_email: data.email,
+    p_password: data.password || null,
+    p_phone: data.phone,
+    p_full_name: data.full_name
+  });
+
+  if (rpcError) {
+    return handleDatabaseError(rpcError);
+  }
+
+  // Update other profile columns directly
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .update({
+      city: data.city,
+      service_tier: data.service_tier,
+      status: data.status,
+      is_available: data.is_available
+    })
+    .eq('id', data.id);
+
+  if (profileError) {
+    return handleDatabaseError(profileError);
+  }
+
+  // Update services
+  await supabase.from('partner_services').delete().eq('partner_id', data.id);
+  if (data.services.length > 0) {
+    const partnerServices = data.services.map(service_id => ({
+      partner_id: data.id,
+      service_id
+    }));
+    const { error: psError } = await supabase
+      .from('partner_services')
+      .insert(partnerServices);
+    if (psError) return handleDatabaseError(psError);
+  }
+
+  // Update pincodes
+  await supabase.from('partner_service_areas').delete().eq('partner_id', data.id);
+  if (data.pincodes.length > 0) {
+    const partnerAreas = data.pincodes.map(pincode => ({
+      partner_id: data.id,
+      pincode,
+      city: data.city
+    }));
+    const { error: paError } = await supabase
+      .from('partner_service_areas')
+      .insert(partnerAreas);
+    if (paError) return handleDatabaseError(paError);
+  }
+
+  revalidatePath('/admin/partners');
+  return { success: true };
 }

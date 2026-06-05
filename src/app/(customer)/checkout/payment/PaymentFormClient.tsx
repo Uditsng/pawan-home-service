@@ -141,8 +141,7 @@ export default function PaymentFormClient({
                 <div>
                   <p className="text-xs font-bold text-on-surface">Cancellation & Refund Policy</p>
                   <p className="text-[11px] text-on-surface-variant leading-relaxed mt-0.5">
-                    Free cancellations allowed up to <span className="font-bold text-on-surface">24 hours before</span> service start time. Cancellations inside 24 hours may incur a platform convenience fee.
-                  </p>
+                    Free cancellation is allowed within <span className="font-bold text-on-surface">15 minutes</span> of booking the service. Cancellations made after this 15-minute window may incur a platform convenience fee.                  </p>
                 </div>
               </div>
             </div>
@@ -181,15 +180,24 @@ export default function PaymentFormClient({
           {/* 4. SECURE PAYMENT & TRUST ELEMENTS */}
           <div className="bg-primary/5 border border-primary/10 rounded-3xl p-5 md:p-6 space-y-4 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full blur-xl pointer-events-none" />
-            
+
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+              {/* <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary">
                 <span className="material-symbols-outlined text-xl">lock</span>
               </div>
               <div>
                 <p className="text-xs font-extrabold text-primary uppercase tracking-widest">SSL Encrypted Checkout</p>
                 <p className="text-[11px] text-on-surface-variant mt-0.5 leading-normal">
                   Your payments are processed securely via industry-standard 256-bit encryption protocols.
+                </p> */}
+
+              <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center shrink-0 text-secondary">
+                <span className="material-symbols-outlined text-xl">handshake</span>
+              </div>
+              <div>
+                <p className="text-xs font-extrabold text-on-surface uppercase tracking-widest">Pay After Service (COD)</p>
+                <p className="text-[11px] text-on-surface-variant mt-0.5 leading-normal">
+                  Enjoy peace of mind. You only pay after your service is fully completed by our professional.
                 </p>
               </div>
             </div>
@@ -226,7 +234,7 @@ export default function PaymentFormClient({
                 </div>
               </div>
               <span className="text-xs font-medium text-on-surface-variant group-hover:text-on-surface transition-colors leading-relaxed">
-                By proceeding, you agree to our <span className="text-primary font-bold underline">cancellation, refund, and service terms</span>.
+                By proceeding, you agree to our <span className="text-primary font-bold">cancellation, refund, and service terms</span>.
               </span>
             </label>
           </div>
@@ -242,10 +250,9 @@ export default function PaymentFormClient({
                 type="submit"
                 disabled={!isAgreed || isPending}
                 className={`flex-1 py-3.5 md:py-4 px-6 md:px-8 rounded-xl md:rounded-2xl font-headline font-extrabold tracking-tight text-base md:text-lg text-center flex items-center justify-center gap-2 transition-all active:scale-[0.98]
-                  ${
-                    !isAgreed || isPending
-                      ? "bg-surface-container text-on-surface/30 cursor-not-allowed border border-outline-variant/10"
-                      : "bg-secondary text-white shadow-[0_12px_32px_rgba(253,118,26,0.25)] hover:opacity-95"
+                  ${!isAgreed || isPending
+                    ? "bg-surface-container text-on-surface/30 cursor-not-allowed border border-outline-variant/10"
+                    : "bg-secondary text-white shadow-[0_12px_32px_rgba(253,118,26,0.25)] hover:opacity-95"
                   }`}
               >
                 {isPending ? (
@@ -255,7 +262,7 @@ export default function PaymentFormClient({
                   </>
                 ) : (
                   <>
-                    Pay & Book
+                    Book
                     <span className="material-symbols-outlined text-[20px] md:text-[24px]">lock</span>
                   </>
                 )}

@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import type { BookingStatus } from "@/lib/types";
+import { notifyCustomer, notifyPartner } from "@/lib/notifications";
 
 // ─── Helper: Get authenticated partner or throw ──────────────
 
@@ -148,6 +149,44 @@ export async function rejectJob(
       .eq("id", user.id);
   }
 
+  // ─── Notifications ─────────────────────────────────────────
+  const { data: rejectBookingInfo } = await supabase
+    .from("bookings")
+    .select("customer_id, services:service_id(title)")
+    .eq("id", bookingId)
+    .single();
+
+  if (rejectBookingInfo?.customer_id) {
+    const svcTitle = (rejectBookingInfo.services as unknown as { title: string } | null)?.title ?? "your service";
+    if (newPartnerId) {
+      void notifyCustomer(
+        rejectBookingInfo.customer_id,
+        "New Professional Assigned",
+        `A new professional has been assigned to your ${svcTitle} booking.`,
+        "partner_reassigned",
+        { booking_id: bookingId }
+      );
+    } else {
+      void notifyCustomer(
+        rejectBookingInfo.customer_id,
+        "Finding a New Professional",
+        `We're finding a new professional for your ${svcTitle} booking. Hang tight!`,
+        "partner_reassigned",
+        { booking_id: bookingId }
+      );
+    }
+  }
+
+  if (newPartnerId) {
+    void notifyPartner(
+      newPartnerId,
+      "New Job Assigned",
+      "You've been assigned a new job. Check your dashboard for details.",
+      "partner_assigned",
+      { booking_id: bookingId }
+    );
+  }
+
   revalidatePath("/partner", "layout");
   return { success: true, reassigned: !!newPartnerId };
 }
@@ -184,6 +223,30 @@ export async function startJob(
     partner_id: user.id,
   });
 
+  // ─── Notification: Customer ────────────────────────────────
+  const { data: startBooking } = await supabase
+    .from("bookings")
+    .select("customer_id, services:service_id(title)")
+    .eq("id", bookingId)
+    .single();
+
+  if (startBooking?.customer_id) {
+    const { data: partnerProfile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single();
+    const proName = partnerProfile?.full_name ?? "Your professional";
+    const svcTitle = (startBooking.services as unknown as { title: string } | null)?.title ?? "your service";
+    void notifyCustomer(
+      startBooking.customer_id,
+      "Service Started",
+      `${proName} has started your ${svcTitle} service.`,
+      "service_started",
+      { booking_id: bookingId }
+    );
+  }
+
   revalidatePath("/partner", "layout");
   return { success: true };
 }
@@ -219,6 +282,30 @@ export async function completeJob(
   await logBookingEvent(supabase, bookingId, "JOB_COMPLETED", "PARTNER", {
     partner_id: user.id,
   });
+
+  // ─── Notification: Customer ────────────────────────────────
+  const { data: completeBooking } = await supabase
+    .from("bookings")
+    .select("customer_id, services:service_id(title)")
+    .eq("id", bookingId)
+    .single();
+
+  if (completeBooking?.customer_id) {
+    const { data: partnerProfile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single();
+    const proName = partnerProfile?.full_name ?? "Your professional";
+    const svcTitle = (completeBooking.services as unknown as { title: string } | null)?.title ?? "your service";
+    void notifyCustomer(
+      completeBooking.customer_id,
+      "Service Completed!",
+      `${proName} has completed your ${svcTitle}. Rate your experience!`,
+      "service_completed",
+      { booking_id: bookingId }
+    );
+  }
 
   revalidatePath("/partner", "layout");
   return { success: true };
@@ -305,6 +392,24 @@ export async function cancelJob(
     partner_id: user.id,
     reason,
   });
+
+  // ─── Notification: Customer ────────────────────────────────
+  const { data: cancelBookingInfo } = await supabase
+    .from("bookings")
+    .select("customer_id, services:service_id(title)")
+    .eq("id", bookingId)
+    .single();
+
+  if (cancelBookingInfo?.customer_id) {
+    const svcTitle = (cancelBookingInfo.services as unknown as { title: string } | null)?.title ?? "your service";
+    void notifyCustomer(
+      cancelBookingInfo.customer_id,
+      "Booking Cancelled",
+      `Your ${svcTitle} booking has been cancelled.${reason ? ` Reason: ${reason}` : ""}`,
+      "booking_cancelled",
+      { booking_id: bookingId }
+    );
+  }
 
   revalidatePath("/partner", "layout");
   return { success: true };

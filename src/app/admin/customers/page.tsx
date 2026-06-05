@@ -28,7 +28,8 @@ export default async function AdminCustomersPage() {
         services:services(title)
       )
     `)
-    .eq('role', 'customer');
+    .eq('role', 'customer')
+    .limit(1000);
 
   if (error) {
     // If column doesn't exist, gracefully fallback without crm-specific columns
@@ -52,7 +53,8 @@ export default async function AdminCustomersPage() {
             services:services(title)
           )
         `)
-        .eq('role', 'customer');
+        .eq('role', 'customer')
+        .limit(1000);
 
       if (!fallbackError && fallbackData) {
         customers = fallbackData.map(c => ({

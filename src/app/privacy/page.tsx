@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Pavan Home Solutions",
-  description: "How Pavan Home Solutions collects, uses, and protects your personal information.",
+  title: "Privacy Policy | PHS Company",
+  description: "How PHS Company collects, uses, and protects your personal information.",
 };
 
 const sections = [
@@ -22,10 +22,6 @@ export default function PrivacyPolicyPage() {
       <section className="relative overflow-hidden bg-primary">
         <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
         <div className="relative max-w-7xl mx-auto px-4 py-8 md:py-16">
-          <Link href="/" className="inline-flex items-center gap-2 text-on-primary/70 hover:text-on-primary transition-colors mb-3">
-            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-            <span className="text-sm font-medium">Back to Home</span>
-          </Link>
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-secondary/15 flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-secondary text-3xl">privacy_tip</span>

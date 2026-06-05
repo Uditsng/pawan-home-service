@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { EditServiceForm } from "./EditServiceForm";
+import { requireAdmin } from "@/utils/supabase/auth-checks";
 
 export default async function AdminEditServicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -40,6 +41,7 @@ export default async function AdminEditServicePage({ params }: { params: Promise
 
   async function editServiceAction(prevState: any, formData: FormData) {
     "use server";
+    await requireAdmin();
     const db = await createClient();
 
     // Core details
@@ -48,6 +50,7 @@ export default async function AdminEditServicePage({ params }: { params: Promise
     const base_price = parseFloat(formData.get("base_price") as string);
     const price_breakdown = formData.get("price_breakdown") as string;
     const description = formData.get("description") as string;
+    const image_url = formData.get("image_url") as string || null;
 
     // Arrays separated by newline
     const includedRaw = formData.get("included_features") as string;
@@ -87,6 +90,7 @@ export default async function AdminEditServicePage({ params }: { params: Promise
       price_breakdown,
       description,
       page_content,
+      image_url,
     }).eq("id", id);
 
     if (error) {

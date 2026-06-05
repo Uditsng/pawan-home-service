@@ -1,174 +1,442 @@
 import Link from "next/link";
-import Image from "next/image";
-export default function LiveTrackingPage({ params }: { params: { id: string } }) {
+import { createClient } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
+import CustomerHeader from "@/components/CustomerHeader";
+import BottomNav from "@/components/BottomNav";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Track Professional | PHS Company",
+  description: "Track your assigned professional in real-time.",
+};
+
+interface SubcategoryInfo {
+  subcategory_name: string;
+  icon_name: string;
+}
+
+interface ServiceInfo {
+  title: string;
+  category: string;
+  subcategories: SubcategoryInfo | null;
+}
+
+interface PartnerInfo {
+  full_name: string;
+  avatar_url: string | null;
+  phone: string | null;
+  rating_avg: number | null;
+  jobs_accepted_count: number | null;
+}
+
+interface BookingDetails {
+  id: string;
+  status: string;
+  scheduled_date: string;
+  created_at: string;
+  total_amount: number;
+  address: string | null;
+  city: string | null;
+  services: ServiceInfo | null;
+  partner: PartnerInfo | null;
+}
+
+interface TrackingPageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default async function BookingTrackingPage({ params }: TrackingPageProps) {
+  const resolvedParams = await params;
+  const bookingId = resolvedParams.id;
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  // Fetch booking with service + subcategory + partner details
+  const { data: bookingData } = await supabase
+    .from("bookings")
+    .select(`
+      id,
+      status,
+      scheduled_date,
+      created_at,
+      total_amount,
+      address,
+      city,
+      services (
+        title,
+        category,
+        subcategories (
+          subcategory_name,
+          icon_name
+        )
+      ),
+      partner:partner_id (
+        full_name,
+        avatar_url,
+        phone,
+        rating_avg,
+        jobs_accepted_count
+      )
+    `)
+    .eq("id", bookingId)
+    .eq("customer_id", user.id)
+    .single();
+
+  const booking = bookingData as unknown as BookingDetails | null;
+
+  if (!booking) {
+    redirect("/bookings");
+  }
+
+  const bookingRef = `BK-${booking.id.substring(0, 6).toUpperCase()}`;
+  const scheduledDate = booking.scheduled_date ? new Date(booking.scheduled_date) : new Date();
+  const displayDate = scheduledDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const displayTime = scheduledDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+
+  const iconName = booking.services?.subcategories?.icon_name || 
+    (booking.services?.category === "cleaning" ? "cleaning_services" : "home_repair_service");
+
+  const isAssigned = !!booking.partner;
+  const partnerName = booking.partner?.full_name || "Assigning soon...";
+  const partnerAvatar = booking.partner?.avatar_url;
+  const isPending = booking.status === "pending";
+  const isCompleted = booking.status === "completed";
+  const isCancelled = booking.status === "cancelled";
+
   return (
-    <div className="bg-surface font-body text-on-surface antialiased overflow-hidden min-h-screen">
-      {/* Top AppBar */}
-      <header className="sticky top-0 w-full z-50 bg-[#f7f9fb]/90  backdrop-blur-lg">
-        <div className="flex justify-between items-center w-full px-6 py-4 max-w-7xl mx-auto">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#0D9488]">location_on</span>
-            <h1 className="font-manrope text-sm font-bold tracking-tight text-on-surface">Roorkee, UK</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link href="/bookings" className="material-symbols-outlined text-on-surface-variant hover:opacity-80 transition-all">
-              close
+    <div className="bg-surface text-on-surface antialiased min-h-screen pb-28 font-body">
+      {/* Dynamic keyframe animations for premium high-fidelity radar effect */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes radar-sweep {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes radar-pulse {
+          0% { transform: scale(0.6); opacity: 0.2; }
+          50% { opacity: 0.8; }
+          100% { transform: scale(2); opacity: 0; }
+        }
+        .radar-sweep-line {
+          animation: radar-sweep 8s linear infinite;
+          transform-origin: center;
+        }
+        .radar-ping-aura {
+          animation: radar-pulse 3s cubic-bezier(0.215, 0.610, 0.355, 1) infinite;
+        }
+      `}} />
+
+      <CustomerHeader />
+
+      <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
+        
+        {/* Navigation & Header */}
+        <section className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <Link 
+              href="/bookings" 
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-on-surface-variant hover:text-primary transition-colors mb-2"
+            >
+              <span className="material-symbols-outlined text-sm">arrow_back</span>
+              Back to Bookings
             </Link>
-          </div>
-        </div>
-      </header>
-
-      <main className="relative h-[calc(100vh-64px)] w-full">
-        {/* Map Canvas Background */}
-        <div className="absolute inset-0 z-0">
-          <Image
-
-            className="w-full h-full object-cover grayscale-20 contrast-95"
-            alt="Map layout"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuAlRPW4lhWwvYLKSLw-obw-4LOCqsYKhElbhXoVJZ6DwdFr3r4UzthAZv9H8x4HmdsyrhNJpdeonQ0W5xFXKSMH9g0FPPBwy_L-rYqkpAKwuHjUpym_1fQX8FK4rK8stD52iDd0dDIlOwRS6uKDKvi46m8DcZ7hFx8CK0AypY8a7-6SVx1O2FvNWsTr_KEGcG9L3ISzYKwDmPw1UmLYoqIQIRFW38eygovlOERko4hSUqPN4ajMzdUm55ufzTDSxrbyX-JqqK7x99U"
-            width="40"
-            height="40"
-          />
-          <div className="absolute inset-0 bg-linear-to-b from-surface/40 via-transparent to-surface/90 pointer-events-none"></div>
-
-          {/* Professional Marker */}
-          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center">
-            <div className="bg-primary-container p-1 rounded-full shadow-lg animate-bounce">
-              <Image
-                className="w-12 h-12 rounded-full border-2 border-white object-cover"
-                alt="Marcus Chen"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuD3jXmB-Zc-0lVtVQzEyRTdYvAdR9LYSqX98F5bPHiAyfjKF6TYlkIQZtTsZ-de1uZOQjTk1PwtC9IhHqU10Dupp0HtrFHHMhtbk_x1VxWMJwRb0B4uY7j1_NipWkwwt3GA_Oj4yQtAz90XAo6tskDVmTL1Hf39EniURIBBWXWw6liiRgdf0OL7cINfz4uF_BwiCJNGz2K4AzAq8cUQb_onUJnYabxCL67S5vnMyOuFX7UbP1F3serjA89TIov9a2WCvjFoSVv9vR4"
-                width="40"
-                height="40"
-              />
+            <div className="flex items-center gap-3">
+              <h1 className="font-headline text-2xl md:text-3xl font-extrabold tracking-tight text-on-surface">
+                Track Professional
+              </h1>
+              <span className="px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-secondary-container text-on-secondary-container uppercase tracking-wide">
+                {booking.status}
+              </span>
             </div>
-            <div className="mt-2 bg-surface-container-lowest px-3 py-1 rounded-full shadow-sm">
-              <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Marcus is here</p>
-            </div>
+            <p className="text-on-surface-variant text-xs md:text-sm font-medium mt-1">
+              Reference: <span className="font-bold">#{bookingRef}</span> &middot; Scheduled for {displayDate} at {displayTime}
+            </p>
           </div>
+        </section>
 
-          {/* Destination Marker */}
-          <div className="absolute bottom-1/3 right-1/4 -translate-x-1/2 translate-y-1/2 z-10">
-            <div className="bg-secondary p-3 rounded-full shadow-xl">
-              <span className="material-symbols-outlined text-on-secondary text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>home</span>
-            </div>
-          </div>
+        {/* Dynamic Bento-Grid Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* Main Column: Live Map Scanning Simulator */}
+          <div className="lg:col-span-2 flex flex-col gap-6">
+            
+            {/* The Radar Tracking Canvas Container */}
+            <div className="relative overflow-hidden bg-primary rounded-3xl min-h-[420px] md:min-h-[480px] flex items-center justify-center p-6 border border-outline-variant/10 shadow-tactile select-none">
+              
+              {/* Radar Radial Scanning Guides */}
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(166,206,55,0.1)_0%,transparent_70%)] pointer-events-none" />
+              
+              {/* Concentric Circles */}
+              <div className="absolute w-24 h-24 border border-secondary/15 rounded-full pointer-events-none" />
+              <div className="absolute w-48 h-48 border border-secondary/10 rounded-full pointer-events-none" />
+              <div className="absolute w-72 h-72 border border-secondary/5 rounded-full pointer-events-none" />
+              <div className="absolute w-[400px] h-[400px] border border-secondary/5 rounded-full pointer-events-none hidden md:block" />
+              
+              {/* Radar Crosshairs */}
+              <div className="absolute w-full h-px bg-secondary/5 pointer-events-none" />
+              <div className="absolute h-full w-px bg-secondary/5 pointer-events-none" />
 
-          {/* Route Line (SVG) */}
-          <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
-            <path d="M 50% 33% Q 65% 45% 75% 66%" fill="transparent" stroke="url(#route-gradient)" strokeDasharray="8,8" strokeWidth="4"></path>
-            <defs>
-              <linearGradient id="route-gradient" x1="0%" x2="100%" y1="0%" y2="100%">
-                <stop offset="0%" stopColor="#008378"></stop>
-                <stop offset="100%" stopColor="#9d4300"></stop>
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
+              {/* Sweeping Scan Line */}
+              <div className="absolute w-full h-full inset-0 flex items-center justify-center radar-sweep-line pointer-events-none">
+                <div className="w-1/2 h-px bg-linear-to-r from-secondary/40 via-secondary/10 to-transparent origin-left absolute left-1/2" />
+              </div>
 
-        {/* Floating Status Pill */}
-        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20">
-          <div className="bg-surface-container-lowest/90 backdrop-blur-md px-6 py-3 rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.08)] flex items-center gap-3">
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-            <span className="text-sm font-semibold text-on-surface tracking-tight">Arriving in <span className="text-primary">12 mins</span></span>
-          </div>
-        </div>
-
-        {/* Interactive Bottom Panel */}
-        <div className="absolute bottom-0 left-0 w-full z-30 px-4 pb-8 md:px-8">
-          <div className="max-w-xl mx-auto bg-surface-container-lowest rounded-4xl shadow-[0_-12px_48px_rgba(15,23,42,0.1)] overflow-hidden">
-            <div className="p-6 md:p-8 space-y-8">
-
-              {/* Professional Header & Actions */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="relative">
-                    <Image
-                      width="40"
-                      height="40"
-                      className="w-16 h-16 rounded-2xl object-cover"
-                      alt="Marcus Chen"
-                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuDYEtTwGrwyEjSjf0N6TpOw0JaKL9H1RtC7o-VJNpdA8yZByR4ivHbK1-mZo41h6QEYpy7UQ-UDLw8J5E-bRwOhEq55KIR6U7e77u9pC-C6nZcbznTkg5L0kzV098f9X3FT2xm36IDGyaDA_6MiBw1Ji7KdSGWy17cxeOg80BNuKrdC35GPTl-4LL3eT502LFmta-WUvmIVcuhCN9zpVup6M6hreNvjDoLQPZWS7WB4WEXwcvPsSSLs42H15XztiC2FDR0HZFTmhaU"
-                    />
-                    <div className="absolute -bottom-1 -right-1 bg-primary text-on-primary text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
-                      <span className="material-symbols-outlined text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                      4.9
-                    </div>
-                  </div>
-                  <div>
-                    <h2 className="font-headline text-xl font-extrabold text-on-surface tracking-tight">Marcus Chen</h2>
-                    <p className="text-sm text-on-surface-variant font-medium">Premium Service Expert</p>
-                  </div>
+              {/* Home Base (Customer Address Pin) - Static Center */}
+              <div className="absolute z-20 flex flex-col items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-primary border-2 border-secondary flex items-center justify-center text-secondary shadow-[0_0_20px_rgba(166,206,55,0.4)]">
+                  <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>home</span>
                 </div>
-                <div className="flex gap-2">
-                  <button className="w-12 h-12 flex items-center justify-center rounded-2xl bg-surface-container-low text-primary hover:bg-primary-fixed transition-colors">
-                    <span className="material-symbols-outlined">call</span>
-                  </button>
-                  <button className="w-12 h-12 flex items-center justify-center rounded-2xl bg-error-container text-on-error-container hover:bg-error transition-all hover:text-on-error">
-                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>emergency</span>
-                  </button>
+                <span className="text-[9px] font-black tracking-widest text-secondary mt-1 bg-primary/80 px-1.5 py-0.5 rounded-sm uppercase">You</span>
+              </div>
+
+              {/* Moving Pro Signal Node (Slightly Offset) */}
+              {isAssigned && !isCompleted && !isCancelled && (
+                <div className="absolute z-20 top-1/4 left-1/3 flex flex-col items-center justify-center">
+                  <div className="radar-ping-aura absolute inset-0 w-8 h-8 rounded-full bg-secondary/40 -m-1 pointer-events-none" />
+                  <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center shadow-[0_0_15px_rgba(166,206,55,0.6)]">
+                    <span className="material-symbols-outlined text-base">motorcycle</span>
+                  </div>
+                  <span className="text-[9px] font-bold text-on-primary bg-primary/80 px-1.5 py-0.5 rounded-sm mt-1 uppercase whitespace-nowrap tracking-wide">
+                    {booking.partner?.full_name ? booking.partner.full_name.split(" ")[0] : "Pro"}
+                  </span>
+                </div>
+              )}
+
+              {/* Coming Soon Glassmorphism Overlay */}
+              <div className="relative z-30 max-w-md mx-auto glass-panel rounded-3xl p-6 md:p-8 text-center text-on-surface shadow-2xl">
+                <div className="w-14 h-14 bg-secondary/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-secondary/20">
+                  <span className="material-symbols-outlined text-3xl text-secondary">explore</span>
+                </div>
+                <span className="inline-flex items-center gap-1 bg-secondary/20 px-2.5 py-0.5 rounded-full text-[10px] font-bold text-on-secondary mb-3 uppercase tracking-wider">
+                  Coming Soon
+                </span>
+                <h2 className="font-headline text-lg md:text-xl font-bold tracking-tight text-on-surface">
+                  Real-time GPS Tracking
+                </h2>
+                <p className="text-on-surface-variant text-xs md:text-sm mt-2 leading-relaxed font-medium">
+                  We are actively developing our advanced live tracking engine! Once completed, you will be able to watch your Professional's transit route live on this screen, get live traffic updates, and view a dynamic, minute-by-minute ETA.
+                </p>
+                <div className="mt-5 pt-4 border-t border-outline-variant/30 text-[10px] md:text-xs text-on-surface-variant/80 font-medium">
+                  Status: <span className="text-green-600 font-bold">Booking Confirmed</span> &middot; Professional is notified
                 </div>
               </div>
 
-              {/* Progress Tracking */}
-              <div className="space-y-6">
-                <div className="flex items-center justify-between px-2">
-                  <div className="flex flex-col items-center gap-2 group">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary text-on-primary shadow-sm">
-                      <span className="material-symbols-outlined text-xl">check</span>
-                    </div>
-                    <span className="text-[11px] font-bold text-primary uppercase tracking-tighter">Assigned</span>
-                  </div>
-                  <div className="flex-1 h-[2px] bg-primary mx-2 mt-[-20px]"></div>
+            </div>
 
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary-fixed text-primary ring-4 ring-primary-fixed/30">
-                      <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>near_me</span>
-                    </div>
-                    <span className="text-[11px] font-bold text-on-surface uppercase tracking-tighter">En Route</span>
-                  </div>
-                  <div className="flex-1 h-[2px] bg-surface-container-high mx-2 mt-[-20px]"></div>
+          </div>
 
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-surface-container-low text-outline-variant">
-                      <span className="material-symbols-outlined text-xl">location_on</span>
-                    </div>
-                    <span className="text-[11px] font-bold text-outline-variant uppercase tracking-tighter">Arrived</span>
-                  </div>
-                  <div className="flex-1 h-[2px] bg-surface-container-high mx-2 mt-[-20px]"></div>
+          {/* Sidebar Column: Professional details & status timeline */}
+          <div className="flex flex-col gap-6">
 
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-surface-container-low text-outline-variant">
-                      <span className="material-symbols-outlined text-xl">task_alt</span>
-                    </div>
-                    <span className="text-[11px] font-bold text-outline-variant uppercase tracking-tighter">Completed</span>
-                  </div>
+            {/* Service & Booking Details Summary Card */}
+            <div className="glass-panel rounded-3xl p-5 md:p-6">
+              <h3 className="font-headline text-sm font-bold uppercase tracking-wider text-on-surface-variant mb-4">
+                Booking Information
+              </h3>
+              <div className="flex gap-3 mb-4">
+                {/* Emerald green actionable container standard as per rule 11-B & 8-H */}
+                <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-[#059669] drop-shadow-sm">{iconName}</span>
                 </div>
+                <div>
+                  <h4 className="font-headline text-base font-bold text-on-surface leading-tight">
+                    {booking.services?.title || "Service Appointment"}
+                  </h4>
+                  <p className="text-xs text-on-surface-variant font-medium mt-0.5">
+                    Category: {booking.services?.category || "Home Repair"}
+                  </p>
+                </div>
+              </div>
 
-                {/* Status Message Card */}
-                <div className="bg-surface-container-low p-4 rounded-2xl flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-surface-container-lowest flex items-center justify-center text-primary">
-                      <span className="material-symbols-outlined">schedule</span>
+              <div className="space-y-3 pt-3 border-t border-outline-variant/30 text-xs text-on-surface-variant font-medium">
+                <div className="flex justify-between">
+                  <span>Reference:</span>
+                  <span className="text-on-surface font-bold">#{bookingRef}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Scheduled Slot:</span>
+                  <span className="text-on-surface font-bold text-right">{displayDate} &middot; {displayTime}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Total Amount:</span>
+                  <span className="text-primary font-bold">₹{booking.total_amount}</span>
+                </div>
+                <div className="flex flex-col pt-1">
+                  <span>Address details:</span>
+                  <span className="text-on-surface font-bold mt-0.5 leading-tight">
+                    {booking.address || "Local Delivery Area"}, {booking.city || ""}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Professional Snapshot */}
+            <div className="glass-panel rounded-3xl p-5 md:p-6">
+              <h3 className="font-headline text-sm font-bold uppercase tracking-wider text-on-surface-variant mb-4">
+                Your Professional
+              </h3>
+              
+              {isAssigned ? (
+                <div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full overflow-hidden bg-surface-container-high border border-outline-variant/30 shrink-0 relative">
+                      {partnerAvatar ? (
+                        <img src={partnerAvatar} alt={partnerName} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-surface-container text-on-surface font-black">
+                          {partnerName.charAt(0).toUpperCase()}
+                        </div>
+                      )}
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-on-surface">En Route - Arriving in 12 mins</h4>
-                      <p className="text-xs text-on-surface-variant">Marcus is driving your way now.</p>
+                      <div className="flex items-center gap-1">
+                        <p className="font-headline text-sm font-bold text-on-surface leading-tight">
+                          {partnerName}
+                        </p>
+                        <span className="material-symbols-outlined text-[#059669] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        {booking.partner?.rating_avg && (
+                          <div className="flex items-center gap-0.5 text-[10px] font-bold text-on-surface-variant">
+                            <span className="material-symbols-outlined text-amber-500 text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                            {booking.partner.rating_avg.toFixed(1)}
+                          </div>
+                        )}
+                        {booking.partner?.jobs_accepted_count != null && booking.partner.jobs_accepted_count > 0 && (
+                          <span className="text-[10px] text-on-surface-variant font-medium">
+                            &middot; {booking.partner.jobs_accepted_count} jobs completed
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <span className="material-symbols-outlined text-on-surface-variant opacity-30">chevron_right</span>
-                </div>
-              </div>
 
-              {/* Primary Action */}
-              <button className="w-full bg-linear-to-r from-primary to-primary-container py-4 rounded-2xl text-on-primary font-bold text-sm tracking-wide shadow-lg hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>chat_bubble</span>
-                Message Marcus
-              </button>
+                  <div className="mt-4 pt-3 border-t border-outline-variant/30 flex gap-2">
+                    <button 
+                      disabled 
+                      className="flex-1 py-2 rounded-xl bg-surface-container text-on-surface-variant text-xs font-bold flex items-center justify-center gap-1.5 opacity-65 cursor-not-allowed"
+                    >
+                      <span className="material-symbols-outlined text-sm">phone</span>
+                      Call (Active on dispatch)
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4 flex flex-col items-center justify-center">
+                  <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant/40 animate-pulse mb-2">
+                    <span className="material-symbols-outlined">person_search</span>
+                  </div>
+                  <h4 className="font-headline text-xs font-bold text-on-surface">Assigning Technician...</h4>
+                  <p className="text-[10px] text-on-surface-variant leading-relaxed mt-1 max-w-[200px]">
+                    Our administration team is currently assigning the optimal, background-verified technician for your service.
+                  </p>
+                </div>
+              )}
             </div>
+
+            {/* Stepper Timeline Progress */}
+            <div className="glass-panel rounded-3xl p-5 md:p-6">
+              <h3 className="font-headline text-sm font-bold uppercase tracking-wider text-on-surface-variant mb-4">
+                Service Checklist
+              </h3>
+
+              <div className="space-y-5 relative before:content-[''] before:absolute before:left-3 before:top-2.5 before:bottom-2 before:w-0.5 before:bg-outline-variant/40">
+                
+                {/* Step 1: Placed */}
+                <div className="flex gap-3 relative z-10">
+                  <div className="w-6 h-6 rounded-full bg-green-600 text-white flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-xs">done</span>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-on-surface">Booking Placed</h4>
+                    <p className="text-[10px] text-on-surface-variant">Request registered and confirmed</p>
+                  </div>
+                </div>
+
+                {/* Step 2: Assigned */}
+                <div className="flex gap-3 relative z-10">
+                  {isAssigned ? (
+                    <div className="w-6 h-6 rounded-full bg-green-600 text-white flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-xs">done</span>
+                    </div>
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0 animate-pulse border border-secondary/20">
+                      <span className="material-symbols-outlined text-xs">person_search</span>
+                    </div>
+                  )}
+                  <div>
+                    <h4 className="text-xs font-bold text-on-surface">
+                      {isAssigned ? "Technician Assigned" : "Assigning Technician"}
+                    </h4>
+                    <p className="text-[10px] text-on-surface-variant">
+                      {isAssigned ? `${booking.partner?.full_name} is scheduled` : "Assigning optimal service technician"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 3: Transit */}
+                <div className="flex gap-3 relative z-10">
+                  <div className="w-6 h-6 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-xs">lock</span>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-on-surface-variant">Professional Dispatched</h4>
+                    <p className="text-[10px] text-outline">Real-time GPS dispatch state</p>
+                  </div>
+                </div>
+
+                {/* Step 4: Started */}
+                <div className="flex gap-3 relative z-10">
+                  <div className="w-6 h-6 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-xs">lock</span>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-on-surface-variant">Service Active</h4>
+                    <p className="text-[10px] text-outline">Job verify & progress checking</p>
+                  </div>
+                </div>
+
+                {/* Step 5: Completed */}
+                <div className="flex gap-3 relative z-10">
+                  <div className="w-6 h-6 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-xs">lock</span>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-on-surface-variant">Appointment Concluded</h4>
+                    <p className="text-[10px] text-outline">Invoicing & expert feedback</p>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Back CTA Button block */}
+            <div className="flex flex-col gap-2">
+              <Link 
+                href="/bookings" 
+                className="w-full text-center py-3 bg-primary text-on-primary font-bold rounded-xl font-headline transition-opacity hover:opacity-90 active:scale-98 text-xs md:text-sm shadow-sm"
+              >
+                Back to Bookings List
+              </Link>
+              <Link 
+                href="/dashboard" 
+                className="w-full text-center py-3 bg-surface-container text-on-surface font-bold rounded-xl font-headline transition-colors hover:bg-surface-container-high active:scale-98 text-xs md:text-sm"
+              >
+                Go to Home Dashboard
+              </Link>
+            </div>
+
           </div>
+
         </div>
+
       </main>
+
+      <BottomNav />
     </div>
   );
 }

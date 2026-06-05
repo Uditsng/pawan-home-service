@@ -101,7 +101,8 @@ export default async function AdminBookingsPage() {
       customer:customer_id (id, full_name, email, phone, avatar_url),
       partner:partner_id (id, full_name, email, phone, avatar_url, status)
     `)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(1000);
 
   if (error) {
     // Schema fallback: if new columns don't exist yet, retry without them
@@ -133,7 +134,8 @@ export default async function AdminBookingsPage() {
           customer:customer_id (id, full_name, email, phone, avatar_url),
           partner:partner_id (id, full_name, email, phone, avatar_url, status)
         `)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(1000);
 
       if (!fallbackError && fallbackData) {
         bookingsRaw = fallbackData.map((b) => ({

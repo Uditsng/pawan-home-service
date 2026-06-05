@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import PaymentFormClient from "./PaymentFormClient";
+import { notifyCustomer } from "@/lib/notifications";
 
 export default async function CheckoutPaymentPage({ searchParams }: { searchParams: Promise<{ serviceId?: string, date?: string, time?: string, addressId?: string }> }) {
   const resolvedParams = await searchParams;
@@ -115,63 +116,26 @@ export default async function CheckoutPaymentPage({ searchParams }: { searchPara
       redirect('/dashboard?error=PaymentFailed');
     }
 
-    // 2. Auto-assign a partner via round-robin RPC
-    const { data: partnerId } = await db.rpc('auto_assign_partner', {
-      p_service_id: service!.id,
-      p_city: addr.city,
-      p_scheduled_at: timestamp.toISOString(),
-      p_exclude_partners: []
+    // 2. Log booking creation event (Unassigned)
+    await db.from('booking_events').insert({
+      booking_id: inserted.id,
+      event_type: 'BOOKING_CREATED',
+      actor: 'USER',
+      metadata: {
+        customer_id: user!.id,
+        service_id: service!.id,
+        amount: totalPrice,
+      },
     });
 
-    if (partnerId) {
-      // Partner found! Update booking to confirmed with assigned partner
-      await db.from('bookings').update({
-        partner_id: partnerId,
-        status: 'confirmed',
-        accepted_at: new Date().toISOString()
-      }).eq('id', inserted.id);
-
-      // Log auto-assignment event
-      await db.from('booking_events').insert({
-        booking_id: inserted.id,
-        event_type: 'PARTNER_AUTO_ASSIGNED',
-        actor: 'SYSTEM',
-        metadata: {
-          partner_id: partnerId,
-          customer_id: user!.id,
-          service_id: service!.id,
-          amount: totalPrice,
-          assignment_method: 'round_robin'
-        },
-      });
-
-      // Update partner metrics
-      const { data: partnerProfile } = await db
-        .from('profiles')
-        .select('jobs_offered_count, jobs_accepted_count')
-        .eq('id', partnerId)
-        .single();
-
-      if (partnerProfile) {
-        await db.from('profiles').update({
-          jobs_offered_count: (partnerProfile.jobs_offered_count || 0) + 1,
-          jobs_accepted_count: (partnerProfile.jobs_accepted_count || 0) + 1,
-        }).eq('id', partnerId);
-      }
-    } else {
-      // No partner available — booking stays as "pending" for admin to handle
-      await db.from('booking_events').insert({
-        booking_id: inserted.id,
-        event_type: 'BOOKING_CREATED',
-        actor: 'USER',
-        metadata: {
-          customer_id: user!.id,
-          service_id: service!.id,
-          amount: totalPrice,
-          auto_assign_result: 'no_partner_available'
-        },
-      });
-    }
+    // 3. Fire async notification — does not block redirect
+    void notifyCustomer(
+      user!.id,
+      "Booking Received!",
+      `Your booking for ${service!.title} on ${date} at ${time} has been placed. We're finding a professional for you.`,
+      "booking_created",
+      { booking_id: inserted.id, service_title: service!.title }
+    );
 
     redirect(`/checkout/success?bookingId=${inserted.id}`);
   }

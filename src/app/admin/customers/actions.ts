@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { requireAdmin } from "@/utils/supabase/auth-checks";
 
 /**
  * Update Customer Account Status
@@ -10,6 +11,7 @@ export async function updateCustomerStatusAction(
   customerId: string, 
   status: 'active' | 'suspended' | 'flagged'
 ) {
+  await requireAdmin();
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -34,6 +36,7 @@ export async function saveCustomerNoteAction(
   noteText: string, 
   riskTrigger?: string
 ) {
+  await requireAdmin();
   const supabase = await createClient();
 
   const updateData: Record<string, any> = {

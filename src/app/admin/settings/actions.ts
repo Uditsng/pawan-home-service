@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { requireAdmin } from "@/utils/supabase/auth-checks";
 
 /**
  * Save settings to database
@@ -12,6 +13,7 @@ export async function updateSettingsAction(settings: {
   partner_penalty_rate?: string;
   service_areas?: string[];
 }) {
+  await requireAdmin();
   const supabase = await createClient();
 
   // Update tax_rate
@@ -50,6 +52,7 @@ export async function updateSettingsAction(settings: {
  * Seed Demo Data in Supabase
  */
 export async function seedDemoDataAction() {
+  await requireAdmin();
   const supabase = await createClient();
 
   // 1. Fetch available services, customers, and partners

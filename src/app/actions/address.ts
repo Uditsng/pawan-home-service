@@ -5,15 +5,13 @@ import { revalidatePath } from "next/cache";
 
 interface SaveAddressPayload {
   label: string;
-  formatted_address: string;
-  address_line_1: string;
-  address_line_2?: string;
+  house_flat: string;
+  building_society: string;
+  area_colony: string;
+  landmark?: string;
   city: string;
   state: string;
   pincode: string;
-  latitude: number;
-  longitude: number;
-  place_id: string;
   is_default?: boolean;
 }
 
@@ -43,20 +41,34 @@ export async function saveAddress(payload: SaveAddressPayload) {
 
   const isFirst = (count ?? 0) === 0;
 
+  const formattedAddress = [
+    payload.house_flat.trim(),
+    payload.building_society.trim(),
+    payload.area_colony.trim(),
+    payload.landmark?.trim() ? `Near ${payload.landmark.trim()}` : null,
+    payload.city.trim(),
+    payload.state.trim(),
+    payload.pincode.trim(),
+  ]
+    .filter(Boolean)
+    .join(", ");
+
   const { data, error } = await supabase
     .from("user_addresses")
     .insert({
       user_id: user.id,
       label: payload.label,
-      formatted_address: payload.formatted_address,
-      address_line_1: payload.address_line_1,
-      address_line_2: payload.address_line_2 || null,
+      formatted_address: formattedAddress,
+      address_line_1: payload.house_flat,
+      address_line_2: payload.building_society,
+      area: payload.area_colony,
+      landmark: payload.landmark || null,
       city: payload.city,
       state: payload.state,
       pincode: payload.pincode,
-      latitude: payload.latitude,
-      longitude: payload.longitude,
-      place_id: payload.place_id,
+      latitude: 0,
+      longitude: 0,
+      place_id: "structured",
       is_default: payload.is_default || isFirst,
     })
     .select()

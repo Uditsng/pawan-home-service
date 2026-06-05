@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useTransition, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/Button";
@@ -67,10 +68,26 @@ export function BookingsCommand({
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(8);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
-  // Action Dropdown
-  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  // Portal-based dropdown state for specific row actions to prevent overflow clipping
+  const [dropdownMenu, setDropdownMenu] = useState<{
+    bookingId: string;
+    rect: DOMRect;
+    booking: SerializedBooking;
+  } | null>(null);
+
+  useEffect(() => {
+    const handleClose = () => {
+      setDropdownMenu(null);
+    };
+    window.addEventListener("scroll", handleClose, true);
+    window.addEventListener("resize", handleClose, true);
+    return () => {
+      window.removeEventListener("scroll", handleClose, true);
+      window.removeEventListener("resize", handleClose, true);
+    };
+  }, []);
 
   // Detail Drawer
   const [selectedBooking, setSelectedBooking] = useState<SerializedBooking | null>(null);
@@ -151,7 +168,7 @@ export function BookingsCommand({
   // ─── Actions ───────────────────────────────────────────────
 
   const handleStatusUpdate = (bookingId: string, newStatus: string, reason?: string) => {
-    setOpenDropdownId(null);
+    setDropdownMenu(null);
     setModalAction(null);
     setModalTargetBooking(null);
 
@@ -275,14 +292,14 @@ export function BookingsCommand({
     setAssignTargetBooking(booking);
     setPartnerSearchTerm("");
     setIsAssignDrawerOpen(true);
-    setOpenDropdownId(null);
+    setDropdownMenu(null);
   };
 
   const openModal = (booking: SerializedBooking, action: "cancel" | "complete" | "reassign") => {
     setModalTargetBooking(booking);
     setModalAction(action);
     setCancelReason("");
-    setOpenDropdownId(null);
+    setDropdownMenu(null);
   };
 
   // ─── Available partners filtered for assign drawer ─────────
@@ -313,10 +330,10 @@ export function BookingsCommand({
   // ─── RENDER ────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Error Banner */}
       {actionError && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-[20px] p-5 flex items-center justify-between gap-4 text-xs font-semibold text-red-700 animate-in fade-in slide-in-from-top-4 duration-300">
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center justify-between gap-4 text-xs font-semibold text-red-700 animate-in fade-in slide-in-from-top-4 duration-300">
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined text-red-600 text-lg">error</span>
             <p className="leading-relaxed">{actionError}</p>
@@ -332,16 +349,16 @@ export function BookingsCommand({
       )}
 
       {/* ─── 1. OPERATIONAL METRIC CARDS ─────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        <div className="bg-surface-container-lowest p-6 rounded-[24px] border border-outline-variant/15 shadow-sm relative overflow-hidden group">
-          <div className="absolute right-0 top-0 w-24 h-24 bg-primary/5 rounded-bl-[64px] transition-transform group-hover:scale-105"></div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm relative overflow-hidden group">
+          <div className="absolute right-0 top-0 w-20 h-20 bg-primary/5 rounded-bl-[48px] transition-transform group-hover:scale-105"></div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">
             Total Operations
           </p>
-          <h2 className="text-3xl font-bold text-primary font-headline mt-3">
+          <h2 className="text-2xl font-bold text-primary font-headline mt-1.5">
             {statusCounts.all} Bookings
           </h2>
-          <div className="flex gap-4 mt-2 text-xs text-on-surface-variant/80 font-normal">
+          <div className="flex gap-3 mt-1.5 text-xs text-on-surface-variant/80 font-normal">
             <span className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
               {statusCounts.completed} Completed
@@ -353,20 +370,20 @@ export function BookingsCommand({
           </div>
         </div>
 
-        <div className="bg-surface-container-lowest p-6 rounded-[24px] border border-outline-variant/15 shadow-sm relative overflow-hidden group">
-          <div className="absolute right-0 top-0 w-24 h-24 bg-secondary/5 rounded-bl-[64px] transition-transform group-hover:scale-105"></div>
+        <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm relative overflow-hidden group">
+          <div className="absolute right-0 top-0 w-20 h-20 bg-secondary/5 rounded-bl-[48px] transition-transform group-hover:scale-105"></div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">
             Gross Merchandise Value
           </p>
-          <h2 className="text-3xl font-bold text-primary font-headline mt-3">
+          <h2 className="text-2xl font-bold text-primary font-headline mt-1.5">
             ₹{currentGmv.toLocaleString()}
           </h2>
-          <p className="text-xs text-on-surface-variant/85 mt-2 font-normal">
+          <p className="text-[11px] text-on-surface-variant/85 mt-1 font-normal">
             Accumulated across all booking operations
           </p>
         </div>
 
-        <div className={`p-6 rounded-[24px] border shadow-sm relative overflow-hidden group ${
+        <div className={`p-4 rounded-xl border shadow-sm relative overflow-hidden group ${
           unassignedCount > 0
             ? "bg-amber-500/5 border-amber-500/20"
             : "bg-surface-container-lowest border-outline-variant/15"
@@ -374,18 +391,18 @@ export function BookingsCommand({
           <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">
             Unassigned Queue
           </p>
-          <h2 className={`text-3xl font-bold font-headline mt-3 ${
+          <h2 className={`text-2xl font-bold font-headline mt-1.5 ${
             unassignedCount > 0 ? "text-amber-700" : "text-primary"
           }`}>
             {unassignedCount} Pending
           </h2>
           {unassignedCount > 0 ? (
-            <p className="text-xs text-amber-600 mt-2 font-semibold flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-              Requires manual partner assignment
+            <p className="text-[11px] text-amber-600 mt-1 font-semibold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+              Requires manual assignment
             </p>
           ) : (
-            <p className="text-xs text-secondary mt-2 font-semibold flex items-center gap-1">
+            <p className="text-[11px] text-secondary mt-1 font-semibold flex items-center gap-1">
               <span className="material-symbols-outlined text-sm">check_circle</span>
               All bookings assigned
             </p>
@@ -394,36 +411,40 @@ export function BookingsCommand({
       </div>
 
       {/* ─── 2. SEARCH, FILTERS, & STATUS PILLS ─────────────── */}
-      <Card variant="glass" className="p-4 sm:p-5">
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+      <Card variant="glass" className="p-3.5">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
           {/* Search Input */}
-          <div className="relative flex-1 group">
-            <span className="material-symbols-outlined absolute left-3.5 top-3.5 text-on-surface-variant/40 group-focus-within:text-secondary transition-colors text-[20px]">
+          <div className="relative flex-1 group" suppressHydrationWarning={true}>
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/40 group-focus-within:text-secondary transition-colors text-[18px]">
               search
             </span>
             <input
               type="text"
-              placeholder="Search Booking ID, Customer, Partner, Phone..."
+              placeholder="Search Booking ID, Customer, Technician, Phone..."
               value={searchTerm}
               onChange={(e) => handleFilterChange(setSearchTerm, e.target.value)}
-              className="w-full bg-surface-container-low text-primary text-sm font-semibold pl-11 pr-4 py-3.5 rounded-2xl border border-outline-variant/40 focus:border-secondary/70 focus:outline-none focus:ring-4 focus:ring-secondary/10 transition-all placeholder-on-surface-variant/40"
+              autoComplete="off"
+              name="search"
+              id="admin-bookings-search"
+              suppressHydrationWarning={true}
+              className="w-full bg-surface-container-low text-primary text-xs font-semibold pl-9 pr-4 py-2 rounded-lg border border-outline-variant/40 focus:border-secondary/70 focus:outline-none focus:ring-1 focus:ring-secondary/10 transition-all placeholder-on-surface-variant/40"
             />
             {searchTerm && (
               <button
                 onClick={() => handleFilterChange(setSearchTerm, "")}
-                className="absolute right-3.5 top-3.5 text-on-surface-variant/50 hover:text-primary transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 hover:text-primary transition-colors"
               >
-                <span className="material-symbols-outlined text-lg">close</span>
+                <span className="material-symbols-outlined text-base">close</span>
               </button>
             )}
           </div>
 
           {/* Dropdown Filters */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             <select
               value={categoryFilter}
               onChange={(e) => handleFilterChange(setCategoryFilter, e.target.value)}
-              className="w-full bg-surface-container-low text-primary text-[11px] uppercase tracking-wider font-extrabold px-3 py-3 rounded-2xl border border-outline-variant/40 focus:border-secondary/60 focus:outline-none transition-all cursor-pointer"
+              className="w-full bg-surface-container-low text-primary text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-2 rounded-lg border border-outline-variant/40 focus:border-secondary/60 focus:outline-none transition-all cursor-pointer"
             >
               <option value="All">🔧 All Services</option>
               {serviceCategories.map((cat) => (
@@ -434,7 +455,7 @@ export function BookingsCommand({
             <select
               value={cityFilter}
               onChange={(e) => handleFilterChange(setCityFilter, e.target.value)}
-              className="w-full bg-surface-container-low text-primary text-[11px] uppercase tracking-wider font-extrabold px-3 py-3 rounded-2xl border border-outline-variant/40 focus:border-secondary/60 focus:outline-none transition-all cursor-pointer"
+              className="w-full bg-surface-container-low text-primary text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-2 rounded-lg border border-outline-variant/40 focus:border-secondary/60 focus:outline-none transition-all cursor-pointer"
             >
               <option value="All">📍 All Cities</option>
               {cities.map((city) => (
@@ -446,20 +467,20 @@ export function BookingsCommand({
               type="date"
               value={dateFilter}
               onChange={(e) => handleFilterChange(setDateFilter, e.target.value)}
-              className="w-full bg-surface-container-low text-primary text-[11px] uppercase tracking-wider font-extrabold px-3 py-3 rounded-2xl border border-outline-variant/40 focus:border-secondary/60 focus:outline-none transition-all cursor-pointer"
+              className="w-full bg-surface-container-low text-primary text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-2 rounded-lg border border-outline-variant/40 focus:border-secondary/60 focus:outline-none transition-all cursor-pointer"
             />
           </div>
         </div>
 
         {/* Status Segment Pills */}
-        <div className="mt-4 flex bg-surface-container p-1 rounded-xl border border-outline-variant/10 shadow-inner overflow-x-auto no-scrollbar">
+        <div className="mt-3 flex bg-surface-container p-1 rounded-xl border border-outline-variant/10 shadow-inner overflow-x-auto no-scrollbar">
           {statusPills.map((pill) => (
             <button
               key={pill.key}
               onClick={() => handleFilterChange(setActiveStatus, pill.key)}
-              className={`shrink-0 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all whitespace-nowrap ${
+              className={`shrink-0 px-3.5 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all whitespace-nowrap ${
                 activeStatus === pill.key
-                  ? "bg-primary text-white shadow-xl shadow-primary/20"
+                  ? "bg-primary text-white shadow-md shadow-primary/20"
                   : "text-on-surface-variant hover:text-primary"
               }`}
             >
@@ -470,29 +491,29 @@ export function BookingsCommand({
       </Card>
 
       {/* ─── 3. HIGH-DENSITY DATA TABLE ──────────────────────── */}
-      <Card variant="solid" className="p-0 overflow-hidden ring-1 ring-outline-variant/10">
+      <Card variant="solid" className="p-0 overflow-hidden ring-1 ring-outline-variant/10 rounded-xl">
 
         {/* DESKTOP TABLE */}
         <div className="hidden lg:block overflow-x-auto">
           <table className="w-full border-collapse text-left">
             <thead>
               <tr className="bg-surface-dim/40 border-b border-outline-variant/20 uppercase text-[9px] font-black text-on-surface-variant tracking-widest">
-                <th className="py-4.5 px-6">Operational ID</th>
-                <th className="py-4.5 px-5">Client / Zone</th>
-                <th className="py-4.5 px-5">Service Engine</th>
-                <th className="py-4.5 px-5">Deployment</th>
-                <th className="py-4.5 px-5 text-center">Lifecycle State</th>
-                <th className="py-4.5 px-5 text-right">Volume</th>
-                <th className="py-4.5 px-5 text-right">Actions</th>
+                <th className="py-2.5 px-4">Operational ID</th>
+                <th className="py-2.5 px-4">Client / Zone</th>
+                <th className="py-2.5 px-4">Service Engine</th>
+                <th className="py-2.5 px-4">Deployment</th>
+                <th className="py-2.5 px-4 text-center">Lifecycle State</th>
+                <th className="py-2.5 px-4 text-right">Volume</th>
+                <th className="py-2.5 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/15">
               {paginatedBookings.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center text-on-surface-variant/50">
-                    <span className="material-symbols-outlined text-4xl block mb-2 opacity-40">inbox</span>
-                    <p className="text-sm font-semibold">No bookings match the current filters.</p>
-                    <p className="text-xs text-on-surface-variant/40 mt-1">Adjust your search or status filters and try again.</p>
+                  <td colSpan={7} className="py-12 text-center text-on-surface-variant/50">
+                    <span className="material-symbols-outlined text-3xl block mb-1 opacity-40">inbox</span>
+                    <p className="text-xs font-semibold">No bookings match the current filters.</p>
+                    <p className="text-[11px] text-on-surface-variant/40 mt-0.5">Adjust your search or status filters and try again.</p>
                   </td>
                 </tr>
               ) : (
@@ -503,62 +524,62 @@ export function BookingsCommand({
                     <tr key={booking.id} className="hover:bg-surface-container-low/30 transition-colors group">
 
                       {/* Col 1: Operational ID & Timestamp */}
-                      <td className="py-5 px-6">
-                        <p className="text-sm font-black text-primary font-mono tracking-tighter">
+                      <td className="py-2 px-4">
+                        <p className="text-xs font-black text-primary font-mono tracking-tighter">
                           BK-{booking.id.slice(0, 8).toUpperCase()}
                         </p>
-                        <p className="text-[10px] font-bold text-on-surface-variant/50 uppercase tracking-widest mt-1">
+                        <p className="text-[9px] font-bold text-on-surface-variant/50 uppercase tracking-widest leading-none mt-0.5">
                           {booking.created_at
-                            ? format(new Date(booking.created_at), "MMM dd, yyyy · hh:mm a")
-                            : "Unscheduled"}
+                             ? format(new Date(booking.created_at), "MMM dd, yyyy · hh:mm a")
+                             : "Unscheduled"}
                         </p>
                       </td>
 
                       {/* Col 2: Client / Zone */}
-                      <td className="py-5 px-5">
+                      <td className="py-2 px-4">
                         {booking.customer ? (
                           <Link
                             href="/admin/customers"
-                            className="text-sm font-extrabold text-primary uppercase tracking-tight hover:text-secondary transition-colors"
+                            className="text-xs font-extrabold text-primary uppercase tracking-tight hover:text-secondary transition-colors"
                           >
                             {booking.customer.full_name}
                           </Link>
                         ) : (
-                          <p className="text-sm font-extrabold text-on-surface-variant/50 uppercase tracking-tight">
+                          <p className="text-xs font-extrabold text-on-surface-variant/50 uppercase tracking-tight">
                             Guest User
                           </p>
                         )}
-                        <p className="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-widest flex items-center gap-1 mt-1">
-                          <span className="material-symbols-outlined text-secondary text-sm">location_on</span>
+                        <p className="text-[9px] font-bold text-on-surface-variant/60 uppercase tracking-widest flex items-center gap-0.5 leading-none mt-0.5">
+                          <span className="material-symbols-outlined text-secondary text-xs">location_on</span>
                           {[booking.city, booking.pincode].filter(Boolean).join(" · ") || "Zone N/A"}
                         </p>
                         {booking.address && (
-                          <p className="text-[9px] text-on-surface-variant/40 font-normal mt-0.5 truncate max-w-[180px]">
+                          <p className="text-[9px] text-on-surface-variant/40 font-normal leading-none mt-0.5 truncate max-w-[160px]">
                             {booking.address}
                           </p>
                         )}
                       </td>
 
                       {/* Col 3: Service Engine */}
-                      <td className="py-5 px-5">
-                        <p className="text-sm font-black text-primary uppercase tracking-tight">
+                      <td className="py-2 px-4">
+                        <p className="text-xs font-black text-primary uppercase tracking-tight">
                           {booking.service?.title || "Home Service"}
                         </p>
-                        <p className="text-[10px] font-bold text-secondary uppercase tracking-widest mt-1">
+                        <p className="text-[9px] font-bold text-secondary uppercase tracking-widest leading-none mt-0.5">
                           {booking.service?.category || "General"}
                         </p>
                       </td>
 
                       {/* Col 4: Deployment / Partner */}
-                      <td className="py-5 px-5">
+                      <td className="py-2 px-4">
                         {booking.partner ? (
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-primary/5 flex items-center justify-center text-primary font-black text-[10px] border border-primary/10 shrink-0">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-primary/5 flex items-center justify-center text-primary font-black text-[9px] border border-primary/10 shrink-0 overflow-hidden">
                               {booking.partner.avatar_url ? (
                                 <img
                                   src={booking.partner.avatar_url}
                                   alt={booking.partner.full_name}
-                                  className="w-full h-full object-cover rounded-xl"
+                                  className="w-full h-full object-cover"
                                 />
                               ) : (
                                 booking.partner.full_name
@@ -577,111 +598,66 @@ export function BookingsCommand({
                             </Link>
                           </div>
                         ) : booking.status === "pending" ? (
-                          <span className="bg-amber-500/10 text-amber-700 border border-amber-500/20 px-2.5 py-1 text-[8px] font-black uppercase tracking-wider rounded-full inline-flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
-                            Auto-Assigning...
+                          <span className="bg-amber-500/10 text-amber-700 border border-amber-500/20 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider rounded-full inline-flex items-center gap-1">
+                            <span className="w-1 h-1 bg-amber-500 rounded-full animate-pulse"></span>
+                            Unassigned
                           </span>
                         ) : (
-                          <span className="bg-red-500/10 text-red-600 border border-red-500/20 px-2.5 py-1 text-[8px] font-black uppercase tracking-wider rounded-full inline-flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 bg-red-600 rounded-full"></span>
+                          <span className="bg-red-500/10 text-red-600 border border-red-500/20 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider rounded-full inline-flex items-center gap-1">
+                            <span className="w-1 h-1 bg-red-600 rounded-full"></span>
                             Unassigned
                           </span>
                         )}
                       </td>
 
                       {/* Col 5: Lifecycle State */}
-                      <td className="py-5 px-5 text-center">
-                        <Badge variant={statusConf.variant}>
-                          <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${statusConf.dotClass}`}></span>
+                      <td className="py-2 px-4 text-center">
+                        <Badge variant={statusConf.variant} className="text-[9px] px-1.5 py-0">
+                          <span className={`w-1.5 h-1.5 rounded-full mr-1 ${statusConf.dotClass}`}></span>
                           {statusConf.label}
                         </Badge>
                       </td>
 
                       {/* Col 6: Volume / Financial */}
-                      <td className="py-5 px-5 text-right">
-                        <p className="text-base font-bold text-primary font-headline tracking-tighter">
+                      <td className="py-2 px-4 text-right">
+                        <p className="text-sm font-bold text-primary font-headline tracking-tighter leading-none">
                           ₹{booking.total_amount.toLocaleString()}
                         </p>
-                        <p className="text-[10px] font-bold text-on-surface-variant/50 uppercase tracking-widest mt-0.5">
+                        <p className="text-[9px] font-bold text-on-surface-variant/50 uppercase tracking-widest leading-none mt-0.5">
                           {booking.payment_method || "UPI"}
                         </p>
                       </td>
 
                       {/* Col 7: Actions */}
-                      <td className="py-5 px-5 text-right relative">
-                        <div className="flex items-center justify-end gap-2">
+                      <td className="py-2 px-4 text-right relative">
+                        <div className="flex items-center justify-end gap-1.5">
                           <Button
                             variant="primary"
                             onClick={() => openDetailDrawer(booking)}
-                            className="bg-primary hover:bg-primary/90 text-white text-[9px] uppercase tracking-widest font-black py-2 px-3.5 rounded-xl transition-all"
+                            className="bg-primary hover:bg-primary/90 text-white text-[9px] uppercase tracking-widest font-black py-1.5 px-3 rounded-lg transition-all"
                           >
                             Manage
                           </Button>
                           <div className="relative">
                             <Button
                               variant="ghost"
-                              onClick={() => setOpenDropdownId(openDropdownId === booking.id ? null : booking.id)}
-                              className="p-1 h-9 w-9 rounded-xl hover:bg-surface-container-high transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                if (dropdownMenu?.bookingId === booking.id) {
+                                  setDropdownMenu(null);
+                                } else {
+                                  setDropdownMenu({
+                                    bookingId: booking.id,
+                                    rect,
+                                    booking
+                                  });
+                                }
+                              }}
+                              className="p-1 h-7 w-7 rounded-lg hover:bg-surface-container-high transition-colors"
                             >
-                              <span className="material-symbols-outlined text-lg">more_vert</span>
+                              <span className="material-symbols-outlined text-[16px] font-bold block">more_vert</span>
                             </Button>
-
-                            {openDropdownId === booking.id && (
-                              <div className="absolute right-0 mt-2 w-52 bg-white border border-outline-variant/30 rounded-2xl shadow-xl z-50 overflow-hidden text-left animate-in fade-in slide-in-from-top-2 duration-200">
-                                <div className="p-1.5 divide-y divide-outline-variant/10">
-                                  <div className="py-1">
-                                    <p className="text-[8px] font-black uppercase text-on-surface-variant/40 px-3.5 py-1 tracking-wider">Operations</p>
-                                    <button
-                                      onClick={() => openDetailDrawer(booking)}
-                                      className="w-full text-left px-3.5 py-2 text-xs font-bold text-primary hover:bg-surface-container-low rounded-xl transition-colors flex items-center gap-2"
-                                    >
-                                      <span className="material-symbols-outlined text-sm">visibility</span>
-                                      View Full Details
-                                    </button>
-                                    {!booking.partner_id && (
-                                      <button
-                                        onClick={() => openAssignDrawer(booking)}
-                                        className="w-full text-left px-3.5 py-2 text-xs font-bold text-secondary hover:bg-secondary/10 rounded-xl transition-colors flex items-center gap-2"
-                                      >
-                                        <span className="material-symbols-outlined text-sm">person_add</span>
-                                        Manually Assign Partner
-                                      </button>
-                                    )}
-                                    {booking.partner_id && booking.status !== "completed" && booking.status !== "cancelled" && (
-                                      <button
-                                        onClick={() => openModal(booking, "reassign")}
-                                        className="w-full text-left px-3.5 py-2 text-xs font-bold text-amber-700 hover:bg-amber-50 rounded-xl transition-colors flex items-center gap-2"
-                                      >
-                                        <span className="material-symbols-outlined text-sm">swap_horiz</span>
-                                        Reassign Partner
-                                      </button>
-                                    )}
-                                  </div>
-
-                                  <div className="py-1">
-                                    <p className="text-[8px] font-black uppercase text-on-surface-variant/40 px-3.5 py-1 tracking-wider">Overrides</p>
-                                    {booking.status !== "completed" && booking.status !== "cancelled" && (
-                                      <button
-                                        onClick={() => openModal(booking, "complete")}
-                                        className="w-full text-left px-3.5 py-2 text-xs font-bold text-secondary hover:bg-secondary/10 rounded-xl transition-colors flex items-center gap-2"
-                                      >
-                                        <span className="material-symbols-outlined text-sm">check_circle</span>
-                                        Mark as Completed
-                                      </button>
-                                    )}
-                                    {booking.status !== "cancelled" && (
-                                      <button
-                                        onClick={() => openModal(booking, "cancel")}
-                                        className="w-full text-left px-3.5 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors flex items-center gap-2"
-                                      >
-                                        <span className="material-symbols-outlined text-sm">cancel</span>
-                                        Force Cancel Booking
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            )}
                           </div>
                         </div>
                       </td>
@@ -694,11 +670,11 @@ export function BookingsCommand({
         </div>
 
         {/* MOBILE CARDS */}
-        <div className="block lg:hidden divide-y divide-outline-variant/15 p-4 space-y-4">
+        <div className="block lg:hidden divide-y divide-outline-variant/15 p-3 space-y-3">
           {paginatedBookings.length === 0 ? (
-            <div className="py-16 text-center text-on-surface-variant/50 bg-white rounded-3xl p-6 ring-1 ring-outline-variant/10">
-              <span className="material-symbols-outlined text-4xl block mb-2 opacity-40">inbox</span>
-              <p className="text-sm font-semibold">No bookings match the current filters.</p>
+            <div className="py-12 text-center text-on-surface-variant/50 bg-white rounded-xl p-4 ring-1 ring-outline-variant/10">
+              <span className="material-symbols-outlined text-3xl block mb-1 opacity-40">inbox</span>
+              <p className="text-xs font-semibold">No bookings match the current filters.</p>
             </div>
           ) : (
             paginatedBookings.map((booking) => {
@@ -706,27 +682,27 @@ export function BookingsCommand({
               return (
                 <div
                   key={booking.id}
-                  className="bg-white rounded-3xl p-5 ring-1 ring-outline-variant/10 shadow-sm space-y-4 hover:shadow-md transition-shadow"
+                  className="bg-white rounded-xl p-3.5 ring-1 ring-outline-variant/10 shadow-sm space-y-3 hover:shadow-md transition-shadow"
                 >
                   {/* Header */}
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-black text-primary font-mono tracking-tighter">
+                      <p className="text-xs font-black text-primary font-mono tracking-tighter">
                         BK-{booking.id.slice(0, 8).toUpperCase()}
                       </p>
-                      <p className="text-[9px] text-on-surface-variant/50 font-bold uppercase tracking-widest mt-1">
+                      <p className="text-[9px] text-on-surface-variant/50 font-bold uppercase tracking-widest mt-0.5">
                         {booking.created_at ? format(new Date(booking.created_at), "MMM dd, yyyy") : "N/A"}
                       </p>
                     </div>
-                    <Badge variant={statusConf.variant}>
-                      <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${statusConf.dotClass}`}></span>
+                    <Badge variant={statusConf.variant} className="text-[9px] px-1.5 py-0">
+                      <span className={`w-1.5 h-1.5 rounded-full mr-1 ${statusConf.dotClass}`}></span>
                       {statusConf.label}
                     </Badge>
                   </div>
 
                   {/* Service & Customer */}
-                  <div className="space-y-1.5">
-                    <p className="text-xs font-extrabold text-primary uppercase tracking-tight">
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-bold text-primary uppercase tracking-tight">
                       {booking.service?.title || "Home Service"}
                     </p>
                     <p className="text-[10px] text-on-surface-variant/70 font-semibold">
@@ -735,30 +711,30 @@ export function BookingsCommand({
                   </div>
 
                   {/* Stats Row */}
-                  <div className="grid grid-cols-3 gap-3 bg-surface-dim/40 rounded-2xl p-3 border border-outline-variant/10">
+                  <div className="grid grid-cols-3 gap-2 bg-surface-dim/40 rounded-xl p-2 border border-outline-variant/10">
                     <div className="text-center">
                       <p className="text-[8px] font-black uppercase text-on-surface-variant/40 tracking-wider">Amount</p>
-                      <p className="text-primary font-black text-sm mt-0.5">₹{booking.total_amount.toLocaleString()}</p>
+                      <p className="text-primary font-black text-xs mt-0.5">₹{booking.total_amount.toLocaleString()}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-[8px] font-black uppercase text-on-surface-variant/40 tracking-wider">Payment</p>
-                      <p className="text-primary font-black text-sm mt-0.5">{booking.payment_method || "UPI"}</p>
+                      <p className="text-primary font-black text-xs mt-0.5">{booking.payment_method || "UPI"}</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-[8px] font-black uppercase text-on-surface-variant/40 tracking-wider">Partner</p>
-                      <p className="text-primary font-black text-[10px] mt-0.5 truncate">
+                      <p className="text-[8px] font-black uppercase text-on-surface-variant/40 tracking-wider">Technician</p>
+                      <p className="text-primary font-black text-[9px] mt-0.5 truncate">
                         {booking.partner?.full_name || "Unassigned"}
                       </p>
                     </div>
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center justify-end gap-2 pt-1 border-t border-outline-variant/10">
+                  <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-outline-variant/10">
                     {!booking.partner_id && booking.status === "pending" && (
                       <button
                         onClick={() => openAssignDrawer(booking)}
-                        className="p-2 bg-surface-container rounded-xl text-on-surface-variant hover:bg-secondary/15 hover:text-primary transition-colors"
-                        title="Assign Partner"
+                        className="p-1.5 bg-surface-container rounded-lg text-on-surface-variant hover:bg-secondary/15 hover:text-primary transition-colors"
+                        title="Assign Technician"
                       >
                         <span className="material-symbols-outlined text-sm">person_add</span>
                       </button>
@@ -766,7 +742,7 @@ export function BookingsCommand({
                     <Button
                       variant="primary"
                       onClick={() => openDetailDrawer(booking)}
-                      className="bg-primary hover:bg-primary/90 text-white text-[8px] uppercase tracking-widest font-black py-1.5 px-3 rounded-xl transition-all"
+                      className="bg-primary hover:bg-primary/90 text-white text-[9px] uppercase tracking-widest font-black py-1 px-2.5 rounded-lg transition-all"
                     >
                       Manage
                     </Button>
@@ -778,7 +754,7 @@ export function BookingsCommand({
         </div>
 
         {/* ─── PAGINATION FOOTER ─────────────────────────────── */}
-        <div className="bg-surface-dim/30 border-t border-outline-variant/15 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="bg-surface-dim/30 border-t border-outline-variant/15 p-3.5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-xs font-bold text-on-surface-variant/60">
             Showing <span className="text-primary">{Math.min(totalItems, startIndex + 1)}</span> to{" "}
             <span className="text-primary">{Math.min(totalItems, startIndex + itemsPerPage)}</span> of{" "}
@@ -791,12 +767,12 @@ export function BookingsCommand({
               <select
                 value={itemsPerPage}
                 onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
-                className="bg-surface-container-low text-primary text-xs font-bold px-2 py-1 rounded-xl border border-outline-variant/40 focus:outline-none cursor-pointer"
+                className="bg-surface-container-low text-primary text-xs font-bold px-2 py-1 rounded-lg border border-outline-variant/40 focus:outline-none cursor-pointer"
               >
-                <option value={5}>5</option>
-                <option value={8}>8</option>
-                <option value={15}>15</option>
-                <option value={20}>20</option>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
               </select>
             </div>
 
@@ -944,9 +920,9 @@ export function BookingsCommand({
                     {selectedBooking.accepted_at && (
                       <div className="relative">
                         <span className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-primary border-2 border-white"></span>
-                        <p className="text-xs font-bold text-primary">Partner Assigned</p>
+                        <p className="text-xs font-bold text-primary">Technician Assigned</p>
                         <p className="text-[10px] text-on-surface-variant/60 mt-0.5">
-                          {selectedBooking.partner?.full_name || "Professional"} confirmed · {format(new Date(selectedBooking.accepted_at), "PPP · p")}
+                          {selectedBooking.partner?.full_name || "Technician"} confirmed · {format(new Date(selectedBooking.accepted_at), "PPP · p")}
                         </p>
                       </div>
                     )}
@@ -1029,7 +1005,7 @@ export function BookingsCommand({
               {/* Partner Tab */}
               {activeDrawerTab === "partner" && (
                 <div className="space-y-4">
-                  <h5 className="text-xs font-bold uppercase tracking-widest text-primary">Assigned Professional</h5>
+                  <h5 className="text-xs font-bold uppercase tracking-widest text-primary">Assigned Technician</h5>
                   {selectedBooking.partner ? (
                     <div className="bg-surface-container p-4 rounded-xl border border-outline-variant/15">
                       <div className="flex items-center gap-4">
@@ -1064,7 +1040,7 @@ export function BookingsCommand({
                             className="w-full rounded-xl text-xs font-bold"
                           >
                             <span className="material-symbols-outlined text-sm mr-1">swap_horiz</span>
-                            Reassign to Another Professional
+                            Reassign to Another Technician
                           </Button>
                         </div>
                       )}
@@ -1072,8 +1048,8 @@ export function BookingsCommand({
                   ) : (
                     <div className="bg-amber-500/5 border border-amber-500/20 p-6 rounded-xl text-center space-y-4">
                       <span className="material-symbols-outlined text-4xl text-amber-500">person_search</span>
-                      <p className="text-sm font-bold text-amber-700">No Professional Assigned</p>
-                      <p className="text-xs text-on-surface-variant/70">This booking is waiting for partner assignment.</p>
+                      <p className="text-sm font-bold text-amber-700">No Technician Assigned</p>
+                      <p className="text-xs text-on-surface-variant/70">This booking is waiting for technician assignment.</p>
                       <Button
                         variant="primary"
                         onClick={() => {
@@ -1083,7 +1059,7 @@ export function BookingsCommand({
                         className="bg-secondary hover:brightness-105 text-primary font-black text-[10px] uppercase tracking-widest px-6 py-3 rounded-xl"
                       >
                         <span className="material-symbols-outlined text-sm mr-1">person_add</span>
-                        Assign Partner Now
+                        Assign Technician Now
                       </Button>
                     </div>
                   )}
@@ -1129,8 +1105,8 @@ export function BookingsCommand({
                         >
                           <span className="material-symbols-outlined text-primary">person_add</span>
                           <div className="text-left">
-                            <p className="text-xs font-bold text-primary">Manually Assign Partner</p>
-                            <p className="text-[10px] text-on-surface-variant/60">Override auto-assignment and select a Professional.</p>
+                            <p className="text-xs font-bold text-primary">Manually Assign Technician</p>
+                            <p className="text-[10px] text-on-surface-variant/60">Select a technician from the active workforce.</p>
                           </div>
                         </button>
                       )}
@@ -1152,7 +1128,7 @@ export function BookingsCommand({
         </div>
       )}
 
-      {/* ─── 5. MANUAL ASSIGN PARTNER DRAWER ─────────────────── */}
+      {/* ─── 5. MANUAL ASSIGN TECHNICIAN DRAWER ─────────────────── */}
       {isAssignDrawerOpen && assignTargetBooking && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex justify-end z-50 transition-opacity">
           <div className="absolute inset-0" onClick={() => setIsAssignDrawerOpen(false)} />
@@ -1162,7 +1138,7 @@ export function BookingsCommand({
             <div className="p-6 bg-primary text-white">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-white/50">Manual Override Assignment</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-white/50">Manual Technician Assignment</p>
                   <h4 className="text-base font-bold mt-1">
                     BK-{assignTargetBooking.id.slice(0, 8).toUpperCase()}
                   </h4>
@@ -1185,7 +1161,7 @@ export function BookingsCommand({
                 <span className="material-symbols-outlined absolute left-3 top-3 text-on-surface-variant/40 text-lg">search</span>
                 <input
                   type="text"
-                  placeholder="Search partners by name, skill, or city..."
+                  placeholder="Search technicians by name, skill, or city..."
                   value={partnerSearchTerm}
                   onChange={(e) => setPartnerSearchTerm(e.target.value)}
                   className="w-full bg-surface-container text-primary text-sm font-semibold pl-10 pr-4 py-3 rounded-xl border border-outline-variant/30 focus:border-secondary/60 focus:outline-none focus:ring-4 focus:ring-secondary/10 transition-all placeholder-on-surface-variant/40"
@@ -1261,7 +1237,7 @@ export function BookingsCommand({
                 ? "Force Cancel Booking"
                 : modalAction === "complete"
                 ? "Mark as Completed"
-                : "Reassign Partner"}
+                : "Reassign Technician"}
             </h4>
             <p className="text-xs text-on-surface-variant/80 font-normal mt-3">
               Are you sure you want to{" "}
@@ -1269,7 +1245,7 @@ export function BookingsCommand({
                 ? "permanently cancel"
                 : modalAction === "complete"
                 ? "force-complete"
-                : "reassign the partner on"}{" "}
+                : "unassign/reassign the technician on"}{" "}
               booking{" "}
               <span className="font-bold text-primary font-mono">
                 BK-{modalTargetBooking.id.slice(0, 8).toUpperCase()}
@@ -1340,6 +1316,97 @@ export function BookingsCommand({
           </div>
         </div>
       )}
+      {/* ─── PORTAL-BASED ROW ACTIONS DROPDOWN ────────────────── */}
+      {dropdownMenu && createPortal(
+        <>
+          {/* Backdrop for outside click */}
+          <div 
+            className="fixed inset-0 z-[9998] bg-transparent" 
+            onClick={() => setDropdownMenu(null)} 
+          />
+          
+          {/* Menu container */}
+          <div 
+            className="fixed w-48 bg-white border border-outline-variant/30 rounded-xl shadow-lg z-[9999] p-1 divide-y divide-outline-variant/10 text-left animate-in fade-in duration-100"
+            style={{
+              top: `${
+                dropdownMenu.rect.bottom + 180 > window.innerHeight
+                  ? dropdownMenu.rect.top - 185
+                  : dropdownMenu.rect.bottom + 4
+              }px`,
+              left: `${dropdownMenu.rect.right - 192}px`
+            }}
+          >
+            <div className="py-1">
+              <p className="text-[8px] font-black uppercase text-on-surface-variant/40 px-3 py-0.5 tracking-wider">Operations</p>
+              <button
+                onClick={() => {
+                  openDetailDrawer(dropdownMenu.booking);
+                  setDropdownMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 text-xs font-bold text-primary hover:bg-surface-container-low rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-sm">visibility</span>
+                View Details
+              </button>
+              {!dropdownMenu.booking.partner_id && dropdownMenu.booking.status === "pending" && (
+                <button
+                  onClick={() => {
+                    openAssignDrawer(dropdownMenu.booking);
+                    setDropdownMenu(null);
+                  }}
+                  className="w-full text-left px-3 py-1.5 text-xs font-bold text-secondary hover:bg-secondary/10 rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">person_add</span>
+                  Assign Technician
+                </button>
+              )}
+              {dropdownMenu.booking.partner_id && dropdownMenu.booking.status !== "completed" && dropdownMenu.booking.status !== "cancelled" && (
+                <button
+                  onClick={() => {
+                    openModal(dropdownMenu.booking, "reassign");
+                    setDropdownMenu(null);
+                  }}
+                  className="w-full text-left px-3 py-1.5 text-xs font-bold text-amber-700 hover:bg-amber-500/10 rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">swap_horiz</span>
+                  Reassign Tech
+                </button>
+              )}
+            </div>
+
+            <div className="py-1">
+              <p className="text-[8px] font-black uppercase text-on-surface-variant/40 px-3 py-0.5 tracking-wider">Overrides</p>
+              {dropdownMenu.booking.status !== "completed" && dropdownMenu.booking.status !== "cancelled" && (
+                <button
+                  onClick={() => {
+                    openModal(dropdownMenu.booking, "complete");
+                    setDropdownMenu(null);
+                  }}
+                  className="w-full text-left px-3 py-1.5 text-xs font-bold text-secondary hover:bg-secondary/10 rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">check_circle</span>
+                  Mark Completed
+                </button>
+              )}
+              {dropdownMenu.booking.status !== "cancelled" && (
+                <button
+                  onClick={() => {
+                    openModal(dropdownMenu.booking, "cancel");
+                    setDropdownMenu(null);
+                  }}
+                  className="w-full text-left px-3 py-1.5 text-xs font-bold text-error hover:bg-error/10 rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">cancel</span>
+                  Force Cancel
+                </button>
+              )}
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
     </div>
   );
 }
+

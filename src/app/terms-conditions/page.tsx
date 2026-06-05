@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "Terms & Conditions | Pavan Home Solutions",
-  description: "Read the Terms & Conditions for using the Pavan Home Solutions platform.",
+  title: "Terms & Conditions | PHS Company",
+  description: "Read the Terms & Conditions for using the PHS Company platform.",
 };
 
 const sections = [
@@ -29,10 +29,6 @@ export default function TermsConditionsPage() {
       <section className="relative overflow-hidden bg-primary">
         <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
         <div className="relative max-w-7xl mx-auto px-4 py-8 md:py-16">
-          <Link href="/" className="inline-flex items-center gap-2 text-on-primary/70 hover:text-on-primary transition-colors mb-3">
-            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-            <span className="text-sm font-medium">Back to Home</span>
-          </Link>
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-secondary/15 flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-secondary text-3xl">gavel</span>
@@ -74,7 +70,7 @@ export default function TermsConditionsPage() {
                 <span className="text-xs font-bold text-on-surface-variant/50 uppercase tracking-widest">07</span>
                 <h2 className="text-lg font-bold text-on-surface">Platform Rights</h2>
               </div>
-              <p className="text-sm text-on-surface-variant leading-relaxed mb-3">Pavan Home Solutions reserves the right to:</p>
+              <p className="text-sm text-on-surface-variant leading-relaxed mb-3">PHS Company reserves the right to:</p>
               <ul className="space-y-2">
                 {platformRights.map((item) => (
                   <li key={item} className="flex items-center gap-2 text-sm text-on-surface-variant">

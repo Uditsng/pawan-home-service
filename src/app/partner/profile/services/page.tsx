@@ -90,11 +90,8 @@ export default async function PartnerServicesPage() {
               })}
             </div>
             
-            <div className="p-4 bg-slate-50 border-t border-slate-100">
-              <Link href="/partner/onboarding" className="text-secondary font-bold text-[13px] flex items-center gap-1 hover:opacity-80 transition-opacity w-fit">
-                <span className="material-symbols-outlined text-[16px]">add</span>
-                Add More Services
-              </Link>
+            <div className="p-4 bg-slate-50 border-t border-slate-100 text-xs text-slate-500 font-semibold">
+              ℹ️ To update your assigned services, please contact the administration team.
             </div>
           </div>
 
@@ -123,11 +120,8 @@ export default async function PartnerServicesPage() {
               )}
             </div>
             
-            <div className="p-4 bg-slate-50 border-t border-slate-100">
-              <Link href="/partner/onboarding" className="text-secondary font-bold text-[13px] flex items-center gap-1 hover:opacity-80 transition-opacity w-fit">
-                <span className="material-symbols-outlined text-[16px]">add</span>
-                Add Pincode
-              </Link>
+            <div className="p-4 bg-slate-50 border-t border-slate-100 text-xs text-slate-500 font-semibold">
+              ℹ️ To update your service pincodes, please contact the administration team.
             </div>
           </div>
         </div>

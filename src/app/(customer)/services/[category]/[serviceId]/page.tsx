@@ -85,15 +85,6 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
       <div className="bg-surface-container pt-6 md:pt-10 px-4 md:px-6 relative overflow-hidden">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-6 md:gap-12 items-center justify-between relative z-10">
           <div className="flex-1 w-full">
-            {/* Breadcrumb */}
-            {/* <div className="flex items-center gap-2 text-xs text-on-surface-variant mb-4">
-              <Link href="/dashboard" className="hover:text-primary transition-colors">Home</Link>
-              <span className="material-symbols-outlined text-[12px]">chevron_right</span>
-              <Link href={`/services/${resolvedParams.category}`} className="hover:text-primary transition-colors">{catName}</Link>
-              <span className="material-symbols-outlined text-[12px]">chevron_right</span>
-              <span className="text-on-surface font-semibold">{service.title}</span>
-            </div> */}
-
             {/* Icon + Title */}
             <div className="flex items-center gap-4 mb-4">
               <div className="w-14 h-14 md:w-16 md:h-16 bg-green-500/10 rounded-2xl flex items-center justify-center shrink-0">
@@ -126,6 +117,7 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
                 src={displayImage}
                 alt={service.title}
                 fill
+                loading="lazy"
                 className="rounded-2xl md:rounded-3xl shadow-xl object-cover border border-outline-variant/20"
               />
             </div>

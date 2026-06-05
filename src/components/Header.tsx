@@ -35,14 +35,14 @@ export default function Header() {
         <Link href="/dashboard" className="flex items-center gap-2">
           <Image
             src="/PHS.png"
-            alt="PavanHomeServices Logo"
+            alt="PHS Company Logo"
             className="h-12 md:h-14 w-auto"
             width={40}
             height={40}
           />
 
           <div className="text-lg md:text-xl font-bold tracking-tighter text-primary font-headline hidden sm:block">
-            PavanHomeServices
+            PHS Company
           </div>
         </Link>
 
@@ -53,12 +53,6 @@ export default function Header() {
             className="text-primary font-bold border-b-2 border-secondary font-headline tracking-tight text-sm hover:text-secondary transition-colors"
           >
             Services
-          </Link>
-          <Link
-            href="/register"
-            className="text-on-surface-variant font-medium font-headline tracking-tight text-sm hover:text-secondary transition-colors"
-          >
-            Become a Partner
           </Link>
           <Link
             href="/help"
@@ -112,14 +106,6 @@ export default function Header() {
             >
               <span className="material-symbols-outlined text-[20px] text-on-surface-variant">search</span>
               Services
-            </Link>
-            <Link
-              href="/register"
-              onClick={() => setMenuOpen(false)}
-              className="flex items-center gap-3 py-3.5 px-4 rounded-xl text-primary font-bold text-[15px] hover:bg-surface-container-low transition-colors"
-            >
-              <span className="material-symbols-outlined text-[20px] text-on-surface-variant">handshake</span>
-              Become a Partner
             </Link>
             <Link
               href="#"

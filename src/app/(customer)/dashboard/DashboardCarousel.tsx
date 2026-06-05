@@ -13,27 +13,27 @@ interface BannerItem {
 const originalBanners: BannerItem[] = [
   {
     src: "/assets/PHS Banner 1.jpeg",
-    title: "Pawan Pest Home Services - Premium Home Services",
+    title: "PHS Company - Premium Home Services",
     link: "/services"
   },
   {
     src: "/assets/PHS Banner 2.jpeg",
-    title: "Pawan Pest Home Services - Safe & Effective Pest Control",
+    title: "PHS Company - Safe & Effective Pest Control",
     link: "/services"
   },
   {
     src: "/assets/PHS Banner 3.jpeg",
-    title: "Pawan Pest Home Services - Premium Housekeeping & Cleaning",
+    title: "PHS Company - Premium Housekeeping & Cleaning",
     link: "/services"
   },
   {
     src: "/assets/PHS Banner 4.jpeg",
-    title: "Pawan Pest Home Services - Expert Maintenance & Repair",
+    title: "PHS Company - Expert Maintenance & Repair",
     link: "/services"
   },
   {
     src: "/assets/PHS Banner 5.jpeg",
-    title: "Pawan Pest Home Services - Comprehensive Home Solutions",
+    title: "PHS Company - Comprehensive Home Solutions",
     link: "/services"
   }
 ];

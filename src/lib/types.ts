@@ -40,7 +40,9 @@ export interface Profile {
   full_name: string | null;
   phone: string | null;
   role: 'customer' | 'partner' | 'admin';
+  status: 'active' | 'pending' | 'offline' | 'busy' | 'suspended';
   created_at: string;
+  updated_at: string | null;
   avatar_url: string | null;
 }
 
@@ -156,5 +158,37 @@ export interface BookingRejection {
   booking_id: string;
   partner_id: string;
   reason: string | null;
+  created_at: string;
+}
+
+// ─── Notification Types ─────────────────────────────────────
+
+export type NotificationType =
+  | 'booking_created'
+  | 'booking_confirmed'
+  | 'partner_assigned'
+  | 'partner_reassigned'
+  | 'service_started'
+  | 'service_completed'
+  | 'booking_cancelled'
+  | 'general';
+
+export interface AppNotification {
+  id: string;
+  user_id: string;
+  title: string;
+  body: string;
+  type: NotificationType;
+  metadata: Record<string, unknown>;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface NotificationToken {
+  id: string;
+  user_id: string;
+  fcm_token: string;
+  platform: 'web' | 'android' | 'ios';
+  last_seen: string;
   created_at: string;
 }

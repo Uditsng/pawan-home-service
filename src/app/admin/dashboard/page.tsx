@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
-import { format, startOfDay, startOfWeek, startOfMonth } from "date-fns";
+import { format } from "date-fns";
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { ExportButton } from "./ExportButton";
@@ -19,138 +19,75 @@ function demandSignal(bookings: number, partners: number): { label: string; colo
   return { label: "Balanced", color: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20", icon: "check_circle" };
 }
 
+// ─── Types ───────────────────────────────────────────────────
+
+interface AdminBooking {
+  id: string;
+  status: string;
+  total_amount: number;
+  created_at: string;
+  city: string;
+  service_id: string;
+  customer_id: string;
+  partner_id: string | null;
+  services: { title: string; category: string } | null;
+  customer: { full_name: string } | null;
+  partner: { full_name: string } | null;
+}
+
 // ─── Server Component ────────────────────────────────────────
 
 export default async function AdminDashboardPage() {
   const supabase = await createClient();
+
+  const { data: metricsRaw, error } = await supabase.rpc("get_admin_dashboard_metrics");
+
+  if (error || !metricsRaw) {
+    console.error("Failed to fetch dashboard metrics from database RPC:", error);
+    throw new Error(error?.message || "Failed to load dashboard metrics.");
+  }
+
+  const metrics = metricsRaw as any;
   const now = new Date();
-  const todayStart = startOfDay(now).toISOString();
-  const weekStart = startOfWeek(now).toISOString();
-  const monthStart = startOfMonth(now).toISOString();
 
-  // Previous month boundaries for MoM growth
-  const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const prevMonthStart = startOfMonth(prevMonthDate).toISOString();
-
-  // ─── 1. Current month bookings ─────────────────────────────
-
-  const { data: bookings } = await supabase
-    .from("bookings")
-    .select("*, services(title, category), customer:customer_id(full_name), partner:partner_id(full_name)")
-    .gte("created_at", monthStart);
-
-  const monthlyBookings = bookings || [];
-  const dailyBookings = monthlyBookings.filter((b) => b.created_at >= todayStart);
-  const weeklyBookings = monthlyBookings.filter((b) => b.created_at >= weekStart);
-
-  const monthlyGMV = monthlyBookings.reduce((acc, b) => acc + Number(b.total_amount || 0), 0);
-  const dailyGMV = dailyBookings.reduce((acc, b) => acc + Number(b.total_amount || 0), 0);
-  const weeklyGMV = weeklyBookings.reduce((acc, b) => acc + Number(b.total_amount || 0), 0);
-
-  // ─── 2. Previous month bookings (for MoM growth) ──────────
-
-  const { data: prevBookings } = await supabase
-    .from("bookings")
-    .select("total_amount")
-    .gte("created_at", prevMonthStart)
-    .lt("created_at", monthStart);
-
-  const prevMonthGMV = (prevBookings || []).reduce((acc, b) => acc + Number(b.total_amount || 0), 0);
-  const momGrowth = prevMonthGMV > 0 ? ((monthlyGMV - prevMonthGMV) / prevMonthGMV) * 100 : 0;
+  const monthlyGMV = Number(metrics.monthly_gmv || 0);
+  const dailyGMV = Number(metrics.daily_gmv || 0);
+  const weeklyGMV = Number(metrics.weekly_gmv || 0);
+  const prevMonthGMV = Number(metrics.prev_month_gmv || 0);
+  const momGrowth = Number(metrics.mom_growth || 0);
   const momGrowthStr = momGrowth >= 0 ? `+${momGrowth.toFixed(1)}%` : `${momGrowth.toFixed(1)}%`;
 
-  // ─── 3. Status counts ─────────────────────────────────────
+  const pendingCount = Number(metrics.pending_count || 0);
+  const confirmedCount = Number(metrics.confirmed_count || 0);
+  const inProgressCount = Number(metrics.in_progress_count || 0);
+  const acceptedCount = Number(metrics.accepted_count || 0);
+  const completedCount = Number(metrics.completed_count || 0);
+  const cancelledCount = Number(metrics.cancelled_count || 0);
+  const activeBookings = Number(metrics.active_bookings || 0);
+  const successRate = Number(metrics.success_rate || 100);
 
-  const pendingCount = monthlyBookings.filter((b) => b.status === "pending").length;
-  const confirmedCount = monthlyBookings.filter((b) => b.status === "confirmed").length;
-  const inProgressCount = monthlyBookings.filter((b) => b.status === "in_progress").length;
-  const acceptedCount = monthlyBookings.filter((b) => b.status === "accepted").length;
-  const completedCount = monthlyBookings.filter((b) => b.status === "completed").length;
-  const cancelledCount = monthlyBookings.filter((b) => b.status === "cancelled").length;
-  const activeBookings = confirmedCount + inProgressCount + acceptedCount;
+  const totalPartners = Number(metrics.total_partners || 0);
+  const activePartnerCount = Number(metrics.active_partner_count || 0);
+  const offlinePartnerCount = Number(metrics.offline_partner_count || 0);
+  const busyPartnerCount = Number(metrics.busy_partner_count || 0);
+  const suspendedPartnerCount = Number(metrics.suspended_partner_count || 0);
+  const fleetUtilization = Number(metrics.fleet_utilization || 0);
+  const customerCount = Number(metrics.customer_count || 0);
 
-  const totalNonPending = monthlyBookings.filter((b) => b.status !== "pending").length;
-  const successRate = totalNonPending > 0 ? (completedCount / totalNonPending) * 100 : 100;
-
-  // ─── 4. Partner fleet breakdown ────────────────────────────
-
-  const { data: partnerProfiles } = await supabase
-    .from("profiles")
-    .select("id, status")
-    .eq("role", "partner");
-
-  const allPartners = partnerProfiles || [];
-  const totalPartners = allPartners.length;
-  const activePartnerCount = allPartners.filter((p) => p.status === "active").length;
-  const offlinePartnerCount = allPartners.filter((p) => p.status === "offline").length;
-  const busyPartnerCount = allPartners.filter((p) => p.status === "busy").length;
-  const suspendedPartnerCount = allPartners.filter((p) => p.status === "suspended").length;
-  const fleetUtilization = totalPartners > 0 ? Math.round((activePartnerCount / totalPartners) * 100) : 0;
-
-  // ─── 5. Customer count ─────────────────────────────────────
-
-  const { count: customerCount } = await supabase
-    .from("profiles")
-    .select("*", { count: "exact", head: true })
-    .eq("role", "customer");
-
-  // ─── 6. Partner service areas (for zone mapping) ───────────
-
-  const { data: partnerAreas } = await supabase
-    .from("partner_service_areas")
-    .select("partner_id, city, pincode");
-
-  // ─── 7. Service performance ────────────────────────────────
-
-  const servicePerf: Record<string, { count: number; revenue: number; category: string }> = {};
-  monthlyBookings.forEach((b) => {
-    const title = b.services?.title || "Unknown";
-    const cat = b.services?.category || "General";
-    if (!servicePerf[title]) servicePerf[title] = { count: 0, revenue: 0, category: cat };
-    servicePerf[title].count += 1;
-    servicePerf[title].revenue += Number(b.total_amount || 0);
-  });
-
-  const topServices = Object.entries(servicePerf)
-    .sort(([, a], [, b]) => b.count - a.count)
-    .slice(0, 6);
+  const topServices = (metrics.top_services || []).map((s: any) => [
+    s.title,
+    { count: s.count, revenue: Number(s.revenue), category: s.category }
+  ]) as [string, { count: number; revenue: number; category: string }][];
+  
   const maxServiceCount = topServices.length > 0 ? topServices[0][1].count : 1;
 
-  // ─── 8. Geographic zone analytics ──────────────────────────
-
-  const cityBookings: Record<string, { count: number; revenue: number }> = {};
-  monthlyBookings.forEach((b) => {
-    const city = b.city || "Unknown";
-    if (!cityBookings[city]) cityBookings[city] = { count: 0, revenue: 0 };
-    cityBookings[city].count += 1;
-    cityBookings[city].revenue += Number(b.total_amount || 0);
-  });
-
-  // Count partners per city from service areas
-  const cityPartners: Record<string, Set<string>> = {};
-  (partnerAreas || []).forEach((area) => {
-    const city = (area as Record<string, unknown>).city as string;
-    const pid = (area as Record<string, unknown>).partner_id as string;
-    if (city) {
-      if (!cityPartners[city]) cityPartners[city] = new Set();
-      cityPartners[city].add(pid);
-    }
-  });
-
-  const allCities = Array.from(new Set([...Object.keys(cityBookings), ...Object.keys(cityPartners)])).filter(
-    (c) => c !== "Unknown"
-  );
-
-  const zoneData = allCities
-    .map((city) => {
-      const bData = cityBookings[city] || { count: 0, revenue: 0 };
-      const pCount = cityPartners[city]?.size || 0;
-      const aov = bData.count > 0 ? Math.round(bData.revenue / bData.count) : 0;
-      const signal = demandSignal(bData.count, pCount);
-      return { city, bookings: bData.count, partners: pCount, aov, signal };
-    })
-    .sort((a, b) => b.bookings - a.bookings)
-    .slice(0, 6);
+  const zoneData = (metrics.zone_data || []).map((z: any) => ({
+    city: z.city,
+    bookings: z.bookings,
+    partners: z.partners,
+    aov: z.aov,
+    signal: demandSignal(z.bookings, z.partners)
+  }));
 
   // ─── 9. Ops Strategy alerts ────────────────────────────────
 
@@ -162,7 +99,7 @@ export default async function AdminDashboardPage() {
   }
   const opsAlerts: OpsAlert[] = [];
 
-  zoneData.forEach((z) => {
+  zoneData.forEach((z: any) => {
     if (z.bookings > 0 && z.partners === 0) {
       opsAlerts.push({
         severity: "critical",
@@ -187,10 +124,12 @@ export default async function AdminDashboardPage() {
     }
   });
 
-  if (cancelledCount > 0 && cancelledCount / monthlyBookings.length > 0.15) {
+  const monthlyBookingsCount = pendingCount + activeBookings + completedCount + cancelledCount;
+
+  if (cancelledCount > 0 && monthlyBookingsCount > 0 && cancelledCount / monthlyBookingsCount > 0.15) {
     opsAlerts.push({
       severity: "critical",
-      message: `High cancellation rate: ${((cancelledCount / monthlyBookings.length) * 100).toFixed(1)}% this month`,
+      message: `High cancellation rate: ${((cancelledCount / monthlyBookingsCount) * 100).toFixed(1)}% this month`,
       icon: "cancel",
       color: "bg-red-500/10 border-red-500/20 text-red-700",
     });
@@ -205,23 +144,15 @@ export default async function AdminDashboardPage() {
     });
   }
 
-  // Sort: critical first, then warning, then info
   const severityOrder: Record<string, number> = { critical: 0, warning: 1, info: 2 };
   opsAlerts.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
   const displayAlerts = opsAlerts.slice(0, 4);
 
-  // ─── 10. Recent completed payouts ─────────────────────────
+  // Recent completed payouts
+  const recentPayouts = (metrics.recent_payouts || []) as any[];
 
-  const recentPayouts = monthlyBookings
-    .filter((b) => b.status === "completed")
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 3);
-
-  // ─── 11. Recent bookings for Ops Ledger ────────────────────
-
-  const recentBookings = [...monthlyBookings]
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 8);
+  // Recent bookings for Ops Ledger
+  const recentBookings = (metrics.recent_bookings || []) as any[];
 
   // ─── RENDER ────────────────────────────────────────────────
 
@@ -376,7 +307,7 @@ export default async function AdminDashboardPage() {
                 <Link href="/admin/finance" className="text-[8px] font-black uppercase tracking-widest text-secondary hover:underline">View All →</Link>
               </div>
               <div className="divide-y divide-outline-variant/10">
-                {recentPayouts.map((p) => (
+                {recentPayouts.map((p: any) => (
                   <Link key={p.id} href="/admin/finance" className="flex items-center justify-between px-4 py-2.5 hover:bg-surface-container-low/30 transition-colors">
                     <div className="flex items-center gap-3 min-w-0">
                       <span className="text-[9px] font-black text-on-surface-variant/40 font-mono tracking-tighter shrink-0">TX-{p.id.slice(0, 6).toUpperCase()}</span>
@@ -450,7 +381,7 @@ export default async function AdminDashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/10">
-                  {zoneData.map((z) => (
+                  {zoneData.map((z: any) => (
                     <tr key={z.city} className="hover:bg-surface-container-low/30 transition-colors">
                       <td className="px-3 py-2.5">
                         <Link href="/admin/partners" className="text-[10px] font-bold text-primary hover:text-secondary transition-colors uppercase tracking-tight">{z.city}</Link>
@@ -526,7 +457,7 @@ export default async function AdminDashboardPage() {
                   </td>
                 </tr>
               ) : (
-                recentBookings.map((booking) => {
+                recentBookings.map((booking: any) => {
                   const statusVariant: Record<string, "warning" | "primary" | "success" | "danger" | "surface"> = {
                     pending: "warning",
                     confirmed: "primary",
@@ -582,7 +513,7 @@ export default async function AdminDashboardPage() {
               No booking transactions recorded this month.
             </div>
           ) : (
-            recentBookings.map((booking) => {
+            recentBookings.map((booking: any) => {
               const statusVariant: Record<string, "warning" | "primary" | "success" | "danger" | "surface"> = {
                 pending: "warning",
                 confirmed: "primary",

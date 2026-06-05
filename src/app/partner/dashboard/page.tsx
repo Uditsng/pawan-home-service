@@ -13,87 +13,90 @@ export default async function PartnerDashboardPage() {
 
   if (!user) redirect("/login");
 
-  // ─── Fetch partner profile ─────────────────────────────────
-  const { data: profileData } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+  // ─── Compute date boundaries first ─────────────────────────
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
 
-  const profile = profileData as PartnerProfile | null;
-  
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  weekStart.setHours(0, 0, 0, 0);
+
+  // ─── Parallelize ALL queries (~1.5s savings) ───────────────
+  const [
+    profileResult,
+    activeJobResult,
+    todayCompletedResult,
+    nextAssignedResult,
+    upcomingResult,
+    weeklyResult,
+  ] = await Promise.all([
+    // Partner profile (select only used columns)
+    supabase
+      .from("profiles")
+      .select("id, full_name, avatar_url, rating_avg, acceptance_rate, jobs_cancelled_count")
+      .eq("id", user.id)
+      .single(),
+    // Current active job (in_progress)
+    supabase
+      .from("bookings")
+      .select("*, services:service_id(title, category), customer:customer_id(full_name)")
+      .eq("partner_id", user.id)
+      .eq("status", "in_progress")
+      .limit(1)
+      .maybeSingle(),
+    // Today's completed bookings (for earnings)
+    supabase
+      .from("bookings")
+      .select("total_amount")
+      .eq("partner_id", user.id)
+      .eq("status", "completed")
+      .gte("completed_at", todayStart.toISOString()),
+    // Next auto-assigned job (confirmed)
+    supabase
+      .from("bookings")
+      .select("*, services:service_id(title, category), customer:customer_id(full_name)")
+      .eq("partner_id", user.id)
+      .eq("status", "confirmed")
+      .order("scheduled_date", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+    // Upcoming scheduled jobs
+    supabase
+      .from("bookings")
+      .select("*, services:service_id(title, category)")
+      .eq("partner_id", user.id)
+      .in("status", ["confirmed", "accepted", "in_progress"])
+      .order("scheduled_date", { ascending: true })
+      .limit(4),
+    // Weekly completed count
+    supabase
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("partner_id", user.id)
+      .eq("status", "completed")
+      .gte("completed_at", weekStart.toISOString()),
+  ]);
+
+  const profile = profileResult.data as PartnerProfile | null;
+  const activeJob = activeJobResult.data as BookingWithDetails | null;
+  const todayCompleted = todayCompletedResult.data;
+  const nextAssignedJob = nextAssignedResult.data as BookingWithDetails | null;
+  const upcomingJobs = (upcomingResult.data || []) as BookingWithDetails[];
+  const weeklyJobsCount = weeklyResult.count;
 
   // ─── Get current time of day for greeting ──────────────────
   const hour = new Date().getHours();
   const greeting =
     hour < 12 ? "Good Morning" : hour < 17 ? "Good Afternoon" : "Good Evening";
 
-  // ─── Fetch current active job (in_progress) ────────────────
-  const { data: activeJobData } = await supabase
-    .from("bookings")
-    .select("*, services:service_id(title, category), customer:customer_id(full_name)")
-    .eq("partner_id", user.id)
-    .eq("status", "in_progress")
-    .limit(1)
-    .single();
-
-  const activeJob = activeJobData as BookingWithDetails | null;
-
-  // ─── Fetch today's earnings ────────────────────────────────
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-
-  const { data: todayCompleted } = await supabase
-    .from("bookings")
-    .select("total_amount")
-    .eq("partner_id", user.id)
-    .eq("status", "completed")
-    .gte("completed_at", todayStart.toISOString());
-
+  // ─── Derived metrics ───────────────────────────────────────
   const dailyEarnings =
     (todayCompleted || []).reduce(
       (acc, b) => acc + Number(b.total_amount || 0),
       0
     ) * 0.8;
   const todayJobsCompleted = todayCompleted?.length || 0;
-
-  // ─── Fetch next auto-assigned job (confirmed, for this partner) ─
-  const { data: nextAssignedData } = await supabase
-    .from("bookings")
-    .select("*, services:service_id(title, category), customer:customer_id(full_name)")
-    .eq("partner_id", user.id)
-    .eq("status", "confirmed")
-    .order("scheduled_date", { ascending: true })
-    .limit(1)
-    .single();
-
-  const nextAssignedJob = nextAssignedData as BookingWithDetails | null;
-
-  // ─── Fetch upcoming scheduled jobs for today ───────────────
-  const { data: upcomingData } = await supabase
-    .from("bookings")
-    .select("*, services:service_id(title, category)")
-    .eq("partner_id", user.id)
-    .in("status", ["confirmed", "accepted", "in_progress"])
-    .order("scheduled_date", { ascending: true })
-    .limit(4);
-
-  const upcomingJobs = (upcomingData || []) as BookingWithDetails[];
-
-  // ─── Fetch total weekly jobs ───────────────────────────────
-  const weekStart = new Date();
-  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-  weekStart.setHours(0, 0, 0, 0);
-
-  const { count: weeklyJobsCount } = await supabase
-    .from("bookings")
-    .select("id", { count: "exact", head: true })
-    .eq("partner_id", user.id)
-    .eq("status", "completed")
-    .gte("completed_at", weekStart.toISOString());
-
-  // ─── Active hours estimate (today's in_progress + completed duration) ──
-  const activeHours = todayJobsCompleted * 1.5 + (activeJob ? 0.5 : 0); // rough estimate
+  const activeHours = todayJobsCompleted * 1.5 + (activeJob ? 0.5 : 0);
 
   // ─── Service icon mapping ──────────────────────────────────
   function getServiceIcon(category?: string) {
@@ -240,7 +243,7 @@ export default async function PartnerDashboardPage() {
                 <div className="flex items-center gap-1.5 mt-4 mb-2">
                   <span className="material-symbols-outlined text-secondary text-sm">bolt</span>
                   <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">
-                    Auto-Assigned to You
+                    Assigned to You
                   </span>
                 </div>
 
@@ -320,7 +323,7 @@ export default async function PartnerDashboardPage() {
                 No new assignments
               </p>
               <p className="text-sm text-on-surface-variant mt-1">
-                New jobs will be automatically assigned to you based on your skills and availability.
+                New jobs will be manually assigned to you by the administration team based on your skills and service areas.
               </p>
             </div>
           )}

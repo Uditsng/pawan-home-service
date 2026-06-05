@@ -4,9 +4,9 @@ import type { Metadata } from "next";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "About Us | Pavan Home Solutions",
+  title: "About Us | PHS Company",
   description:
-    "Learn about Pavan Home Solutions — your trusted platform for premium home services including cleaning, pest control, repairs, and more.",
+    "Learn about PHS Company — your trusted platform for premium home services including cleaning, pest control, repairs, and more.",
 };
 
 const serviceCategories = [
@@ -106,19 +106,12 @@ export default function AboutPage() {
         <div className="absolute bottom-0 left-0 w-72 h-72 bg-secondary/8 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3" />
 
         <div className="relative max-w-7xl mx-auto px-4 py-8 md:py-16">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-on-primary/70 hover:text-on-primary transition-colors mb-3"
-          >
-            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-            <span className="text-sm font-medium">Back to Home</span>
-          </Link>
 
           <div className="flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-8">
             <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-surface-container-lowest/10 backdrop-blur-sm flex items-center justify-center shrink-0 overflow-hidden">
               <Image
                 src="/PHS.png"
-                alt="Pavan Home Solutions Logo"
+                alt="PHS Company Logo"
                 width={80}
                 height={80}
                 className="rounded-2xl"
@@ -126,7 +119,7 @@ export default function AboutPage() {
             </div>
             <div>
               <h1 className="text-3xl md:text-4xl font-bold text-on-primary tracking-tight">
-                About Pavan Home Solutions
+                About PHS Company
               </h1>
               <p className="mt-3 text-on-primary/70 text-base md:text-lg max-w-2xl leading-relaxed">
                 Making home services simple, reliable, and professional — one booking at a time.
@@ -139,10 +132,10 @@ export default function AboutPage() {
       {/* Welcome Section */}
       <section className="max-w-7xl mx-auto px-4 py-12 md:py-16">
         <div className="glass-panel rounded-3xl p-8 md:p-12">
-          <h2 className="text-2xl font-bold text-on-surface mb-4">Welcome to Pavan Home Solutions</h2>
+          <h2 className="text-2xl font-bold text-on-surface mb-4">Welcome to PHS Company</h2>
           <div className="space-y-4 text-on-surface-variant leading-relaxed">
             <p>
-              At Pavan Home Solutions, we are committed to making home services simple, reliable, and
+              At PHS Company, we are committed to making home services simple, reliable, and
               professional. Founded by <strong className="text-on-surface">Pavan Gupta</strong>, our
               platform connects customers with trusted and verified service professionals for a wide range
               of home maintenance, cleaning, pest control, repair, and improvement services.
@@ -154,7 +147,7 @@ export default function AboutPage() {
             </p>
             <p>
               Whether you need deep cleaning, plumbing repairs, pest control, electrical work, painting,
-              appliance servicing, or packers and movers — Pavan Home Solutions is your one-stop solution.
+              appliance servicing, or packers and movers — PHS Company is your one-stop solution.
             </p>
           </div>
         </div>
@@ -238,7 +231,7 @@ export default function AboutPage() {
           <h2 className="text-2xl font-bold text-on-surface mb-6">Contact Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[
-              { icon: "business", label: "Company Name", value: "Pavan Home Solutions" },
+              { icon: "business", label: "Company Name", value: "PHS Company" },
               { icon: "person", label: "Founder", value: "Pavan Gupta" },
               {
                 icon: "location_on",

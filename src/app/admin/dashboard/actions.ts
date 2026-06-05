@@ -1,13 +1,14 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { requireAdmin } from "@/utils/supabase/auth-checks";
 
 /**
  * Export Financial CSV — Generates a CSV data URI of the current month's
  * completed bookings with commission splits.
- * TODO(security): Verify the calling user has admin role before generating data.
  */
 export async function exportFinancialCSV(): Promise<{ csv: string; filename: string }> {
+  await requireAdmin();
   const supabase = await createClient();
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
@@ -52,7 +53,7 @@ export async function exportFinancialCSV(): Promise<{ csv: string; filename: str
   const csv = [header, ...rows].join("\n");
 
   const monthName = now.toLocaleString("en-US", { month: "long", year: "numeric" });
-  const filename = `PavanHome_Financial_${monthName.replace(/\s/g, "_")}.csv`;
+  const filename = `PHSCompany_Financial_${monthName.replace(/\s/g, "_")}.csv`;
 
   return { csv, filename };
 }

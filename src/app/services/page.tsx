@@ -3,10 +3,10 @@ import Footer from "@/components/Footer";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300; // ISR: revalidate every 5 minutes
 
 export const metadata = {
-  title: "All Services | Pavan Home Solutions",
+  title: "All Services | PHS Company",
   description: "Browse our complete catalog of professional home services — cleaning, repairs, pest control, plumbing, and more. Book trusted professionals at transparent prices.",
 };
 
@@ -30,7 +30,7 @@ interface ServiceRow {
   base_price: number;
   is_active: boolean;
   subcategory_id: string;
-  duration_minutes: number;
+  duration_minutes?: number;
   subcategories: {
     subcategory_name: string;
     icon_name: string;
@@ -72,7 +72,7 @@ export default async function PublicServicesShowcasePage() {
       )
     `)
     .eq("is_active", true)
-    .order("base_price", { ascending: true }) as { data: ServiceRow[] | null };
+    .order("title", { ascending: true }) as { data: ServiceRow[] | null };
 
   const allServices = services || [];
   const allCategories = categories || [];

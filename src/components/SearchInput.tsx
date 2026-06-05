@@ -23,6 +23,10 @@ export default function SearchInput({ defaultValue = "" }: { defaultValue?: stri
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          autoComplete="off"
+          name="search"
+          id="global-services-search"
+          suppressHydrationWarning={true}
           className="w-full h-16 pl-14 pr-6 bg-surface-container-lowest rounded-xl border border-outline-variant/20 shadow-[0_8px_24px_rgba(15,23,42,0.04)] focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-outline text-on-surface font-medium outline-none"
           placeholder="Search AC repair, cleaning, plumber..."
           type="text"

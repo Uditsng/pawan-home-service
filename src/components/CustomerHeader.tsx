@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import Image from "next/image";
 import Link from "next/link";
 import HeaderLocationDisplay from "./HeaderLocationDisplay";
+import NotificationBell from "./NotificationBell";
 
 export default async function CustomerHeader() {
   const supabase = await createClient();
@@ -36,7 +37,7 @@ export default async function CustomerHeader() {
           <Link href="/dashboard" className="flex items-center gap-2">
             <Image
               src="/PHS.png"
-              alt="PavanHomeServices Logo"
+              alt="PHS Company Logo"
               className="h-12 md:h-14 w-auto"
               width={40}
               height={40}
@@ -45,10 +46,7 @@ export default async function CustomerHeader() {
           <HeaderLocationDisplay defaultAddress={defaultAddress} />
         </div>
         <div className="flex items-center gap-3 md:gap-4">
-          <button className="relative hover:opacity-80 transition-all p-1.5 md:p-2 text-on-surface-variant">
-            <span className="material-symbols-outlined">notifications</span>
-            <span className="absolute top-1.5 md:top-2 right-1.5 md:right-2 w-2 h-2 bg-secondary rounded-full"></span>
-          </button>
+          <NotificationBell />
           <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-surface-container-high overflow-hidden border border-outline-variant/20 flex items-center justify-center font-bold text-primary shrink-0 relative">
             {profile.avatar_url ? (
               <Image src={profile.avatar_url} alt={firstName} fill className="object-cover" sizes="40px" />

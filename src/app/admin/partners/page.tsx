@@ -85,7 +85,8 @@ export default async function AdminPartnersPage() {
       city,
       services:services(title)
     `)
-    .eq('status', 'pending');
+    .eq('status', 'pending')
+    .limit(1000);
 
   const pendingBookings: PendingBooking[] = (pendingBookingsData || []).map((b: any) => ({
     id: b.id,
@@ -133,7 +134,8 @@ export default async function AdminPartnersPage() {
         customer:profiles!reviews_customer_id_fkey(full_name, avatar_url)
       )
     `)
-    .eq('role', 'partner');
+    .eq('role', 'partner')
+    .limit(1000);
 
   if (error) {
     // Catch missing columns error (code 42703 or message check) and fallback
@@ -187,7 +189,8 @@ export default async function AdminPartnersPage() {
             customer:profiles!reviews_customer_id_fkey(full_name, avatar_url)
           )
         `)
-        .eq('role', 'partner');
+        .eq('role', 'partner')
+        .limit(1000);
 
       if (!fallbackError && fallbackData) {
         partners = fallbackData.map(p => ({
@@ -282,12 +285,37 @@ export default async function AdminPartnersPage() {
     };
   });
 
+  // Fetch all active services for skills mapping
+  const { data: allServicesData } = await supabase
+    .from('services')
+    .select(`
+      id,
+      title,
+      subcategories (
+        subcategory_name,
+        categories (
+          category_name
+        )
+      )
+    `)
+    .eq('is_active', true);
+
+  const allServices = (allServicesData || []).map((s: any) => {
+    const subcat = Array.isArray(s.subcategories) ? s.subcategories[0] : s.subcategories;
+    const cat = subcat ? (Array.isArray(subcat.categories) ? subcat.categories[0] : subcat.categories) : null;
+    return {
+      id: s.id,
+      title: s.title,
+      category_name: cat?.category_name || "General Services"
+    };
+  });
+
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tighter text-primary font-headline">Partners</h1>
-          <p className="text-on-surface-variant font-medium mt-1 opacity-60 text-sm">Manage partner profiles, assignments, and onboarding.</p>
+          <h1 className="text-2xl font-bold tracking-tighter text-primary font-headline">Technicians</h1>
+          <p className="text-on-surface-variant font-medium mt-1 opacity-60 text-sm">Manage technician profiles, assignments, and onboarding.</p>
         </div>
       </div>
 
@@ -312,7 +340,11 @@ export default async function AdminPartnersPage() {
       )}
 
       {/* Interactive Fleet Control Dashboard Console */}
-      <PartnersConsole initialPartners={processedPartners} pendingBookings={pendingBookings} />
+      <PartnersConsole 
+        initialPartners={processedPartners} 
+        pendingBookings={pendingBookings} 
+        allServices={allServices}
+      />
     </div>
   );
 }

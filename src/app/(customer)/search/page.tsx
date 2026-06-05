@@ -13,12 +13,19 @@ export default async function SearchPage({
   const supabase = await createClient();
   const { q } = await searchParams;
   interface ServiceResult {
-    id: string | number;
-    category: string;
+    id: string;
     title: string;
     description: string;
     base_price: number;
-    [key: string]: unknown; // in case there are other fields we are not explicitly using
+    category?: string;
+    subcategory_id: string;
+    subcategories: {
+      subcategory_name: string;
+      icon_name: string;
+      categories: {
+        category_name: string;
+      };
+    } | null;
   }
 
   let results: ServiceResult[] = [];
@@ -27,26 +34,24 @@ export default async function SearchPage({
     // Perform ILIKE search against services table on title and description
     const { data } = await supabase
       .from('services')
-      .select('*')
+      .select(`
+        *,
+        subcategories (
+          subcategory_name,
+          icon_name,
+          categories (
+            category_name
+          )
+        )
+      `)
       .or(`title.ilike.%${q}%,description.ilike.%${q}%`)
       .eq('is_active', true)
       .limit(20);
 
     if (data) {
-      results = data;
+      results = data as unknown as ServiceResult[];
     }
   }
-
-  // Icon mapper
-  const catIconMap: Record<string, string> = {
-    'cleaning': 'cleaning_services',
-    'repair': 'build',
-    'plumbing': 'plumbing',
-    'electrical': 'bolt',
-    'pest_control': 'pest_control',
-    'hvac': 'ac_unit',
-    'landscaping': 'grass'
-  };
 
   return (
 
@@ -64,24 +69,32 @@ export default async function SearchPage({
 
             {results.length > 0 ? (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-                {results.map((service) => (
-                  <Link
-                    href={`/services/${service.category}/${service.id}`}
-                    key={service.id}
-                    className="bg-surface-container-lowest p-3 md:p-4 rounded-xl md:rounded-2xl border border-outline-variant/20 shadow-sm flex items-center gap-3 md:gap-4 hover:border-primary/30 transition-colors"
-                  >
-                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-primary-fixed/20 text-primary flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-[20px] md:text-[24px]">{catIconMap[service.category] || 'handyman'}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-on-surface leading-tight text-sm md:text-base truncate">{service.title}</h3>
-                      <p className="text-[10px] md:text-xs text-on-surface-variant mt-0.5 md:mt-1 line-clamp-1">{service.description}</p>
-                    </div>
-                    <div className="font-bold text-primary whitespace-nowrap text-sm md:text-base">
-                      ₹{service.base_price}
-                    </div>
-                  </Link>
-                ))}
+                {results.map((service) => {
+                  const iconName = service.subcategories?.icon_name || "home_repair_service";
+                  const catSlug = (service.subcategories?.categories?.category_name || service.category || "services")
+                    .toLowerCase()
+                    .replace(/\s+/g, "-")
+                    .replace(/&/g, "and");
+
+                  return (
+                    <Link
+                      href={`/services/${catSlug}/${service.id}`}
+                      key={service.id}
+                      className="bg-surface-container-lowest p-3 md:p-4 rounded-xl md:rounded-2xl border border-outline-variant/20 shadow-sm flex items-center gap-3 md:gap-4 hover:border-primary/30 transition-colors"
+                    >
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
+                        <span className="material-symbols-outlined text-[20px] md:text-[24px] text-[#059669] drop-shadow-sm">{iconName}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-on-surface leading-tight text-sm md:text-base truncate">{service.title}</h3>
+                        <p className="text-[10px] md:text-[11px] text-on-surface-variant mt-0.5 md:mt-1 line-clamp-1">{service.description}</p>
+                      </div>
+                      <div className="font-bold text-primary whitespace-nowrap text-sm md:text-base">
+                        ₹{service.base_price}
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-10 md:py-12">

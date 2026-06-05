@@ -34,7 +34,7 @@ export default async function AdminServicesPage() {
     .order('created_at', { ascending: false });
 
   return (
-    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-6xl mx-auto">
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-7xl mx-auto">
       {/* Top Section (Header & Actions) */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>

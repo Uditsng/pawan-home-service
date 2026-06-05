@@ -78,7 +78,7 @@ export function CreateServiceForm({ categories, action }: { categories: Category
       {/* Top Section */}
       <div>
         <h2 className="text-lg font-bold mb-3 border-b border-outline-variant/10 pb-2 text-primary">Core Settings</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div className="md:col-span-1">
             <label className="block text-sm font-bold text-on-surface-variant mb-2">Service Title</label>
             <input name="title" required type="text" className="w-full border border-outline-variant/20 rounded-lg p-3 bg-surface-container focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="e.g. Deep 3-Seater Sofa Shampooing" />
@@ -103,6 +103,11 @@ export function CreateServiceForm({ categories, action }: { categories: Category
               </div>
             </div>
           </div>
+        </div>
+        <div>
+          <label className="block text-sm font-bold text-on-surface-variant mb-2">Service Image URL (Optional)</label>
+          <input name="image_url" type="text" className="w-full border border-outline-variant/20 rounded-lg p-3 bg-surface-container focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="e.g. /assets/services/sofa_cleaning.png or Cloudinary link" />
+          <p className="text-[10px] text-on-surface-variant/70 mt-1">Supports local asset paths or external CDNs like Cloudinary, Imgur, etc.</p>
         </div>
       </div>
 

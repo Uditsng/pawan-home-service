@@ -17,10 +17,10 @@ interface Address {
   is_default: boolean;
 }
 
-export default function ScheduleClient({ 
-  service, 
-  initialAddresses 
-}: { 
+export default function ScheduleClient({
+  service,
+  initialAddresses
+}: {
   service: { id: string; duration_minutes: number };
   initialAddresses: Address[];
 }) {
@@ -41,7 +41,7 @@ export default function ScheduleClient({
       .from("user_addresses")
       .select("*")
       .order("is_default", { ascending: false });
-    
+
     if (data) {
       setAddresses(data as Address[]);
       if (!selectedAddressId || !data.some((a: any) => a.id === selectedAddressId)) {
@@ -145,7 +145,7 @@ export default function ScheduleClient({
         {/* Service Location Confirmation Card */}
         <section className="mb-10 bg-surface-container-low border border-outline-variant/20 rounded-3xl p-5 md:p-6 relative overflow-hidden shadow-xs">
           <div className="absolute top-0 right-0 w-24 h-24 bg-secondary/5 rounded-full blur-xl pointer-events-none" />
-          
+
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-primary text-xl font-bold">location_on</span>
@@ -436,7 +436,7 @@ export default function ScheduleClient({
             className={`mb-2 w-full py-3.5 md:py-4 rounded-xl md:rounded-2xl font-headline font-extrabold text-base md:text-lg flex items-center justify-center gap-2 md:gap-3 transition-all
               ${(!selectedTime || !selectedAddressId) ? 'bg-surface-container text-on-surface/30 cursor-not-allowed' : 'bg-secondary text-white shadow-[0_12px_32px_rgba(253,118,26,0.25)] hover:opacity-90 active:scale-[0.98]'}`}
           >
-            Continue To Payment
+            Continue To Booking
             <span className="material-symbols-outlined text-[20px] md:text-[24px]">arrow_forward</span>
           </button>
         </div>

@@ -39,7 +39,8 @@ export default async function CategoryServiceListingPage({ params }: { params: P
         )
       )
     `)
-    .eq("is_active", true) as { data: ServiceWithSubcategory[] | null };
+    .eq("is_active", true)
+    .order("title", { ascending: true }) as { data: ServiceWithSubcategory[] | null };
 
   // Filter services whose parent category matches the slug (case-insensitive, dash/underscore/comma/space normalized, & converted to and)
   const normalizeSlug = (str: string) => str.toLowerCase().replace(/&/g, "and").replace(/[-_,\s]+/g, " ").trim();

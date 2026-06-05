@@ -54,14 +54,14 @@ export default async function CheckoutSuccessPage({ searchParams }: { searchPara
   const displayTime = scheduledDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
   // Generate a mock booking reference
-  const renderRef = `BK-${bookingId.substring(0,6).toUpperCase()}`;
+  const renderRef = `BK-${bookingId.substring(0, 6).toUpperCase()}`;
 
   const isConfirmed = booking.status === 'confirmed' && assignedPartner;
 
   return (
     <div className="bg-background text-on-background font-body min-h-screen flex flex-col relative">
       <main className="grow flex flex-col items-center justify-center px-4 md:px-6 py-8 md:py-12 max-w-2xl mx-auto w-full z-10">
-        
+
         {/* Hero Status Section */}
         <div className="text-center mb-8 md:mb-12 flex flex-col items-center">
           <div className="w-20 h-20 md:w-24 md:h-24 bg-primary-fixed rounded-full flex items-center justify-center mb-6 md:mb-8 shadow-[0_12px_32px_rgba(13,148,136,0.15)]">
@@ -77,7 +77,7 @@ export default async function CheckoutSuccessPage({ searchParams }: { searchPara
               </>
             ) : (
               <>
-                Your booking is being processed. A Professional will be assigned shortly for <span className="text-on-surface font-bold">{displayDate}</span> at <span className="text-on-surface font-bold">{displayTime}</span>.
+                Your booking is being processed. A Technician will be assigned shortly for <span className="text-on-surface font-bold">{displayDate}</span> at <span className="text-on-surface font-bold">{displayTime}</span>.
               </>
             )}
           </p>
@@ -89,21 +89,19 @@ export default async function CheckoutSuccessPage({ searchParams }: { searchPara
           <div className="bg-surface-container-lowest rounded-xl p-6 md:p-8 shadow-tactile relative overflow-hidden group">
             {/* Quiet Decorative Accent */}
             <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-primary-fixed/20 rounded-full -mr-12 md:-mr-16 -mt-12 md:-mt-16 transition-transform group-hover:scale-110"></div>
-            
+
             <div className="relative z-10">
               <div className="flex justify-between items-start mb-8 md:mb-10">
                 <div>
                   <p className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-outline mb-1">Booking Reference</p>
                   <h2 className="font-headline text-base md:text-lg font-bold text-on-surface">#{renderRef}</h2>
                 </div>
-                <div className={`px-2.5 md:px-3 py-0.5 md:py-1 rounded-full ${
-                  isConfirmed 
-                    ? 'bg-green-500/10' 
+                <div className={`px-2.5 md:px-3 py-0.5 md:py-1 rounded-full ${isConfirmed
+                    ? 'bg-green-500/10'
                     : 'bg-surface-container-low'
-                }`}>
-                  <span className={`text-[9px] md:text-[10px] font-bold ${
-                    isConfirmed ? 'text-green-600' : 'text-primary'
                   }`}>
+                  <span className={`text-[9px] md:text-[10px] font-bold ${isConfirmed ? 'text-green-600' : 'text-primary'
+                    }`}>
                     {booking.status.toUpperCase()}
                   </span>
                 </div>
@@ -181,13 +179,13 @@ export default async function CheckoutSuccessPage({ searchParams }: { searchPara
           ) : (
             /* Pending state — looking for a partner */
             <div className="bg-surface-container-low/50 backdrop-blur-md rounded-xl p-4 md:p-6 flex items-center justify-between border border-white/20">
-               <div className="flex items-center gap-3 md:gap-4">
+              <div className="flex items-center gap-3 md:gap-4">
                 <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant">
                   <span className="material-symbols-outlined text-[20px] md:text-[24px]">person_search</span>
                 </div>
                 <div>
-                  <p className="font-headline font-bold text-on-surface text-sm md:text-base">Finding a Professional</p>
-                  <p className="text-[10px] md:text-xs text-on-surface-variant">We&apos;ll notify you once someone is assigned</p>
+                  <p className="font-headline font-bold text-on-surface text-sm md:text-base">Assigning Technician</p>
+                  <p className="text-[10px] md:text-xs text-on-surface-variant">Our team will assign a technician shortly</p>
                 </div>
               </div>
             </div>
@@ -196,10 +194,6 @@ export default async function CheckoutSuccessPage({ searchParams }: { searchPara
 
         {/* Actions Footer */}
         <div className="w-full mt-10 md:mt-16 space-y-3 md:space-y-4 max-w-md mx-auto">
-          <Link href={`/bookings/${booking.id}/tracking`} className="w-full py-4 md:py-5 bg-linear-to-r from-primary to-primary-container text-on-primary font-headline font-bold rounded-lg shadow-[0_8px_20px_rgba(0,104,95,0.25)] hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm md:text-base">
-            Track Booking
-            <span className="material-symbols-outlined text-sm">arrow_forward</span>
-          </Link>
           <Link href="/dashboard" className="w-full text-center block py-4 md:py-5 bg-transparent text-on-surface-variant font-headline font-bold rounded-lg hover:bg-surface-container-low transition-colors active:scale-[0.98] text-sm md:text-base">
             Back to Home
           </Link>

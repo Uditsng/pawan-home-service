@@ -21,7 +21,8 @@ export default async function AdminDisputesPage() {
       customer:profiles!tickets_customer_id_fkey(full_name, email),
       partner:profiles!tickets_partner_id_fkey(full_name, email)
     `)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(1000);
 
   if (error) {
     if (error.code === '42P01') {

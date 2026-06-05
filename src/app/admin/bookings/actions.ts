@@ -2,6 +2,8 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { notifyCustomer, notifyPartner } from "@/lib/notifications";
+import { requireAdmin } from "@/utils/supabase/auth-checks";
 
 /**
  * Helper to throw user-friendly error messages for database schema issues.
@@ -27,6 +29,7 @@ export async function updateBookingStatusAction(
   status: string,
   cancellationReason?: string
 ) {
+  await requireAdmin();
   const supabase = await createClient();
 
   const updateData: Record<string, unknown> = { status };
@@ -75,6 +78,61 @@ export async function updateBookingStatusAction(
     },
   });
 
+  // ─── Notifications ─────────────────────────────────────────
+  // Fetch booking details for notification context
+  const { data: bookingData } = await supabase
+    .from("bookings")
+    .select("customer_id, partner_id, services:service_id(title)")
+    .eq("id", bookingId)
+    .single();
+
+  if (bookingData?.customer_id) {
+    const serviceTitle = (bookingData.services as unknown as { title: string } | null)?.title ?? "your service";
+
+    if (status === "cancelled") {
+      void notifyCustomer(
+        bookingData.customer_id,
+        "Booking Cancelled",
+        `Your booking for ${serviceTitle} has been cancelled.${cancellationReason ? ` Reason: ${cancellationReason}` : ""}`,
+        "booking_cancelled",
+        { booking_id: bookingId }
+      );
+      if (bookingData.partner_id) {
+        void notifyPartner(
+          bookingData.partner_id,
+          "Job Cancelled",
+          `The booking for ${serviceTitle} has been cancelled by admin.`,
+          "booking_cancelled",
+          { booking_id: bookingId }
+        );
+      }
+    } else if (status === "completed") {
+      void notifyCustomer(
+        bookingData.customer_id,
+        "Service Completed!",
+        `Your ${serviceTitle} service is complete. Rate your experience!`,
+        "service_completed",
+        { booking_id: bookingId }
+      );
+    } else if (status === "in_progress") {
+      void notifyCustomer(
+        bookingData.customer_id,
+        "Service Started",
+        `Your ${serviceTitle} service has started.`,
+        "service_started",
+        { booking_id: bookingId }
+      );
+    } else if (status === "confirmed") {
+      void notifyCustomer(
+        bookingData.customer_id,
+        "Booking Confirmed",
+        `Your booking for ${serviceTitle} has been confirmed.`,
+        "booking_confirmed",
+        { booking_id: bookingId }
+      );
+    }
+  }
+
   revalidatePath("/admin/bookings");
   revalidatePath("/admin/dashboard");
   return { success: true };
@@ -88,6 +146,7 @@ export async function manualAssignPartnerAction(
   bookingId: string,
   partnerId: string
 ) {
+  await requireAdmin();
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -117,7 +176,7 @@ export async function manualAssignPartnerAction(
   // Update partner's last_assigned_at and job counts
   const { data: partnerProfile } = await supabase
     .from("profiles")
-    .select("jobs_offered_count, jobs_accepted_count")
+    .select("jobs_offered_count, jobs_accepted_count, full_name")
     .eq("id", partnerId)
     .single();
 
@@ -130,6 +189,38 @@ export async function manualAssignPartnerAction(
         last_assigned_at: new Date().toISOString(),
       })
       .eq("id", partnerId);
+  }
+
+  // ─── Notifications ─────────────────────────────────────────
+  const { data: bookingInfo } = await supabase
+    .from("bookings")
+    .select("customer_id, services:service_id(title), city, scheduled_date")
+    .eq("id", bookingId)
+    .single();
+
+  if (bookingInfo) {
+    const serviceTitle = (bookingInfo.services as unknown as { title: string } | null)?.title ?? "your service";
+    const partnerName = partnerProfile?.full_name ?? "a professional";
+
+    // Notify customer about assignment
+    if (bookingInfo.customer_id) {
+      void notifyCustomer(
+        bookingInfo.customer_id,
+        "Professional Assigned!",
+        `${partnerName} has been assigned to your ${serviceTitle} booking.`,
+        "partner_assigned",
+        { booking_id: bookingId, partner_id: partnerId }
+      );
+    }
+
+    // Notify partner about the new job
+    void notifyPartner(
+      partnerId,
+      "New Job Assigned",
+      `You've been assigned a ${serviceTitle} job${bookingInfo.city ? ` in ${bookingInfo.city}` : ""}.`,
+      "partner_assigned",
+      { booking_id: bookingId }
+    );
   }
 
   revalidatePath("/admin/bookings");
@@ -145,6 +236,7 @@ export async function reassignPartnerAction(
   bookingId: string,
   reason?: string
 ) {
+  await requireAdmin();
   const supabase = await createClient();
 
   // Get current booking data for reassignment context
@@ -159,12 +251,9 @@ export async function reassignPartnerAction(
   }
 
   const currentPartnerId = booking.partner_id;
-  const excludePartners: string[] = [];
 
   // Log rejection if there was a current partner
   if (currentPartnerId) {
-    excludePartners.push(currentPartnerId);
-
     await supabase.from("booking_rejections").insert({
       booking_id: bookingId,
       partner_id: currentPartnerId,
@@ -191,60 +280,57 @@ export async function reassignPartnerAction(
     }
   }
 
-  // Attempt auto-assign to next available partner
-  const { data: newPartnerId } = await supabase.rpc("auto_assign_partner", {
-    p_service_id: booking.service_id,
-    p_city: booking.city || "Local Area",
-    p_scheduled_at: booking.scheduled_date || new Date().toISOString(),
-    p_exclude_partners: excludePartners,
+  // Revert to pending (Unassigned) for manual intervention
+  await supabase
+    .from("bookings")
+    .update({
+      partner_id: null,
+      status: "pending",
+    })
+    .eq("id", bookingId);
+
+  await supabase.from("booking_events").insert({
+    booking_id: bookingId,
+    event_type: "PARTNER_REASSIGNED",
+    actor: "SYSTEM",
+    metadata: {
+      previous_partner_id: currentPartnerId,
+      new_partner_id: null,
+      reason: reason || null,
+      result: "manual_intervention_required",
+    },
   });
 
-  if (newPartnerId) {
-    // New partner found
-    await supabase
-      .from("bookings")
-      .update({
-        partner_id: newPartnerId,
-        status: "confirmed",
-        accepted_at: new Date().toISOString(),
-      })
-      .eq("id", bookingId);
+  // ─── Notifications ─────────────────────────────────────────
+  if (currentPartnerId) {
+    void notifyPartner(
+      currentPartnerId,
+      "Job Reassigned",
+      `You have been removed from a booking.${reason ? ` Reason: ${reason}` : ""}`,
+      "partner_reassigned",
+      { booking_id: bookingId }
+    );
+  }
 
-    await supabase.from("booking_events").insert({
-      booking_id: bookingId,
-      event_type: "PARTNER_REASSIGNED",
-      actor: "SYSTEM",
-      metadata: {
-        previous_partner_id: currentPartnerId,
-        new_partner_id: newPartnerId,
-        reason: reason || null,
-        assignment_method: "admin_reassignment_rpc",
-      },
-    });
-  } else {
-    // No partner found — revert to pending for manual intervention
-    await supabase
-      .from("bookings")
-      .update({
-        partner_id: null,
-        status: "pending",
-      })
-      .eq("id", bookingId);
+  // Fetch customer to notify
+  const { data: reassignBooking } = await supabase
+    .from("bookings")
+    .select("customer_id, services:service_id(title)")
+    .eq("id", bookingId)
+    .single();
 
-    await supabase.from("booking_events").insert({
-      booking_id: bookingId,
-      event_type: "PARTNER_REASSIGNED",
-      actor: "SYSTEM",
-      metadata: {
-        previous_partner_id: currentPartnerId,
-        new_partner_id: null,
-        reason: reason || null,
-        result: "no_partner_available",
-      },
-    });
+  if (reassignBooking?.customer_id) {
+    const svcTitle = (reassignBooking.services as unknown as { title: string } | null)?.title ?? "your service";
+    void notifyCustomer(
+      reassignBooking.customer_id,
+      "Finding a New Professional",
+      `We're reassigning a professional for your ${svcTitle} booking. Hang tight!`,
+      "partner_reassigned",
+      { booking_id: bookingId }
+    );
   }
 
   revalidatePath("/admin/bookings");
   revalidatePath("/admin/partners");
-  return { success: true, newPartnerId: newPartnerId || null };
+  return { success: true, newPartnerId: null };
 }

@@ -34,8 +34,13 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Protect designated routes
-  const isProtectedPath = pathname.startsWith('/dashboard') || pathname.startsWith('/partner') || pathname.startsWith('/admin') || pathname.startsWith('/checkout')
-  const isAuthPath = pathname.startsWith('/login') || pathname === '/register'
+  const isProtectedPath =
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/partner') ||
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/checkout') ||
+    pathname.startsWith('/services/')
+  const isAuthPath = pathname.startsWith('/login') || pathname === '/register' || pathname.startsWith('/forgot-password')
 
   if (isProtectedPath && !user) {
     const url = request.nextUrl.clone()
@@ -49,9 +54,17 @@ export async function updateSession(request: NextRequest) {
     if (isProtectedPath || isAuthPath) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role')
+        .select('role, status')
         .eq('id', user.id)
         .single()
+
+      if (profile?.status === 'suspended' || profile?.status === 'blocked') {
+        await supabase.auth.signOut();
+        const url = request.nextUrl.clone()
+        url.pathname = '/login'
+        url.searchParams.set('error', 'AccountSuspended')
+        return NextResponse.redirect(url)
+      }
 
       if (isProtectedPath) {
         if (pathname.startsWith('/admin') && profile?.role !== 'admin') {
@@ -60,8 +73,8 @@ export async function updateSession(request: NextRequest) {
         if (pathname.startsWith('/partner') && profile?.role !== 'partner') {
           return NextResponse.redirect(new URL('/', request.url))
         }
-        // Customer dashboard protection (only customer or admin can access)
-        if (pathname.startsWith('/dashboard') && profile?.role === 'partner') {
+        // Customer page/dashboard protection (only customer or admin can access)
+        if ((pathname.startsWith('/dashboard') || pathname.startsWith('/services/')) && profile?.role === 'partner') {
           return NextResponse.redirect(new URL('/partner/dashboard', request.url))
         }
       }

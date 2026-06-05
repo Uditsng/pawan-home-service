@@ -3,7 +3,7 @@ import Footer from "@/components/Footer";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import HeroConversationalCard from "@/components/HeroConversationalCard";
-import SessionRedirect from "@/components/SessionRedirect";
+
 
 export const revalidate = 300; // ISR: revalidate every 5 minutes
 
@@ -46,7 +46,7 @@ export default async function Home() {
 
   return (
     <>
-          <SessionRedirect />      
+
     <Header />
 
       {/* Atmospheric Background Orbs */}

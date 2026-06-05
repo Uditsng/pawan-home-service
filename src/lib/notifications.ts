@@ -12,6 +12,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { getFirebaseMessaging } from "@/lib/firebase-admin";
 import type { NotificationType } from "@/lib/types";
 
@@ -44,7 +45,10 @@ export async function sendNotification(params: SendNotificationParams): Promise<
   if (targets.length === 0) return;
 
   try {
-    const supabase = await createClient();
+    const supabaseAdmin = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
     // 1. Batch insert in-app notification records
     const notificationRows = targets.map((userId) => ({
@@ -56,7 +60,7 @@ export async function sendNotification(params: SendNotificationParams): Promise<
       is_read: false,
     }));
 
-    const { error: insertError } = await supabase
+    const { error: insertError } = await supabaseAdmin
       .from("notifications")
       .insert(notificationRows);
 
@@ -86,10 +90,13 @@ async function sendFcmPush(
   if (!messaging) return; // FCM not configured
 
   try {
-    const supabase = await createClient();
+    const supabaseAdmin = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
     // Fetch all FCM tokens for the target users
-    const { data: tokenRows, error: tokenError } = await supabase
+    const { data: tokenRows, error: tokenError } = await supabaseAdmin
       .from("notification_tokens")
       .select("fcm_token, user_id")
       .in("user_id", userIds);
@@ -142,7 +149,7 @@ async function sendFcmPush(
       });
 
       if (invalidTokens.length > 0) {
-        await supabase
+        await supabaseAdmin
           .from("notification_tokens")
           .delete()
           .in("fcm_token", invalidTokens);

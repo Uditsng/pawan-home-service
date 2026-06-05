@@ -8,7 +8,7 @@ import LogoutButton from "./LogoutButton";
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
+  const [user, setUser] = useState<{ id: string; email?: string; user_metadata?: { role?: string } } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -65,7 +65,7 @@ export default function Header() {
               <div className="w-24 h-10 animate-pulse bg-slate-200 rounded-xl"></div>
             ) : user ? (
               <div className="flex items-center gap-3">
-                <Link href="/dashboard" className="inline-block bg-primary text-white px-5 lg:px-6 py-2.5 rounded-xl font-bold hover:bg-[#0F172A] transition-all text-sm">
+                <Link href={user.user_metadata?.role === 'admin' ? '/admin/dashboard' : user.user_metadata?.role === 'partner' ? '/partner/dashboard' : '/dashboard'} className="inline-block bg-primary text-white px-5 lg:px-6 py-2.5 rounded-xl font-bold hover:bg-[#0F172A] transition-all text-sm">
                   Dashboard
                 </Link>
                 <LogoutButton variant="button" className="!bg-surface-container-low !text-primary hover:!bg-surface-container-high" />
@@ -120,7 +120,7 @@ export default function Header() {
               {loading ? null : user ? (
                 <div className="flex flex-col gap-3">
                   <Link
-                    href="/dashboard"
+                    href={user.user_metadata?.role === 'admin' ? '/admin/dashboard' : user.user_metadata?.role === 'partner' ? '/partner/dashboard' : '/dashboard'}
                     onClick={() => setMenuOpen(false)}
                     className="text-center py-3 px-6 rounded-xl bg-primary text-white font-bold text-[15px] hover:bg-[#0F172A] transition-colors"
                   >

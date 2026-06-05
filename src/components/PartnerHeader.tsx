@@ -8,7 +8,7 @@ export default function PartnerHeader() {
   const [isOnline, setIsOnline] = useState(true);
 
   return (
-    <header className="bg-surface-dim sticky top-0 z-50 transition-colors border-b border-surface-variant/20">
+    <header className="bg-surface-dim sticky top-0 z-50 transition-colors border-b border-surface-variant/20 pt-safe">
       <div className="flex justify-between items-center px-6 py-4 w-full max-w-7xl mx-auto">
         {/* Platform Logo */}
         <Link href="/partner/dashboard" className="flex items-center gap-2">

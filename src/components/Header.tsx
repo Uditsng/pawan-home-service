@@ -30,7 +30,7 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="sticky top-0 w-full z-50 bg-surface/95 backdrop-blur-md shadow-sm">
+    <header className="sticky top-0 w-full z-50 bg-surface/95 backdrop-blur-md shadow-sm pt-safe">
       <nav className="flex justify-between items-center px-4 md:px-6 lg:px-8 py-3 md:py-4 max-w-7xl mx-auto">
         <Link href="/dashboard" className="flex items-center gap-2">
           <Image

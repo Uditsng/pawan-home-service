@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">PHS</string>
+    <string name="title_activity_main">PHS</string>
+    <string name="package_name">com.phsindia.app</string>
+    <string name="custom_url_scheme">com.phsindia.app</string>
+</resources>

@@ -103,6 +103,7 @@
 }
 
 :root {
+  --font-bricolage: 'Bricolage Grotesque', sans-serif;
   --background: var(--color-background);
   --foreground: var(--color-on-background);
 }
@@ -176,7 +177,10 @@ body {
   }
 
    .pb-safe {
-     padding-bottom: env(safe-area-inset-bottom);
+     padding-bottom: env(safe-area-inset-bottom, 0px);
+   }
+   .pt-safe {
+     padding-top: env(safe-area-inset-top, 0px);
    }
 
    .text-primary {
@@ -191,6 +195,20 @@ body {
    .bg-surface {
      background: #F8FAFC;
    }
+}
+
+/* WebView Native Mobile Styling */
+body {
+  touch-action: manipulation;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+body :not(input):not(textarea) {
+  user-select: none;
 }
 
 /* ─── Accessibility: Reduced Motion ─────────────────────────── */

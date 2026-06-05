@@ -114,7 +114,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Main Content Area */}
       <div className="flex-1 lg:ml-60 flex flex-col min-h-screen min-w-0">
         {/* Modern Nav Header */}
-        <header className="sticky top-0 z-40 bg-surface/80 backdrop-blur-xl flex justify-between items-center h-16 md:h-20 px-6 md:px-10 border-b border-outline-variant/20">
+        <header className="sticky top-0 z-40 bg-surface/80 backdrop-blur-xl flex justify-between items-center h-16 md:h-20 px-6 md:px-10 border-b border-outline-variant/20 pt-safe">
           <div className="flex items-center gap-6">
             <button
               className="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl bg-surface-container text-on-surface"

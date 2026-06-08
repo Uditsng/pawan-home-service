@@ -7,7 +7,7 @@ import { requireAdmin } from "@/utils/supabase/auth-checks";
 /**
  * Helper to check schema column exceptions and throw user-friendly instructions.
  */
-function handleDatabaseError(error: any): never {
+function handleDatabaseError(error: { message?: string; code?: string }): never {
   console.error("Database operation failed:", error);
   if (error.message?.includes("column") || error.code === '42703') {
     throw new Error(
@@ -79,7 +79,7 @@ export async function reviewKycAction(
   await requireAdmin();
   const supabase = await createClient();
 
-  const updateData: Record<string, any> = {
+  const updateData: Record<string, unknown> = {
     kyc_status: status,
     kyc_rejection_reason: status === 'rejected' ? (reason || null) : null
   };

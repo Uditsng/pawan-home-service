@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import type { PluginListenerHandle } from "@capacitor/core";
 
 export default function MobileSetup() {
   const pathname = usePathname();
@@ -9,7 +10,7 @@ export default function MobileSetup() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    let backButtonListener: any = null;
+    let backButtonListener: PluginListenerHandle | null = null;
 
     const initCapacitor = async () => {
       try {

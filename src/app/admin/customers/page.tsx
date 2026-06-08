@@ -1,10 +1,33 @@
 import { createClient } from "@/utils/supabase/server";
 import { CustomerCRM } from "./CustomerCRM";
 
+interface RawCustomerBooking {
+  id: string;
+  status: string;
+  total_amount: number;
+  created_at: string;
+  services: {
+    title: string;
+  } | null;
+}
+
+interface RawCustomerProfile {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+  created_at: string;
+  status: string | null;
+  avatar_url: string | null;
+  internal_note: string | null;
+  risk_trigger: string | null;
+  bookings: RawCustomerBooking[] | null;
+}
+
 export default async function AdminCustomersPage() {
   const supabase = await createClient();
 
-  let customers: any[] = [];
+  let customers: RawCustomerProfile[] = [];
   let isSchemaError = false;
 
   // Try fetching profiles joined with bookings and services, including the new CRM fields
@@ -57,7 +80,7 @@ export default async function AdminCustomersPage() {
         .limit(1000);
 
       if (!fallbackError && fallbackData) {
-        customers = fallbackData.map(c => ({
+        customers = (fallbackData as unknown as RawCustomerProfile[]).map(c => ({
           ...c,
           internal_note: null,
           risk_trigger: null
@@ -69,23 +92,24 @@ export default async function AdminCustomersPage() {
       console.error("Query error:", error);
     }
   } else if (data) {
-    customers = data;
+    customers = data as unknown as RawCustomerProfile[];
   }
 
   // Pre-calculate metrics and risk categories for each customer
   const processedCustomers = customers.map(c => {
     const totalBookings = c.bookings?.length || 0;
-    const spent = c.bookings?.reduce((acc: number, b: any) => acc + Number(b.total_amount || 0), 0) || 0;
-    const cancels = c.bookings?.filter((b: any) => b.status === 'cancelled').length || 0;
+    const spent = c.bookings?.reduce((acc: number, b: RawCustomerBooking) => acc + Number(b.total_amount || 0), 0) || 0;
+    const cancels = c.bookings?.filter((b: RawCustomerBooking) => b.status === 'cancelled').length || 0;
     const cancelRate = totalBookings > 0 ? (cancels / totalBookings) * 100 : 0;
 
     return {
       ...c,
-      status: c.status || 'active',
+      status: (c.status || 'active') as 'active' | 'suspended' | 'flagged',
+      bookings: c.bookings || [],
       totalBookings,
       spent,
       cancelRate,
-      riskLevel: cancelRate > 30 ? 'High' : cancelRate > 15 ? 'Medium' : 'Low'
+      riskLevel: (cancelRate > 30 ? 'High' : cancelRate > 15 ? 'Medium' : 'Low') as 'Low' | 'Medium' | 'High'
     };
   });
 
@@ -108,7 +132,7 @@ export default async function AdminCustomersPage() {
             <div>
               <h4 className="text-sm font-black text-amber-800 uppercase tracking-tight">Database Schema Upgrade Required</h4>
               <p className="text-xs text-amber-700 mt-1 font-medium leading-relaxed">
-                The profiles table is missing the columns <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold">internal_note</code> and <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold font-black text-[11px]">risk_trigger</code>. To enable internal CRM logging and manual risk override triggers, please execute the DDL queries inside your Supabase Dashboard SQL editor.
+                The profiles table is missing the columns <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold">internal_note</code> and <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold text-[11px]">risk_trigger</code>. To enable internal CRM logging and manual risk override triggers, please execute the DDL queries inside your Supabase Dashboard SQL editor.
               </p>
             </div>
           </div>

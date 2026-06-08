@@ -19,7 +19,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
 
   // Fetch all active services
   // The user reported services not showing. We still filter by is_active, but added a fallback if it fails.
-  const { data: services, error: fetchError } = await supabase
+  const { data: services } = await supabase
     .from('services')
     .select('id, title, category')
     .eq('is_active', true)

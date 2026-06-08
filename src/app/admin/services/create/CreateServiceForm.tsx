@@ -15,7 +15,12 @@ type Category = {
   subcategories: Subcategory[];
 };
 
-export function CreateServiceForm({ categories, action }: { categories: Category[], action: (prevState: any, formData: FormData) => Promise<any> }) {
+type FormActionState = {
+  type: "success" | "error" | null;
+  message: string | null;
+};
+
+export function CreateServiceForm({ categories, action }: { categories: Category[], action: (prevState: FormActionState, formData: FormData) => Promise<FormActionState> }) {
   const [state, formAction, isPending] = useActionState(action, { type: null, message: null });
   const [selectedIcon, setSelectedIcon] = useState<string>("home");
   const [includedItems, setIncludedItems] = useState<string[]>([""]);

@@ -1,11 +1,10 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "Terms of Service | PHS Company",
+  title: "Terms of Service | PHS Cleaning Company",
   description:
-    "Read the Terms of Service for PHS Company. Understand your rights and responsibilities when using our platform.",
+    "Read the Terms of Service for PHS Cleaning Company. Understand your rights and responsibilities when using our platform.",
 };
 
 const sections = [
@@ -13,7 +12,7 @@ const sections = [
     icon: "handshake",
     title: "Acceptance of Terms",
     content:
-      "By accessing or using PHS Company, you agree to comply with these Terms of Service.",
+      "By accessing or using PHS Cleaning Company, you agree to comply with these Terms of Service.",
   },
   {
     icon: "event_note",
@@ -64,7 +63,7 @@ const sections = [
     icon: "policy",
     title: "Limitation of Liability",
     content:
-      "PHS Company acts as a service platform connecting customers and service providers. We are not liable for indirect losses, delays, or circumstances beyond reasonable control.",
+      "PHS Cleaning Company acts as a service platform connecting customers and service providers. We are not liable for indirect losses, delays, or circumstances beyond reasonable control.",
   },
 ];
 

@@ -3,15 +3,13 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
-import { updateSettingsAction, seedDemoDataAction } from "./actions";
+import { updateSettingsAction } from "./actions";
 
 interface SettingsConsoleProps {
   initialTaxRate: string;
   initialCancellationWindow: string;
   initialPenaltyRate: string;
   initialServiceAreas: string[];
-  dbBookingsCount: number;
 }
 
 export function SettingsConsole({
@@ -19,7 +17,6 @@ export function SettingsConsole({
   initialCancellationWindow,
   initialPenaltyRate,
   initialServiceAreas,
-  dbBookingsCount
 }: SettingsConsoleProps) {
   const [taxRate, setTaxRate] = useState(initialTaxRate);
   const [cancellationWindow, setCancellationWindow] = useState(initialCancellationWindow);
@@ -29,8 +26,6 @@ export function SettingsConsole({
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [isSeeding, setIsSeeding] = useState(false);
-  const [seedCount, setSeedCount] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
 
   const handleAddCity = (e: React.FormEvent) => {
@@ -61,30 +56,14 @@ export function SettingsConsole({
       });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (err: any) {
-      setErrorMessage(err.message || "Failed to save settings");
+    } catch (err: unknown) {
+      setErrorMessage((err as Error).message || "Failed to save settings");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleSeedData = async () => {
-    if (!window.confirm("This will overwrite existing bookings, reviews, and rejections with dynamic demo data. Proceed?")) return;
-    setIsSeeding(true);
-    setErrorMessage("");
-    setSeedCount(null);
-    try {
-      const res = await seedDemoDataAction();
-      setSeedCount(res.count);
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
-    } catch (err: any) {
-      setErrorMessage(err.message || "Seeding failed. Please check services, customers, and partners exist.");
-    } finally {
-      setIsSeeding(false);
-    }
-  };
+
 
   return (
     <div className="space-y-6">

@@ -43,9 +43,10 @@ export default function ScheduleClient({
       .order("is_default", { ascending: false });
 
     if (data) {
-      setAddresses(data as Address[]);
-      if (!selectedAddressId || !data.some((a: any) => a.id === selectedAddressId)) {
-        const defaultOrFirst = data.find((a: any) => a.is_default) || data[0];
+      const addressData = data as Address[];
+      setAddresses(addressData);
+      if (!selectedAddressId || !addressData.some((a) => a.id === selectedAddressId)) {
+        const defaultOrFirst = addressData.find((a) => a.is_default) || addressData[0];
         if (defaultOrFirst) {
           setSelectedAddressId(defaultOrFirst.id);
         }
@@ -57,7 +58,7 @@ export default function ScheduleClient({
     return addresses.find(a => a.id === selectedAddressId) || null;
   }, [addresses, selectedAddressId]);
 
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const currentDate = new Date();
 
   const [selectedFullDate, setSelectedFullDate] = useState<Date>(new Date());
   const [selectedTime, setSelectedTime] = useState<string>("");

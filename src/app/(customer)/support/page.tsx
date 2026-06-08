@@ -1,11 +1,10 @@
-import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import CustomerHeader from "@/components/CustomerHeader";
 import SupportClient from "./SupportClient";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Help & Support | PHS Company",
+  title: "Help & Support | PHS Cleaning Company",
   description: "Have questions or need assistance? Contact our team.",
 };
 

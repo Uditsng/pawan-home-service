@@ -70,7 +70,6 @@ function Countdown({ seconds, onExpire }: { seconds: number; onExpire: () => voi
   const [remaining, setRemaining] = useState(seconds);
 
   useEffect(() => {
-    setRemaining(seconds);
     const interval = setInterval(() => {
       setRemaining((prev) => {
         if (prev <= 1) {
@@ -207,7 +206,7 @@ export default function RegisterPage() {
                   Verified Network
                 </div>
                 <h1 className="text-4xl xl:text-5xl font-black mb-4 tracking-tighter text-white drop-shadow-md leading-tight">
-                  Join the PHS<br />Ecosystem.
+                  Join PHS Cleaning<br />Company.
                 </h1>
                 <p className="text-base xl:text-lg text-white/80 max-w-md font-medium">
                   Verified professionals and trusted customers — building India&apos;s premier home services platform.

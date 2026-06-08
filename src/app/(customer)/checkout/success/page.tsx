@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -142,9 +143,11 @@ export default async function CheckoutSuccessPage({ searchParams }: { searchPara
               <div className="flex items-center gap-3 md:gap-4">
                 <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-green-500/10 flex items-center justify-center text-[#059669] shrink-0 border-2 border-green-500/20">
                   {assignedPartner?.avatar_url ? (
-                    <img
+                    <Image
                       src={assignedPartner.avatar_url}
                       alt={assignedPartner.full_name}
+                      width={56}
+                      height={56}
                       className="w-full h-full rounded-full object-cover"
                     />
                   ) : (

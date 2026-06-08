@@ -34,17 +34,6 @@ export interface PartnerReview {
   } | null;
 }
 
-export interface PendingBooking {
-  id: string;
-  status: string;
-  created_at: string;
-  pincode: string | null;
-  city: string | null;
-  services: {
-    title: string;
-  } | null;
-}
-
 export interface SerializedPartner {
   id: string;
   full_name: string;
@@ -55,7 +44,7 @@ export interface SerializedPartner {
   service_tier: 'premium' | 'standard';
   kyc_status: 'approved' | 'rejected' | 'pending';
   kyc_rejection_reason: string | null;
-  kyc_documents: any | null;
+  kyc_documents: Record<string, unknown> | null;
   rating_avg: number;
   jobs_done: number;
   jobs_cancelled: number;
@@ -68,36 +57,91 @@ export interface SerializedPartner {
   reviews: PartnerReview[];
 }
 
+interface RawPartnerProfile {
+  id: string;
+  full_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  avatar_url?: string | null;
+  status?: 'active' | 'offline' | 'busy' | 'suspended' | null;
+  service_tier?: 'premium' | 'standard' | null;
+  kyc_status?: 'approved' | 'rejected' | 'pending' | null;
+  kyc_rejection_reason?: string | null;
+  kyc_documents?: Record<string, unknown> | null;
+  rating_avg?: number | null;
+  rating_count?: number | null;
+  jobs_offered_count?: number | null;
+  jobs_accepted_count?: number | null;
+  jobs_cancelled_count?: number | null;
+  acceptance_rate?: number | null;
+  cancellation_rate?: number | null;
+  is_available?: boolean | null;
+  partner_services?: {
+    services: {
+      id: string;
+      title: string;
+      category: string;
+    } | null;
+  }[] | null;
+  partner_service_areas?: {
+    id: string;
+    pincode: string;
+    city: string;
+  }[] | null;
+  bookings?: {
+    id: string;
+    status: string;
+    total_amount: number;
+    created_at: string;
+    scheduled_date: string | null;
+    pincode: string | null;
+    city: string | null;
+    services: {
+      title: string;
+      category: string;
+    } | null;
+    customer: {
+      full_name: string | null;
+    } | null;
+  }[] | null;
+  reviews?: {
+    id: string;
+    rating: number;
+    comment: string | null;
+    created_at: string;
+    bookings: {
+      services: {
+        title: string;
+      } | null;
+    } | null;
+    customer: {
+      full_name: string | null;
+      avatar_url: string | null;
+    } | null;
+  }[] | null;
+}
+
+interface RawServiceQueryItem {
+  id: string;
+  title: string;
+  subcategories: {
+    subcategory_name: string;
+    categories: {
+      category_name: string;
+    } | { category_name: string }[] | null;
+  } | {
+    subcategory_name: string;
+    categories: {
+      category_name: string;
+    } | { category_name: string }[] | null;
+  }[] | null;
+}
+
 export default async function AdminPartnersPage() {
   const supabase = await createClient();
 
-  let partners: any[] = [];
+  let partners: RawPartnerProfile[] = [];
   let isSchemaError = false;
-
-  // Fetch pending bookings for the emergency dispatch feature
-  const { data: pendingBookingsData } = await supabase
-    .from('bookings')
-    .select(`
-      id,
-      status,
-      created_at,
-      pincode,
-      city,
-      services:services(title)
-    `)
-    .eq('status', 'pending')
-    .limit(1000);
-
-  const pendingBookings: PendingBooking[] = (pendingBookingsData || []).map((b: any) => ({
-    id: b.id,
-    status: b.status,
-    created_at: b.created_at,
-    pincode: b.pincode || null,
-    city: b.city || null,
-    services: b.services ? {
-      title: b.services.title || "Home Service"
-    } : null
-  }));
 
   // Try fetching profiles joined with services, service areas, bookings, and reviews
   const { data, error } = await supabase
@@ -193,7 +237,7 @@ export default async function AdminPartnersPage() {
         .limit(1000);
 
       if (!fallbackError && fallbackData) {
-        partners = fallbackData.map(p => ({
+        partners = (fallbackData as unknown as RawPartnerProfile[]).map(p => ({
           ...p,
           service_tier: 'standard',
           kyc_status: 'pending',
@@ -207,23 +251,23 @@ export default async function AdminPartnersPage() {
       console.error("Query error:", error);
     }
   } else if (data) {
-    partners = data;
+    partners = data as unknown as RawPartnerProfile[];
   }
 
   // Preprocess and safely type partners list
-  const processedPartners: SerializedPartner[] = (partners || []).map((p: any) => {
+  const processedPartners: SerializedPartner[] = (partners || []).map((p) => {
     // Flatten skills and categories
-    const skills = p.partner_services?.map((ps: any) => ps.services?.title).filter(Boolean) || [];
-    const serviceCategories = p.partner_services?.map((ps: any) => ps.services?.category).filter(Boolean) || [];
-    const uniqueCategories = Array.from(new Set(serviceCategories)) as string[];
+    const skills = p.partner_services?.map((ps) => ps.services?.title).filter((t): t is string => typeof t === "string") || [];
+    const serviceCategories = p.partner_services?.map((ps) => ps.services?.category).filter((t): t is string => typeof t === "string") || [];
+    const uniqueCategories = Array.from(new Set(serviceCategories));
 
     // Extract coverage locations
-    const citiesCovered = p.partner_service_areas?.map((sa: any) => sa.city).filter(Boolean) || [];
-    const uniqueCities = Array.from(new Set(citiesCovered)) as string[];
-    const pincodesCovered = p.partner_service_areas?.map((sa: any) => sa.pincode).filter(Boolean) || [];
+    const citiesCovered = p.partner_service_areas?.map((sa) => sa.city).filter((c): c is string => typeof c === "string") || [];
+    const uniqueCities = Array.from(new Set(citiesCovered));
+    const pincodesCovered = p.partner_service_areas?.map((sa) => sa.pincode).filter((pc): pc is string => typeof pc === "string") || [];
 
     // Flatten bookings and reviews safely
-    const bookings: PartnerBooking[] = (p.bookings || []).map((b: any) => ({
+    const bookings: PartnerBooking[] = (p.bookings || []).map((b) => ({
       id: b.id,
       status: b.status,
       total_amount: Number(b.total_amount || 0),
@@ -240,7 +284,7 @@ export default async function AdminPartnersPage() {
       } : null
     }));
 
-    const reviews: PartnerReview[] = (p.reviews || []).map((r: any) => ({
+    const reviews: PartnerReview[] = (p.reviews || []).map((r) => ({
       id: r.id,
       rating: Number(r.rating || 5),
       comment: r.comment || null,
@@ -300,7 +344,7 @@ export default async function AdminPartnersPage() {
     `)
     .eq('is_active', true);
 
-  const allServices = (allServicesData || []).map((s: any) => {
+  const allServices = ((allServicesData || []) as unknown as RawServiceQueryItem[]).map((s) => {
     const subcat = Array.isArray(s.subcategories) ? s.subcategories[0] : s.subcategories;
     const cat = subcat ? (Array.isArray(subcat.categories) ? subcat.categories[0] : subcat.categories) : null;
     return {
@@ -329,7 +373,7 @@ export default async function AdminPartnersPage() {
             <div>
               <h4 className="text-sm font-black text-amber-800 uppercase tracking-tight">Database Schema Upgrade Required</h4>
               <p className="text-xs text-amber-700 mt-1 font-medium leading-relaxed">
-                The profiles table is missing the columns <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold">service_tier</code>, <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold font-black text-[11px]">kyc_status</code>, <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold font-black text-[11px]">kyc_rejection_reason</code>, and <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold font-black text-[11px]">kyc_documents</code>. Please run the migration query inside your Supabase Dashboard SQL editor to unlock compliance flows.
+                The profiles table is missing the columns <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold">service_tier</code>, <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold text-[11px]">kyc_status</code>, <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold font-black text-[11px]">kyc_rejection_reason</code>, and <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold font-black text-[11px]">kyc_documents</code>. Please run the migration query inside your Supabase Dashboard SQL editor to unlock compliance flows.
               </p>
             </div>
           </div>
@@ -342,7 +386,6 @@ export default async function AdminPartnersPage() {
       {/* Interactive Fleet Control Dashboard Console */}
       <PartnersConsole 
         initialPartners={processedPartners} 
-        pendingBookings={pendingBookings} 
         allServices={allServices}
       />
     </div>

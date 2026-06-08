@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 type Booking = {
   id: string;
@@ -109,7 +110,7 @@ export default function BookingsClient({ bookings }: { bookings: Booking[] }) {
                     <div className="flex items-center gap-2 md:gap-3">
                       <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden bg-surface-container-highest flex items-center justify-center">
                         {booking.partner?.avatar_url ? (
-                          <img src={booking.partner.avatar_url} alt={booking.partner.full_name} className="w-full h-full object-cover" />
+                          <Image src={booking.partner.avatar_url} alt={booking.partner.full_name} width={40} height={40} className="w-full h-full object-cover" />
                         ) : (
                           <span className="material-symbols-outlined text-on-surface-variant text-sm md:text-base">person</span>
                         )}

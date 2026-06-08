@@ -14,7 +14,7 @@ export default function PartnerHeader() {
         <Link href="/partner/dashboard" className="flex items-center gap-2">
           <Image
             src="/PHS.png"
-            alt="PHS Company Logo"
+            alt="PHS Cleaning Company Logo"
             className="h-12 md:h-14 w-auto rounded-lg shadow-sm"
             width={40}
             height={40}

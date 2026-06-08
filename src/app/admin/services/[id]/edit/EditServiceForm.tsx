@@ -15,14 +15,34 @@ type Category = {
   subcategories: Subcategory[];
 };
 
+type FormActionState = {
+  type: "success" | "error" | null;
+  message: string | null;
+};
+
+type ServiceInitialData = {
+  id: string;
+  title: string;
+  subcategory_id: string | null;
+  image_url?: string | null;
+  base_price: number;
+  price_breakdown?: string | null;
+  description: string;
+  page_content?: {
+    included_features?: string[] | null;
+    excluded_features?: string[] | null;
+    faqs?: { question: string; answer: string }[] | null;
+  } | null;
+};
+
 export function EditServiceForm({ 
   categories, 
   initialData, 
   action 
 }: { 
   categories: Category[], 
-  initialData: any,
-  action: (prevState: any, formData: FormData) => Promise<any> 
+  initialData: ServiceInitialData,
+  action: (prevState: FormActionState, formData: FormData) => Promise<FormActionState> 
 }) {
   const [state, formAction, isPending] = useActionState(action, { type: null, message: null });
   

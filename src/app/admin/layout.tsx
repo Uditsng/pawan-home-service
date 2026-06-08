@@ -16,8 +16,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "Partners", href: "/admin/partners", icon: "handshake" },
     { name: "Services", href: "/admin/services", icon: "handyman" },
     { name: "Finance", href: "/admin/finance", icon: "payments" },
-    { name: "Disputes", href: "/admin/disputes", icon: "gavel" },
-    { name: "Analytics", href: "/admin/analytics", icon: "monitoring" },
     { name: "Settings", href: "/admin/settings", icon: "settings" }
   ];
 
@@ -29,7 +27,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="fixed inset-0 bg-primary/40 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}></div>
           <aside className="fixed left-0 top-0 h-screen w-72 bg-surface flex flex-col py-8 px-6 z-70 shadow-2xl animate-[slideIn_0.3s_ease-out] border-r border-outline-variant/30">
             <div className="mb-12 flex items-center justify-between">
-              <Link href="/" className="flex items-center gap-3 group">
+              <Link href="/admin/dashboard" className="flex items-center gap-3 group">
                 <Image
                   src="/PHS.png"
                   alt="PHS Logo"
@@ -38,7 +36,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   className="w-10 h-10 object-contain group-hover:scale-105 transition-transform drop-shadow-sm"
                 />
                 <div>
-                  <h1 className="text-xl font-bold tracking-tight text-primary leading-none">PHS Company</h1>
+                  <h1 className="text-xl font-bold tracking-tight text-primary leading-none">PHS Cleaning Company</h1>
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant mt-1">Admin Ops</p>
                 </div>
               </Link>
@@ -74,7 +72,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-60 bg-surface-container-lowest flex-col py-6 px-3 z-50 border-r border-outline-variant/30">
         <div className="mb-12">
-          <Link href="/" className="flex items-center gap-4 group">
+          <Link href="/admin/dashboard" className="flex items-center gap-4 group">
             <Image
               src="/PHS.png"
               alt="PHS Logo"
@@ -83,7 +81,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               className="w-12 h-12 object-contain group-hover:scale-105 transition-transform drop-shadow-sm"
             />
             <div>
-              <h1 className="text-2xl font-bold tracking-tighter text-primary leading-none">PHS Company</h1>
+              <h1 className="text-2xl font-bold tracking-tighter text-primary leading-none">PHS Cleaning Company</h1>
               <p className="text-[11px] font-black uppercase tracking-[0.2em] text-on-surface-variant mt-1.5 opacity-60">Operations</p>
             </div>
           </Link>
@@ -111,6 +109,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
       </aside>
 
+
       {/* Main Content Area */}
       <div className="flex-1 lg:ml-60 flex flex-col min-h-screen min-w-0">
         {/* Modern Nav Header */}
@@ -126,9 +125,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
 
           <div className="flex items-center gap-3 md:gap-5">
-            <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-2xl bg-surface-container-low border border-outline-variant/20 text-xs font-black text-on-surface-variant uppercase tracking-widest">
-              <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span> Platform Live
-            </div>
             <LogoutButton variant="icon" />
           </div>
         </header>

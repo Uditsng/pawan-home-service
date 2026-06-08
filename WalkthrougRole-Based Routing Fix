@@ -1,0 +1,111 @@
+# Walkthrough: Authentication & Role-Based Routing Fix
+
+## Summary
+
+Rewrote the authentication and routing architecture to enforce strict role-based access control across the entire application. Logged-in users are now **always** routed to their own dashboard and **can never** access another role's pages.
+
+---
+
+## Changes Made
+
+### 1. Core Proxy Logic — Complete Rewrite
+**File:** [middleware.ts](file:///c:/projects/PawanPestServiceCompany/src/utils/supabase/middleware.ts)
+
+This is the heart of the fix. The `updateSession()` function was completely rewritten with:
+
+- **Centralized `ROLE_DASHBOARDS` mapping** — single source of truth for `admin → /admin/dashboard`, `partner → /partner/dashboard`, `customer → /dashboard`
+- **Landing page (`/`) redirect** — authenticated users are immediately redirected to their dashboard before the page renders
+- **Strict role guards** — each protected route requires a specific role; mismatched roles are redirected to their own dashboard (not to `/` or a generic error)
+- **Route classification helpers** — `getRequiredRole()`, `isPublicPage()`, `isAuthPage()` for clean separation of concerns
+- **Preserved all existing protections** — suspended/blocked account checks, partner onboarding enforcement
+
+---
+
+### 2. Landing Page Defense-in-Depth
+**File:** [page.tsx](file:///c:/projects/PawanPestServiceCompany/src/app/page.tsx)
+
+Added a server-side redirect at the top of the `Home()` component. Even if the proxy cookie hasn't propagated yet, the page itself checks for an authenticated session and redirects to the correct dashboard. Uses the same `ROLE_DASHBOARDS` mapping.
+
+---
+
+### 3. Header Role Routing Fix
+**File:** [Header.tsx](file:///c:/projects/PawanPestServiceCompany/src/components/Header.tsx)
+
+**Before:** Used `user.user_metadata?.role` to determine Dashboard button routing — this is unreliable because Supabase `user_metadata` can be stale or missing.
+
+**After:** Fetches the actual `role` from the `profiles` table via a DB query. Both desktop and mobile Dashboard links now use the centralized `ROLE_DASHBOARDS` mapping.
+
+Also fixed:
+- `hover:bg-[#0F172A]` → `hover:bg-primary/90` (Tailwind 4 compliance)
+- `bg-white/98` → `bg-surface-container-lowest/98` (theme variable compliance)
+- `border-[#DEE2E6]` → `border-outline-variant` (theme variable compliance)
+- `bg-slate-200` → `bg-surface-container-highest` (theme variable compliance)
+
+---
+
+### 4. Admin Layout Logo Fix
+**File:** [layout.tsx](file:///c:/projects/PawanPestServiceCompany/src/app/admin/layout.tsx)
+
+Changed the logo `<Link>` in both the **mobile sidebar** and **desktop sidebar** from `href="/"` to `href="/admin/dashboard"`. This prevents admins from accidentally navigating to the public landing page.
+
+---
+
+### 5. Stale Middleware File Deletion
+**File:** `src/middleware.ts` — **DELETED**
+
+Next.js 16 renamed `middleware.ts` to `proxy.ts`. The project had both files with identical content. The `middleware.ts` file was ignored by the framework and has been removed to eliminate confusion.
+
+---
+
+### 6. Pre-existing Build Fix (Bonus)
+**File:** [tracking/page.tsx](file:///c:/projects/PawanPestServiceCompany/src/app/(customer)/bookings/[id]/tracking/page.tsx)
+
+Fixed a pre-existing Next.js 16 type error where a static `export const metadata` was used on a dynamic route (`[id]`). Converted to `generateMetadata()` function.
+
+---
+
+## Routing Flow Diagram
+
+```mermaid
+flowchart TD
+    A["User visits URL"] --> B{"Authenticated?"}
+    B -- No --> C{"Is protected route?"}
+    C -- Yes --> D["Redirect → /login"]
+    C -- No --> E["Allow (landing, public, auth pages)"]
+    B -- Yes --> F{"Path = '/' or auth page?"}
+    F -- Yes --> G["Fetch profile role"]
+    G --> H["Redirect → role dashboard"]
+    F -- No --> I{"Is protected route?"}
+    I -- No --> J["Allow (public pages like /services, /about)"]
+    I -- Yes --> K["Fetch profile role"]
+    K --> L{"Role matches route?"}
+    L -- Yes --> M["Allow access"]
+    L -- No --> N["Redirect → own dashboard"]
+    K --> O{"Suspended/blocked?"}
+    O -- Yes --> P["Sign out → /login"]
+```
+
+## Route Access Matrix (Final)
+
+| Route Pattern | Guest | Customer | Partner | Admin |
+|:---|:---:|:---:|:---:|:---:|
+| `/` (landing) | ✅ | → `/dashboard` | → `/partner/dashboard` | → `/admin/dashboard` |
+| `/login`, `/register` | ✅ | → `/dashboard` | → `/partner/dashboard` | → `/admin/dashboard` |
+| `/services` (public) | ✅ | ✅ | ✅ | ✅ |
+| `/about`, `/help`, `/terms` | ✅ | ✅ | ✅ | ✅ |
+| `/dashboard`, `/bookings` | → login | ✅ | → `/partner/dashboard` | → `/admin/dashboard` |
+| `/services/[cat]/[id]` | → login | ✅ | → `/partner/dashboard` | → `/admin/dashboard` |
+| `/partner/*` | → login | → `/dashboard` | ✅ | → `/admin/dashboard` |
+| `/admin/*` | → login | → `/dashboard` | → `/partner/dashboard` | ✅ |
+
+## Security Notes
+
+- **Server-side enforcement**: All routing rules are enforced in the proxy (runs before page render) — cannot be bypassed by client-side navigation, browser back button, direct URLs, or new tabs
+- **Defense-in-depth**: Landing page has an additional server-side redirect as a safety net
+- **Role verification**: Always fetched from `profiles` DB table (never from `user_metadata` or client state)
+- **Session handling**: Supabase SSR cookies with `HttpOnly` + `Secure` flags (managed by `@supabase/ssr`)
+- **Suspended accounts**: Detected and signed out at proxy level before any page renders
+
+## Build Verification
+
+✅ **Build passed** — `npm run build` completed successfully with clean `.next` cache.

@@ -1,10 +1,9 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | PHS Company",
-  description: "How PHS Company collects, uses, and protects your personal information.",
+  title: "Privacy Policy | PHS Cleaning Company",
+  description: "How PHS Cleaning Company collects, uses, and protects your personal information.",
 };
 
 const sections = [
@@ -70,7 +69,7 @@ export default function PrivacyPolicyPage() {
               <span className="material-symbols-outlined text-[20px]">email</span>pavanhomess@gmail.com
             </a>
             <a href="tel:9648801462" className="inline-flex items-center gap-3 px-6 py-3 border border-outline-variant rounded-xl text-on-surface text-sm font-semibold hover:bg-surface-container-low transition-colors">
-              <span className="material-symbols-outlined text-[20px]">phone</span>9648801462
+              <span className="material-symbols-outlined text-[20px]">phone</span>7408702019
             </a>
           </div>
         </div>

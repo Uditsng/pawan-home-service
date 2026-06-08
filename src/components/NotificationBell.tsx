@@ -96,20 +96,14 @@ export default function NotificationBell() {
 
   // ─── Initial load & polling ─────────────────────────────────
   useEffect(() => {
-    fetchUnreadCount();
+    setTimeout(() => {
+      fetchUnreadCount();
+    }, 0);
 
     // Poll for unread count every 30 seconds
     const interval = setInterval(fetchUnreadCount, 30_000);
     return () => clearInterval(interval);
   }, [fetchUnreadCount]);
-
-  // ─── Open dropdown ──────────────────────────────────────────
-  useEffect(() => {
-    if (isOpen) {
-      setPage(0);
-      fetchNotifications(0);
-    }
-  }, [isOpen, fetchNotifications]);
 
   // ─── Click outside to close ─────────────────────────────────
   useEffect(() => {
@@ -161,7 +155,14 @@ export default function NotificationBell() {
       {/* Bell Button */}
       <button
         id="notification-bell-trigger"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          const nextOpen = !isOpen;
+          setIsOpen(nextOpen);
+          if (nextOpen) {
+            setPage(0);
+            fetchNotifications(0);
+          }
+        }}
         className="relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-2xl bg-surface-container text-on-surface-variant hover:bg-secondary hover:text-primary transition-all active:scale-95"
         aria-label="Notifications"
       >

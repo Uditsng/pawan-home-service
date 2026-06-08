@@ -1,10 +1,9 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "Terms & Conditions | PHS Company",
-  description: "Read the Terms & Conditions for using the PHS Company platform.",
+  title: "Terms & Conditions | PHS Cleaning Company",
+  description: "Read the Terms & Conditions for using the PHS Cleaning Company platform.",
 };
 
 const sections = [
@@ -70,7 +69,7 @@ export default function TermsConditionsPage() {
                 <span className="text-xs font-bold text-on-surface-variant/50 uppercase tracking-widest">07</span>
                 <h2 className="text-lg font-bold text-on-surface">Platform Rights</h2>
               </div>
-              <p className="text-sm text-on-surface-variant leading-relaxed mb-3">PHS Company reserves the right to:</p>
+              <p className="text-sm text-on-surface-variant leading-relaxed mb-3">PHS Cleaning Company reserves the right to:</p>
               <ul className="space-y-2">
                 {platformRights.map((item) => (
                   <li key={item} className="flex items-center gap-2 text-sm text-on-surface-variant">

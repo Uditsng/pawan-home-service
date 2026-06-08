@@ -5,11 +5,6 @@ export default async function AdminSettingsPage() {
   const supabase = await createClient();
   let isSchemaError = false;
 
-  // 1. Fetch bookings count to display seeding status
-  const { count: dbBookingsCount } = await supabase
-    .from('bookings')
-    .select('id', { count: 'exact', head: true });
-
   // 2. Fetch platform_settings
   const { data, error } = await supabase
     .from('platform_settings')
@@ -24,7 +19,7 @@ export default async function AdminSettingsPage() {
   }
 
   // Parse fields or fall back to defaults
-  const settingsMap = (data || []).reduce((acc: any, row) => {
+  const settingsMap = (data || []).reduce<Record<string, unknown>>((acc, row) => {
     try {
       acc[row.key] = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
     } catch {
@@ -33,10 +28,10 @@ export default async function AdminSettingsPage() {
     return acc;
   }, {});
 
-  const taxRate = settingsMap['tax_rate'] || "18%";
-  const cancellationWindow = settingsMap['free_cancellation_window'] || "2 Hours";
-  const penaltyRate = settingsMap['partner_penalty_rate'] || "10%";
-  const serviceAreas = settingsMap['service_areas'] || ['Roorkee', 'Chandigarh', 'Dehradun', 'Haridwar'];
+  const taxRate = String(settingsMap['tax_rate'] || "18%");
+  const cancellationWindow = String(settingsMap['free_cancellation_window'] || "2 Hours");
+  const penaltyRate = String(settingsMap['partner_penalty_rate'] || "10%");
+  const serviceAreas = (settingsMap['service_areas'] as string[]) || ['Roorkee', 'Chandigarh', 'Dehradun', 'Haridwar'];
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -72,7 +67,6 @@ export default async function AdminSettingsPage() {
         initialCancellationWindow={cancellationWindow}
         initialPenaltyRate={penaltyRate}
         initialServiceAreas={serviceAreas}
-        dbBookingsCount={dbBookingsCount || 0}
       />
     </div>
   );

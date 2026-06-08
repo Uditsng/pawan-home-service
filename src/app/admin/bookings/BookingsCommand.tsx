@@ -3,6 +3,7 @@
 import React, { useState, useTransition, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import Image from "next/image";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -22,9 +23,6 @@ import {
 
 interface BookingsCommandProps {
   initialBookings: SerializedBooking[];
-  statusCounts: BookingStatusCounts;
-  totalGmv: number;
-  unassignedCount: number;
   serviceCategories: string[];
   cities: string[];
   availablePartners: AvailablePartner[];
@@ -48,9 +46,6 @@ const STATUS_CONFIG: Record<
 
 export function BookingsCommand({
   initialBookings,
-  statusCounts: initialCounts,
-  totalGmv,
-  unassignedCount: initialUnassigned,
   serviceCategories,
   cities,
   availablePartners,
@@ -553,9 +548,14 @@ export function BookingsCommand({
                           <span className="material-symbols-outlined text-secondary text-xs">location_on</span>
                           {[booking.city, booking.pincode].filter(Boolean).join(" · ") || "Zone N/A"}
                         </p>
-                        {booking.address && (
-                          <p className="text-[9px] text-on-surface-variant/40 font-normal leading-none mt-0.5 truncate max-w-[160px]">
-                            {booking.address}
+                        {booking.customer?.phone ? (
+                          <p className="text-[9px] font-bold text-on-surface-variant/75 flex items-center gap-0.5 leading-none mt-0.5">
+                            <span className="material-symbols-outlined text-secondary text-[10px]">phone</span>
+                            {booking.customer.phone}
+                          </p>
+                        ) : (
+                          <p className="text-[9px] font-normal text-on-surface-variant/40 italic leading-none mt-0.5">
+                            No Phone Number
                           </p>
                         )}
                       </td>
@@ -576,9 +576,11 @@ export function BookingsCommand({
                           <div className="flex items-center gap-2">
                             <div className="w-7 h-7 rounded-lg bg-primary/5 flex items-center justify-center text-primary font-black text-[9px] border border-primary/10 shrink-0 overflow-hidden">
                               {booking.partner.avatar_url ? (
-                                <img
+                                <Image
                                   src={booking.partner.avatar_url}
                                   alt={booking.partner.full_name}
+                                  width={28}
+                                  height={28}
                                   className="w-full h-full object-cover"
                                 />
                               ) : (
@@ -706,7 +708,7 @@ export function BookingsCommand({
                       {booking.service?.title || "Home Service"}
                     </p>
                     <p className="text-[10px] text-on-surface-variant/70 font-semibold">
-                      Client: {booking.customer?.full_name || "Guest"} · {booking.city || "N/A"}
+                      Client: {booking.customer?.full_name || "Guest"} · {booking.customer?.phone || "No Phone"} · {booking.city || "N/A"}
                     </p>
                   </div>
 
@@ -1011,7 +1013,7 @@ export function BookingsCommand({
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-xl bg-primary/5 flex items-center justify-center text-primary font-black text-sm border border-primary/10">
                           {selectedBooking.partner.avatar_url ? (
-                            <img src={selectedBooking.partner.avatar_url} alt={selectedBooking.partner.full_name} className="w-full h-full object-cover rounded-xl" />
+                            <Image src={selectedBooking.partner.avatar_url} alt={selectedBooking.partner.full_name} width={48} height={48} className="w-full h-full object-cover rounded-xl" />
                           ) : (
                             selectedBooking.partner.full_name.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase()
                           )}
@@ -1184,7 +1186,7 @@ export function BookingsCommand({
                   >
                     <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary font-black text-xs border border-primary/10 shrink-0">
                       {partner.avatar_url ? (
-                        <img src={partner.avatar_url} alt={partner.full_name} className="w-full h-full object-cover rounded-xl" />
+                        <Image src={partner.avatar_url} alt={partner.full_name} width={40} height={40} className="w-full h-full object-cover rounded-xl" />
                       ) : (
                         partner.full_name.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase()
                       )}
@@ -1229,7 +1231,7 @@ export function BookingsCommand({
 
       {/* ─── 6. CONFIRMATION MODALS ──────────────────────────── */}
       {modalAction && modalTargetBooking && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-[55]">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-55">
           <div className="bg-surface-container-lowest p-6 rounded-[24px] border border-outline-variant/20 shadow-2xl max-w-sm w-full mx-4 animate-in zoom-in-95 duration-200">
             <h4 className="text-base font-bold text-primary font-headline flex items-center gap-2">
               <span className="material-symbols-outlined text-error">warning</span>
@@ -1321,13 +1323,13 @@ export function BookingsCommand({
         <>
           {/* Backdrop for outside click */}
           <div 
-            className="fixed inset-0 z-[9998] bg-transparent" 
+            className="fixed inset-0 z-9998 bg-transparent" 
             onClick={() => setDropdownMenu(null)} 
           />
           
           {/* Menu container */}
           <div 
-            className="fixed w-48 bg-white border border-outline-variant/30 rounded-xl shadow-lg z-[9999] p-1 divide-y divide-outline-variant/10 text-left animate-in fade-in duration-100"
+            className="fixed w-48 bg-white border border-outline-variant/30 rounded-xl shadow-lg z-9999 p-1 divide-y divide-outline-variant/10 text-left animate-in fade-in duration-100"
             style={{
               top: `${
                 dropdownMenu.rect.bottom + 180 > window.innerHeight

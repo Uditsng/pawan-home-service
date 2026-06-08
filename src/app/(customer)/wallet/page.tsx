@@ -3,7 +3,7 @@ import CustomerHeader from "@/components/CustomerHeader";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "My Wallet | PHS Company",
+  title: "My Wallet | PHS Cleaning Company",
   description: "Secure payments and digital wallet.",
 };
 

@@ -4,9 +4,6 @@ dotenv.config({ path: ".env.local" });
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
-import * as fs from "fs";
-import * as path from "path";
-
 async function run() {
   console.log("Running diagnostic inserts on bookings table...");
   

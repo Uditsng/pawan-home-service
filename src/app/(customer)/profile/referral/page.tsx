@@ -4,7 +4,7 @@ import CustomerHeader from "@/components/CustomerHeader";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Refer & Earn | PHS Company",
+  title: "Refer & Earn | PHS Cleaning Company",
   description: "Invite friends and family to earn rewards.",
 };
 

@@ -207,25 +207,6 @@ export default async function AdminBookingsPage() {
     };
   });
 
-  // ─── 3. Status Counts ─────────────────────────────────────
-
-  const statusCounts: BookingStatusCounts = {
-    all: bookings.length,
-    pending: bookings.filter((b) => b.status === "pending").length,
-    confirmed: bookings.filter((b) => b.status === "confirmed").length,
-    accepted: bookings.filter((b) => b.status === "accepted").length,
-    in_progress: bookings.filter((b) => b.status === "in_progress").length,
-    completed: bookings.filter((b) => b.status === "completed").length,
-    cancelled: bookings.filter((b) => b.status === "cancelled").length,
-  };
-
-  // ─── 4. Operational Metrics ────────────────────────────────
-
-  const totalGmv = bookings.reduce((acc, b) => acc + b.total_amount, 0);
-  const unassignedCount = bookings.filter(
-    (b) => b.status === "pending" && !b.partner_id
-  ).length;
-
   // ─── 5. Filter Options (distinct categories & cities) ──────
 
   const serviceCategories = Array.from(
@@ -348,9 +329,6 @@ export default async function AdminBookingsPage() {
       {/* Interactive Bookings Command Client Application */}
       <BookingsCommand
         initialBookings={bookings}
-        statusCounts={statusCounts}
-        totalGmv={totalGmv}
-        unassignedCount={unassignedCount}
         serviceCategories={serviceCategories}
         cities={cities}
         availablePartners={availablePartners}

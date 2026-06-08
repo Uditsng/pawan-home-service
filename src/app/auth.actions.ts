@@ -404,6 +404,6 @@ export async function login(formData: FormData) {
 /**
  * @deprecated Use verifyOtpAndRegister instead.
  */
-export async function signup(formData: FormData) {
+export async function signup() {
   buildError("/register", "Please use the new registration flow with phone verification.");
 }

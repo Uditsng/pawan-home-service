@@ -6,43 +6,90 @@ import Image from "next/image"
 import { createClient } from "@/utils/supabase/client";
 import LogoutButton from "./LogoutButton";
 
+// Centralized role → dashboard mapping (must match proxy.ts)
+const ROLE_DASHBOARDS: Record<string, string> = {
+  admin: '/admin/dashboard',
+  partner: '/partner/dashboard',
+  customer: '/dashboard',
+};
+
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [user, setUser] = useState<{ id: string; email?: string; user_metadata?: { role?: string } } | null>(null);
+  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
+  const [userRole, setUserRole] = useState<string>('customer');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-      setLoading(false);
-    });
+    let active = true;
+
+    async function loadUserAndRole() {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!active) return;
+
+      if (authUser) {
+        setUser(authUser);
+        // Fetch actual role from profiles table (never rely on user_metadata)
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', authUser.id)
+          .single();
+        if (active && profile?.role) {
+          setUserRole(profile.role);
+        }
+      } else {
+        setUser(null);
+      }
+      if (active) setLoading(false);
+    }
+
+    loadUserAndRole();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
+      (_event, session) => {
+        if (session?.user) {
+          setUser(session.user);
+          // Re-fetch role on auth state change
+          supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', session.user.id)
+            .single()
+            .then(({ data: profile }) => {
+              if (active && profile?.role) {
+                setUserRole(profile.role);
+              }
+            });
+        } else {
+          setUser(null);
+          setUserRole('customer');
+        }
       }
     );
 
     return () => {
+      active = false;
       authListener.subscription.unsubscribe();
     };
   }, []);
 
+  const dashboardHref = ROLE_DASHBOARDS[userRole] ?? '/dashboard';
+
   return (
     <header className="sticky top-0 w-full z-50 bg-surface/95 backdrop-blur-md shadow-sm pt-safe">
       <nav className="flex justify-between items-center px-4 md:px-6 lg:px-8 py-3 md:py-4 max-w-7xl mx-auto">
-        <Link href="/dashboard" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2">
           <Image
             src="/PHS.png"
-            alt="PHS Company Logo"
+            alt="PHS Cleaning Company Logo"
             className="h-12 md:h-14 w-auto"
             width={40}
             height={40}
           />
 
           <div className="text-lg md:text-xl font-bold tracking-tighter text-primary font-headline hidden sm:block">
-            PHS Company
+            PHS Cleaning Company
           </div>
         </Link>
 
@@ -62,20 +109,20 @@ export default function Header() {
           </Link>
           <div className="flex items-center gap-3 lg:gap-4 ml-2 lg:ml-4">
             {loading ? (
-              <div className="w-24 h-10 animate-pulse bg-slate-200 rounded-xl"></div>
+              <div className="w-24 h-10 animate-pulse bg-surface-container-highest rounded-xl"></div>
             ) : user ? (
               <div className="flex items-center gap-3">
-                <Link href={user.user_metadata?.role === 'admin' ? '/admin/dashboard' : user.user_metadata?.role === 'partner' ? '/partner/dashboard' : '/dashboard'} className="inline-block bg-primary text-white px-5 lg:px-6 py-2.5 rounded-xl font-bold hover:bg-[#0F172A] transition-all text-sm">
+                <Link href={dashboardHref} className="inline-block bg-primary text-white px-5 lg:px-6 py-2.5 rounded-xl font-bold hover:bg-primary/90 transition-all text-sm">
                   Dashboard
                 </Link>
-                <LogoutButton variant="button" className="!bg-surface-container-low !text-primary hover:!bg-surface-container-high" />
+                <LogoutButton variant="button" className="bg-surface-container text-primary! hover:bg-surface-container" />
               </div>
             ) : (
               <>
                 <Link href="/login" className="text-primary font-medium px-4 py-2 hover:bg-surface-container-low rounded-xl transition-colors text-sm">
                   Login
                 </Link>
-                <Link href="/register" className="inline-block bg-primary text-white px-5 lg:px-6 py-2.5 rounded-xl font-bold hover:bg-[#0F172A] transition-all text-sm">
+                <Link href="/register" className="inline-block bg-primary text-white px-5 lg:px-6 py-2.5 rounded-xl font-bold hover:bg-primary/90 transition-all text-sm">
                   Sign Up
                 </Link>
               </>
@@ -97,7 +144,7 @@ export default function Header() {
 
       {/* Mobile Menu Drawer */}
       {menuOpen && (
-        <div className="md:hidden absolute top-full left-0 w-full bg-white/98 backdrop-blur-xl shadow-xl border-t border-[#DEE2E6]/50 animate-[slideDown_0.2s_ease-out]">
+        <div className="md:hidden absolute top-full left-0 w-full bg-surface-container-lowest/98 backdrop-blur-xl shadow-xl border-t border-outline-variant/50 animate-[slideDown_0.2s_ease-out]">
           <div className="flex flex-col px-6 py-6 gap-1 max-w-7xl mx-auto">
             <Link
               href="/services"
@@ -108,21 +155,21 @@ export default function Header() {
               Services
             </Link>
             <Link
-              href="#"
+              href="/help"
               onClick={() => setMenuOpen(false)}
               className="flex items-center gap-3 py-3.5 px-4 rounded-xl text-primary font-bold text-[15px] hover:bg-surface-container-low transition-colors"
             >
               <span className="material-symbols-outlined text-[20px] text-on-surface-variant">help</span>
               Help
             </Link>
-            <hr className="my-3 border-[#DEE2E6]/50" />
+            <hr className="my-3 border-outline-variant/50" />
             <div className="flex flex-col gap-3 pt-2">
               {loading ? null : user ? (
                 <div className="flex flex-col gap-3">
                   <Link
-                    href={user.user_metadata?.role === 'admin' ? '/admin/dashboard' : user.user_metadata?.role === 'partner' ? '/partner/dashboard' : '/dashboard'}
+                    href={dashboardHref}
                     onClick={() => setMenuOpen(false)}
-                    className="text-center py-3 px-6 rounded-xl bg-primary text-white font-bold text-[15px] hover:bg-[#0F172A] transition-colors"
+                    className="text-center py-3 px-6 rounded-xl bg-primary text-white font-bold text-[15px] hover:bg-primary/90 transition-colors"
                   >
                     Go to Dashboard
                   </Link>
@@ -140,7 +187,7 @@ export default function Header() {
                   <Link
                     href="/register"
                     onClick={() => setMenuOpen(false)}
-                    className="text-center py-3 px-6 rounded-xl bg-primary text-white font-bold text-[15px] hover:bg-[#0F172A] transition-colors"
+                    className="text-center py-3 px-6 rounded-xl bg-primary text-white font-bold text-[15px] hover:bg-primary/90 transition-colors"
                   >
                     Sign Up
                   </Link>

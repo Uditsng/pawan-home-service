@@ -20,7 +20,7 @@ export default function HeroConversationalCard() {
     {
       id: "1",
       sender: "assistant",
-      text: "Hi! 👋 Welcome to PHS. I can help you find and book the perfect home service in seconds. What do you need help with today?",
+      text: "Hi! 👋 Welcome to PHS Cleaning Company. I can help you find and book the perfect home service in seconds. What do you need help with today?",
     },
   ]);
   const [options, setOptions] = useState<Option[]>([
@@ -172,7 +172,7 @@ export default function HeroConversationalCard() {
           </div>
           <div>
             <h4 className="text-sm font-extrabold text-white leading-tight">Priya</h4>
-            <p className="text-[10px] text-white/60 font-semibold">PHS Concierge • Online</p>
+            <p className="text-[10px] text-white/60 font-semibold">PHS Cleaning Company Concierge • Online</p>
           </div>
         </div>
 

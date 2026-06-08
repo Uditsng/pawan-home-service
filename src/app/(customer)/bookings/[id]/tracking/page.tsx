@@ -1,14 +1,17 @@
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import CustomerHeader from "@/components/CustomerHeader";
 import BottomNav from "@/components/BottomNav";
-import { Metadata } from "next";
+import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "Track Professional | PHS Company",
-  description: "Track your assigned professional in real-time.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Track Professional | PHS Cleaning Company",
+    description: "Track your assigned professional in real-time.",
+  };
+}
 
 interface SubcategoryInfo {
   subcategory_name: string;
@@ -104,7 +107,6 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
   const isAssigned = !!booking.partner;
   const partnerName = booking.partner?.full_name || "Assigning soon...";
   const partnerAvatar = booking.partner?.avatar_url;
-  const isPending = booking.status === "pending";
   const isCompleted = booking.status === "completed";
   const isCancelled = booking.status === "cancelled";
 
@@ -218,7 +220,7 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
                   Real-time GPS Tracking
                 </h2>
                 <p className="text-on-surface-variant text-xs md:text-sm mt-2 leading-relaxed font-medium">
-                  We are actively developing our advanced live tracking engine! Once completed, you will be able to watch your Professional's transit route live on this screen, get live traffic updates, and view a dynamic, minute-by-minute ETA.
+                  We are actively developing our advanced live tracking engine! Once completed, you will be able to watch your Professional&apos;s transit route live on this screen, get live traffic updates, and view a dynamic, minute-by-minute ETA.
                 </p>
                 <div className="mt-5 pt-4 border-t border-outline-variant/30 text-[10px] md:text-xs text-on-surface-variant/80 font-medium">
                   Status: <span className="text-green-600 font-bold">Booking Confirmed</span> &middot; Professional is notified
@@ -285,7 +287,7 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full overflow-hidden bg-surface-container-high border border-outline-variant/30 shrink-0 relative">
                       {partnerAvatar ? (
-                        <img src={partnerAvatar} alt={partnerName} className="w-full h-full object-cover" />
+                        <Image src={partnerAvatar} alt={partnerName} width={48} height={48} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-surface-container text-on-surface font-black">
                           {partnerName.charAt(0).toUpperCase()}

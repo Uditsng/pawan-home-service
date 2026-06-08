@@ -2,10 +2,18 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
 import HeroConversationalCard from "@/components/HeroConversationalCard";
 
 
 export const revalidate = 300; // ISR: revalidate every 5 minutes
+
+// Centralized role → dashboard mapping (must match proxy.ts)
+const ROLE_DASHBOARDS: Record<string, string> = {
+  admin: '/admin/dashboard',
+  partner: '/partner/dashboard',
+  customer: '/dashboard',
+};
 
 interface ServiceWithSubcategory {
   id: string;
@@ -25,6 +33,19 @@ interface ServiceWithSubcategory {
 
 export default async function Home() {
   const supabase = await createClient();
+
+  // Defense-in-depth: redirect authenticated users to their dashboard
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+    const target = ROLE_DASHBOARDS[profile?.role ?? 'customer'] ?? '/dashboard';
+    redirect(target);
+  }
+
   const { data: popularServices } = await supabase
     .from('services')
     .select(`
@@ -102,8 +123,9 @@ export default async function Home() {
                 const iconName = service.subcategories?.icon_name || 'home_repair_service';
 
                 return (
-                  <div
+                  <Link
                     key={service.id}
+                    href="/login"
                     className={`bg-surface-container-low p-3 md:p-5 rounded-xl flex flex-col items-center justify-center text-center hover:bg-surface-container-high transition-colors group cursor-pointer border border-outline-variant/10 shadow-sm ${idx >= 10 ? 'lg:hidden' : ''}`}
                   >
                     <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-green-500/10 mb-2 md:mb-3 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -111,7 +133,7 @@ export default async function Home() {
                     </div>
                     <span className="font-headline font-bold text-xs md:text-sm text-on-surface line-clamp-2 leading-tight">{service.title}</span>
                     <span className="text-[10px] md:text-[11px] text-primary mt-1 md:mt-1.5 font-bold tracking-tight">₹{service.base_price}</span>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

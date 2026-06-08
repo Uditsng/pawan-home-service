@@ -5,7 +5,7 @@ dotenv.config({ path: ".env.local" });
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
 async function run() {
-  const { data, error } = await supabase.rpc("get_table_columns", { table_name: "services" });
+  await supabase.rpc("get_table_columns", { table_name: "services" });
   
   // If there's no get_table_columns RPC, we can query information_schema via a postgrest select if possible,
   // or we can query any random row and see what keys are in the raw json, or use a custom query.

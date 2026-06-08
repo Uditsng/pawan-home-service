@@ -9,7 +9,7 @@ function searchDir(dir: string, pattern: RegExp) {
       let stat;
       try {
         stat = fs.statSync(filePath);
-      } catch (e) {
+      } catch {
         continue;
       }
       if (stat && stat.isDirectory()) {
@@ -31,7 +31,7 @@ function searchDir(dir: string, pattern: RegExp) {
         }
       }
     }
-  } catch (e) {
+  } catch {
     // ignore
   }
 }

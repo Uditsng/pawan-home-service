@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
 
 /**
  * Database-backed rate limiter for server actions (OTP, login, etc.).
@@ -19,7 +19,7 @@ export class RateLimiter {
    */
   async check(key: string): Promise<{ allowed: boolean; retryAfter: number }> {
     try {
-      const supabase = await createClient();
+      const supabase = createAdminClient();
       
       const { data, error } = await supabase.rpc("check_rate_limit", {
         p_key: key,

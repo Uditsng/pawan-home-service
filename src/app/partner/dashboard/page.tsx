@@ -84,10 +84,6 @@ export default async function PartnerDashboardPage() {
   const upcomingJobs = (upcomingResult.data || []) as BookingWithDetails[];
   const weeklyJobsCount = weeklyResult.count;
 
-  // ─── Get current time of day for greeting ──────────────────
-  const hour = new Date().getHours();
-  const greeting =
-    hour < 12 ? "Good Morning" : hour < 17 ? "Good Afternoon" : "Good Evening";
 
   // ─── Derived metrics ───────────────────────────────────────
   const dailyEarnings =

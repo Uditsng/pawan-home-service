@@ -11,13 +11,13 @@ export default function Footer() {
           <div className="flex items-center gap-3 justify-center md:justify-start">
             <Image
               src="/PHS.png"
-              alt="PHS Company Logo"
+              alt="PHS Cleaning Company Logo"
               className="h-12 w-auto"
               width={40}
               height={40}
             />
             <span className="text-primary text-xl font-bold tracking-tighter whitespace-nowrap">
-              PHS Company
+              PHS Cleaning Company
             </span>
           </div>
 
@@ -58,7 +58,7 @@ export default function Footer() {
         {/* Copyright */}
         <div className="flex flex-col items-center gap-4 md:flex-row md:justify-between text-xs md:text-sm text-on-surface-variant/80 pb-8 md:pb-0">
           <span className="text-center md:text-left">
-            © {new Date().getFullYear()} <Link href="/" className="hover:underline hover:text-secondary transition-all font-semibold">PHS Company™</Link>. All Rights Reserved.
+            © {new Date().getFullYear()} <Link href="/" className="hover:underline hover:text-secondary transition-all font-semibold">PHS Cleaning Company™</Link>. All Rights Reserved.
           </span>
           <span className="text-center md:text-right hidden md:inline">
             Premium Home Services at Your Doorstep

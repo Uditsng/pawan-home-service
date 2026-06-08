@@ -67,7 +67,6 @@ function OtpInput({
 function Countdown({ seconds, onExpire }: { seconds: number; onExpire: () => void }) {
   const [remaining, setRemaining] = useState(seconds);
   useEffect(() => {
-    setRemaining(seconds);
     const interval = setInterval(() => {
       setRemaining((prev) => {
         if (prev <= 1) { clearInterval(interval); onExpire(); return 0; }
@@ -202,7 +201,7 @@ export default function ForgotPasswordPage() {
                 Reset your<br />password safely.
               </h1>
               <p className="text-base xl:text-lg text-white/80 max-w-md font-medium">
-                Verify your mobile number to regain access to your PHS account.
+                Verify your mobile number to regain access to your PHS Cleaning Company account.
               </p>
             </div>
           </div>

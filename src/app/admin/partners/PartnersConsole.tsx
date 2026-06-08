@@ -2,11 +2,11 @@
 
 import React, { useState, useTransition, useEffect } from "react";
 import { createPortal } from "react-dom";
+import Image from "next/image";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { SerializedPartner } from "./page";
-import { 
+import {
   updatePartnerStatusAction,
   onboardPartnerAction,
   editPartnerAction
@@ -14,11 +14,10 @@ import {
 
 interface PartnersConsoleProps {
   initialPartners: SerializedPartner[];
-  pendingBookings?: { id: string; status: string; created_at: string; pincode: string | null; city: string | null; services: { title: string } | null }[];
   allServices: { id: string; title: string; category_name: string }[];
 }
 
-export function PartnersConsole({ initialPartners, pendingBookings: _pendingBookings, allServices = [] }: PartnersConsoleProps) {
+export function PartnersConsole({ initialPartners, allServices = [] }: PartnersConsoleProps) {
   const [partners, setPartners] = useState<SerializedPartner[]>(initialPartners);
   const [isPending, startTransition] = useTransition();
 
@@ -93,7 +92,7 @@ export function PartnersConsole({ initialPartners, pendingBookings: _pendingBook
   const filteredPartners = partners.filter(partner => {
     // 1. Universal Search Index (Name, Phone, Email, Skills, Cities)
     const normalizedQuery = searchTerm.toLowerCase();
-    const matchesSearch = 
+    const matchesSearch =
       partner.full_name.toLowerCase().includes(normalizedQuery) ||
       partner.phone.includes(searchTerm) ||
       partner.email.toLowerCase().includes(normalizedQuery) ||
@@ -139,7 +138,7 @@ export function PartnersConsole({ initialPartners, pendingBookings: _pendingBook
       try {
         await updatePartnerStatusAction(partnerId, newStatus);
         setPartners(prev => prev.map(p => p.id === partnerId ? { ...p, status: newStatus } : p));
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(err);
       }
     });
@@ -204,8 +203,8 @@ export function PartnersConsole({ initialPartners, pendingBookings: _pendingBook
             setOnboardSuccess(null);
           }, 1500);
         }
-      } catch (err: any) {
-        setOnboardError(err.message || "Failed to create technician.");
+      } catch (err: unknown) {
+        setOnboardError((err as Error).message || "Failed to create technician.");
       }
     });
   };
@@ -260,8 +259,8 @@ export function PartnersConsole({ initialPartners, pendingBookings: _pendingBook
             setEditSuccess(null);
           }, 1500);
         }
-      } catch (err: any) {
-        setEditError(err.message || "Failed to update technician.");
+      } catch (err: unknown) {
+        setEditError((err as Error).message || "Failed to update technician.");
       }
     });
   };
@@ -279,7 +278,7 @@ export function PartnersConsole({ initialPartners, pendingBookings: _pendingBook
           setEmergencyBookingPartnerId(null);
           setEmergencySuccess(null);
         }, 1500);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(err);
       }
     });
@@ -287,11 +286,11 @@ export function PartnersConsole({ initialPartners, pendingBookings: _pendingBook
 
   return (
     <div className="space-y-4">
-      
+
       {/* ─── 1. FLEET SEARCH, FILTERS, & ONBOARDING CONTROLS ROW ─── */}
       <Card variant="glass" className="p-3">
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-          
+
           {/* Search Input Box */}
           <div className="relative flex-1 group" suppressHydrationWarning={true}>
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/40 group-focus-within:text-secondary transition-colors text-[18px]">
@@ -309,8 +308,8 @@ export function PartnersConsole({ initialPartners, pendingBookings: _pendingBook
               className="w-full bg-surface-container-low text-primary text-xs font-semibold pl-9 pr-4 py-2 rounded-lg border border-outline-variant/30 focus:border-secondary/70 focus:outline-none focus:ring-1 focus:ring-secondary/10 transition-all placeholder-on-surface-variant/40"
             />
             {searchTerm && (
-              <button 
-                onClick={() => handleFilterChange(setSearchTerm, "")} 
+              <button
+                onClick={() => handleFilterChange(setSearchTerm, "")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 hover:text-primary transition-colors"
               >
                 <span className="material-symbols-outlined text-base">close</span>
@@ -320,7 +319,7 @@ export function PartnersConsole({ initialPartners, pendingBookings: _pendingBook
 
           {/* Filtering Dropdown Group */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 flex-1 lg:flex-none">
-            
+
             {/* Filter: Status */}
             <div className="flex flex-col gap-1">
               <select
@@ -366,7 +365,7 @@ export function PartnersConsole({ initialPartners, pendingBookings: _pendingBook
 
       {/* ─── 2. HIGH-DENSITY FLEET DATA TABLE (RESPONSIVE VIEWPORT STYLES) ─── */}
       <Card variant="solid" className="p-0 overflow-visible ring-1 ring-outline-variant/10">
-        
+
         {/* Table-based Responsive Compact Operational Data Grid */}
         <div className="overflow-x-auto min-h-[180px]">
           <table className="w-full border-collapse text-left min-w-[750px]">
@@ -389,7 +388,7 @@ export function PartnersConsole({ initialPartners, pendingBookings: _pendingBook
                 </tr>
               ) : (
                 paginatedPartners.map((partner) => (
-                  <tr 
+                  <tr
                     key={partner.id}
                     className="hover:bg-surface-container-low/20 transition-colors"
                   >
@@ -398,15 +397,15 @@ export function PartnersConsole({ initialPartners, pendingBookings: _pendingBook
                       <div className="flex items-center gap-2.5">
                         <div className="shrink-0 w-7 h-7 rounded-lg bg-primary/5 flex items-center justify-center text-primary font-black border border-outline-variant/30 text-[9px]">
                           {partner.avatar_url ? (
-                            <img src={partner.avatar_url} alt={partner.full_name} className="w-full h-full object-cover rounded-lg" />
+                            <Image src={partner.avatar_url} alt={partner.full_name} width={28} height={28} className="w-full h-full object-cover rounded-lg" />
                           ) : (
-                            <span>{partner.full_name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase()}</span>
+                            <span>{partner.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}</span>
                           )}
                         </div>
                         <div className="space-y-0.5 min-w-0">
                           <h4 className="text-[11px] font-bold text-primary font-headline uppercase leading-none tracking-tight truncate">{partner.full_name}</h4>
                           <p className="text-[9px] text-on-surface-variant/70 font-medium truncate max-w-[180px]">
-                            {partner.skills.slice(0,2).join(" • ") || "General Services"}
+                            {partner.skills.slice(0, 2).join(" • ") || "General Services"}
                           </p>
                           <div className="flex gap-1 items-center mt-0.5">
                             <span className="bg-primary/5 text-primary border border-primary/10 text-[7.5px] font-extrabold px-1 rounded uppercase">
@@ -501,7 +500,7 @@ export function PartnersConsole({ initialPartners, pendingBookings: _pendingBook
 
         {/* ─── PAGINATION BOTTOM CONTROLS (FULLY RESPONSIVE) ─── */}
         <div className="bg-surface-dim/30 border-t border-outline-variant/15 p-3 flex flex-col sm:flex-row items-center justify-between gap-3">
-          
+
           {/* Item count text */}
           <div className="text-[11px] font-bold text-on-surface-variant/60">
             Showing <span className="text-primary">{Math.min(totalItems, indexOfFirstItem + 1)}</span> to{" "}
@@ -511,7 +510,7 @@ export function PartnersConsole({ initialPartners, pendingBookings: _pendingBook
 
           {/* Controls Paginator buttons */}
           <div className="flex items-center gap-2">
-            
+
             {/* Items Per Page dropdown selector */}
             <div className="flex items-center gap-1.5">
               <span className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/40">Rows:</span>
@@ -545,11 +544,10 @@ export function PartnersConsole({ initialPartners, pendingBookings: _pendingBook
                 <button
                   key={pageNum}
                   onClick={() => setCurrentPage(pageNum)}
-                  className={`w-7 h-7 rounded-lg font-bold text-[11px] flex items-center justify-center transition-all ${
-                    currentPage === pageNum 
-                      ? 'bg-primary text-white shadow-md' 
+                  className={`w-7 h-7 rounded-lg font-bold text-[11px] flex items-center justify-center transition-all ${currentPage === pageNum
+                      ? 'bg-primary text-white shadow-md'
                       : 'bg-surface-container-low text-primary hover:bg-surface-container-high'
-                  }`}
+                    }`}
                 >
                   {pageNum}
                 </button>
@@ -574,13 +572,13 @@ export function PartnersConsole({ initialPartners, pendingBookings: _pendingBook
       {/* ─── 4. INTERACTIVE ONBOARD TECHNICIAN MODAL ─── */}
       {isOnboardingModalOpen && (
         <div className="fixed inset-0 bg-[#002261]/25 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          
+
           {/* Closer backdrop */}
           <div className="absolute inset-0 cursor-pointer" onClick={() => setIsOnboardingModalOpen(false)} />
 
           {/* Form Modal Box container */}
           <div className="relative w-full max-w-md bg-white rounded-[32px] overflow-hidden shadow-2xl p-6 border border-outline-variant/30 animate-in zoom-in-95 duration-200">
-            
+
             <div className="flex justify-between items-start mb-6">
               <div>
                 <span className="text-[10px] font-black text-secondary uppercase tracking-[0.2em]">New technician setup</span>
@@ -595,7 +593,7 @@ export function PartnersConsole({ initialPartners, pendingBookings: _pendingBook
             </div>
 
             <form onSubmit={handleOnboardSubmit} className="space-y-4 text-xs font-bold text-primary">
-              
+
               {/* Field 1: Full name */}
               <div className="space-y-1.5">
                 <label className="text-[9px] uppercase tracking-wider text-on-surface-variant/50">Full Name</label>
@@ -691,13 +689,13 @@ export function PartnersConsole({ initialPartners, pendingBookings: _pendingBook
       {/* ─── 5. INTERACTIVE EDIT TECHNICIAN MODAL ─── */}
       {isEditModalOpen && (
         <div className="fixed inset-0 bg-[#002261]/25 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          
+
           {/* Closer backdrop */}
           <div className="absolute inset-0 cursor-pointer" onClick={() => setIsEditModalOpen(false)} />
 
           {/* Form Modal Box container */}
           <div className="relative w-full max-w-md bg-white rounded-[32px] overflow-hidden shadow-2xl p-6 border border-outline-variant/30 animate-in zoom-in-95 duration-200">
-            
+
             <div className="flex justify-between items-start mb-6">
               <div>
                 <span className="text-[10px] font-black text-secondary uppercase tracking-[0.2em]">Technician profile updates</span>
@@ -712,7 +710,7 @@ export function PartnersConsole({ initialPartners, pendingBookings: _pendingBook
             </div>
 
             <form onSubmit={handleEditSubmit} className="space-y-4 text-xs font-bold text-primary">
-              
+
               {/* Field 1: Full name */}
               <div className="space-y-1.5">
                 <label className="text-[9px] uppercase tracking-wider text-on-surface-variant/50">Full Name</label>
@@ -810,11 +808,11 @@ export function PartnersConsole({ initialPartners, pendingBookings: _pendingBook
       {/* ─── 6. INTERACTIVE EMERGENCY DISPATCH ASSIGNMENT MODAL ─── */}
       {emergencyBookingPartnerId && (
         <div className="fixed inset-0 bg-[#002261]/25 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          
+
           <div className="absolute inset-0 cursor-pointer" onClick={() => setEmergencyBookingPartnerId(null)} />
 
           <div className="relative w-full max-w-md bg-white rounded-[32px] overflow-hidden shadow-2xl p-6 border border-outline-variant/30 animate-in zoom-in-95 duration-200">
-            
+
             <div className="flex justify-between items-start mb-6">
               <div>
                 <span className="text-[10px] font-black text-secondary uppercase tracking-[0.2em]">Quick dispatch control</span>
@@ -830,7 +828,7 @@ export function PartnersConsole({ initialPartners, pendingBookings: _pendingBook
 
             <div className="space-y-4 text-xs font-bold text-primary">
               <p className="text-[10px] text-on-surface-variant/70 leading-relaxed font-semibold">
-                Force-assign a pending home service booking directly onto this technician's itinerary.
+                Force-assign a pending home service booking directly onto this technician&apos;s itinerary.
               </p>
 
               <div className="space-y-1.5">
@@ -882,20 +880,19 @@ export function PartnersConsole({ initialPartners, pendingBookings: _pendingBook
       {dropdownMenu && createPortal(
         <>
           {/* Backdrop for outside click */}
-          <div 
-            className="fixed inset-0 z-[9998] bg-transparent" 
-            onClick={() => setDropdownMenu(null)} 
+          <div
+            className="fixed inset-0 z-9998 bg-transparent"
+            onClick={() => setDropdownMenu(null)}
           />
-          
+
           {/* Menu container */}
-          <div 
-            className="fixed w-48 bg-white border border-outline-variant/30 rounded-xl shadow-xl z-[9999] p-1 divide-y divide-outline-variant/10 text-left animate-in fade-in duration-100"
+          <div
+            className="fixed w-48 bg-white border border-outline-variant/30 rounded-xl shadow-xl z-9999 p-1 divide-y divide-outline-variant/10 text-left animate-in fade-in duration-100"
             style={{
-              top: `${
-                dropdownMenu.rect.bottom + window.scrollY + 160 > window.innerHeight + window.scrollY
+              top: `${dropdownMenu.rect.bottom + window.scrollY + 160 > window.innerHeight + window.scrollY
                   ? dropdownMenu.rect.top + window.scrollY - 165 // open upward
                   : dropdownMenu.rect.bottom + window.scrollY + 4 // open downward
-              }px`,
+                }px`,
               left: `${dropdownMenu.rect.right - 192 + window.scrollX}px` // aligned to the right side of button
             }}
           >

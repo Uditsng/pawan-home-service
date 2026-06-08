@@ -18,7 +18,7 @@ export default function SupportClient() {
     {
       icon: "business",
       label: "Company Name",
-      value: "PHS Company",
+      value: "PHS Cleaning Company",
     },
     {
       icon: "person",

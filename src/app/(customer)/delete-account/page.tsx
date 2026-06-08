@@ -1,10 +1,9 @@
-import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import CustomerHeader from "@/components/CustomerHeader";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Delete Account | PHS Company",
+  title: "Delete Account | PHS Cleaning Company",
   description: "Request account deletion.",
 };
 

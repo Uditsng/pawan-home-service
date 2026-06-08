@@ -85,8 +85,6 @@ export async function seedDemoDataAction() {
     return d.toISOString();
   };
 
-  const seedBookings = [];
-
   // Generate 8-12 completed & cancelled bookings over the past month
   const customersCount = customers.length;
   const partnersCount = partners.length;
@@ -208,8 +206,6 @@ export async function seedDemoDataAction() {
 
   // Revalidate paths
   revalidatePath("/admin/settings");
-  revalidatePath("/admin/disputes");
-  revalidatePath("/admin/analytics");
   revalidatePath("/admin/finance");
   revalidatePath("/admin/dashboard");
 

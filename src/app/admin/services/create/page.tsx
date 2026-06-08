@@ -27,7 +27,12 @@ export default async function AdminCreateServicePage() {
       )
     `);
 
-  async function createServiceAction(prevState: any, formData: FormData) {
+  type FormActionState = {
+    type: "success" | "error" | null;
+    message: string | null;
+  };
+
+  async function createServiceAction(prevState: FormActionState, formData: FormData): Promise<FormActionState> {
     "use server";
     await requireAdmin();
     const db = await createClient();

@@ -63,7 +63,7 @@ export default function SessionRedirect() {
 
   if (checking) {
     return (
-      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-primary">
+      <div className="fixed inset-0 z-9999 flex flex-col items-center justify-center bg-primary">
         {/* Ambient atmospheric orbs */}
         <div className="absolute inset-0 z-[-1] pointer-events-none overflow-hidden">
           <div className="absolute top-[-5%] right-[-5%] w-[300px] h-[300px] rounded-full bg-[radial-gradient(circle,var(--color-secondary)_0%,transparent_70%)] blur-[50px] opacity-15"></div>
@@ -73,7 +73,7 @@ export default function SessionRedirect() {
           <div className="w-16 h-16 rounded-2xl bg-secondary/10 flex items-center justify-center animate-bounce">
             <span className="material-symbols-outlined text-secondary text-4xl">home_repair_service</span>
           </div>
-          <h2 className="text-xl font-bold text-white font-headline tracking-tight">PHS Company</h2>
+          <h2 className="text-xl font-bold text-white font-headline tracking-tight">PHS Cleaning Company</h2>
           <div className="flex items-center gap-1.5 mt-2">
             <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
             <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">

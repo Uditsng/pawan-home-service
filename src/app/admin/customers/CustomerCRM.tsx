@@ -167,8 +167,8 @@ export function CustomerCRM({
         setModalType(null);
         setTargetCustomer(null);
         setActionError(null);
-      } catch (err: any) {
-        setActionError(err.message || "Failed to update status.");
+      } catch (err: unknown) {
+        setActionError((err as Error).message || "Failed to update status.");
       }
     });
   };
@@ -204,8 +204,8 @@ export function CustomerCRM({
         setNoteInput("");
         setRiskTriggerInput("");
         setActionError(null);
-      } catch (err: any) {
-        setActionError(err.message || "Failed to save note.");
+      } catch (err: unknown) {
+        setActionError((err as Error).message || "Failed to save note.");
       }
     });
   };
@@ -248,7 +248,7 @@ export function CustomerCRM({
           <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">Total Monitored Users</p>
           <h2 className="text-2xl font-bold text-primary font-headline mt-1.5">{customers.length} Customers</h2>
           <div className="flex gap-3 mt-1.5 text-xs text-on-surface-variant/80 font-normal">
-            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#a6ce37]"></span>{activeCount} Active</span>
+            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>{activeCount} Active</span>
             <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>{highRiskCount} High Risk</span>
           </div>
         </div>
@@ -421,7 +421,7 @@ export function CustomerCRM({
                           } className="text-[9px] px-1.5 py-0">
                             <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
                               customer.riskLevel === 'High' ? 'bg-red-500 animate-pulse' :
-                              customer.riskLevel === 'Medium' ? 'bg-[#D97706]' : 'bg-[#a6ce37]'
+                              customer.riskLevel === 'Medium' ? 'bg-[#D97706]' : 'bg-secondary'
                             }`}></span>
                             {customer.riskLevel} Risk
                           </Badge>
@@ -615,13 +615,13 @@ export function CustomerCRM({
                         <span className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-secondary border-2 border-white"></span>
                         <p className="text-xs font-bold text-primary">CRM Note Logged</p>
                         <p className="text-[11px] text-on-surface-variant/70 italic mt-1 font-normal bg-surface-container p-3 rounded-lg border border-outline-variant/10">
-                          "{selectedCustomer.internal_note}"
+                          &quot;{selectedCustomer.internal_note}&quot;
                         </p>
                       </div>
                     )}
 
                     {/* Bookings events */}
-                    {selectedCustomer.bookings.map((booking, i) => (
+                    {selectedCustomer.bookings.map((booking) => (
                       <div key={booking.id} className="relative">
                         <span className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-primary border-2 border-white"></span>
                         <p className="text-xs font-bold text-primary">
@@ -694,7 +694,7 @@ export function CustomerCRM({
                           <div 
                             className={`h-full rounded-full ${
                               selectedCustomer.cancelRate > 30 ? "bg-red-500" :
-                              selectedCustomer.cancelRate > 15 ? "bg-amber-500" : "bg-[#a6ce37]"
+                              selectedCustomer.cancelRate > 15 ? "bg-amber-500" : "bg-secondary"
                             }`} 
                             style={{ width: `${Math.min(selectedCustomer.cancelRate, 100)}%` }}
                           />
@@ -736,7 +736,7 @@ export function CustomerCRM({
                     <div className="bg-surface-container p-4 rounded-xl border border-outline-variant/15 relative">
                       <p className="text-xs font-semibold text-primary">Active internal note:</p>
                       <p className="text-xs text-on-surface-variant mt-2 italic font-normal">
-                        "{selectedCustomer.internal_note}"
+                        &quot;{selectedCustomer.internal_note}&quot;
                       </p>
                       <div className="text-[9px] text-on-surface-variant/40 mt-3 text-right">
                         Permanently stored in database profile ledger
@@ -799,7 +799,7 @@ export function CustomerCRM({
               Confirm Operational Override
             </h4>
             <p className="text-xs text-on-surface-variant/80 font-normal mt-3">
-              Are you sure you want to update <span className="font-bold text-primary">{targetCustomer.full_name || "this customer"}</span>'s account status to{" "}
+              Are you sure you want to update <span className="font-bold text-primary">{targetCustomer.full_name || "this customer"}</span>&apos;s account status to{" "}
               <span className="font-bold uppercase tracking-widest text-primary">
                 {modalType === "suspend" ? "suspended" : modalType === "flag" ? "flagged" : "active"}
               </span>?
@@ -841,13 +841,13 @@ export function CustomerCRM({
         <>
           {/* Backdrop for outside click */}
           <div 
-            className="fixed inset-0 z-[9998] bg-transparent" 
+            className="fixed inset-0 z-9998 bg-transparent" 
             onClick={() => setDropdownMenu(null)} 
           />
           
           {/* Menu container */}
           <div 
-            className="fixed w-44 bg-white border border-outline-variant/30 rounded-xl shadow-lg z-[9999] p-1 divide-y divide-outline-variant/10 text-left animate-in fade-in duration-100"
+            className="fixed w-44 bg-white border border-outline-variant/30 rounded-xl shadow-lg z-9999 p-1 divide-y divide-outline-variant/10 text-left animate-in fade-in duration-100"
             style={{
               top: `${
                 dropdownMenu.rect.bottom + 150 > window.innerHeight

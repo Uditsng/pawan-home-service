@@ -1,5 +1,5 @@
 -- Supabase SQL Seed Script
--- Seeding 19 premium services for PHS Company
+-- Seeding 19 premium services for PHS Cleaning Company
 -- Bypasses Row-Level Security when run in the Supabase SQL Editor
 
 -- Insert the 19 services with complete page_content configurations into public.services

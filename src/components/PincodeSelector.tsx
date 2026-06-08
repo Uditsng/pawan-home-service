@@ -46,7 +46,7 @@ export default function PincodeSelector() {
           setSuggestions([]);
           setError("Invalid pincode or no areas found.");
         }
-      } catch (err) {
+      } catch {
         setError("Failed to fetch areas.");
         setSuggestions([]);
       } finally {

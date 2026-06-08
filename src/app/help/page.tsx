@@ -1,10 +1,9 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "Help & Support | PHS Company",
-  description: "Get help with bookings, payments, partner support, and more at PHS Company.",
+  title: "Help & Support | PHS Cleaning Company",
+  description: "Get help with bookings, payments, partner support, and more at PHS Cleaning Company.",
 };
 
 const faqs = [

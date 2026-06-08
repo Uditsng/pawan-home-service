@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import AddAddressModal from "@/components/AddAddressModal";
@@ -22,8 +22,12 @@ export default function AddressListClient({ addresses }: AddressListClientProps)
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const portalRef = useRef<HTMLElement | null>(typeof document !== "undefined" ? document.body : null);
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    setTimeout(() => setMounted(true), 0);
+  }, []);
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
@@ -176,14 +180,14 @@ export default function AddressListClient({ addresses }: AddressListClientProps)
       )}
 
       {/* Portal: renders modal at document.body to escape parent stacking context */}
-      {portalRef.current &&
+      {mounted &&
         createPortal(
           <AddAddressModal
             isOpen={isModalOpen}
             onClose={() => setIsModalOpen(false)}
             onSaved={() => router.refresh()}
           />,
-          portalRef.current
+          document.body
         )}
     </>
   );

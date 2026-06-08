@@ -182,19 +182,6 @@ body {
    .pt-safe {
      padding-top: env(safe-area-inset-top, 0px);
    }
-
-   .text-primary {
-     color: #002261;
-   }
-   .text-secondary {
-     color: #a6ce37;
-   }
-   .bg-base {
-     background: #F8FAFC;
-   }
-   .bg-surface {
-     background: #F8FAFC;
-   }
 }
 
 /* WebView Native Mobile Styling */

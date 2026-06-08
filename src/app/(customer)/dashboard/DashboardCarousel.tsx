@@ -13,27 +13,27 @@ interface BannerItem {
 const originalBanners: BannerItem[] = [
   {
     src: "/assets/PHS Banner 1.jpeg",
-    title: "PHS Company - Premium Home Services",
+    title: "PHS Cleaning Company - Premium Home Services",
     link: "/services"
   },
   {
     src: "/assets/PHS Banner 2.jpeg",
-    title: "PHS Company - Safe & Effective Pest Control",
+    title: "PHS Cleaning Company - Safe & Effective Pest Control",
     link: "/services"
   },
   {
     src: "/assets/PHS Banner 3.jpeg",
-    title: "PHS Company - Premium Housekeeping & Cleaning",
+    title: "PHS Cleaning Company - Premium Housekeeping & Cleaning",
     link: "/services"
   },
   {
     src: "/assets/PHS Banner 4.jpeg",
-    title: "PHS Company - Expert Maintenance & Repair",
+    title: "PHS Cleaning Company - Expert Maintenance & Repair",
     link: "/services"
   },
   {
     src: "/assets/PHS Banner 5.jpeg",
-    title: "PHS Company - Comprehensive Home Solutions",
+    title: "PHS Cleaning Company - Comprehensive Home Solutions",
     link: "/services"
   }
 ];

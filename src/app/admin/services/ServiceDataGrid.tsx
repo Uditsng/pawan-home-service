@@ -5,7 +5,31 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { deleteService } from "@/app/admin/actions";
 
-export function ServiceDataGrid({ services, categories }: { services: any[], categories: any[] }) {
+interface ServiceItem {
+  id: string;
+  title: string;
+  is_active: boolean;
+  base_price: number;
+  category?: string | null;
+  subcategories?: {
+    subcategory_name: string;
+    icon_name: string | null;
+    categories?: {
+      category_name: string;
+    } | null;
+  } | null;
+}
+
+interface CategoryItem {
+  id: string;
+  category_name: string;
+  subcategories: {
+    id: string;
+    subcategory_name: string;
+  }[];
+}
+
+export function ServiceDataGrid({ services, categories }: { services: ServiceItem[], categories: CategoryItem[] }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedSubcategory, setSelectedSubcategory] = useState("");
@@ -61,12 +85,13 @@ export function ServiceDataGrid({ services, categories }: { services: any[], cat
       await deleteService(deleteCandidate);
       // Let the server action revalidate the page. The candidate will close the modal on success implicitly because the page refreshes.
       setDeleteCandidate(null);
-    } catch (err: any) {
-      if (err.message.includes("SERVICE_DEACTIVATED")) {
-        setErrorMsg(err.message.replace("SERVICE_DEACTIVATED: ", ""));
+    } catch (err: unknown) {
+      const errorMessage = (err as Error).message || "";
+      if (errorMessage.includes("SERVICE_DEACTIVATED")) {
+        setErrorMsg(errorMessage.replace("SERVICE_DEACTIVATED: ", ""));
         setDeleteCandidate(null);
       } else {
-        setErrorMsg("Failed to delete service: " + err.message);
+        setErrorMsg("Failed to delete service: " + errorMessage);
       }
     } finally {
       setIsDeleting(null);
@@ -158,7 +183,7 @@ export function ServiceDataGrid({ services, categories }: { services: any[], cat
             disabled={!selectedCategory}
           >
             <option value="">All Sub-categories</option>
-            {availableSubcategories.map((sc: any) => (
+            {availableSubcategories.map((sc: { id: string; subcategory_name: string }) => (
               <option key={sc.id} value={sc.subcategory_name}>{sc.subcategory_name}</option>
             ))}
           </select>

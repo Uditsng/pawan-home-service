@@ -65,8 +65,6 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
 
   const content = service.page_content || {};
   const iconName = service.subcategories?.icon_name || "home_repair_service";
-  const subcatName = service.subcategories?.subcategory_name || "Service";
-  const catName = service.subcategories?.categories?.category_name || resolvedParams.category;
 
   const catImageMap: Record<string, string> = {
     'pest_control': '/assets/indian_pest_control_pro_1776155620526.png',

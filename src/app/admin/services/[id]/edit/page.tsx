@@ -39,7 +39,12 @@ export default async function AdminEditServicePage({ params }: { params: Promise
       )
     `);
 
-  async function editServiceAction(prevState: any, formData: FormData) {
+  type FormActionState = {
+    type: "success" | "error" | null;
+    message: string | null;
+  };
+
+  async function editServiceAction(prevState: FormActionState, formData: FormData): Promise<FormActionState> {
     "use server";
     await requireAdmin();
     const db = await createClient();

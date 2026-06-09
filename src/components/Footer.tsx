@@ -61,7 +61,7 @@ export default function Footer() {
             © {new Date().getFullYear()} <Link href="/" className="hover:underline hover:text-secondary transition-all font-semibold">PHS Cleaning Company™</Link>. All Rights Reserved.
           </span>
           <span className="text-center md:text-right hidden md:inline">
-            Premium Home Services at Your Doorstep
+            Developed by NishantWorks
           </span>
         </div>
 

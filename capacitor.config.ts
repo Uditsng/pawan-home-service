@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'PHS Cleaning Company',
 
   server: {
-    url: 'https://phs-company.vercel.app',
+    url: 'https://phs-cleaning-company.vercel.app/',
     cleartext: false
   }
 };

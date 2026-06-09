@@ -48,7 +48,7 @@ export default function HelpPage() {
               <span className="material-symbols-outlined text-[#059669] text-2xl drop-shadow-sm">phone</span>
             </div>
             <h3 className="text-base font-semibold text-on-surface mb-1">Phone Support</h3>
-            <p className="text-sm text-primary font-medium group-hover:text-secondary transition-colors">9648801462</p>
+            <p className="text-sm text-primary font-medium group-hover:text-secondary transition-colors">7408702019</p>
           </a>
         </div>
 

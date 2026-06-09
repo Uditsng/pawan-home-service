@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# AI documentation & memory files
+/AGENTS.md
+/play_store_readiness_audit.md
+/project_context.md
+/project_summary.md

@@ -40,6 +40,13 @@
   --color-background: #F8FAFC;
   --color-on-background: #002261;
 
+  --color-success: #10b981;
+  --color-on-success: #ffffff;
+  --color-warning: #f59e0b;
+  --color-on-warning: #ffffff;
+  --color-error: #ef4444;
+  --color-on-error: #ffffff;
+
   /* Fonts */
   --font-headline: var(--font-bricolage), sans-serif;
   --font-body: var(--font-bricolage), sans-serif;

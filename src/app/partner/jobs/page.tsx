@@ -2,7 +2,7 @@ import PartnerBottomNav from "@/components/PartnerBottomNav";
 import PartnerHeader from "@/components/PartnerHeader";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-import JobsClient from "./JobsClient";
+import JobsClient, { RawOfferRow } from "./JobsClient";
 import type { BookingWithDetails } from "@/lib/types";
 
 export default async function PartnerJobsPage() {
@@ -13,44 +13,82 @@ export default async function PartnerJobsPage() {
 
   if (!user) redirect("/login");
 
-  // ─── Assigned jobs: auto-assigned to this partner, confirmed status ──
-  const { data: assignedData } = await supabase
-    .from("bookings")
-    .select(
-      "*, services:service_id(title, category), customer:customer_id(full_name)"
-    )
-    .eq("partner_id", user.id)
-    .eq("status", "confirmed")
-    .order("scheduled_date", { ascending: true });
+  // ─── Fetch partner status + all job lists in parallel ──────────
+  const [profileResult, assignedResult, activeResult, completedResult, offersResult] = await Promise.all([
+    supabase.from("profiles").select("status").eq("id", user.id).single(),
+    supabase
+      .from("bookings")
+      .select("*, services:service_id(title, category), customer:customer_id(full_name)")
+      .eq("partner_id", user.id)
+      .in("status", ["assigned", "confirmed"])
+      .order("scheduled_date", { ascending: true }),
+    supabase
+      .from("bookings")
+      .select("*, services:service_id(title, category), customer:customer_id(full_name)")
+      .eq("partner_id", user.id)
+      .in("status", ["accepted", "professional_en_route", "professional_arrived", "otp_pending", "in_progress"])
+      .order("scheduled_date", { ascending: true }),
+    supabase
+      .from("bookings")
+      .select("*, services:service_id(title, category), customer:customer_id(full_name)")
+      .eq("partner_id", user.id)
+      .eq("status", "completed")
+      .order("completed_at", { ascending: false })
+      .limit(20),
+    // Open job offers for this partner
+    supabase
+      .from("booking_job_offers")
+      .select(`
+        id, booking_id, broadcast_tier, created_at,
+        bookings:booking_id (
+          id, service_id, city, area, pincode, scheduled_date, total_amount, address,
+          services:service_id ( title, category )
+        )
+      `)
+      .eq("partner_id", user.id)
+      .eq("status", "offered")
+      .order("created_at", { ascending: false }),
+  ]);
 
-  // ─── Active jobs: assigned to this partner, in accepted/in_progress ──
-  const { data: activeData } = await supabase
-    .from("bookings")
-    .select(
-      "*, services:service_id(title, category), customer:customer_id(full_name)"
-    )
-    .eq("partner_id", user.id)
-    .in("status", ["accepted", "in_progress"])
-    .order("scheduled_date", { ascending: true });
+  const partnerStatus = profileResult.data?.status ?? "offline";
+  const assignedJobs  = (assignedResult.data  || []) as BookingWithDetails[];
+  const activeJobs    = (activeResult.data    || []) as BookingWithDetails[];
+  const completedJobs = (completedResult.data || []) as BookingWithDetails[];
+  const offeredJobs = (offersResult.data as unknown as RawOfferRow[] || []).map((row) => {
+    const rawBooking = Array.isArray(row.bookings) ? row.bookings[0] : row.bookings;
+    const rawService = rawBooking?.services
+      ? (Array.isArray(rawBooking.services) ? rawBooking.services[0] : rawBooking.services)
+      : null;
 
-  // ─── Completed jobs: done by this partner ──────────────────
-  const { data: completedData } = await supabase
-    .from("bookings")
-    .select(
-      "*, services:service_id(title, category), customer:customer_id(full_name)"
-    )
-    .eq("partner_id", user.id)
-    .eq("status", "completed")
-    .order("completed_at", { ascending: false })
-    .limit(20);
-
-  const assignedJobs = (assignedData || []) as BookingWithDetails[];
-  const activeJobs = (activeData || []) as BookingWithDetails[];
-  const completedJobs = (completedData || []) as BookingWithDetails[];
+    return {
+      id: row.id,
+      booking_id: row.booking_id,
+      broadcast_tier: row.broadcast_tier,
+      created_at: row.created_at,
+      bookings: rawBooking
+        ? {
+            id: rawBooking.id,
+            service_id: rawBooking.service_id,
+            city: rawBooking.city,
+            area: rawBooking.area,
+            pincode: rawBooking.pincode,
+            scheduled_date: rawBooking.scheduled_date,
+            total_amount: Number(rawBooking.total_amount || 0),
+            address: rawBooking.address,
+            services: rawService
+              ? {
+                  title: rawService.title,
+                  category: rawService.category,
+                }
+              : null,
+          }
+        : null,
+    };
+  });
 
   return (
     <div className="bg-surface font-body text-on-surface antialiased min-h-screen pb-24">
-      <PartnerHeader />
+      <PartnerHeader initialStatus={partnerStatus} />
 
       <main className="max-w-7xl mx-auto px-5 pt-6 space-y-6">
         <div className="flex justify-between items-center">
@@ -59,17 +97,9 @@ export default async function PartnerJobsPage() {
               Job Center
             </h1>
             <p className="text-xs font-semibold text-on-surface-variant flex items-center gap-1 mt-0.5">
-              Your assigned & active missions
+              Offers, assigned & active missions
             </p>
           </div>
-          <button className="flex items-center gap-1.5 bg-surface-container-high px-3 py-1.5 rounded-lg border border-outline-variant/20 hover:bg-surface-container-highest transition-colors shadow-sm">
-            <span className="material-symbols-outlined text-sm font-bold text-on-surface-variant">
-              filter_list
-            </span>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-              Filter
-            </span>
-          </button>
         </div>
 
         {/* Tab Bar is rendered by JobsClient */}
@@ -77,6 +107,7 @@ export default async function PartnerJobsPage() {
           assignedJobs={assignedJobs}
           activeJobs={activeJobs}
           completedJobs={completedJobs}
+          offeredJobs={offeredJobs}
         />
       </main>
 

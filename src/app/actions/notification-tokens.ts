@@ -61,6 +61,19 @@ export async function registerTokenAction(
     return { success: false, error: "Failed to register token." };
   }
 
+  // Keep device_tokens in sync (non-blocking / best effort)
+  await supabase.from("device_tokens").upsert(
+    {
+      user_id: user.id,
+      device_token: fcmToken.trim(),
+      platform,
+      last_seen_at: new Date().toISOString(),
+    },
+    {
+      onConflict: "user_id,device_token",
+    }
+  );
+
   return { success: true };
 }
 
@@ -96,6 +109,13 @@ export async function deleteTokenAction(
     console.error("[notification-tokens] Deletion failed:", error.message);
     return { success: false, error: "Failed to delete token." };
   }
+
+  // Keep device_tokens in sync
+  await supabase
+    .from("device_tokens")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("device_token", fcmToken.trim());
 
   return { success: true };
 }

@@ -68,6 +68,7 @@ CREATE TABLE public.services (
   title TEXT NOT NULL,
   description TEXT,
   base_price NUMERIC NOT NULL,
+  original_price NUMERIC,
   price_breakdown TEXT,
   page_content JSONB DEFAULT '{}'::jsonb,
   is_active BOOLEAN DEFAULT true,

@@ -50,13 +50,19 @@ export async function sendNotification(params: SendNotificationParams): Promise<
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
+    const bookingId = (metadata?.booking_id as string) || null;
+    const role = (metadata?.role as string) || null;
+
     // 1. Batch insert in-app notification records
     const notificationRows = targets.map((userId) => ({
       user_id: userId,
       title,
       body,
+      message: body,
       type,
       metadata,
+      booking_id: bookingId,
+      role,
       is_read: false,
     }));
 
@@ -67,6 +73,21 @@ export async function sendNotification(params: SendNotificationParams): Promise<
     if (insertError) {
       console.error("[notifications] DB insert failed:", insertError.message);
       // Continue — try FCM anyway
+    }
+
+    // 1.5 Log notification delivery events to audit trail if booking_id exists
+    if (bookingId) {
+      await supabaseAdmin.from("booking_audit_trail").insert({
+        booking_id: bookingId,
+        action: "NOTIFICATION_SENT",
+        actor: "SYSTEM",
+        metadata: {
+          title,
+          type,
+          role,
+          message: body
+        },
+      });
     }
 
     // 2. Attempt FCM push (non-critical)

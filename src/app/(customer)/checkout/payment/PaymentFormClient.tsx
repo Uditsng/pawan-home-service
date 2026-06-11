@@ -22,6 +22,7 @@ interface PaymentFormClientProps {
   date: string;
   time: string;
   taxRatePercent: number;
+  referralDiscount: number;
   confirmBookingAction: () => Promise<void>;
 }
 
@@ -31,15 +32,16 @@ export default function PaymentFormClient({
   date,
   time,
   taxRatePercent,
+  referralDiscount,
   confirmBookingAction,
 }: PaymentFormClientProps) {
   const [isAgreed, setIsAgreed] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  // Price Breakdown Calculation: Additive GST
+  // Price Breakdown Calculation: Additive GST minus referral discount
   const subtotal = service.base_price;
   const gstTax = Math.round(subtotal * (taxRatePercent / 100));
-  const totalPrice = subtotal + gstTax;
+  const totalPrice = Math.max(0, subtotal + gstTax - referralDiscount);
 
   // Format Display Date
   const dateObj = new Date(`${date}T12:00:00`);
@@ -167,6 +169,15 @@ export default function PaymentFormClient({
                 <span>Convenience & Platform Fee</span>
                 <span className="text-secondary font-bold">FREE</span>
               </div>
+              {referralDiscount > 0 && (
+                <div className="flex justify-between items-center text-sm font-bold">
+                  <span className="flex items-center gap-1.5 text-[#059669]">
+                    <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>card_giftcard</span>
+                    Referral Discount
+                  </span>
+                  <span className="text-[#059669]">-₹{referralDiscount}</span>
+                </div>
+              )}
 
               <hr className="border-t border-dashed border-outline-variant/30 my-3" />
 

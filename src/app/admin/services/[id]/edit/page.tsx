@@ -53,6 +53,8 @@ export default async function AdminEditServicePage({ params }: { params: Promise
     const title = formData.get("title") as string;
     const subcategory_id = formData.get("subcategory_id") as string;
     const base_price = parseFloat(formData.get("base_price") as string);
+    const original_price_raw = formData.get("original_price") as string;
+    const original_price = original_price_raw ? parseFloat(original_price_raw) : null;
     const price_breakdown = formData.get("price_breakdown") as string;
     const description = formData.get("description") as string;
     const image_url = formData.get("image_url") as string || null;
@@ -92,6 +94,7 @@ export default async function AdminEditServicePage({ params }: { params: Promise
       title,
       subcategory_id,
       base_price,
+      original_price,
       price_breakdown,
       description,
       page_content,

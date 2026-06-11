@@ -97,7 +97,7 @@ type Step = "details" | "otp";
 export default function RegisterPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>("details");
-  const [role] = useState<"customer" | "partner">("customer");
+  const [role, setRole] = useState<"customer" | "partner">("customer");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -107,6 +107,8 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [canResend, setCanResend] = useState(false);
   const [countdownKey, setCountdownKey] = useState(0);
+  const [referralCode, setReferralCode] = useState("");
+  const [showReferral, setShowReferral] = useState(false);
 
   const handleSendOtp = useCallback(async () => {
     setError("");
@@ -155,6 +157,7 @@ export default function RegisterPage() {
     fd.set("password", password);
     fd.set("full_name", fullName);
     fd.set("role", role);
+    if (referralCode.trim()) fd.set("referral_code", referralCode.trim().toUpperCase());
 
     const result = await verifyOtpAndRegister(fd);
     setLoading(false);
@@ -165,7 +168,7 @@ export default function RegisterPage() {
     } else if (result.redirectTo) {
       router.push(result.redirectTo);
     }
-  }, [otp, phone, email, password, fullName, role, router]);
+  }, [otp, phone, email, password, fullName, role, referralCode, router]);
 
   return (
     <>
@@ -237,6 +240,31 @@ export default function RegisterPage() {
                   <p className="text-on-surface-variant font-medium mt-2">Verified by your mobile number</p>
                 </div>
 
+                <div className="grid grid-cols-2 p-1.5 bg-surface-container rounded-2xl border border-outline-variant/15 gap-1 shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => setRole("customer")}
+                    className={`py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                      role === "customer"
+                        ? "bg-primary text-white shadow-md scale-[1.02]"
+                        : "text-on-surface-variant hover:text-primary hover:bg-surface-container-low"
+                    }`}
+                  >
+                    Customer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRole("partner")}
+                    className={`py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                      role === "partner"
+                        ? "bg-primary text-white shadow-md scale-[1.02]"
+                        : "text-on-surface-variant hover:text-primary hover:bg-surface-container-low"
+                    }`}
+                  >
+                    Partner
+                  </button>
+                </div>
+
                 <div className="space-y-5">
 
                   {/* Full Name */}
@@ -289,6 +317,31 @@ export default function RegisterPage() {
                       placeholder="Min. 8 characters"
                       minLength={8}
                     />
+                  </div>
+
+                  {/* Referral Code — collapsible */}
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowReferral(!showReferral)}
+                      className="flex items-center gap-1.5 text-xs font-bold text-on-surface-variant hover:text-secondary transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>card_giftcard</span>
+                      {showReferral ? "Hide referral code" : "Have a referral code?"}
+                      <span className="material-symbols-outlined text-[14px]">{showReferral ? "expand_less" : "expand_more"}</span>
+                    </button>
+                    {showReferral && (
+                      <div className="space-y-1.5 group animate-in fade-in slide-in-from-top-1 duration-200">
+                        <label className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-widest group-focus-within:text-secondary transition-colors">Referral Code (Optional)</label>
+                        <input
+                          value={referralCode}
+                          onChange={(e) => setReferralCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10))}
+                          placeholder="e.g. ABC1234"
+                          className="w-full px-4 py-3 bg-white/50 rounded-xl text-sm font-bold text-primary focus:outline-none focus:ring-4 focus:ring-secondary/20 transition-all border border-white focus:border-secondary/50 shadow-sm placeholder:text-outline tracking-widest uppercase"
+                        />
+                        <p className="text-[10px] text-on-surface-variant/60 font-medium">Your friend gets credit when you complete your first booking.</p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Error */}

@@ -21,6 +21,7 @@ interface ServiceRow {
   title: string;
   description: string;
   base_price: number;
+  original_price?: number | null;
   is_active: boolean;
   subcategory_id: string;
   duration_minutes?: number;
@@ -451,8 +452,11 @@ export default function ServicesShowcaseClient({
                                     </>
                                   )}
                                 </div>
-                                <div className="text-xs font-extrabold text-primary mt-1">
-                                  ₹{service.base_price}
+                                <div className="flex items-center gap-1.5 mt-1">
+                                  {service.original_price && (
+                                    <span className="text-[10px] text-on-surface-variant/50 line-through">₹{service.original_price}</span>
+                                  )}
+                                  <span className="text-xs font-extrabold text-primary">₹{service.base_price}</span>
                                 </div>
                               </div>
 
@@ -496,9 +500,14 @@ export default function ServicesShowcaseClient({
                                   <span className="text-[10px] text-on-surface-variant font-semibold uppercase block">
                                     Starting at
                                   </span>
-                                  <span className="text-lg font-extrabold text-primary">
-                                    ₹{service.base_price}
-                                  </span>
+                                  <div className="flex items-baseline gap-1.5">
+                                    {service.original_price && (
+                                      <span className="text-xs text-on-surface-variant/50 line-through">₹{service.original_price}</span>
+                                    )}
+                                    <span className="text-lg font-extrabold text-primary">
+                                      ₹{service.base_price}
+                                    </span>
+                                  </div>
                                 </div>
 
                                 {/* Arrow/Action (Always visible on touch, smooth transform on hover) */}

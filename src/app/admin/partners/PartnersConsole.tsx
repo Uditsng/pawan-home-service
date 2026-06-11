@@ -9,7 +9,8 @@ import { SerializedPartner } from "./page";
 import {
   updatePartnerStatusAction,
   onboardPartnerAction,
-  editPartnerAction
+  editPartnerAction,
+  reviewKycAction
 } from "./actions";
 
 interface PartnersConsoleProps {
@@ -62,6 +63,12 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
   const [emergencyBookingPartnerId, setEmergencyBookingPartnerId] = useState<string | null>(null);
   const [emergencyBookingSelected, setEmergencyBookingSelected] = useState("BK-8842 - Pest Control (Roorkee)");
   const [emergencySuccess, setEmergencySuccess] = useState<string | null>(null);
+
+  // KYC Review Modal States
+  const [reviewKycPartner, setReviewKycPartner] = useState<SerializedPartner | null>(null);
+  const [kycRejectReason, setKycRejectReason] = useState("");
+  const [kycSuccess, setKycSuccess] = useState<string | null>(null);
+  const [kycError, setKycError] = useState<string | null>(null);
 
   // Dropdown UI state for specific row actions (Portal-based to avoid overflow clipping)
   const [dropdownMenu, setDropdownMenu] = useState<{
@@ -284,6 +291,43 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
     });
   };
 
+  const handleReviewKyc = (status: "approved" | "rejected") => {
+    if (!reviewKycPartner) return;
+    setKycSuccess(null);
+    setKycError(null);
+
+    startTransition(async () => {
+      try {
+        const res = await reviewKycAction(
+          reviewKycPartner.id,
+          status,
+          status === "rejected" ? kycRejectReason : undefined
+        );
+        if (res.success) {
+          setKycSuccess(`KYC status updated to ${status} successfully!`);
+          setPartners((prev) =>
+            prev.map((p) =>
+              p.id === reviewKycPartner.id
+                ? {
+                    ...p,
+                    kyc_status: status,
+                    kyc_rejection_reason: status === "rejected" ? kycRejectReason : null,
+                  }
+                : p
+            )
+          );
+          setTimeout(() => {
+            setReviewKycPartner(null);
+            setKycRejectReason("");
+            setKycSuccess(null);
+          }, 1500);
+        }
+      } catch (err: unknown) {
+        setKycError((err as Error).message || "Failed to update KYC status.");
+      }
+    });
+  };
+
   return (
     <div className="space-y-4">
 
@@ -439,7 +483,7 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
 
                     {/* Col 4: Status */}
                     <td className="py-1.5 px-3">
-                      <div className="space-y-0.5">
+                      <div className="flex flex-wrap gap-1 mb-1">
                         {/* Live status state pill */}
                         {partner.status === 'active' && (
                           <span className="bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider rounded-full inline-flex items-center gap-1">
@@ -462,9 +506,24 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
                           </span>
                         )}
 
-                        <div className="text-[9px] text-on-surface-variant/70 font-semibold truncate max-w-[200px]">
-                          Pincodes: {partner.pincodes.join(", ") || "None"}
-                        </div>
+                        {/* KYC Status Badge */}
+                        {partner.kyc_status === 'approved' ? (
+                          <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider rounded-full inline-flex items-center gap-1">
+                            KYC Verified
+                          </span>
+                        ) : partner.kyc_status === 'rejected' ? (
+                          <span className="bg-red-100 text-red-800 border border-red-200 px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider rounded-full inline-flex items-center gap-1">
+                            KYC Rejected
+                          </span>
+                        ) : (
+                          <span className="bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider rounded-full inline-flex items-center gap-1">
+                            KYC Pending
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="text-[9px] text-on-surface-variant/70 font-semibold truncate max-w-[200px]">
+                        Pincodes: {partner.pincodes.join(", ") || "None"}
                       </div>
                     </td>
 
@@ -876,6 +935,150 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
         </div>
       )}
 
+      {/* ─── 7. INTERACTIVE KYC REVIEW MODAL ─── */}
+      {reviewKycPartner && (
+        <div className="fixed inset-0 bg-[#002261]/25 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="absolute inset-0 cursor-pointer" onClick={() => setReviewKycPartner(null)} />
+
+          <div className="relative w-full max-w-2xl bg-white rounded-[32px] overflow-hidden shadow-2xl p-6 border border-outline-variant/30 animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-start mb-4 shrink-0">
+              <div>
+                <span className="text-[10px] font-black text-secondary uppercase tracking-[0.2em]">Compliance Verification</span>
+                <h3 className="text-xl font-bold font-headline text-primary uppercase mt-1">
+                  Review KYC: {reviewKycPartner.full_name}
+                </h3>
+              </div>
+              <button
+                onClick={() => setReviewKycPartner(null)}
+                className="p-1.5 rounded-xl hover:bg-surface-container transition-colors"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="overflow-y-auto pr-1 space-y-6 flex-1 text-xs font-bold text-primary">
+              {/* Document URLs Display */}
+              <div>
+                <h4 className="text-xs font-headline font-black text-secondary uppercase tracking-wider mb-3">Uploaded Documents</h4>
+                {reviewKycPartner.kyc_documents ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {Object.entries(reviewKycPartner.kyc_documents).map(([key, val]) => {
+                      if (typeof val !== "string" || !val.startsWith("http")) return null;
+                      const label = key.replace(/_/g, " ").replace("url", "").toUpperCase();
+                      return (
+                        <div key={key} className="bg-surface-container-low border border-outline-variant/20 rounded-xl p-3 flex items-center justify-between">
+                          <span className="font-bold uppercase tracking-wider text-[10px] text-on-surface-variant">{label}</span>
+                          <a
+                            href={val}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-primary text-white text-[10px] uppercase font-black tracking-widest px-3 py-1.5 rounded-lg hover:brightness-110 flex items-center gap-1 shrink-0"
+                          >
+                            <span className="material-symbols-outlined text-[12px]">open_in_new</span> View Doc
+                          </a>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-4 bg-surface-container rounded-2xl text-center font-medium text-on-surface-variant">
+                    No documents uploaded yet.
+                  </div>
+                )}
+              </div>
+
+              {/* Technician Info */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-surface-dim/40 rounded-2xl p-4 border border-outline-variant/10">
+                <div>
+                  <h4 className="text-[9px] uppercase tracking-wider text-on-surface-variant/50 mb-1">Experience</h4>
+                  <p className="text-xs font-bold text-primary">
+                    {reviewKycPartner.kyc_documents?.experience_years ? `${reviewKycPartner.kyc_documents.experience_years} Years` : "—"}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-[9px] uppercase tracking-wider text-on-surface-variant/50 mb-1">Nearby Police Station</h4>
+                  <p className="text-xs font-bold text-primary">
+                    {String(reviewKycPartner.kyc_documents?.police_station_details || "—")}
+                  </p>
+                </div>
+              </div>
+
+              {/* Bank Info */}
+              <div>
+                <h4 className="text-xs font-headline font-black text-secondary uppercase tracking-wider mb-3">Bank Details</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-surface-dim/40 rounded-2xl p-4 border border-outline-variant/10">
+                  <div>
+                    <h4 className="text-[9px] uppercase tracking-wider text-on-surface-variant/50 mb-1">Bank Name</h4>
+                    <p className="text-xs font-bold text-primary">{String(reviewKycPartner.kyc_documents?.bank_name || "—")}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-[9px] uppercase tracking-wider text-on-surface-variant/50 mb-1">Account Number</h4>
+                    <p className="text-xs font-bold text-primary">{String(reviewKycPartner.kyc_documents?.bank_account_no || "—")}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-[9px] uppercase tracking-wider text-on-surface-variant/50 mb-1">IFSC Code</h4>
+                    <p className="text-xs font-bold text-primary">{String(reviewKycPartner.kyc_documents?.bank_ifsc || "—")}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Rejection input field */}
+              <div className="space-y-2">
+                <label className="text-[9px] uppercase tracking-wider text-on-surface-variant/50">KYC Rejection Reason (Required for rejection)</label>
+                <textarea
+                  placeholder="e.g. Uploaded Aadhaar card is blurred..."
+                  rows={2}
+                  value={kycRejectReason}
+                  onChange={(e) => setKycRejectReason(e.target.value)}
+                  className="w-full bg-surface-container-low text-primary p-3 rounded-xl border border-outline-variant/40 focus:border-secondary focus:outline-none font-semibold resize-none"
+                />
+              </div>
+
+              {kycError && (
+                <div className="bg-red-50 text-red-700 p-3 rounded-xl border border-red-200 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-sm">error</span> {kycError}
+                </div>
+              )}
+
+              {kycSuccess && (
+                <div className="bg-emerald-50 text-emerald-700 p-3 rounded-xl border border-emerald-200 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-sm">check_circle</span> {kycSuccess}
+                </div>
+              )}
+            </div>
+
+            <div className="pt-4 border-t border-outline-variant/15 flex gap-3 shrink-0">
+              <Button
+                type="button"
+                variant="slate"
+                onClick={() => setReviewKycPartner(null)}
+                className="flex-1 py-3 text-primary bg-surface-container hover:bg-surface-container-high rounded-xl"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={() => handleReviewKyc("rejected")}
+                disabled={isPending || !kycRejectReason.trim()}
+                className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl disabled:opacity-50"
+              >
+                Reject KYC
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={() => handleReviewKyc("approved")}
+                disabled={isPending}
+                className="flex-1 py-3 bg-secondary hover:brightness-105 text-primary rounded-xl"
+              >
+                Approve KYC
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ─── PORTAL-BASED ROW ACTIONS DROPDOWN ─── */}
       {dropdownMenu && createPortal(
         <>
@@ -918,6 +1121,18 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
                 className="w-full text-left px-2.5 py-1.5 text-xs font-bold text-[#1c2438] hover:bg-surface-container-low rounded-lg transition-colors flex items-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-xs">edit</span> Edit Technician
+              </button>
+              <button
+                onClick={() => {
+                  setReviewKycPartner(dropdownMenu.partner);
+                  setKycRejectReason(dropdownMenu.partner.kyc_rejection_reason || "");
+                  setKycSuccess(null);
+                  setKycError(null);
+                  setDropdownMenu(null);
+                }}
+                className="w-full text-left px-2.5 py-1.5 text-xs font-bold text-[#1c2438] hover:bg-surface-container-low rounded-lg transition-colors flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-xs">verified_user</span> Review KYC Documents
               </button>
               <button
                 onClick={() => {

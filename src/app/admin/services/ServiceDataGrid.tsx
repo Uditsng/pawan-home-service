@@ -10,6 +10,7 @@ interface ServiceItem {
   title: string;
   is_active: boolean;
   base_price: number;
+  original_price?: number | null;
   category?: string | null;
   subcategories?: {
     subcategory_name: string;
@@ -241,7 +242,12 @@ export function ServiceDataGrid({ services, categories }: { services: ServiceIte
                         </div>
                       </td>
                       <td className="px-4 py-1.5 whitespace-nowrap">
-                        <span className="font-bold text-primary text-xs">₹{Number(service.base_price).toLocaleString()}</span>
+                        <div className="flex flex-col">
+                          {service.original_price && (
+                            <span className="text-[10px] text-on-surface-variant/50 line-through font-semibold">₹{Number(service.original_price).toLocaleString()}</span>
+                          )}
+                          <span className="font-bold text-primary text-xs">₹{Number(service.base_price).toLocaleString()}</span>
+                        </div>
                       </td>
                       <td className="px-4 py-1.5 whitespace-nowrap text-right">
                         <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">

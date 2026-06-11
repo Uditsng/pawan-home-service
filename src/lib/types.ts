@@ -11,12 +11,17 @@
 export type BookingStatus =
   | 'pending'
   | 'confirmed'
+  | 'assigned'
   | 'accepted'
+  | 'professional_en_route'
+  | 'professional_arrived'
+  | 'otp_pending'
   | 'in_progress'
   | 'completed'
   | 'cancelled'
   | 'reassigned'
-  | 'expired';
+  | 'expired'
+  | 'refunded';
 
 export type CancelledBy = 'USER' | 'PARTNER' | 'SYSTEM';
 
@@ -64,6 +69,7 @@ export interface Service {
   title: string;
   description: string;
   base_price: number;
+  original_price?: number | null;
   is_active: boolean;
   created_at: string;
   page_content: string | null;
@@ -74,10 +80,14 @@ export interface Booking {
   service_id: string;
   customer_id: string;
   partner_id: string | null;
+  order_id: string | null;         // null for legacy single-service bookings
   status: BookingStatus;
   total_amount: number;
   city: string | null;
+  area: string | null;             // colony/locality for dispatch matching
   pincode: string | null;
+  broadcast_tier: number;
+  last_broadcast_at: string | null;
   scheduled_date: string | null;
   created_at: string;
   accepted_at: string | null;
@@ -86,6 +96,35 @@ export interface Booking {
   cancelled_at: string | null;
   cancelled_by: CancelledBy | null;
   cancellation_reason: string | null;
+}
+
+// ─── Cart & Orders ───────────────────────────────────────────
+
+export interface CartItem {
+  serviceId: string;
+  title: string;
+  iconName: string;
+  basePrice: number;
+  subcategoryName: string;
+  categorySlug: string;
+}
+
+export interface Order {
+  id: string;
+  customer_id: string;
+  status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
+  total_amount: number;
+  address: string | null;
+  city: string | null;
+  pincode: string | null;
+  scheduled_date: string | null;
+  item_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrderWithBookings extends Order {
+  bookings: (Booking & { services: { title: string; category?: string } | null })[];
 }
 
 // ─── Joined / Enriched Models ────────────────────────────────
@@ -168,6 +207,7 @@ export type NotificationType =
   | 'booking_confirmed'
   | 'partner_assigned'
   | 'partner_reassigned'
+  | 'new_job_offer'
   | 'service_started'
   | 'service_completed'
   | 'booking_cancelled'

@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import HeaderLocationDisplay from "./HeaderLocationDisplay";
 import NotificationBell from "./NotificationBell";
+import CartHeaderButton from "./CartHeaderButton";
 
 export default async function CustomerHeader() {
   const supabase = await createClient();
@@ -46,6 +47,7 @@ export default async function CustomerHeader() {
           <HeaderLocationDisplay defaultAddress={defaultAddress} />
         </div>
         <div className="flex items-center gap-3 md:gap-4">
+          <CartHeaderButton />
           <NotificationBell />
           <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-surface-container-high overflow-hidden border border-outline-variant/20 flex items-center justify-center font-bold text-primary shrink-0 relative">
             {profile.avatar_url ? (

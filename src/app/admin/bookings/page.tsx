@@ -21,6 +21,13 @@ export interface SerializedBooking {
   cancellation_reason: string | null;
   customer_id: string | null;
   partner_id: string | null;
+  arrival_otp: string | null;
+  arrival_otp_verified: boolean;
+  completion_otp: string | null;
+  completion_otp_verified: boolean;
+  failed_otp_attempts: number;
+  service_started_at: string | null;
+  service_completed_at: string | null;
   service: {
     id: string;
     title: string;
@@ -97,6 +104,13 @@ export default async function AdminBookingsPage() {
       cancellation_reason,
       customer_id,
       partner_id,
+      arrival_otp,
+      arrival_otp_verified,
+      completion_otp,
+      completion_otp_verified,
+      failed_otp_attempts,
+      service_started_at,
+      service_completed_at,
       service:service_id (id, title, category),
       customer:customer_id (id, full_name, email, phone, avatar_url),
       partner:partner_id (id, full_name, email, phone, avatar_url, status)
@@ -178,6 +192,13 @@ export default async function AdminBookingsPage() {
       cancellation_reason: (b.cancellation_reason as string) || null,
       customer_id: (b.customer_id as string) || null,
       partner_id: (b.partner_id as string) || null,
+      arrival_otp: (b.arrival_otp as string) || null,
+      arrival_otp_verified: !!b.arrival_otp_verified,
+      completion_otp: (b.completion_otp as string) || null,
+      completion_otp_verified: !!b.completion_otp_verified,
+      failed_otp_attempts: Number(b.failed_otp_attempts || 0),
+      service_started_at: (b.service_started_at as string) || null,
+      service_completed_at: (b.service_completed_at as string) || null,
       service: svc
         ? {
             id: String(svc.id || ""),

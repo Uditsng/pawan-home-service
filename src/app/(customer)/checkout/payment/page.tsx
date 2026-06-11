@@ -17,42 +17,40 @@ export default async function CheckoutPaymentPage({ searchParams }: { searchPara
   // Redirect to login if user lost session
   if (!user) redirect('/login');
 
-  const { data: addressObj } = await supabase
-    .from('user_addresses')
-    .select('formatted_address, city, pincode, label')
-    .eq('id', addressId)
-    .eq('user_id', user.id)
-    .single();
+  const [addressResult, serviceResult, settingsResult, profileResult, completedBookingsResult] = await Promise.all([
+    supabase.from('user_addresses').select('formatted_address, city, pincode, label').eq('id', addressId).eq('user_id', user.id).single(),
+    supabase.from('services').select('id, title, base_price, category').eq('id', serviceId).single(),
+    supabase.from('platform_settings').select('key, value').in('key', ['tax_rate', 'referral_reward_referred']),
+    supabase.from('profiles').select('referred_by').eq('id', user.id).single(),
+    supabase.from('bookings').select('id', { count: 'exact' }).eq('customer_id', user.id).eq('status', 'completed'),
+  ]);
+
+  const addressObj = addressResult.data;
+  const service = serviceResult.data;
 
   if (!addressObj) redirect('/dashboard');
-
-  const { data: service } = await supabase
-    .from('services')
-    .select('id, title, base_price, category')
-    .eq('id', serviceId)
-    .single();
-
   if (!service) redirect('/dashboard');
 
-  // 3. Fetch tax rate from platform_settings
-  const { data: settingsData } = await supabase
-    .from('platform_settings')
-    .select('value')
-    .eq('key', 'tax_rate')
-    .maybeSingle();
+  // Parse all settings from parallel fetch
+  const settingsMap = (settingsResult.data || []).reduce<Record<string, string>>((acc, row) => {
+    acc[row.key] = typeof row.value === 'string' ? row.value : String(row.value);
+    return acc;
+  }, {});
 
-  // Parse tax rate safely (default to 18)
   let taxRatePercent = 18;
-  if (settingsData?.value) {
-    try {
-      const parsedVal = typeof settingsData.value === 'string' ? JSON.parse(settingsData.value) : settingsData.value;
-      const parsedNum = parseFloat(String(parsedVal).replace(/%/g, '').trim());
-      if (!isNaN(parsedNum)) {
-        taxRatePercent = parsedNum;
-      }
-    } catch (e) {
-      console.error("Error parsing tax rate setting:", e);
-    }
+  try {
+    const rawTax = settingsMap['tax_rate']?.replace(/%/g, '').trim();
+    const parsed = parseFloat(rawTax || '18');
+    if (!isNaN(parsed)) taxRatePercent = parsed;
+  } catch { /* use default */ }
+
+  // Determine referral discount eligibility
+  const isReferred = !!profileResult.data?.referred_by;
+  const hasCompletedBookings = (completedBookingsResult.count ?? 0) > 0;
+  let referralDiscount = 0;
+  if (isReferred && !hasCompletedBookings) {
+    const rawDiscount = parseFloat(settingsMap['referral_reward_referred'] || '50');
+    if (!isNaN(rawDiscount) && rawDiscount > 0) referralDiscount = rawDiscount;
   }
 
   // Next 16 compatible Server Action
@@ -72,31 +70,38 @@ export default async function CheckoutPaymentPage({ searchParams }: { searchPara
       redirect('/dashboard?error=AddressNotFound');
     }
 
-    // Fetch tax rate dynamically for database insert as well
-    const { data: settingsDataAction } = await db
+    // Fetch tax rate + referral discount from platform_settings
+    const { data: settingsActionData } = await db
       .from('platform_settings')
-      .select('value')
-      .eq('key', 'tax_rate')
-      .maybeSingle();
+      .select('key, value')
+      .in('key', ['tax_rate', 'referral_reward_referred']);
+
+    const settingsActionMap = (settingsActionData || []).reduce<Record<string, string>>((acc, row) => {
+      acc[row.key] = typeof row.value === 'string' ? row.value : String(row.value);
+      return acc;
+    }, {});
 
     let taxRatePercentAction = 18;
-    if (settingsDataAction?.value) {
-      try {
-        const parsedVal = typeof settingsDataAction.value === 'string' ? JSON.parse(settingsDataAction.value) : settingsDataAction.value;
-        const parsedNum = parseFloat(String(parsedVal).replace(/%/g, '').trim());
-        if (!isNaN(parsedNum)) {
-          taxRatePercentAction = parsedNum;
-        }
-      } catch (e) {
-        console.error("Error parsing tax rate in server action:", e);
+    try {
+      const rawTax = settingsActionMap['tax_rate']?.replace(/%/g, '').trim();
+      const parsed = parseFloat(rawTax || '18');
+      if (!isNaN(parsed)) taxRatePercentAction = parsed;
+    } catch { /* use default */ }
+
+    // Re-verify referral discount server-side (never trust client)
+    let referralDiscountAction = 0;
+    const { data: profileAction } = await db.from('profiles').select('referred_by').eq('id', user!.id).single();
+    if (profileAction?.referred_by) {
+      const { count: completedCount } = await db.from('bookings').select('id', { count: 'exact' }).eq('customer_id', user!.id).eq('status', 'completed');
+      if ((completedCount ?? 0) === 0) {
+        const rawDiscount = parseFloat(settingsActionMap['referral_reward_referred'] || '50');
+        if (!isNaN(rawDiscount) && rawDiscount > 0) referralDiscountAction = rawDiscount;
       }
     }
 
     const basePrice = service!.base_price;
     const gstTax = Math.round(basePrice * (taxRatePercentAction / 100));
-    const totalPrice = basePrice + gstTax;
-
-    // Parse timestamp (roughly)
+    const totalPrice = Math.max(0, basePrice + gstTax - referralDiscountAction);
     const timestamp = new Date(`${date} ${time}`);
 
     // 1. Create booking first (status: pending while we find a partner)
@@ -108,7 +113,8 @@ export default async function CheckoutPaymentPage({ searchParams }: { searchPara
       city: addr.city,
       address: addr.formatted_address,
       pincode: addr.pincode,
-      scheduled_date: timestamp.toISOString()
+      scheduled_date: timestamp.toISOString(),
+      wallet_discount_applied: referralDiscountAction,
     }).select('id').single();
 
     if (error) {
@@ -147,6 +153,7 @@ export default async function CheckoutPaymentPage({ searchParams }: { searchPara
       date={date}
       time={time}
       taxRatePercent={taxRatePercent}
+      referralDiscount={referralDiscount}
       confirmBookingAction={confirmBookingAction}
     />
   );

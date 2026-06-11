@@ -19,6 +19,7 @@ interface ServiceWithSubcategory {
   id: string;
   title: string;
   base_price: number;
+  original_price?: number | null;
   duration_minutes?: number;
   category?: string;
   subcategory_id: string;
@@ -49,7 +50,7 @@ export default async function Home() {
   const { data: popularServices } = await supabase
     .from('services')
     .select(`
-      id, title, base_price, subcategory_id,
+      id, title, base_price, original_price, subcategory_id,
       subcategories (
         subcategory_name,
         icon_name,
@@ -132,7 +133,12 @@ export default async function Home() {
                       <span className="material-symbols-outlined text-[#059669] drop-shadow-sm">{iconName}</span>
                     </div>
                     <span className="font-headline font-bold text-xs md:text-sm text-on-surface line-clamp-2 leading-tight">{service.title}</span>
-                    <span className="text-[10px] md:text-[11px] text-primary mt-1 md:mt-1.5 font-bold tracking-tight">₹{service.base_price}</span>
+                    <div className="flex items-center gap-1.5 mt-1 md:mt-1.5">
+                      {service.original_price && (
+                        <span className="text-[9px] md:text-[10px] text-on-surface-variant/50 line-through">₹{service.original_price}</span>
+                      )}
+                      <span className="text-[10px] md:text-[11px] text-primary font-bold tracking-tight">₹{service.base_price}</span>
+                    </div>
                   </Link>
                 );
               })}

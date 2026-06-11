@@ -26,6 +26,7 @@ type ServiceInitialData = {
   subcategory_id: string | null;
   image_url?: string | null;
   base_price: number;
+  original_price?: number | null;
   price_breakdown?: string | null;
   description: string;
   page_content?: {
@@ -152,10 +153,14 @@ export function EditServiceForm({
       {/* Price Section */}
       <div>
         <h2 className="text-lg font-bold mb-3 border-b border-outline-variant/10 pb-2 text-primary">Pricing</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-bold text-on-surface-variant mb-2">Service Starting at (₹)</label>
             <input name="base_price" required type="number" step="0.01" defaultValue={initialData.base_price} className="w-full border border-outline-variant/20 rounded-lg p-3 bg-surface-container focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="e.g. 599.00" />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-on-surface-variant mb-2">Original/Strike Price (Optional) (₹)</label>
+            <input name="original_price" type="number" step="0.01" defaultValue={initialData.original_price ?? ""} className="w-full border border-outline-variant/20 rounded-lg p-3 bg-surface-container focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="e.g. 999.00" />
           </div>
           <div>
             <label className="block text-sm font-bold text-on-surface-variant mb-2">Price Breakdown (Optional)</label>

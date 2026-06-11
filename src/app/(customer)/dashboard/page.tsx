@@ -8,6 +8,7 @@ interface ServiceWithSubcategory {
   id: string;
   title: string;
   base_price: number;
+  original_price?: number | null;
   category?: string;
   subcategory_id: string;
   subcategories: {
@@ -25,6 +26,10 @@ interface BookingWithService {
   created_at: string;
   city: string;
   total_amount: number;
+  arrival_otp?: string | null;
+  arrival_otp_verified?: boolean;
+  completion_otp?: string | null;
+  completion_otp_verified?: boolean;
   services: {
     title: string;
     category?: string;
@@ -41,7 +46,7 @@ export default async function CustomerDashboard() {
     supabase
       .from('services')
       .select(`
-        id, title, base_price, subcategory_id,
+        id, title, base_price, original_price, subcategory_id,
         subcategories (
           subcategory_name,
           icon_name,
@@ -56,7 +61,7 @@ export default async function CustomerDashboard() {
     user
       ? supabase
         .from('bookings')
-        .select('id, status, created_at, city, total_amount, services:service_id(title, category)')
+        .select('id, status, created_at, city, total_amount, arrival_otp, arrival_otp_verified, completion_otp, completion_otp_verified, services:service_id(title, category)')
         .eq('customer_id', user.id)
         .order('created_at', { ascending: false })
         .limit(5)
@@ -91,7 +96,12 @@ export default async function CustomerDashboard() {
                     <span className="material-symbols-outlined text-[#059669] drop-shadow-sm">{iconName}</span>
                   </div>
                   <span className="font-headline font-bold text-xs md:text-sm text-on-surface line-clamp-2 leading-tight">{service.title}</span>
-                  <span className="text-[10px] md:text-[11px] text-primary mt-1 md:mt-1.5 font-bold tracking-tight">₹{service.base_price}</span>
+                  <div className="flex items-center gap-1.5 mt-1 md:mt-1.5">
+                    {service.original_price && (
+                      <span className="text-[9px] md:text-[10px] text-on-surface-variant/50 line-through">₹{service.original_price}</span>
+                    )}
+                    <span className="text-[10px] md:text-[11px] text-primary font-bold tracking-tight">₹{service.base_price}</span>
+                  </div>
                 </Link>
               );
             })}
@@ -139,16 +149,28 @@ export default async function CustomerDashboard() {
                   </div>
 
                   <h4 className="font-headline font-bold text-base md:text-lg text-on-surface leading-tight mb-1">{b.services?.title}</h4>
-                  <p className="text-[10px] md:text-xs font-semibold text-on-surface-variant mb-3 md:mb-4 flex items-center gap-1">
+                  <p className="text-[10px] md:text-xs font-semibold text-on-surface-variant mb-2 flex items-center gap-1">
                     <span className="material-symbols-outlined text-[12px] md:text-[13px]">location_city</span>
                     {b.city}
                   </p>
 
+                  {/* Active OTP Display */}
+                  {b.status === 'otp_pending' && (
+                    <div className="mb-3 p-2.5 bg-[#059669]/10 border border-[#059669]/25 rounded-[12px] flex flex-col items-center justify-center">
+                      <p className="text-[9px] font-bold text-[#059669] uppercase tracking-wider leading-none">
+                        {!b.arrival_otp_verified ? "Arrival OTP to Start" : "Completion OTP to Close"}
+                      </p>
+                      <p className="text-base font-extrabold tracking-widest text-[#059669] mt-1">
+                        {!b.arrival_otp_verified ? b.arrival_otp : b.completion_otp}
+                      </p>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-center pt-3 md:pt-4 border-t border-surface-variant/30">
                     <span className="font-black text-base md:text-lg text-primary">₹{b.total_amount}</span>
-                    <button className="text-[10px] md:text-xs font-bold text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1">
+                    <Link href={`/bookings/${b.id}/tracking`} className="text-[10px] md:text-xs font-bold text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1">
                       Details <span className="material-symbols-outlined text-[12px] md:text-[14px]">arrow_forward</span>
-                    </button>
+                    </Link>
                   </div>
                 </div>
               ))

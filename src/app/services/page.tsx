@@ -28,6 +28,7 @@ interface ServiceRow {
   title: string;
   description: string;
   base_price: number;
+  original_price?: number | null;
   is_active: boolean;
   subcategory_id: string;
   duration_minutes?: number;

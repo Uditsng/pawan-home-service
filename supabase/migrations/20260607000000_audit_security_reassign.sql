@@ -8,11 +8,10 @@ CREATE OR REPLACE FUNCTION public.check_profile_immutable_fields()
 RETURNS TRIGGER AS $$
 BEGIN
   -- If trying to change role or status, verify if the session user is an admin
+  -- Also allow changes if auth.uid() is NULL (e.g. direct updates in the database/SQL editor)
   IF (OLD.role IS DISTINCT FROM NEW.role OR OLD.status IS DISTINCT FROM NEW.status)
-     AND NOT EXISTS (
-       SELECT 1 FROM public.profiles 
-       WHERE id = auth.uid() AND role = 'admin'
-     ) THEN
+     AND auth.uid() IS NOT NULL
+     AND NOT public.is_admin(auth.uid()) THEN
      
     -- Block role changes entirely for non-admins
     IF OLD.role IS DISTINCT FROM NEW.role THEN

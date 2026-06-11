@@ -102,10 +102,10 @@ export default function Header() {
             Services
           </Link>
           <Link
-            href="/help"
+            href="/contact-us"
             className="text-on-surface-variant font-medium font-headline tracking-tight text-sm hover:text-secondary transition-colors"
           >
-            Help
+            Contact Us
           </Link>
           <div className="flex items-center gap-3 lg:gap-4 ml-2 lg:ml-4">
             {loading ? (
@@ -155,12 +155,12 @@ export default function Header() {
               Services
             </Link>
             <Link
-              href="/help"
+              href="/contact-us"
               onClick={() => setMenuOpen(false)}
               className="flex items-center gap-3 py-3.5 px-4 rounded-xl text-primary font-bold text-[15px] hover:bg-surface-container-low transition-colors"
             >
-              <span className="material-symbols-outlined text-[20px] text-on-surface-variant">help</span>
-              Help
+              <span className="material-symbols-outlined text-[20px] text-on-surface-variant">support_agent</span>
+              Contact Us
             </Link>
             <hr className="my-3 border-outline-variant/50" />
             <div className="flex flex-col gap-3 pt-2">

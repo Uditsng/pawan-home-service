@@ -2,12 +2,14 @@ import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/utils/supabase/server";
 import CustomerHeader from "@/components/CustomerHeader";
+import AddToCartButton from "@/components/AddToCartButton";
 
 interface ServiceWithSubcategory {
   id: string;
   title: string;
   description: string;
   base_price: number;
+  original_price?: number | null;
   is_active: boolean;
   subcategory_id: string;
   category?: string;
@@ -93,7 +95,12 @@ export default async function CategoryServiceListingPage({ params }: { params: P
                   <div>
                     <div className="flex justify-between items-start mb-1">
                       <h2 className="text-lg md:text-xl font-bold font-headline text-on-surface tracking-tight">{service.title}</h2>
-                      <span className="text-secondary font-bold text-lg md:text-xl shrink-0 ml-2">₹{service.base_price}</span>
+                      <div className="flex flex-col items-end shrink-0 ml-2">
+                        {service.original_price && (
+                          <span className="text-on-surface-variant/50 line-through text-xs md:text-sm font-semibold">₹{service.original_price}</span>
+                        )}
+                        <span className="text-secondary font-bold text-lg md:text-xl">₹{service.base_price}</span>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2 text-on-surface-variant text-xs md:text-sm mb-3 md:mb-4">
                       <span className="material-symbols-outlined text-sm md:text-base text-on-surface-variant/60">{iconName}</span>
@@ -109,9 +116,14 @@ export default async function CategoryServiceListingPage({ params }: { params: P
                     <Link href={`/services/${categorySlug}/${service.id}`} className="flex-1 text-center py-2.5 md:py-3 text-xs md:text-sm font-semibold text-primary border border-primary/20 rounded-lg hover:bg-primary/5 transition-colors">
                       View Details
                     </Link>
-                    <Link href={`/checkout/schedule?serviceId=${service.id}`} className="flex-1 py-2.5 md:py-3 text-xs md:text-sm font-semibold text-on-primary bg-primary-gradient rounded-lg shadow-lg shadow-primary/10 hover:opacity-90 transition-all text-center">
-                      Book Now
-                    </Link>
+                    <AddToCartButton item={{
+                      serviceId: service.id,
+                      title: service.title,
+                      iconName: iconName,
+                      basePrice: service.base_price,
+                      subcategoryName: subcatName,
+                      categorySlug: categorySlug
+                    }} />
                   </div>
                 </div>
               </article>

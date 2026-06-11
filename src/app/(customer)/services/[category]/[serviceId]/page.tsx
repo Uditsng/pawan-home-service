@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import Image from "next/image";
+import AddToCartButton from "@/components/AddToCartButton";
 
 interface ServicePageContent {
   about_text?: string;
@@ -16,6 +17,7 @@ interface ServiceWithSubcategory {
   title: string;
   description: string;
   base_price: number;
+  original_price?: number | null;
   image_url?: string;
   category?: string;
   page_content: ServicePageContent;
@@ -104,8 +106,17 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
               <span className="inline-flex items-center gap-1 bg-surface px-2 py-1.5 md:py-2 rounded-full font-bold shadow-sm text-xs md:text-sm border border-outline-variant/30">
                 <span className="material-symbols-outlined text-primary text-xs md:text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span> Verified
               </span>
-              <span className="inline-flex items-center gap-1 bg-surface px-2 py-1.5 md:py-2 rounded-full font-bold shadow-sm text-xs md:text-sm border border-outline-variant/30">
-                <span className="material-symbols-outlined text-primary text-xs md:text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>currency_rupee</span> {service.base_price}
+              <span className="inline-flex items-center gap-1.5 bg-surface px-2 py-1.5 md:py-2 rounded-full font-bold shadow-sm text-xs md:text-sm border border-outline-variant/30">
+                {service.original_price ? (
+                  <>
+                    <span className="text-on-surface-variant/50 line-through text-xs font-semibold">₹{service.original_price}</span>
+                    <span className="text-primary">₹{service.base_price}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-primary text-xs md:text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>currency_rupee</span> {service.base_price}
+                  </>
+                )}
               </span>
             </div>
           </div>
@@ -180,7 +191,12 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
                 </div>
                 <div className="bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant/20 min-w-[220px] shadow-xs flex flex-col justify-center">
                   <span className="text-[10px] md:text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1">Base Price</span>
-                  <div className="text-3xl font-black text-primary font-headline tracking-tighter mb-2">₹{service.base_price}</div>
+                  <div className="flex items-baseline gap-1.5 mb-2">
+                    {service.original_price && (
+                      <span className="text-sm md:text-base text-on-surface-variant/50 line-through font-semibold">₹{service.original_price}</span>
+                    )}
+                    <span className="text-3xl font-black text-primary font-headline tracking-tighter">₹{service.base_price}</span>
+                  </div>
                   <div className="border-t border-outline-variant/30 pt-2 mt-2">
                     <span className="text-[10px] text-on-surface-variant/80 font-bold uppercase tracking-wider block mb-1">Rate Details</span>
                     <span className="text-xs md:text-sm text-on-surface font-medium leading-tight block">{service.price_breakdown}</span>
@@ -238,6 +254,9 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
         <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
           <div>
             <div className="flex items-center gap-1.5">
+              {service.original_price && (
+                <span className="text-xs text-on-surface-variant/50 line-through font-semibold">₹{service.original_price}</span>
+              )}
               <span className="text-lg md:text-xl font-extrabold font-headline text-on-surface tracking-tighter">₹{service.base_price}</span>
               {service.price_breakdown && (
                 <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-secondary bg-secondary/10 px-1.5 py-0.5 rounded-full border border-secondary/20">
@@ -249,9 +268,19 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
               {service.price_breakdown ? "Base Price" : "Standard Fix Rate"}
             </div>
           </div>
-          <Link href={`/checkout/schedule?serviceId=${service.id}`} className="btn-cta px-6 md:px-8 py-3 md:py-3.5 rounded-full font-bold shadow-lg font-headline transition-transform active:scale-95 block text-center text-sm md:text-base">
-            Book Now
-          </Link>
+          <div className="flex items-center gap-3 min-w-[280px]">
+            <AddToCartButton item={{
+              serviceId: service.id,
+              title: service.title,
+              iconName: iconName,
+              basePrice: service.base_price,
+              subcategoryName: service.subcategories?.subcategory_name || "Service",
+              categorySlug: resolvedParams.category
+            }} />
+            <Link href={`/checkout/schedule?serviceId=${service.id}`} className="px-6 md:px-8 py-2.5 text-xs md:text-sm bg-primary text-white font-headline font-bold rounded-lg shadow-md hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center shrink-0">
+              Book Now
+            </Link>
+          </div>
         </div>
       </div>
     </div>

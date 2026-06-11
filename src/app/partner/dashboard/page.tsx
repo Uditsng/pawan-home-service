@@ -33,7 +33,7 @@ export default async function PartnerDashboardPage() {
     // Partner profile (select only used columns)
     supabase
       .from("profiles")
-      .select("id, full_name, avatar_url, rating_avg, acceptance_rate, jobs_cancelled_count")
+      .select("id, full_name, avatar_url, rating_avg, acceptance_rate, jobs_cancelled_count, status")
       .eq("id", user.id)
       .single(),
     // Current active job (in_progress)
@@ -116,7 +116,7 @@ export default async function PartnerDashboardPage() {
 
   return (
     <div className="bg-surface font-body text-on-surface min-h-screen pb-32">
-      <PartnerHeader />
+      <PartnerHeader initialStatus={profile?.status ?? "offline"} />
 
       <main className="max-w-7xl mx-auto px-6 mt-6 space-y-8 relative">
         {/* Active Job Banner */}

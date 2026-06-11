@@ -15,12 +15,22 @@ export interface SelectedArea {
   city: string;
 }
 
-export default function PincodeSelector() {
+export default function PincodeSelector({
+  initialAreas = []
+}: {
+  initialAreas?: SelectedArea[];
+}) {
   const [pincodeInput, setPincodeInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<PostOffice[]>([]);
-  const [selectedAreas, setSelectedAreas] = useState<SelectedArea[]>([]);
+  const [selectedAreas, setSelectedAreas] = useState<SelectedArea[]>(initialAreas);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialAreas && initialAreas.length > 0) {
+      setSelectedAreas(initialAreas);
+    }
+  }, [initialAreas]);
 
   useEffect(() => {
     const fetchAreas = async () => {

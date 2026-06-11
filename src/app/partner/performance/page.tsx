@@ -92,7 +92,7 @@ export default async function PerformancePage() {
 
   return (
     <div className="bg-surface font-body text-on-surface min-h-screen pb-32">
-      <PartnerHeader />
+      <PartnerHeader initialStatus={profile?.status ?? "offline"} />
 
       <main className="max-w-7xl mx-auto px-6 pt-8 pb-10 space-y-8">
         {/* Insight Banner */}

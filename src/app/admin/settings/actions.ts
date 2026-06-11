@@ -12,6 +12,8 @@ export async function updateSettingsAction(settings: {
   free_cancellation_window?: string;
   partner_penalty_rate?: string;
   service_areas?: string[];
+  referral_reward_referrer?: string;
+  referral_reward_referred?: string;
 }) {
   await requireAdmin();
   const supabase = await createClient();
@@ -42,6 +44,20 @@ export async function updateSettingsAction(settings: {
     await supabase
       .from("platform_settings")
       .upsert({ key: "service_areas", value: JSON.stringify(settings.service_areas) });
+  }
+
+  // Update referral_reward_referrer
+  if (settings.referral_reward_referrer !== undefined) {
+    await supabase
+      .from("platform_settings")
+      .upsert({ key: "referral_reward_referrer", value: settings.referral_reward_referrer });
+  }
+
+  // Update referral_reward_referred
+  if (settings.referral_reward_referred !== undefined) {
+    await supabase
+      .from("platform_settings")
+      .upsert({ key: "referral_reward_referred", value: settings.referral_reward_referred });
   }
 
   revalidatePath("/admin/settings");

@@ -17,6 +17,7 @@ export default async function SearchPage({
     title: string;
     description: string;
     base_price: number;
+    original_price?: number | null;
     category?: string;
     subcategory_id: string;
     subcategories: {
@@ -89,8 +90,13 @@ export default async function SearchPage({
                         <h3 className="font-bold text-on-surface leading-tight text-sm md:text-base truncate">{service.title}</h3>
                         <p className="text-[10px] md:text-[11px] text-on-surface-variant mt-0.5 md:mt-1 line-clamp-1">{service.description}</p>
                       </div>
-                      <div className="font-bold text-primary whitespace-nowrap text-sm md:text-base">
-                        ₹{service.base_price}
+                      <div className="flex flex-col items-end whitespace-nowrap">
+                        {service.original_price && (
+                          <span className="text-[10px] md:text-xs text-on-surface-variant/50 line-through">₹{service.original_price}</span>
+                        )}
+                        <span className="font-bold text-primary text-sm md:text-base">
+                          ₹{service.base_price}
+                        </span>
                       </div>
                     </Link>
                   );

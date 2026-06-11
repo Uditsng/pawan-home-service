@@ -78,6 +78,16 @@ export async function updateBookingStatusAction(
     },
   });
 
+  await supabase.from("booking_audit_trail").insert({
+    booking_id: bookingId,
+    action: "ADMIN_OVERRIDE",
+    actor: "ADMIN",
+    metadata: {
+      new_status: status,
+      cancellation_reason: cancellationReason || null,
+    },
+  });
+
   // ─── Notifications ─────────────────────────────────────────
   // Fetch booking details for notification context
   const { data: bookingData } = await supabase
@@ -167,6 +177,16 @@ export async function manualAssignPartnerAction(
     booking_id: bookingId,
     event_type: "PARTNER_AUTO_ASSIGNED",
     actor: "SYSTEM",
+    metadata: {
+      partner_id: partnerId,
+      assignment_method: "admin_manual_override",
+    },
+  });
+
+  await supabase.from("booking_audit_trail").insert({
+    booking_id: bookingId,
+    action: "PARTNER_ASSIGNED",
+    actor: "ADMIN",
     metadata: {
       partner_id: partnerId,
       assignment_method: "admin_manual_override",
@@ -298,6 +318,16 @@ export async function reassignPartnerAction(
       new_partner_id: null,
       reason: reason || null,
       result: "manual_intervention_required",
+    },
+  });
+
+  await supabase.from("booking_audit_trail").insert({
+    booking_id: bookingId,
+    action: "PARTNER_REASSIGNED",
+    actor: "ADMIN",
+    metadata: {
+      previous_partner_id: currentPartnerId || null,
+      reason: reason || null,
     },
   });
 

@@ -24,28 +24,38 @@ export default function Footer() {
           {/* Navigation Links */}
           <ul className="flex flex-wrap justify-center items-center gap-x-6 gap-y-3 text-sm font-semibold text-on-surface-variant">
             <li>
-              <Link href="/about" className="hover:underline hover:text-secondary transition-all">
-                About us
+              <Link href="/about-us" className="hover:underline hover:text-secondary transition-all">
+                About Us
               </Link>
             </li>
             <li>
-              <Link href="/help" className="hover:underline hover:text-secondary transition-all">
-                Contact us
-              </Link>
-            </li>
-            <li>
-              <Link href="/terms" className="hover:underline hover:text-secondary transition-all">
-                Terms
+              <Link href="/contact-us" className="hover:underline hover:text-secondary transition-all">
+                Contact Us
               </Link>
             </li>
             <li>
               <Link href="/terms-conditions" className="hover:underline hover:text-secondary transition-all">
-                Term & conditions
+                Terms & Conditions
               </Link>
             </li>
             <li>
-              <Link href="/privacy" className="hover:underline hover:text-secondary transition-all">
-                Privacy policy
+              <Link href="/privacy-policy" className="hover:underline hover:text-secondary transition-all">
+                Privacy Policy
+              </Link>
+            </li>
+            <li>
+              <Link href="/refund-policy" className="hover:underline hover:text-secondary transition-all">
+                Refund Policy
+              </Link>
+            </li>
+            <li>
+              <Link href="/cancellation-policy" className="hover:underline hover:text-secondary transition-all">
+                Cancellation Policy
+              </Link>
+            </li>
+            <li>
+              <Link href="/shipping-policy" className="hover:underline hover:text-secondary transition-all">
+                Shipping Policy
               </Link>
             </li>
           </ul>
@@ -61,7 +71,7 @@ export default function Footer() {
             © {new Date().getFullYear()} <Link href="/" className="hover:underline hover:text-secondary transition-all font-semibold">PHS Cleaning Company™</Link>. All Rights Reserved.
           </span>
           <span className="text-center md:text-right hidden md:inline">
-            Developed by NishantWorks
+            Premium Home Services at Your Doorstep
           </span>
         </div>
 

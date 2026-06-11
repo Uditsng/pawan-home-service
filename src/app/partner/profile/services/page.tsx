@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import PartnerHeader from "@/components/PartnerHeader";
+import EditServiceAreasForm from "./EditServiceAreasForm";
 
 export default async function PartnerServicesPage() {
   const supabase = await createClient();
@@ -9,6 +10,15 @@ export default async function PartnerServicesPage() {
   if (!user) {
     redirect("/login");
   }
+
+  // Fetch partner status for header toggle
+  const { data: profileData } = await supabase
+    .from('profiles')
+    .select('status')
+    .eq('id', user!.id)
+    .single();
+
+  const partnerStatus = profileData?.status ?? 'offline';
 
   // Fetch all services to show active/inactive state
   const { data: allServices } = await supabase
@@ -42,7 +52,7 @@ export default async function PartnerServicesPage() {
 
   return (
     <div className="bg-[#f5f6f8] text-on-background min-h-screen flex flex-col font-sans pb-24">
-      <PartnerHeader />
+      <PartnerHeader initialStatus={partnerStatus} />
       
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 md:px-5 pt-6 space-y-6">
         
@@ -95,34 +105,13 @@ export default async function PartnerServicesPage() {
           </div>
 
           {/* Service Areas Section */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-            <div className="p-4 md:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <h3 className="font-extrabold text-[#1c2438] text-[15px]">Service Areas</h3>
-            </div>
-            
-            <div className="divide-y divide-slate-100">
-              {partnerAreas && partnerAreas.length > 0 ? (
-                partnerAreas.map((area) => (
-                  <div key={area.id} className="p-4 md:p-5 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <span className="text-[20px]">📍</span>
-                      <span className="font-semibold text-[14px] text-[#1c2438]">
-                        {area.city || "Unknown Area"} <span className="text-slate-400 text-xs font-medium ml-1">({area.pincode})</span>
-                      </span>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="p-6 text-center text-slate-500 font-medium text-sm">
-                  No service areas added yet.
-                </div>
-              )}
-            </div>
-            
-            <div className="p-4 bg-slate-50 border-t border-slate-100 text-xs text-slate-500 font-semibold">
-              ℹ️ To update your service pincodes, please contact the administration team.
-            </div>
-          </div>
+          <EditServiceAreasForm initialAreas={
+            (partnerAreas || []).map(area => ({
+              pincode: area.pincode,
+              locality: area.city || "",
+              city: area.city || ""
+            }))
+          } />
         </div>
 
       </main>

@@ -85,8 +85,8 @@ export async function verifyOtpAndRegister(formData: FormData): Promise<{ succes
   if (!phone || !otp || !email || !password || !fullName) {
     return { success: false, error: "All fields are required." };
   }
-  if (role === "admin" || role === "partner") {
-    return { success: false, error: "Invalid account type. Only customer registrations are allowed." };
+  if (role === "admin") {
+    return { success: false, error: "Invalid account type. Admin registrations are not allowed." };
   }
   if (password.length < 8) {
     return { success: false, error: "Password must be at least 8 characters." };
@@ -155,6 +155,20 @@ export async function verifyOtpAndRegister(formData: FormData): Promise<{ succes
     return { success: false, error: profileError.message };
   }
 
+  // Generate a unique referral code for this new user (fire-and-forget, never blocks)
+  try { await supabase.rpc("generate_referral_code", { p_user_id: data.user.id }); } catch { /* silent */ }
+
+  // Apply referral code if provided — silently ignore errors (referral is a bonus, not a blocker)
+  const referralCode = formData.get("referral_code") as string | null;
+  if (referralCode && referralCode.trim().length > 0) {
+    try {
+      await supabase.rpc("apply_referral_code", {
+        p_new_user_id: data.user.id,
+        p_code: referralCode.trim().toUpperCase(),
+      });
+    } catch { /* silent */ }
+  }
+
   // Auto-login: if email confirmation is disabled, session is available immediately
   if (!data?.session) {
     // Email confirmation enabled — user needs to confirm first
@@ -164,7 +178,7 @@ export async function verifyOtpAndRegister(formData: FormData): Promise<{ succes
     };
   }
 
-  const redirectTo = role === "partner" ? "/partner/onboarding" : "/dashboard";
+  const redirectTo = role === "partner" ? "/partner/pending" : "/dashboard";
   return { success: true, redirectTo };
 }
 

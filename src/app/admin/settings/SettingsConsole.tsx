@@ -10,6 +10,8 @@ interface SettingsConsoleProps {
   initialCancellationWindow: string;
   initialPenaltyRate: string;
   initialServiceAreas: string[];
+  initialReferralRewardReferrer: string;
+  initialReferralRewardReferred: string;
 }
 
 export function SettingsConsole({
@@ -17,11 +19,15 @@ export function SettingsConsole({
   initialCancellationWindow,
   initialPenaltyRate,
   initialServiceAreas,
+  initialReferralRewardReferrer,
+  initialReferralRewardReferred,
 }: SettingsConsoleProps) {
   const [taxRate, setTaxRate] = useState(initialTaxRate);
   const [cancellationWindow, setCancellationWindow] = useState(initialCancellationWindow);
   const [penaltyRate, setPenaltyRate] = useState(initialPenaltyRate);
   const [serviceAreas, setServiceAreas] = useState<string[]>(initialServiceAreas);
+  const [referralRewardReferrer, setReferralRewardReferrer] = useState(initialReferralRewardReferrer);
+  const [referralRewardReferred, setReferralRewardReferred] = useState(initialReferralRewardReferred);
   const [newCity, setNewCity] = useState("");
 
   const [isSaving, setIsSaving] = useState(false);
@@ -52,7 +58,9 @@ export function SettingsConsole({
         tax_rate: taxRate,
         free_cancellation_window: cancellationWindow,
         partner_penalty_rate: penaltyRate,
-        service_areas: serviceAreas
+        service_areas: serviceAreas,
+        referral_reward_referrer: referralRewardReferrer,
+        referral_reward_referred: referralRewardReferred,
       });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -197,6 +205,40 @@ export function SettingsConsole({
           </form>
         </Card>
       </div>
+
+      {/* Referral Program */}
+      <Card variant="solid" className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+            <span className="material-symbols-outlined">volunteer_activism</span>
+          </div>
+          <h3 className="text-lg font-bold tracking-tight text-primary font-headline">Referral Program</h3>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60">Referrer Reward (₹)</label>
+            <input
+              type="number"
+              min="0"
+              value={referralRewardReferrer}
+              onChange={(e) => setReferralRewardReferrer(e.target.value)}
+              className="w-full p-3.5 rounded-xl bg-surface border border-outline-variant/20 text-sm font-bold text-primary outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary transition-all"
+            />
+            <p className="text-[10px] text-on-surface-variant/50 font-medium">Credited to referrer on friend&apos;s first booking.</p>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60">Referred Friend Discount (₹)</label>
+            <input
+              type="number"
+              min="0"
+              value={referralRewardReferred}
+              onChange={(e) => setReferralRewardReferred(e.target.value)}
+              className="w-full p-3.5 rounded-xl bg-surface border border-outline-variant/20 text-sm font-bold text-primary outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary transition-all"
+            />
+            <p className="text-[10px] text-on-surface-variant/50 font-medium">Discount applied to friend&apos;s first booking checkout.</p>
+          </div>
+        </div>
+      </Card>
 
 
       {/* Floating Save Banner */}

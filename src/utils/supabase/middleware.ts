@@ -1,6 +1,12 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+interface MiddlewareProfile {
+  role: string | null;
+  status: string | null;
+  kyc_status?: string | null;
+}
+
 // ─── Centralized role → dashboard mapping ─────────────────────
 const ROLE_DASHBOARDS: Record<string, string> = {
   admin: '/admin/dashboard',
@@ -45,11 +51,13 @@ function isPublicPage(pathname: string): boolean {
   if (pathname === '/services') return true
   // Static informational pages
   if (
-    pathname.startsWith('/about') ||
-    pathname.startsWith('/help') ||
-    pathname.startsWith('/terms') ||
-    pathname.startsWith('/privacy') ||
-    pathname.startsWith('/terms-conditions')
+    pathname.startsWith('/about-us') ||
+    pathname.startsWith('/contact-us') ||
+    pathname.startsWith('/terms-conditions') ||
+    pathname.startsWith('/privacy-policy') ||
+    pathname.startsWith('/refund-policy') ||
+    pathname.startsWith('/cancellation-policy') ||
+    pathname.startsWith('/shipping-policy')
   ) {
     return true
   }
@@ -165,11 +173,13 @@ export async function updateSession(request: NextRequest) {
     }
 
     // Fetch profile for role verification
-    const { data: profile } = await supabase
+    const { data: rawProfile } = await supabase
       .from('profiles')
-      .select('role, status')
+      .select('role, status, kyc_status')
       .eq('id', user.id)
       .single()
+
+    const profile = rawProfile as MiddlewareProfile | null
 
     // Handle suspended/blocked accounts
     if (profile?.status === 'suspended' || profile?.status === 'blocked') {
@@ -182,15 +192,33 @@ export async function updateSession(request: NextRequest) {
 
     const userRole = profile?.role ?? 'customer'
 
-    // Partner onboarding enforcement: pending partners go to onboarding
-    if (
-      userRole === 'partner' &&
-      profile?.status === 'pending' &&
-      !pathname.startsWith('/partner/onboarding')
-    ) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/partner/onboarding'
-      return NextResponse.redirect(url)
+    // Partner KYC and Onboarding gateways
+    if (userRole === 'partner') {
+      const kycStatus = profile?.kyc_status;
+      const partnerStatus = profile?.status;
+
+      if (kycStatus !== 'approved') {
+        // Must go to pending page, block all other partner pages
+        if (!pathname.startsWith('/partner/pending')) {
+          const url = request.nextUrl.clone();
+          url.pathname = '/partner/pending';
+          return NextResponse.redirect(url);
+        }
+      } else if (partnerStatus === 'pending') {
+        // KYC is approved, but onboarding not done. Redirect to onboarding.
+        if (!pathname.startsWith('/partner/onboarding')) {
+          const url = request.nextUrl.clone();
+          url.pathname = '/partner/onboarding';
+          return NextResponse.redirect(url);
+        }
+      } else {
+        // Active partner. Block access to pending/onboarding pages.
+        if (pathname.startsWith('/partner/pending') || pathname.startsWith('/partner/onboarding')) {
+          const url = request.nextUrl.clone();
+          url.pathname = '/partner/dashboard';
+          return NextResponse.redirect(url);
+        }
+      }
     }
 
     // Strict role check: if user's role doesn't match, redirect to their own dashboard

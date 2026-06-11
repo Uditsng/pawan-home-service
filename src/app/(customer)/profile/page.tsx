@@ -62,7 +62,6 @@ export default async function ProfilePage() {
             <span className="material-symbols-outlined text-[#eab308] text-[18px] md:text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>card_giftcard</span>
             <div className="flex items-center flex-wrap gap-y-1">
               <span className="font-bold text-[13px] md:text-[15px] text-on-surface">Refer & earn</span>
-              <span className="bg-secondary/20 text-on-secondary text-[8px] md:text-[9px] font-extrabold px-1.5 py-0.5 rounded-[4px] ml-2 md:ml-3 uppercase tracking-wide">Coming Soon</span>
               <span className="bg-[#fef9c3] text-[#ca8a04] text-[8px] md:text-[9px] font-extrabold px-1.5 py-0.5 rounded-[4px] ml-1.5 md:ml-2 uppercase">Upto ₹100</span>
             </div>
           </div>
@@ -79,7 +78,7 @@ export default async function ProfilePage() {
             <span className="material-symbols-outlined text-slate-300 text-[18px] md:text-[20px] group-hover:text-slate-400 transition-colors">chevron_right</span>
           </Link>
 
-          <Link href="/about" className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
+          <Link href="/about-us" className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
             <div className="flex items-center gap-3 md:gap-4">
               <span className="material-symbols-outlined text-slate-500 text-[18px] md:text-[20px]">info</span>
               <span className="font-semibold text-[13px] md:text-[15px] text-[#1c2438]">About us</span>
@@ -87,15 +86,15 @@ export default async function ProfilePage() {
             <span className="material-symbols-outlined text-slate-300 text-[18px] md:text-[20px] group-hover:text-slate-400 transition-colors">chevron_right</span>
           </Link>
 
-          <Link href="/terms" className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
+          <Link href="/terms-conditions" className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
             <div className="flex items-center gap-3 md:gap-4">
               <span className="material-symbols-outlined text-slate-500 text-[18px] md:text-[20px]">description</span>
-              <span className="font-semibold text-[13px] md:text-[15px] text-[#1c2438]">Terms of services</span>
+              <span className="font-semibold text-[13px] md:text-[15px] text-[#1c2438]">Terms & conditions</span>
             </div>
             <span className="material-symbols-outlined text-slate-300 text-[18px] md:text-[20px] group-hover:text-slate-400 transition-colors">chevron_right</span>
           </Link>
 
-          <Link href="/privacy" className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
+          <Link href="/privacy-policy" className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
             <div className="flex items-center gap-3 md:gap-4">
               <span className="material-symbols-outlined text-slate-500 text-[18px] md:text-[20px]">verified_user</span>
               <span className="font-semibold text-[13px] md:text-[15px] text-[#1c2438]">Privacy policy</span>

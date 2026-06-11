@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
+import { createClient } from "@/utils/supabase/client";
 import type {
   SerializedBooking,
   AvailablePartner,
@@ -88,6 +89,49 @@ export function BookingsCommand({
   const [selectedBooking, setSelectedBooking] = useState<SerializedBooking | null>(null);
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
   const [activeDrawerTab, setActiveDrawerTab] = useState<"timeline" | "details" | "partner" | "actions">("timeline");
+
+  // Dynamic Audit trail & notifications states
+  const [auditTrail, setAuditTrail] = useState<any[]>([]);
+  const [notificationsLog, setNotificationsLog] = useState<any[]>([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+
+  useEffect(() => {
+    if (!selectedBooking?.id || !isDetailDrawerOpen) {
+      setAuditTrail([]);
+      setNotificationsLog([]);
+      return;
+    }
+
+    const fetchLogs = async () => {
+      setIsLoadingLogs(true);
+      try {
+        const supabase = createClient();
+        
+        // Fetch audit trail
+        const { data: auditData } = await supabase
+          .from("booking_audit_trail")
+          .select("*")
+          .eq("booking_id", selectedBooking.id)
+          .order("timestamp", { ascending: false });
+
+        // Fetch notifications logs
+        const { data: notifData } = await supabase
+          .from("notifications")
+          .select("*")
+          .eq("booking_id", selectedBooking.id)
+          .order("created_at", { ascending: false });
+
+        setAuditTrail(auditData || []);
+        setNotificationsLog(notifData || []);
+      } catch (err) {
+        console.error("Failed to fetch booking details logs:", err);
+      } finally {
+        setIsLoadingLogs(false);
+      }
+    };
+
+    fetchLogs();
+  }, [selectedBooking?.id, isDetailDrawerOpen]);
 
   // Manual Assign Drawer
   const [isAssignDrawerOpen, setIsAssignDrawerOpen] = useState(false);
@@ -936,6 +980,65 @@ export function BookingsCommand({
                       </p>
                     </div>
                   </div>
+
+                  <h5 className="text-xs font-bold uppercase tracking-widest text-primary pt-4 border-t border-outline-variant/10">Operational Audit Trail</h5>
+                  {isLoadingLogs ? (
+                    <div className="flex items-center gap-2 text-xs text-on-surface-variant/70">
+                      <span className="animate-spin text-sm">rotate_right</span> Loading logs...
+                    </div>
+                  ) : auditTrail.length === 0 ? (
+                    <p className="text-xs text-on-surface-variant/50 italic">No audit events logged for this booking yet.</p>
+                  ) : (
+                    <div className="relative border-l-2 border-outline-variant/30 pl-6 ml-3 space-y-4">
+                      {auditTrail.map((log) => (
+                        <div key={log.id} className="relative">
+                          <span className="absolute -left-[31px] top-0.5 w-4 h-4 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center">
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                          </span>
+                          <div className="flex justify-between items-start">
+                            <p className="text-xs font-bold text-primary">{log.action.replace(/_/g, " ")}</p>
+                            <span className="text-[8px] font-black uppercase bg-surface-container px-1.5 py-0.5 rounded-sm tracking-wider text-on-surface-variant">
+                              {log.actor}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-on-surface-variant/60">
+                            {format(new Date(log.timestamp), "PPP · p")}
+                          </p>
+                          {log.metadata && Object.keys(log.metadata).length > 0 && (
+                            <pre className="text-[9px] text-on-surface-variant/75 mt-1 bg-surface-container p-2 rounded-lg border border-outline-variant/10 font-mono overflow-x-auto">
+                              {JSON.stringify(log.metadata, null, 2)}
+                            </pre>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <h5 className="text-xs font-bold uppercase tracking-widest text-primary pt-4 border-t border-outline-variant/10">Notification Logs</h5>
+                  {isLoadingLogs ? (
+                    <div className="flex items-center gap-2 text-xs text-on-surface-variant/70">
+                      <span className="animate-spin text-sm">rotate_right</span> Loading logs...
+                    </div>
+                  ) : notificationsLog.length === 0 ? (
+                    <p className="text-xs text-on-surface-variant/50 italic">No notifications logged for this booking yet.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {notificationsLog.map((notif) => (
+                        <div key={notif.id} className="bg-surface-container/50 border border-outline-variant/10 p-3 rounded-xl space-y-1">
+                          <div className="flex justify-between items-start">
+                            <h6 className="text-xs font-bold text-primary">{notif.title}</h6>
+                            <span className="text-[8px] font-black uppercase bg-primary/10 text-primary px-1.5 py-0.5 rounded-sm tracking-wider">
+                              {notif.role || "user"}
+                            </span>
+                          </div>
+                          <p className="text-xs text-on-surface-variant/85 leading-normal">{notif.message || notif.body}</p>
+                          <p className="text-[9px] text-on-surface-variant/50">
+                            Sent: {format(new Date(notif.created_at || notif.updated_at), "PPP · p")}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -998,6 +1101,63 @@ export function BookingsCommand({
                         </Link>
                         <p className="text-[10px] text-on-surface-variant/60 font-normal">{selectedBooking.customer?.email || "No email"}</p>
                         <p className="text-[10px] text-on-surface-variant/50 font-normal">{selectedBooking.customer?.phone || "No phone"}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* OTP Security & Timing */}
+                  <h5 className="text-xs font-bold uppercase tracking-widest text-primary">OTP Security & Timing</h5>
+                  <div className="bg-surface-container p-4 rounded-xl border border-outline-variant/15 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70">Arrival OTP</p>
+                        <p className="text-xs font-bold text-primary mt-1 font-mono">{selectedBooking.arrival_otp || "Not generated"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70">Arrival OTP Verified</p>
+                        <p className={`text-xs font-bold mt-1 ${selectedBooking.arrival_otp_verified ? "text-green-600" : "text-amber-600"}`}>
+                          {selectedBooking.arrival_otp_verified ? "Verified ✓" : "Pending ✗"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70">Completion OTP</p>
+                        <p className="text-xs font-bold text-primary mt-1 font-mono">{selectedBooking.completion_otp || "Not generated"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70">Completion OTP Verified</p>
+                        <p className={`text-xs font-bold mt-1 ${selectedBooking.completion_otp_verified ? "text-green-600" : "text-amber-600"}`}>
+                          {selectedBooking.completion_otp_verified ? "Verified ✓" : "Pending ✗"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70">Failed OTP Attempts</p>
+                        <p className={`text-xs font-bold mt-1 ${selectedBooking.failed_otp_attempts > 0 ? "text-red-600 font-extrabold" : "text-primary"}`}>
+                          {selectedBooking.failed_otp_attempts} / 5
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70">Service Duration</p>
+                        <p className="text-xs font-bold text-primary mt-1 font-mono">
+                          {selectedBooking.service_started_at && selectedBooking.service_completed_at
+                            ? `${Math.round((new Date(selectedBooking.service_completed_at).getTime() - new Date(selectedBooking.service_started_at).getTime()) / 60000)} mins`
+                            : "N/A"}
+                        </p>
+                      </div>
+                      <div className="col-span-2 border-t border-outline-variant/10 pt-3">
+                        <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70">Service Started At</p>
+                        <p className="text-xs font-bold text-primary mt-1">
+                          {selectedBooking.service_started_at
+                            ? format(new Date(selectedBooking.service_started_at), "PPP · p")
+                            : "Not started"}
+                        </p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70">Service Completed At</p>
+                        <p className="text-xs font-bold text-primary mt-1">
+                          {selectedBooking.service_completed_at
+                            ? format(new Date(selectedBooking.service_completed_at), "PPP · p")
+                            : "Not completed"}
+                        </p>
                       </div>
                     </div>
                   </div>

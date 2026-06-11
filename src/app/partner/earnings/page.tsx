@@ -59,7 +59,7 @@ export default async function EarningsPage() {
 
   return (
     <div className="bg-surface text-on-surface font-body min-h-screen flex flex-col pb-40">
-      <PartnerHeader />
+      <PartnerHeader initialStatus={profile?.status ?? "offline"} />
 
       <main className="grow max-w-7xl mx-auto w-full px-4 md:px-6 space-y-12 mt-6">
 

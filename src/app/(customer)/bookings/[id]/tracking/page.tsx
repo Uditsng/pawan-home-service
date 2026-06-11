@@ -40,6 +40,10 @@ interface BookingDetails {
   total_amount: number;
   address: string | null;
   city: string | null;
+  arrival_otp: string | null;
+  arrival_otp_verified: boolean;
+  completion_otp: string | null;
+  completion_otp_verified: boolean;
   services: ServiceInfo | null;
   partner: PartnerInfo | null;
 }
@@ -70,6 +74,10 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
       total_amount,
       address,
       city,
+      arrival_otp,
+      arrival_otp_verified,
+      completion_otp,
+      completion_otp_verified,
       services (
         title,
         category,
@@ -109,6 +117,23 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
   const partnerAvatar = booking.partner?.avatar_url;
   const isCompleted = booking.status === "completed";
   const isCancelled = booking.status === "cancelled";
+
+  const statusLevels: Record<string, number> = {
+    pending: 1,
+    confirmed: 1,
+    assigned: 2,
+    accepted: 2,
+    professional_en_route: 3,
+    professional_arrived: 4,
+    otp_pending: 4,
+    in_progress: 5,
+    completed: 6,
+    cancelled: 0,
+  };
+
+  const currentLevel = statusLevels[booking.status] || 1;
+  const isArrivalOtpVerified = !!booking.arrival_otp_verified;
+  const actualLevel = (booking.status === "otp_pending" && isArrivalOtpVerified) ? 5 : currentLevel;
 
   return (
     <div className="bg-surface text-on-surface antialiased min-h-screen pb-28 font-body">
@@ -276,6 +301,25 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
               </div>
             </div>
 
+            {/* OTP Verification Card */}
+            {booking.status === "otp_pending" && (
+              <div className="bg-[#059669]/10 border border-[#059669]/20 rounded-2xl p-5 shadow-xs relative overflow-hidden flex flex-col items-center justify-center text-center animate-pulse">
+                <div className="absolute top-0 right-0 w-12 h-12 bg-[#059669]/5 rounded-bl-full pointer-events-none" />
+                <span className="material-symbols-outlined text-[#059669] text-3xl mb-2 drop-shadow-sm font-bold">
+                  {!booking.arrival_otp_verified ? "vpn_key" : "verified_user"}
+                </span>
+                <h3 className="font-headline font-bold text-sm text-[#059669] uppercase tracking-wider drop-shadow-sm">
+                  {!booking.arrival_otp_verified ? "Arrival OTP to Start Service" : "Completion OTP to Conclude Service"}
+                </h3>
+                <p className="font-headline text-3xl font-extrabold tracking-widest text-[#059669] mt-2 drop-shadow-sm">
+                  {!booking.arrival_otp_verified ? booking.arrival_otp : booking.completion_otp}
+                </p>
+                <p className="text-[11px] text-[#059669]/80 font-medium mt-2 max-w-[220px]">
+                  Share this 6-digit verification code with your Professional to {!booking.arrival_otp_verified ? "start the job" : "complete the job"}.
+                </p>
+              </div>
+            )}
+
             {/* Professional Snapshot */}
             <div className="glass-panel rounded-3xl p-5 md:p-6">
               <h3 className="font-headline text-sm font-bold uppercase tracking-wider text-on-surface-variant mb-4">
@@ -382,34 +426,80 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
 
                 {/* Step 3: Transit */}
                 <div className="flex gap-3 relative z-10">
-                  <div className="w-6 h-6 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0">
-                    <span className="material-symbols-outlined text-xs">lock</span>
-                  </div>
+                  {actualLevel >= 4 ? (
+                    <div className="w-6 h-6 rounded-full bg-green-600 text-white flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-xs">done</span>
+                    </div>
+                  ) : actualLevel === 3 ? (
+                    <div className="w-6 h-6 rounded-full bg-blue-400/15 text-blue-500 flex items-center justify-center shrink-0 animate-pulse border border-blue-400/30">
+                      <span className="material-symbols-outlined text-xs">motorcycle</span>
+                    </div>
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-xs">lock</span>
+                    </div>
+                  )}
                   <div>
-                    <h4 className="text-xs font-bold text-on-surface-variant">Professional Dispatched</h4>
-                    <p className="text-[10px] text-outline">Real-time GPS dispatch state</p>
+                    <h4 className={`text-xs font-bold ${actualLevel >= 3 ? "text-on-surface" : "text-on-surface-variant"}`}>
+                      {actualLevel >= 4 ? "Professional Dispatched" : actualLevel === 3 ? "Professional En Route" : "Professional Dispatched"}
+                    </h4>
+                    <p className="text-[10px] text-on-surface-variant">
+                      {actualLevel >= 4 ? "Professional arrived at your location" : actualLevel === 3 ? "Technician is on the way to you" : "Real-time GPS dispatch state"}
+                    </p>
                   </div>
                 </div>
 
                 {/* Step 4: Started */}
                 <div className="flex gap-3 relative z-10">
-                  <div className="w-6 h-6 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0">
-                    <span className="material-symbols-outlined text-xs">lock</span>
-                  </div>
+                  {actualLevel >= 6 ? (
+                    <div className="w-6 h-6 rounded-full bg-green-600 text-white flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-xs">done</span>
+                    </div>
+                  ) : actualLevel === 4 ? (
+                    <div className="w-6 h-6 rounded-full bg-amber-500/15 text-amber-600 flex items-center justify-center shrink-0 animate-pulse border border-amber-500/30">
+                      <span className="material-symbols-outlined text-xs">vpn_key</span>
+                    </div>
+                  ) : actualLevel === 5 ? (
+                    <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 animate-pulse border border-primary/20">
+                      <span className="material-symbols-outlined text-xs">build</span>
+                    </div>
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-xs">lock</span>
+                    </div>
+                  )}
                   <div>
-                    <h4 className="text-xs font-bold text-on-surface-variant">Service Active</h4>
-                    <p className="text-[10px] text-outline">Job verify & progress checking</p>
+                    <h4 className={`text-xs font-bold ${actualLevel >= 4 ? "text-on-surface" : "text-on-surface-variant"}`}>
+                      {actualLevel >= 6 ? "Service Completed" : actualLevel === 5 ? "Service Active" : actualLevel === 4 ? "Awaiting OTP Verification" : "Service Active"}
+                    </h4>
+                    <p className="text-[10px] text-on-surface-variant">
+                      {actualLevel >= 6 ? "Work is finished" : actualLevel === 5 ? "Technician is performing the service" : actualLevel === 4 ? "Please provide Arrival OTP to technician" : "Job verify & progress checking"}
+                    </p>
                   </div>
                 </div>
 
                 {/* Step 5: Completed */}
                 <div className="flex gap-3 relative z-10">
-                  <div className="w-6 h-6 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0">
-                    <span className="material-symbols-outlined text-xs">lock</span>
-                  </div>
+                  {actualLevel >= 6 ? (
+                    <div className="w-6 h-6 rounded-full bg-green-600 text-white flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-xs">done</span>
+                    </div>
+                  ) : (booking.status === "otp_pending" && isArrivalOtpVerified) ? (
+                    <div className="w-6 h-6 rounded-full bg-green-500/15 text-[#059669] flex items-center justify-center shrink-0 animate-pulse border border-[#059669]/30">
+                      <span className="material-symbols-outlined text-xs">verified_user</span>
+                    </div>
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-xs">lock</span>
+                    </div>
+                  )}
                   <div>
-                    <h4 className="text-xs font-bold text-on-surface-variant">Appointment Concluded</h4>
-                    <p className="text-[10px] text-outline">Invoicing & expert feedback</p>
+                    <h4 className={`text-xs font-bold ${actualLevel >= 6 ? "text-on-surface" : "text-on-surface-variant"}`}>
+                      {(booking.status === "otp_pending" && isArrivalOtpVerified) ? "Awaiting Completion OTP" : "Appointment Concluded"}
+                    </h4>
+                    <p className="text-[10px] text-on-surface-variant">
+                      {actualLevel >= 6 ? "Invoicing & expert feedback" : (booking.status === "otp_pending" && isArrivalOtpVerified) ? "Provide Completion OTP to technician" : "Invoicing & expert feedback"}
+                    </p>
                   </div>
                 </div>
 

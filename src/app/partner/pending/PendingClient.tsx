@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { submitKycDocumentsAction } from "./actions";
 import { Button } from "@/components/ui/Button";
@@ -12,6 +13,10 @@ interface PendingClientProps {
   userId: string;
 }
 
+function getFilePath(userId: string, key: string, ext: string): string {
+  return `${userId}/${key}-${Date.now()}.${ext}`;
+}
+
 export default function PendingClient({
   initialKycStatus,
   rejectionReason,
@@ -21,6 +26,16 @@ export default function PendingClient({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (kycStatus === "approved") {
+      const timer = setTimeout(() => {
+        router.push("/partner/onboarding");
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [kycStatus, router]);
 
   // Form states
   const [experience, setExperience] = useState<string>("");
@@ -81,8 +96,8 @@ export default function PendingClient({
 
     try {
       const supabase = createClient();
-      const ext = file.name.split(".").pop();
-      const filePath = `${userId}/${key}-${Date.now()}.${ext}`;
+      const ext = file.name.split(".").pop() || "";
+      const filePath = getFilePath(userId, key, ext);
 
       const { error: uploadError } = await supabase.storage
         .from("partner-docs")
@@ -156,6 +171,39 @@ export default function PendingClient({
       }
     });
   };
+
+  // State: Approved, redirecting...
+  if (kycStatus === "approved") {
+    return (
+      <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-6 antialiased">
+        <div className="w-full max-w-xl bg-white/80 backdrop-blur-xl p-8 md:p-12 rounded-[32px] shadow-[0_20px_50px_rgba(30,41,59,0.06)] border border-white/50 text-center relative overflow-hidden">
+          
+          <div className="absolute top-0 right-0 w-48 h-48 bg-secondary/15 rounded-full blur-[60px] -z-10 -mr-16 -mt-16" />
+
+          <div className="w-20 h-20 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-6 relative">
+            <span className="material-symbols-outlined text-4xl text-secondary animate-bounce">
+              check_circle
+            </span>
+          </div>
+
+          <h1 className="text-2xl md:text-3xl font-headline font-black tracking-tighter text-primary">
+            Application Approved!
+          </h1>
+          
+          <p className="text-on-surface-variant text-sm font-semibold mt-4 leading-relaxed max-w-md mx-auto">
+            Your KYC verification is complete and has been approved. We are redirecting you to set up your profile and services.
+          </p>
+
+          <div className="flex justify-center mt-8 gap-1.5 items-center">
+            <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+            <span className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">
+              Redirecting to setup...
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // State: Awaiting Review
   if (kycStatus === "pending") {
@@ -380,7 +428,7 @@ export default function PendingClient({
             <Button
               type="submit"
               disabled={isUploading || isPending}
-              className="flex-1 py-4 bg-linear-to-br from-[#059669] to-[#10b981] text-white font-extrabold text-[14px] rounded-xl hover:scale-[1.01] active:scale-95 shadow-[0_8px_20px_rgba(16,185,129,0.25)] transition-all duration-200 border-none cursor-pointer"
+              className="flex-1 py-4 bg-linear-to-br from-[#059669] to-success text-white font-extrabold text-[14px] rounded-xl hover:scale-[1.01] active:scale-95 shadow-[0_8px_20px_rgba(16,185,129,0.25)] transition-all duration-200 border-none cursor-pointer"
             >
               {isUploading ? "Uploading Documents..." : isPending ? "Submitting Application..." : "Submit KYC Documents"}
             </Button>

@@ -10,7 +10,7 @@ import LogoutButton from "./LogoutButton";
 const ROLE_DASHBOARDS: Record<string, string> = {
   admin: '/admin/dashboard',
   partner: '/partner/dashboard',
-  customer: '/dashboard',
+  customer: '/customer/dashboard',
 };
 
 export default function Header() {
@@ -74,7 +74,7 @@ export default function Header() {
     };
   }, []);
 
-  const dashboardHref = ROLE_DASHBOARDS[userRole] ?? '/dashboard';
+  const dashboardHref = ROLE_DASHBOARDS[userRole] ?? '/customer/dashboard';
 
   return (
     <header className="sticky top-0 w-full z-50 bg-surface/95 backdrop-blur-md shadow-sm pt-safe">

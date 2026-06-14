@@ -376,7 +376,7 @@ export default function ServicesShowcaseClient({
                   {/* Header actions: Desktop View-All / Mobile Chevron */}
                   <div className="flex items-center gap-2">
                     <Link
-                      href={`/services/${catSlug}`}
+                      href={`/customer/services/${catSlug}`}
                       onClick={(e) => e.stopPropagation()}
                       className="hidden sm:inline-flex items-center gap-1 text-sm font-bold text-secondary hover:underline"
                     >
@@ -419,7 +419,7 @@ export default function ServicesShowcaseClient({
                           <div key={service.id} className="w-full">
                             {/* Mobile Compact List View (sm:hidden) */}
                             <Link
-                              href={`/services/${catSlug}/${service.id}`}
+                              href={`/customer/services/${catSlug}/${service.id}`}
                               className="sm:hidden flex items-center gap-3 p-3 bg-surface-container-lowest rounded-xl border border-outline-variant/10 shadow-xs active:bg-surface-container-low transition-all"
                             >
                               {/* Left side icon */}
@@ -470,7 +470,7 @@ export default function ServicesShowcaseClient({
 
                             {/* Desktop Elegant Grid Card (hidden sm:block) */}
                             <Link
-                              href={`/services/${catSlug}/${service.id}`}
+                              href={`/customer/services/${catSlug}/${service.id}`}
                               className="hidden sm:flex flex-col justify-between h-full bg-surface-container-lowest p-5 md:p-6 rounded-2xl border border-outline-variant/10 shadow-sm hover:shadow-md hover:-translate-y-1 hover:border-secondary/30 transition-all duration-300 group"
                             >
                               <div>
@@ -527,7 +527,7 @@ export default function ServicesShowcaseClient({
                     {/* Mobile category view all link */}
                     <div className="sm:hidden pt-2 text-center">
                       <Link
-                        href={`/services/${catSlug}`}
+                        href={`/customer/services/${catSlug}`}
                         className="inline-flex items-center gap-1 text-xs font-bold text-secondary hover:underline"
                       >
                         View all {cat.category_name} services{" "}

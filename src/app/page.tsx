@@ -12,7 +12,7 @@ export const revalidate = 300; // ISR: revalidate every 5 minutes
 const ROLE_DASHBOARDS: Record<string, string> = {
   admin: '/admin/dashboard',
   partner: '/partner/dashboard',
-  customer: '/dashboard',
+  customer: '/customer/dashboard',
 };
 
 interface ServiceWithSubcategory {
@@ -43,7 +43,7 @@ export default async function Home() {
       .select('role')
       .eq('id', user.id)
       .single();
-    const target = ROLE_DASHBOARDS[profile?.role ?? 'customer'] ?? '/dashboard';
+    const target = ROLE_DASHBOARDS[profile?.role ?? 'customer'] ?? '/customer/dashboard';
     redirect(target);
   }
 

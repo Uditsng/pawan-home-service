@@ -26,7 +26,7 @@ export default function MobileSetup() {
 
         backButtonListener = await App.addListener("backButton", (data) => {
           // Paths where the back button should exit the app instead of navigating back
-          const exitPaths = ["/dashboard", "/partner/dashboard", "/admin/dashboard", "/login", "/"];
+          const exitPaths = ["/customer/dashboard", "/partner/dashboard", "/admin/dashboard", "/login", "/"];
           
           if (exitPaths.includes(pathname) || !data.canGoBack) {
             App.exitApp();

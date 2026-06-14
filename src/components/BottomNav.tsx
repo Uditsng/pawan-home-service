@@ -7,17 +7,17 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: "/dashboard", icon: "home", label: "Home" },
-    { href: "/bookings", icon: "calendar_today", label: "Bookings" },
-    { href: "/search", icon: "search", label: "Search" },
-    { href: "/wallet", icon: "account_balance_wallet", label: "Wallet" },
-    { href: "/profile", icon: "person", label: "Profile" },
+    { href: "/customer/dashboard", icon: "home", label: "Home" },
+    { href: "/customer/bookings", icon: "calendar_today", label: "Bookings" },
+    { href: "/customer/search", icon: "search", label: "Search" },
+    { href: "/customer/wallet", icon: "account_balance_wallet", label: "Wallet" },
+    { href: "/customer/profile", icon: "person", label: "Profile" },
   ];
 
   return (
     <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 pb-safe bg-white/80 backdrop-blur-[20px] shadow-[0_-12px_32px_rgba(15,23,42,0.06)] rounded-t-2xl border-t border-outline-variant/10">
       {navItems.map((item) => {
-        const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname?.startsWith(item.href));
+        const isActive = pathname === item.href || (item.href !== "/customer/dashboard" && pathname?.startsWith(item.href));
 
         return (
           <Link

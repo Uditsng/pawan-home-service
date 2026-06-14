@@ -23,7 +23,7 @@ export default function CartDrawer() {
 
   const handleProceed = () => {
     closeDrawer();
-    router.push("/checkout/cart/schedule");
+    router.push("/customer/checkout/cart/schedule");
   };
 
   return (

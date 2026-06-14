@@ -35,7 +35,7 @@ export default function HeaderLocationDisplay({ defaultAddress }: HeaderLocation
       <button
         onClick={() => {
           if (defaultAddress) {
-            router.push("/profile/addresses");
+            router.push("/customer/profile/addresses");
           } else {
             setIsModalOpen(true);
           }

@@ -45,7 +45,7 @@ export default function SessionRedirect() {
           } else if (profile.role === "partner") {
             router.replace("/partner/dashboard");
           } else {
-            router.replace("/dashboard");
+            router.replace("/customer/dashboard");
           }
         }
       } catch (err) {

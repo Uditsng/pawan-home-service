@@ -11,11 +11,11 @@ interface MiddlewareProfile {
 const ROLE_DASHBOARDS: Record<string, string> = {
   admin: '/admin/dashboard',
   partner: '/partner/dashboard',
-  customer: '/dashboard',
+  customer: '/customer/dashboard',
 }
 
 function getDashboardForRole(role: string | undefined): string {
-  return ROLE_DASHBOARDS[role ?? 'customer'] ?? '/dashboard'
+  return ROLE_DASHBOARDS[role ?? 'customer'] ?? '/customer/dashboard'
 }
 
 // ─── Route classification helpers ─────────────────────────────
@@ -24,24 +24,7 @@ function getDashboardForRole(role: string | undefined): string {
 function getRequiredRole(pathname: string): string | null {
   if (pathname.startsWith('/admin')) return 'admin'
   if (pathname.startsWith('/partner')) return 'partner'
-  // Customer-scoped routes under the (customer) route group
-  if (
-    pathname.startsWith('/dashboard') ||
-    pathname.startsWith('/bookings') ||
-    pathname.startsWith('/profile') ||
-    pathname.startsWith('/wallet') ||
-    pathname.startsWith('/search') ||
-    pathname.startsWith('/checkout') ||
-    pathname.startsWith('/delete-account') ||
-    pathname.startsWith('/support')
-  ) {
-    return 'customer'
-  }
-  // /services/[category]/[serviceId] — customer booking flow (has 2+ path segments)
-  const serviceSegments = pathname.replace('/services/', '').split('/').filter(Boolean)
-  if (pathname.startsWith('/services/') && serviceSegments.length >= 1) {
-    return 'customer'
-  }
+  if (pathname.startsWith('/customer')) return 'customer'
   return null
 }
 
@@ -97,6 +80,9 @@ export async function updateSession(request: NextRequest) {
             supabaseResponse.cookies.set(name, value, options)
           )
         },
+      },
+      global: {
+        fetch: (url, init) => fetch(url, { ...init, cache: 'no-store' }),
       },
     }
   )

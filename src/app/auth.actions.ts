@@ -178,7 +178,7 @@ export async function verifyOtpAndRegister(formData: FormData): Promise<{ succes
     };
   }
 
-  const redirectTo = role === "partner" ? "/partner/pending" : "/dashboard";
+  const redirectTo = role === "partner" ? "/partner/pending" : "/customer/dashboard";
   return { success: true, redirectTo };
 }
 
@@ -247,9 +247,9 @@ export async function loginWithPhone(formData: FormData) {
   const routes: Record<string, string> = {
     admin: "/admin/dashboard",
     partner: "/partner/dashboard",
-    customer: "/dashboard",
+    customer: "/customer/dashboard",
   };
-  redirect(routes[profile.role] || "/dashboard");
+  redirect(routes[profile.role] || "/customer/dashboard");
 }
 
 // ─── FORGOT PASSWORD FLOW ────────────────────────────────────
@@ -406,13 +406,13 @@ export async function login(formData: FormData) {
     .select("role, status")
     .eq("id", data.user.id)
     .single();
-  if (!profile) redirect("/dashboard");
+  if (!profile) redirect("/customer/dashboard");
   if (profile.status === 'suspended' || profile.status === 'blocked') {
     return redirect("/login?error=Your account is suspended. Please contact support.");
   }
   if (profile.role === "partner" && profile.status === "pending") redirect("/partner/pending");
-  const routes: Record<string, string> = { admin: "/admin/dashboard", partner: "/partner/dashboard", customer: "/dashboard" };
-  redirect(routes[profile.role] || "/dashboard");
+  const routes: Record<string, string> = { admin: "/admin/dashboard", partner: "/partner/dashboard", customer: "/customer/dashboard" };
+  redirect(routes[profile.role] || "/customer/dashboard");
 }
 
 /**

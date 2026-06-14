@@ -78,8 +78,8 @@ export async function saveAddress(payload: SaveAddressPayload) {
     return { error: error.message };
   }
 
-  revalidatePath("/profile/addresses");
-  revalidatePath("/dashboard");
+  revalidatePath("/customer/profile/addresses");
+  revalidatePath("/customer/dashboard");
   revalidatePath("/", "layout");
 
   return { data };
@@ -130,8 +130,8 @@ export async function deleteAddress(addressId: string) {
     }
   }
 
-  revalidatePath("/profile/addresses");
-  revalidatePath("/dashboard");
+  revalidatePath("/customer/profile/addresses");
+  revalidatePath("/customer/dashboard");
   revalidatePath("/", "layout");
 
   return { success: true };
@@ -164,8 +164,8 @@ export async function setDefaultAddress(addressId: string) {
     return { error: error.message };
   }
 
-  revalidatePath("/profile/addresses");
-  revalidatePath("/dashboard");
+  revalidatePath("/customer/profile/addresses");
+  revalidatePath("/customer/dashboard");
   revalidatePath("/", "layout");
 
   return { success: true };

@@ -133,11 +133,11 @@ export default function EditProfileForm({
         setAlertMsg({ type: 'success', text: `Profile updated!${emailUpdateMessage}` });
         // Don't redirect immediately so they can read the toast!
         setTimeout(() => {
-          router.push("/profile");
+          router.push("/customer/profile");
           router.refresh();
         }, 4000);
       } else {
-        router.push("/profile");
+        router.push("/customer/profile");
         router.refresh();
       }
 
@@ -153,7 +153,7 @@ export default function EditProfileForm({
   return (
     <div className="flex-1 flex flex-col bg-slate-50 min-h-screen relative">
       <div className="flex items-center gap-3 md:gap-4 bg-white p-3 md:p-4 justify-start">
-        <Link href="/profile" className="text-on-background hover:opacity-80">
+        <Link href="/customer/profile" className="text-on-background hover:opacity-80">
           <span className="material-symbols-outlined text-[22px] md:text-[24px]">arrow_back</span>
         </Link>
         <span className="text-[16px] md:text-[18px] font-bold text-[#1c2438]">Profile details</span>

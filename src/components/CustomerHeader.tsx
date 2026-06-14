@@ -35,7 +35,7 @@ export default async function CustomerHeader() {
     <header className="sticky top-0 w-full z-50 bg-surface/90 backdrop-blur-lg pt-safe">
       <div className="flex justify-between items-center w-full px-4 md:px-6 py-3 md:py-4 max-w-7xl mx-auto">
         <div className="flex items-center gap-4 md:gap-6">
-          <Link href="/dashboard" className="flex items-center gap-2">
+          <Link href="/customer/dashboard" className="flex items-center gap-2">
             <Image
               src="/PHS.png"
               alt="PHS Cleaning Company Logo"

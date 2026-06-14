@@ -25,6 +25,9 @@ export const createClient = cache(async () => {
           }
         },
       },
+      global: {
+        fetch: (url, init) => fetch(url, { ...init, cache: 'no-store' }),
+      },
     }
   )
 })

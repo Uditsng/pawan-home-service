@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "741307760558",
+    "project_id": "pawanservicesapp",
+    "storage_bucket": "pawanservicesapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:741307760558:android:b4a740cd9ac175cca0123f",
+        "android_client_info": {
+          "package_name": "com.phs.cleaningcompany"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "741307760558-q08t2f5npgec80a0t829qbpsn7a9bk4g.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB3CEnYs2UEidZZO5D1e6n3BJgubZAMQW8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "741307760558-q08t2f5npgec80a0t829qbpsn7a9bk4g.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

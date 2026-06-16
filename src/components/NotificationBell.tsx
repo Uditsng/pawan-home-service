@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import type { AppNotification } from "@/lib/types";
 
@@ -50,6 +51,8 @@ function timeAgo(dateStr: string): string {
 const PAGE_SIZE = 15;
 
 export default function NotificationBell() {
+  const router = useRouter();
+  const pathname = usePathname();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -121,26 +124,31 @@ export default function NotificationBell() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
-  // ─── Actions ────────────────────────────────────────────────
+  // ─── Actions (One-Time Use Deletes) ──────────────────────────
   async function markAsRead(notifId: string) {
+    // Delete notification entirely so it's a true one-time use notification
     await supabase
       .from("notifications")
-      .update({ is_read: true })
+      .delete()
       .eq("id", notifId);
 
     setNotifications((prev) =>
-      prev.map((n) => (n.id === notifId ? { ...n, is_read: true } : n))
+      prev.filter((n) => n.id !== notifId)
     );
     setUnreadCount((c) => Math.max(0, c - 1));
   }
 
   async function markAllAsRead() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Delete all user notifications
     await supabase
       .from("notifications")
-      .update({ is_read: true })
-      .eq("is_read", false);
+      .delete()
+      .eq("user_id", user.id);
 
-    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    setNotifications([]);
     setUnreadCount(0);
   }
 
@@ -201,7 +209,7 @@ export default function NotificationBell() {
                   onClick={markAllAsRead}
                   className="text-[11px] font-bold text-secondary hover:text-primary transition-colors uppercase tracking-wider"
                 >
-                  Mark all read
+                  Clear all
                 </button>
               )}
               <button
@@ -242,8 +250,23 @@ export default function NotificationBell() {
                 return (
                   <button
                     key={notif.id}
-                    onClick={() => {
-                      if (!notif.is_read) markAsRead(notif.id);
+                    onClick={async () => {
+                      setIsOpen(false);
+                      // Delete immediately on click (one-time use)
+                      await markAsRead(notif.id);
+
+                      // Navigate based on type & metadata
+                      const bookingId = notif.booking_id || (notif.metadata?.booking_id as string | undefined);
+                      if (bookingId) {
+                        const path = pathname || "";
+                        if (path.startsWith("/partner")) {
+                          router.push("/partner/jobs");
+                        } else if (path.startsWith("/admin")) {
+                          router.push("/admin/bookings");
+                        } else {
+                          router.push(`/customer/bookings/${bookingId}/tracking`);
+                        }
+                      }
                     }}
                     className={`w-full flex items-start gap-3 px-5 py-3.5 text-left transition-colors hover:bg-surface-container-low/60 border-b border-outline-variant/10 ${
                       !notif.is_read ? "bg-secondary/5" : ""

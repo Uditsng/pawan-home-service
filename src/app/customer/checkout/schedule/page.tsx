@@ -6,17 +6,7 @@ export default async function CheckoutSchedulePage({ searchParams }: { searchPar
   const resolvedSearchParams = await searchParams;
   const serviceId = resolvedSearchParams.serviceId;
 
-  if (!serviceId) {
-    redirect('/customer/dashboard');
-  }
-
   const supabase = await createClient();
-  const { data: serviceData, error } = await supabase
-    .from("services")
-    .select("id, title, category")
-    .eq("id", serviceId)
-    .single();
-
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     redirect('/login');
@@ -28,35 +18,45 @@ export default async function CheckoutSchedulePage({ searchParams }: { searchPar
     .eq("user_id", user.id)
     .order("is_default", { ascending: false });
 
-  if (error) {
-    console.error("Supabase Error Details:", {
-      message: error.message,
-      code: error.code,
-      details: error.details,
-      hint: error.hint
-    });
-  }
+  let service = null;
 
-  interface Service {
-    id: string;
-    title: string;
-    category: string;
-    duration_minutes?: number;
-  }
+  if (serviceId) {
+    const { data: serviceData, error } = await supabase
+      .from("services")
+      .select("id, title, category")
+      .eq("id", serviceId)
+      .single();
 
-  if (!serviceData) {
-    redirect('/customer/dashboard');
-  }
+    if (error) {
+      console.error("Supabase Error Details:", {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
+    }
 
-  // Inject duration_minutes manually since it might be missing from the DB
-  const service = {
-    ...serviceData,
-    duration_minutes: (serviceData as Service).duration_minutes || 60
-  };
+    if (!serviceData) {
+      redirect('/customer/dashboard');
+    }
+
+    interface Service {
+      id: string;
+      title: string;
+      category: string;
+      duration_minutes?: number;
+    }
+
+    // Inject duration_minutes manually since it might be missing from the DB
+    service = {
+      ...serviceData,
+      duration_minutes: (serviceData as Service).duration_minutes || 60
+    };
+  }
 
   return (
     <ScheduleClient 
-      service={service as { id: string; duration_minutes: number }} 
+      service={service} 
       initialAddresses={savedAddresses || []} 
     />
   );

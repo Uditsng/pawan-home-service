@@ -6,10 +6,28 @@ import { redirect } from "next/navigation";
 import { Metadata } from "next";
 import ReferralCodeCopyClient from "@/components/ReferralCodeCopyClient";
 
-export const metadata: Metadata = {
-  title: "Refer & Earn | PHS Cleaning Company",
-  description: "Share your unique referral code. Earn ₹100 when a friend completes their first booking.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("platform_settings")
+    .select("value")
+    .eq("key", "referral_reward_referrer")
+    .maybeSingle();
+  
+  let reward = "100";
+  if (data) {
+    try {
+      reward = typeof data.value === 'string' ? JSON.parse(data.value) : String(data.value);
+    } catch {
+      reward = String(data.value);
+    }
+  }
+
+  return {
+    title: "Refer & Earn | PHS Cleaning Company",
+    description: `Share your unique referral code. Earn ₹${reward} when a friend completes their first booking.`,
+  };
+}
 
 interface ReferralStats {
   code: string;
@@ -35,8 +53,8 @@ export default async function ReferralPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Fetch stats via RPC + referral history in parallel
-  const [statsResult, historyResult] = await Promise.all([
+  // Fetch stats, history, and referral settings in parallel
+  const [statsResult, historyResult, settingsResult] = await Promise.all([
     supabase.rpc("get_referral_stats", { p_user_id: user.id }),
     supabase
       .from("referrals")
@@ -44,6 +62,7 @@ export default async function ReferralPage() {
       .eq("referrer_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20),
+    supabase.from("platform_settings").select("*").in("key", ["referral_reward_referrer", "referral_reward_referred"])
   ]);
 
   const stats: ReferralStats = statsResult.data ?? {
@@ -56,6 +75,18 @@ export default async function ReferralPage() {
   };
 
   const referralHistory = (historyResult.data ?? []) as unknown as ReferralRow[];
+
+  const settingsMap = (settingsResult.data || []).reduce<Record<string, string>>((acc, row) => {
+    try {
+      acc[row.key] = typeof row.value === 'string' ? JSON.parse(row.value) : String(row.value);
+    } catch {
+      acc[row.key] = String(row.value);
+    }
+    return acc;
+  }, {});
+
+  const referrerReward = settingsMap["referral_reward_referrer"] || "100";
+  const referredDiscount = settingsMap["referral_reward_referred"] || "50";
 
   const statusConfig: Record<string, { label: string; className: string }> = {
     pending:   { label: "Pending",   className: "bg-amber-500/10 text-amber-700 border border-amber-500/20" },
@@ -86,10 +117,10 @@ export default async function ReferralPage() {
                 Referral Program
               </div>
               <h1 className="text-2xl md:text-3xl font-black text-white tracking-tighter leading-tight mb-1">
-                Earn <span className="text-secondary">₹100</span><br />per friend!
+                Earn <span className="text-secondary">₹{referrerReward}</span><br />per friend!
               </h1>
               <p className="text-white/60 text-sm font-medium">
-                Your friend gets <span className="text-white font-bold">₹50 off</span> their first booking.
+                Your friend gets <span className="text-white font-bold">₹{referredDiscount} off</span> their first booking.
               </p>
             </div>
             <div className="w-16 h-16 bg-secondary/10 rounded-2xl flex items-center justify-center shrink-0 relative z-10">
@@ -138,8 +169,8 @@ export default async function ReferralPage() {
           <div className="space-y-3">
             {[
               { step: "1", icon: "share", title: "Share your code", desc: "Send your unique referral code to friends & family via WhatsApp or any platform." },
-              { step: "2", icon: "app_registration", title: "Friend signs up", desc: "They register on PHS using your code and get ₹50 off their first booking automatically." },
-              { step: "3", icon: "account_balance_wallet", title: "You both earn", desc: "Once their first service is completed, ₹100 is credited to your wallet instantly." },
+              { step: "2", icon: "app_registration", title: "Friend signs up", desc: `They register on PHS using your code and get ₹${referredDiscount} off their first booking automatically.` },
+              { step: "3", icon: "account_balance_wallet", title: "You both earn", desc: `Once their first service is completed, ₹${referrerReward} is credited to your wallet instantly.` },
             ].map((item) => (
               <div key={item.step} className="flex items-start gap-3.5">
                 <div className="w-9 h-9 rounded-xl bg-primary/5 flex items-center justify-center shrink-0 mt-0.5">

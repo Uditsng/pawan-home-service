@@ -13,21 +13,19 @@ export default function SupportPage() {
     <div className="bg-surface text-on-surface antialiased min-h-screen pb-28 font-body">
       <CustomerHeader />
 
-      <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-10">
-
-        {/* Navigation & Header */}
-        <div className="mb-6">
-          <h1 className="font-headline text-2xl md:text-3xl font-extrabold tracking-tight text-on-surface">
+      <main className="max-w-3xl mx-auto px-4 py-8 md:py-12">
+        {/* Header */}
+        <div className="border-b border-outline-variant/15 pb-6">
+          <h1 className="font-headline text-3xl font-extrabold tracking-tight text-on-surface">
             Help & Support
           </h1>
-          <p className="text-on-surface-variant text-xs md:text-sm font-medium mt-1">
+          <p className="text-on-surface-variant text-sm font-medium mt-1">
             Have questions or need assistance? Our team is here to help you.
           </p>
         </div>
 
-        {/* Client-side bento layout */}
+        {/* Client-side layout */}
         <SupportClient />
-
       </main>
 
       <BottomNav />

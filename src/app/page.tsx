@@ -4,6 +4,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import HeroConversationalCard from "@/components/HeroConversationalCard";
+import LandingGridClient from "./LandingGridClient";
 
 
 export const revalidate = 300; // ISR: revalidate every 5 minutes
@@ -27,9 +28,15 @@ interface ServiceWithSubcategory {
     subcategory_name: string;
     icon_name: string;
     categories: {
+      id: string;
       category_name: string;
-    };
+    } | null;
   } | null;
+}
+
+interface Category {
+  id: string;
+  category_name: string;
 }
 
 export default async function Home() {
@@ -47,21 +54,31 @@ export default async function Home() {
     redirect(target);
   }
 
-  const { data: popularServices } = await supabase
-    .from('services')
-    .select(`
-      id, title, base_price, original_price, subcategory_id,
-      subcategories (
-        subcategory_name,
-        icon_name,
-        categories (
-          category_name
+  // Parallelize independent queries for faster page loads
+  const [servicesResult, categoriesResult] = await Promise.all([
+    supabase
+      .from('services')
+      .select(`
+        id, title, base_price, original_price, subcategory_id,
+        subcategories (
+          subcategory_name,
+          icon_name,
+          categories (
+            id,
+            category_name
+          )
         )
-      )
-    `)
-    .eq('is_active', true)
-    .order('title', { ascending: true })
-    .limit(12) as { data: ServiceWithSubcategory[] | null };
+      `)
+      .eq('is_active', true)
+      .order('title', { ascending: true }),
+    supabase
+      .from('categories')
+      .select('id, category_name')
+      .order('category_name', { ascending: true }),
+  ]);
+
+  const availableServices = (servicesResult.data || []) as unknown as ServiceWithSubcategory[];
+  const categories = (categoriesResult.data || []) as Category[];
 
   // Shared Glassmorphism styles
   const glassBg = "glass-panel";
@@ -77,7 +94,7 @@ export default async function Home() {
         <div className="animate-orb-float-2 absolute bottom-[10%] left-[-10%] w-[250px] md:w-[500px] h-[250px] md:h-[500px] rounded-full bg-[radial-gradient(circle,#93c5fd_0%,transparent_70%)] blur-[60px] opacity-30 md:opacity-40"></div>
       </div>
 
-      <main className="relative z-10 px-4 sm:px-6 md:px-8 lg:px-12 max-w-7xl mx-auto flex flex-col gap-16 md:gap-24 pb-24 pt-6 md:pt-16 w-full overflow-hidden md:overflow-visible">
+      <main className="relative z-10 px-4 sm:px-6 md:px-8 lg:px-12 max-w-7xl mx-auto flex flex-col gap-8 md:gap-24 pb-16 pt-6 md:pt-16 w-full overflow-hidden md:overflow-visible">
 
         {/* Section 1: Hero */}
         <section className="relative text-center md:text-left flex flex-col md:flex-row items-center gap-10 lg:gap-16 w-full pt-4 md:pt-0">
@@ -110,41 +127,8 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* Section 3: Popular Services (3D Cards) */}
-        {popularServices && popularServices.length > 0 && (
-          <section className="w-full">
-            <div className="flex items-center justify-between mb-4 md:mb-6">
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-primary">Popular Near You</h2>
-              <Link href="/services" className="text-xs sm:text-sm font-bold text-secondary hover:underline flex items-center gap-1">
-                See all <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-              </Link>
-            </div>
-            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
-              {popularServices.map((service, idx) => {
-                const iconName = service.subcategories?.icon_name || 'home_repair_service';
-
-                return (
-                  <Link
-                    key={service.id}
-                    href="/login"
-                    className={`bg-surface-container-low p-3 md:p-5 rounded-xl flex flex-col items-center justify-center text-center hover:bg-surface-container-high transition-colors group cursor-pointer border border-outline-variant/10 shadow-sm ${idx >= 10 ? 'lg:hidden' : ''}`}
-                  >
-                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-green-500/10 mb-2 md:mb-3 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <span className="material-symbols-outlined text-[#059669] drop-shadow-sm">{iconName}</span>
-                    </div>
-                    <span className="font-headline font-bold text-xs md:text-sm text-on-surface line-clamp-2 leading-tight">{service.title}</span>
-                    <div className="flex items-center gap-1.5 mt-1 md:mt-1.5">
-                      {service.original_price && (
-                        <span className="text-[9px] md:text-[10px] text-on-surface-variant/50 line-through">₹{service.original_price}</span>
-                      )}
-                      <span className="text-[10px] md:text-[11px] text-primary font-bold tracking-tight">₹{service.base_price}</span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </section>
-        )}
+        {/* Section 3: Popular Services Categories Client Component */}
+        <LandingGridClient categories={categories} availableServices={availableServices} />
 
         {/* Section 4: How It Works (Interactive Steps) */}
         <section className="w-full">

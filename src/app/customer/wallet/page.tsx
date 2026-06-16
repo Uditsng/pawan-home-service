@@ -31,7 +31,7 @@ export default async function WalletPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [profileResult, txResult] = await Promise.all([
+  const [profileResult, txResult, settingsResult] = await Promise.all([
     supabase.from("profiles").select("wallet_balance, full_name").eq("id", user.id).single(),
     supabase
       .from("wallet_transactions")
@@ -39,10 +39,21 @@ export default async function WalletPage() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(30),
+    supabase.from("platform_settings").select("value").eq("key", "referral_reward_referrer").maybeSingle()
   ]);
 
   const walletBalance = Number(profileResult.data?.wallet_balance ?? 0);
   const transactions = (txResult.data ?? []) as WalletTransaction[];
+
+  let referralReward = "100";
+  if (settingsResult.data) {
+    const rawVal = settingsResult.data.value;
+    try {
+      referralReward = typeof rawVal === 'string' ? JSON.parse(rawVal) : String(rawVal);
+    } catch {
+      referralReward = String(rawVal);
+    }
+  }
 
   const totalCredited = transactions
     .filter((t) => t.type === "credit")
@@ -97,7 +108,7 @@ export default async function WalletPage() {
               <span className="material-symbols-outlined text-[#059669] drop-shadow-sm" style={{ fontVariationSettings: "'FILL' 1" }}>card_giftcard</span>
             </div>
             <div className="flex-1">
-              <p className="text-[13px] font-bold text-on-surface">Refer friends &amp; earn ₹100</p>
+              <p className="text-[13px] font-bold text-on-surface">Refer friends &amp; earn ₹{referralReward}</p>
               <p className="text-[11px] text-on-surface-variant mt-0.5">For every friend who completes their first booking.</p>
             </div>
             <a href="/customer/profile/referral" className="px-3 py-1.5 bg-primary text-white text-[10px] font-extrabold uppercase tracking-widest rounded-lg shrink-0 hover:bg-primary/90 transition-colors">

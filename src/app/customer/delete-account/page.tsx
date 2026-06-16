@@ -40,7 +40,7 @@ export default function DeleteAccountComingSoonPage() {
               Urgent Request?
             </span>
             <p className="text-xs text-on-surface-variant leading-relaxed font-medium">
-              Please email our security desk at <a href="mailto:pavanhomess@gmail.com" className="text-primary font-bold hover:underline">pavanhomess@gmail.com</a> from your registered email address. We will verify and purge all your personal records within 24-48 hours.
+              Please email our security desk at <a href="mailto:phscustomercare15@gmail.com" className="text-primary font-bold hover:underline">phscustomercare15@gmail.com</a> from your registered email address. We will verify and purge all your personal records within 24-48 hours.
             </p>
           </div>
 

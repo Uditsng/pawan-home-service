@@ -221,6 +221,8 @@ export interface AppNotification {
   type: NotificationType;
   metadata: Record<string, unknown>;
   is_read: boolean;
+  booking_id?: string | null;
+  role?: string | null;
   created_at: string;
 }
 

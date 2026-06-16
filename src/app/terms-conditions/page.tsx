@@ -3,276 +3,245 @@ import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "Terms & Conditions | PHS Cleaning Company",
-  description: "Read the Terms & Conditions for using the PHS Cleaning Company platform and booking services.",
+  description: "Read the official Terms & Conditions governing the use of PHS Cleaning Company platform and doorstep service bookings in Kanpur.",
 };
 
-const sections = [
+interface TermSection {
+  title: string;
+  content: string;
+  list?: string[];
+  subContent?: string;
+  nestedLists?: { title: string; items: string[] }[];
+  footerText?: string;
+}
+
+const sections: TermSection[] = [
   {
-    icon: "business",
-    title: "1. Business Information",
-    content: "PHS Cleaning Company is a Sole Proprietorship owned and operated by Pavan Kumar.",
+    title: "1. Legal Entity & Proprietary Information",
+    content: "This document constitutes a binding legal agreement between you ('User', 'Customer', 'you') and PHS Cleaning Company. PHS Cleaning Company is a Sole Proprietorship firm organized, registered, and existing under the laws of India, owned and operated exclusively by Pavan Kumar, with its principal place of business in Kanpur Nagar, Uttar Pradesh.",
     list: [
-      "Business Name: PHS Cleaning Company",
-      "Owner: Pavan Kumar",
-      "Business Address: C1-40, Gulmohar Vihar, Near Shivaji Pulia, Naubasta, Kanpur, Uttar Pradesh – 208014, India",
-      "Email: phscustomercare15@gmail.com",
-      "Phone: +91 7408702019",
-      "Service Area: Kanpur Nagar, Uttar Pradesh, India"
+      "Official Trade Name: PHS Cleaning Company",
+      "Proprietor & Operator: Pavan Kumar",
+      "Registered Business Address: C1-40, Gulmohar Vihar, Near Shivaji Pulia, Naubasta, Kanpur, Uttar Pradesh – 208014, India",
+      "Corporate Helpline Email: phscustomercare15@gmail.com",
+      "Helpline Phone Number: +91 7408702019",
+      "Operational Territory: Kanpur Nagar, Uttar Pradesh, India"
     ]
   },
   {
-    icon: "engineering",
-    title: "2. About PHS Cleaning Company",
-    content: "PHS Cleaning Company provides cleaning and related home services directly to customers. Unlike marketplace platforms, PHS Cleaning Company is the service provider. The Company: Accepts customer bookings, Assigns professionals, Manages scheduling, Handles customer support, Coordinates service delivery, and Processes payments and refunds.",
-    subContent: "Customer → Booking → PHS Cleaning Company → Professional Assignment → Service Delivery",
-    footerText: "Professionals performing services are engaged, assigned, employed, or contracted by PHS Cleaning Company for service fulfillment."
+    title: "2. Operational Business Model",
+    content: "PHS Cleaning Company functions as a direct service provider rather than an aggregator marketplace. We own, control, and execute the entire service delivery lifecycle. We directly source, verify, train, equip, and assign the cleaning and maintenance professionals ('Professionals' or 'Pros') to perform doorstep tasks at customer properties. The Company remains legally responsible for customer scheduling, billing coordination, grievance management, and quality control.",
+    subContent: "Customer → Digital Booking → PHS Operations Desk → Professional Assignment → On-Site Service Delivery",
+    footerText: "Assigned Pros are engaged under direct contract, employment, or operational arrangements by PHS Cleaning Company."
   },
   {
-    icon: "assignment_ind",
-    title: "3. Eligibility",
-    content: "To use our services, you must be at least 18 years old, have the legal capacity to enter into contracts, provide accurate information, and comply with all applicable laws. By using the Platform, you represent that all information provided is accurate and complete."
+    title: "3. User Eligibility & Capacity",
+    content: "By accessing this Platform or booking a service, you represent and warrant that you are at least 18 years of age, possess the legal authority to enter into binding agreements under the Indian Contract Act, 1872, and have not been previously suspended or barred from using the Platform. If you are booking services on behalf of a corporate entity, you warrant that you have the explicit authorization to bind that entity to these Terms."
   },
   {
-    icon: "key",
-    title: "4. Account Registration",
-    content: "Certain features may require account creation. Users may be required to provide their Full Name, Mobile Number, Email Address, Service Address, and Profile Image. You are responsible for maintaining account confidentiality, securing login credentials, and all activities performed through your account. PHS Cleaning Company shall not be responsible for losses arising from unauthorized access caused by user negligence."
+    title: "4. Account Registration & Cybersecurity",
+    content: "To utilize certain service categories, you must register a customer profile. You agree to provide accurate, complete, and current information (Full Name, Mobile Number, Email Address, and complete Service Address). You are solely responsible for maintaining the confidentiality of your login credentials and for restricting access to your device. You agree to accept liability for all activities that occur under your account. The Company shall not be liable for losses resulting from unauthorized account usage arising from your failure to protect your login parameters."
   },
   {
-    icon: "supervised_user_circle",
-    title: "5. User Roles",
-    content: "The Platform enforces role-based access restrictions at all times under the following categories:",
+    title: "5. Role-Based Access Controls",
+    content: "To maintain platform security, the application enforces strict role-based access. Users are prohibited from attempting to bypass, hack, or exploit these boundary controls:",
     nestedLists: [
       {
-        title: "Customer",
-        items: ["Create bookings", "Manage profile", "View booking history", "Track service status"]
+        title: "Customer Portal",
+        items: ["Configure saved addresses", "Create doorstep bookings", "Initiate advance digital payments", "Track service updates", "Review transaction histories"]
       },
       {
-        title: "Professional",
-        items: ["View assigned jobs", "Update job status", "Manage assigned service tasks"]
+        title: "Partner (Professional) Portal",
+        items: ["Complete mandatory service onboarding", "Select verified service categories and postal areas (pincodes)", "View assigned jobs", "Acknowledge status transitions", "Access customer directions"]
       },
       {
-        title: "Administrator",
-        items: ["Manage bookings", "Assign professionals", "Manage customers and professionals", "Operate the Platform"]
+        title: "Administrative Control Panel",
+        items: ["Global booking management", "Manual and automatic professional assignment checks", "Financial logging", "User management and platform parameter settings"]
       }
     ]
   },
   {
-    icon: "location_on",
-    title: "6. Service Availability",
-    content: "Services are currently offered exclusively within Kanpur Nagar, Uttar Pradesh, India. PHS Cleaning Company reserves the right to refuse service requests outside service areas, modify service coverage, and suspend service availability in specific locations."
+    title: "6. Territory Restrictions & Service Limits",
+    content: "Our operational limits are strictly confined to Kanpur Nagar, Uttar Pradesh, India. If a customer places a booking for an address located outside our active operational boundaries, PHS reserves the right to reject the booking, refund the paid amount in full, and restrict account activity. The Service Area list is subject to periodic updates based on operational availability."
   },
   {
-    icon: "book_online",
-    title: "7. Bookings",
-    content: "Customers may book services through the Platform. A booking is considered confirmed only when required information is provided, payment is successfully completed, and a booking confirmation is issued. PHS Cleaning Company reserves the right to accept or reject bookings, reschedule bookings, assign or reassign professionals, and cancel bookings for operational reasons."
+    title: "7. Doorstep Service Bookings",
+    content: "A booking request constitutes an offer by you to purchase doorstep services. A binding contract is formed only when PHS Cleaning Company processes the 100% advance payment, verifies address feasibility, and updates the booking status to 'Confirmed' in your dashboard. We reserve the absolute right to reject any booking request without assigning a reason."
   },
   {
-    icon: "badge",
-    title: "8. Professional Assignment",
-    content: "Professional assignment is managed exclusively by PHS Cleaning Company. Customers cannot demand specific professionals, specific staff members, or direct employment relationships with assigned professionals. The Company may replace assigned professionals whenever operationally necessary."
+    title: "8. Assignment of Service Professionals",
+    content: "The assignment of Professionals is determined exclusively by the Company's system logic (utilizing round-robin auto-assignment to optimize scheduling and territory coverage). While PHS ensures that all Pros are fully vetted, the Customer does not have the right to request or reject specific Pros, demand specific individuals, or seek direct employment agreements with the Pros. PHS reserves the right to replace assigned Pros at any point prior to service start."
   },
   {
-    icon: "payments",
-    title: "9. Pricing",
-    content: "Service prices displayed on the Platform may include service charges, applicable taxes, and other disclosed fees. Prices may change without notice. However, confirmed bookings shall be charged according to the price displayed at the time of booking."
+    title: "9. Pricing Structures & Taxation",
+    content: "All prices quoted on the Platform are in Indian Rupees (₹) and are inclusive of service costs, materials (where specified), and platform processing fees. GST and other applicable taxes will be detailed during checkout. PHS reserves the right to revise service prices at any time. However, confirmed bookings shall not be affected by subsequent price updates."
   },
   {
-    icon: "credit_card",
-    title: "10. Payment Terms",
-    content: "All bookings require 100% advance payment. Accepted payment methods may include UPI, Debit Cards, Credit Cards, Net Banking, Digital Wallets, and other approved digital payment methods. Payment must be successfully completed before service confirmation."
+    title: "10. Advance Payment Terms",
+    content: "We enforce a strict 100% advance payment policy for all standard doorstep bookings. Bookings will not be confirmed or dispatched unless the payment gateway verifies successful transaction completion. Payments must be processed through the approved digital channels (UPI, Credit Cards, Debit Cards, Net Banking, or authorized Wallets). Cash on Delivery (COD) is not accepted."
   },
   {
-    icon: "policy",
-    title: "11. Cancellation and Refunds",
-    content: "Cancellation and refunds shall be governed by the Company's separate Cancellation Policy and Refund Policy. Customers are encouraged to review those policies before booking services."
+    title: "11. Cancellation, Rescheduling & Revisit Fees",
+    content: "Cancellations and rescheduling requests are subject to the following rules:",
+    nestedLists: [
+      {
+        title: "Cancellations",
+        items: [
+          "Cancellations requested more than 2 hours before the scheduled time slot: Eligible for a 100% refund.",
+          "Cancellations requested within 2 hours of the scheduled time slot: A late cancellation penalty (retained as booking fee) may apply.",
+          "Cancellations requested after the Professional has arrived at the property: Non-refundable."
+        ]
+      },
+      {
+        title: "Revisit Charges",
+        items: [
+          "If the Professional arrives but is unable to access the property, or if the customer is a no-show, PHS reserves the right to apply a revisit charge of ₹150 for rescheduling the service."
+        ]
+      }
+    ]
   },
   {
-    icon: "verified_user",
-    title: "12. Customer Responsibilities",
-    content: "Customers agree to provide accurate information, safe access to service locations, ensure professionals can perform services without obstruction, cooperate during service delivery, and maintain respectful behavior. Customers shall not harass or discriminate against professionals, engage in abusive conduct, use fraudulent payment methods, or misuse the Platform."
+    title: "12. Customer Cooperation & Workplace Safety",
+    content: "The customer must provide a safe, non-hazardous, and cooperative environment for our Professionals. You agree to secure all high-value personal belongings, cash, jewelry, and delicate items before the Pro enters the property. Furthermore, you must provide the Pro with access to running water, adequate lighting, and electrical power. PHS reserves the right to instruct Pros to withdraw immediately from properties where they face verbal abuse, unsafe conditions, physical hazards, or harassment."
   },
   {
-    icon: "meeting_room",
-    title: "13. Property Access",
-    content: "Customers are responsible for obtaining access permissions, arranging entry approvals, and providing access to required service areas. Delays caused by customer-side restrictions may result in rescheduling, revisit charges, or service delays."
+    title: "13. Access Permissions & Gate Passes",
+    content: "You are solely responsible for securing all necessary clearances, society permissions, landlord approvals, and gate passes required for the Pro to enter your premises. PHS will not be liable for service delays or incomplete tasks resulting from society-level access denials."
   },
   {
-    icon: "cancel_presentation",
-    title: "14. Customer No-Show",
-    content: "If the customer is unavailable, the service location is inaccessible, or the customer fails to respond, PHS Cleaning Company may cancel the booking, reschedule the booking, and/or apply revisit charges where applicable."
+    title: "14. Customer No-Show Policy",
+    content: "A customer no-show occurs if the Pro arrives at the registered service address within the confirmed slot and the customer is unavailable, unreachable via the registered phone number, or refuses entry for more than 20 minutes. In such cases, the booking will be marked as cancelled, and the paid booking amount will be forfeited to cover operational and mobilization costs."
   },
   {
-    icon: "rate_review",
-    title: "15. Service Quality Complaints",
-    content: "Customers may submit complaints regarding service quality, which should include booking information, description of concern, and supporting photographs if available. Each complaint shall be reviewed individually. Possible resolutions may include re-service, service correction, partial refund, full refund, or service credits, as determined by PHS Cleaning Company."
+    title: "15. Quality Audits & Grievance Procedures",
+    content: "If you are dissatisfied with the service quality, you must register a complaint within 24 hours of service completion via our Helpline Email (phscustomercare15@gmail.com) or Care Number (+91 7408702019). The complaint must include the Booking ID and photographic evidence of the areas of concern. PHS will investigate the claim and may offer a free re-cleaning of the affected areas, service credits, or a partial refund at its sole discretion."
   },
   {
-    icon: "copyright",
-    title: "16. Intellectual Property",
-    content: "All Platform content including logos, branding, graphics, text, software, designs, and service content belongs to PHS Cleaning Company unless otherwise stated. Users may not copy, reproduce, modify, distribute, or sell any Platform content without prior written permission."
+    title: "16. Intellectual Property Protection",
+    content: "All content displayed on the Platform, including but not limited to text, UI layouts, icons, logos, brand names, code, graphics, images, database schemas, and workflows, is the exclusive property of PHS Cleaning Company and is protected by Indian copyright, trademark, and intellectual property laws. You may not copy, scrape, distribute, modify, or reuse any content without our prior written consent."
   },
   {
-    icon: "reviews",
-    title: "17. User Content and Reviews",
-    content: "Users may submit ratings, reviews, feedback, and suggestions. By submitting content, users grant PHS Cleaning Company a non-exclusive right to use such content for service improvement, marketing, customer support, and quality control. The Company reserves the right to remove inappropriate content."
+    title: "17. Review Moderation & Feedback License",
+    content: "Customers may post reviews and ratings. You warrant that any review submitted is accurate, honest, and free of defamatory, profane, or unlawful content. By posting a review, you grant PHS a perpetual, royalty-free, worldwide license to use, publish, translate, and distribute your feedback for marketing, service improvements, and public displays."
   },
   {
-    icon: "shield",
-    title: "18. Privacy",
-    content: "Collection and processing of personal information shall be governed by the Company's Privacy Policy. By using the Platform, users consent to the collection and use of information described in the Privacy Policy."
+    title: "18. Data Protection & Privacy Compliance",
+    content: "We collect and process your personal and transaction data in strict compliance with the Digital Personal Data Protection (DPDP) Act, 2023, and our Privacy Policy. By utilizing our Platform, you acknowledge that you have read and understood our data processing practices."
   },
   {
-    icon: "report_problem",
-    title: "19. Limitation of Liability",
-    content: "To the maximum extent permitted by law, PHS Cleaning Company shall not be liable for indirect losses, consequential damages, loss of profits, business interruption, or delays caused by circumstances beyond reasonable control. The Company's total liability arising from any booking shall not exceed the amount paid for that specific booking."
+    title: "19. Limitation of Liability & Property Disclaimers",
+    content: "To the maximum extent permitted by applicable law, PHS Cleaning Company's total liability for any claim, loss, damage, or service failure arising out of a booking shall be strictly limited to the amount paid by the customer for that specific booking. PHS shall not be liable for any indirect, incidental, special, exemplary, or consequential damages, including loss of profits, data loss, or property damage resulting from customer negligence or failure to secure high-value items."
   },
   {
-    icon: "security",
-    title: "20. Indemnification",
-    content: "Users agree to indemnify and hold harmless PHS Cleaning Company, its owner, employees, professionals, contractors, and representatives against claims arising from violation of these Terms, misuse of the Platform, fraudulent activities, or violation of applicable laws."
+    title: "20. Mutual Indemnification",
+    content: "You agree to defend, indemnify, and hold harmless PHS Cleaning Company, its proprietor (Pavan Kumar), employees, agents, and contractors from and against any and all claims, damages, liabilities, costs, and expenses (including legal fees) arising from your misuse of the Platform, breach of these Terms, violation of third-party rights, or unlawful conduct at the service premises."
   },
   {
-    icon: "block",
-    title: "21. Suspension and Termination",
-    content: "PHS Cleaning Company may suspend or terminate accounts that violate these Terms, engage in fraud, abuse refund policies, harass staff or professionals, or create security risks. The Company may remove access without prior notice where necessary."
+    title: "21. Account Suspension & Termination",
+    content: "PHS reserves the right to suspend, restrict, or terminate your account access without prior notice if we detect fraudulent transactions, repeated late cancellations, harassment of our Pros, abuse of the referral program, or actions that compromise the security and operational integrity of the Platform."
   },
   {
-    icon: "thunderstorm",
-    title: "22. Force Majeure",
-    content: "PHS Cleaning Company shall not be liable for delays or failures caused by events beyond reasonable control, including natural disasters, floods, earthquakes, fire, government restrictions, pandemics, power failures, internet outages, or civil disturbances."
+    title: "22. Force Majeure Events",
+    content: "PHS Cleaning Company shall not be held liable for any delay, service failure, or non-performance resulting from causes beyond its reasonable control, including natural disasters, acts of God, floods, fires, earthquakes, strikes, lockouts, government restrictions, epidemics, pandemics, civic disturbances, power failures, or general internet outages."
   },
   {
-    icon: "edit_note",
-    title: "23. Modifications",
-    content: "PHS Cleaning Company reserves the right to modify these Terms at any time. Updated versions shall become effective upon publication on the Platform. Continued use of the Platform constitutes acceptance of revised Terms."
+    title: "23. Modification of Terms",
+    content: "We reserve the right to amend these Terms & Conditions at our discretion. The 'Last Updated' date at the top will reflect the latest revision. Revised terms will become effective immediately upon posting. Your continued use of the Platform after amendments are posted constitutes your explicit acceptance of the updated terms."
   },
   {
-    icon: "gavel",
-    title: "24. Governing Law",
-    content: "These Terms shall be governed by the laws of India."
+    title: "24. Governing Jurisdiction",
+    content: "These Terms & Conditions, the booking contracts, and the relationship between the customer and PHS Cleaning Company shall be governed by and construed in accordance with the laws of India, without reference to conflict of laws principles."
   },
   {
-    icon: "balance",
-    title: "25. Dispute Resolution",
-    content: "Any dispute arising from these Terms shall first be attempted to be resolved amicably. If unresolved, disputes shall be subject to the jurisdiction of competent courts located in Kanpur, Uttar Pradesh, India."
-  },
+    title: "25. Dispute Resolution & Arbitration",
+    content: "Any dispute, claim, or controversy arising out of or relating to these Terms, including service performance or billing, shall first be referred to our Grievance Desk for amicable resolution. If the dispute is not resolved within 30 days of referral, it shall be subject to the exclusive jurisdiction of the competent courts located in Kanpur Nagar, Uttar Pradesh, India."
+  }
 ];
 
 export default function TermsConditionsPage() {
   return (
-    <div className="min-h-screen bg-surface font-body">
-      {/* Hero Header */}
-      <section className="relative overflow-hidden bg-primary">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
-        <div className="relative max-w-7xl mx-auto px-4 py-8 md:py-16">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-secondary/15 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-secondary text-3xl">gavel</span>
-            </div>
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-on-primary tracking-tight">Terms & Conditions</h1>
-              <p className="mt-2 text-on-primary/70 text-sm">Last Updated: June 2026</p>
-            </div>
-          </div>
-        </div>
-      </section>
+    <div className="min-h-screen bg-surface font-body text-on-surface">
+      {/* Centered Minimal Header */}
+      <header className="max-w-4xl mx-auto px-4 pt-12 pb-8 border-b border-outline-variant/15">
+        <h1 className="text-3xl font-extrabold tracking-tight font-headline">Terms & Conditions</h1>
+        <p className="text-sm text-on-surface-variant font-medium mt-1">Last Updated: June 2026</p>
+      </header>
 
-      {/* Content Sections */}
-      <section className="max-w-4xl mx-auto px-4 py-12 md:py-16 space-y-4">
+      {/* Main Content Sections */}
+      <main className="max-w-4xl mx-auto px-4 py-12 space-y-10">
         {sections.map((s) => (
-          <div key={s.title} className="glass-panel rounded-2xl p-6 md:p-8 hover:shadow-ambient-hover transition-all duration-300">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                <span className="material-symbols-outlined text-[#059669] text-xl drop-shadow-sm">{s.icon}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <h2 className="text-lg font-bold text-on-surface mb-3 leading-tight">{s.title}</h2>
-                <p className="text-sm text-on-surface-variant leading-relaxed">{s.content}</p>
+          <section key={s.title} className="space-y-3">
+            <h2 className="text-lg font-bold text-on-surface font-headline leading-tight">{s.title}</h2>
+            <p className="text-sm text-on-surface-variant leading-relaxed font-medium">{s.content}</p>
 
-                {s.list && (
-                  <ul className="mt-4 space-y-2">
-                    {s.list.map((item) => (
-                      <li key={item} className="flex items-start gap-2 text-sm text-on-surface-variant">
-                        <span className="material-symbols-outlined text-secondary text-[16px] mt-0.5 shrink-0">check_circle</span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+            {s.list && (
+              <ul className="space-y-2 text-sm text-on-surface-variant pl-4">
+                {s.list.map((item) => (
+                  <li key={item} className="list-disc pl-1 font-medium">
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            )}
 
-                {s.subContent && (
-                  <div className="mt-4 p-4 bg-surface-dim rounded-xl border border-outline-variant/30 text-center font-semibold text-primary text-sm">
-                    {s.subContent}
+            {s.subContent && (
+              <p className="text-xs text-primary font-mono bg-surface-container/30 px-3 py-2 rounded-lg border border-outline-variant/5 inline-block">
+                {s.subContent}
+              </p>
+            )}
+
+            {s.nestedLists && (
+              <div className="space-y-3 pt-2">
+                {s.nestedLists.map((subList) => (
+                  <div key={subList.title} className="space-y-1">
+                    <h4 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">{subList.title}</h4>
+                    <ul className="space-y-1 text-xs text-on-surface-variant pl-4">
+                      {subList.items.map((item) => (
+                        <li key={item} className="list-disc pl-1 font-medium">{item}</li>
+                      ))}
+                    </ul>
                   </div>
-                )}
-
-                {s.nestedLists && (
-                  <div className="mt-4 space-y-4">
-                    {s.nestedLists.map((subList) => (
-                      <div key={subList.title} className="p-4 bg-surface-dim rounded-xl border border-outline-variant/20">
-                        <h4 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">{subList.title}</h4>
-                        <ul className="space-y-1.5">
-                          {subList.items.map((item) => (
-                            <li key={item} className="flex items-start gap-2 text-sm text-on-surface-variant">
-                              <span className="material-symbols-outlined text-secondary text-[14px] mt-0.5 shrink-0">arrow_right</span>
-                              <span>{item}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {s.footerText && (
-                  <p className="mt-3 text-xs text-on-surface-variant/80 italic">{s.footerText}</p>
-                )}
+                ))}
               </div>
-            </div>
-          </div>
+            )}
+
+            {s.footerText && (
+              <p className="text-xs text-on-surface-variant/60 italic font-medium">{s.footerText}</p>
+            )}
+          </section>
         ))}
 
-        {/* Section 26: Contact Information */}
-        <div className="glass-panel rounded-3xl p-8 md:p-12 hover:shadow-ambient transition-all duration-300">
-          <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0 mt-0.5">
-              <span className="material-symbols-outlined text-[#059669] text-xl drop-shadow-sm">contact_support</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-bold text-on-surface mb-2">26. Contact Information</h2>
-              <p className="text-sm text-on-surface-variant mb-6 leading-relaxed">
-                For legal notices, complaints, support requests, or questions regarding these Terms:
-              </p>
+        {/* Section 26: Helpline & Legal Contacts */}
+        <section className="pt-6 border-t border-outline-variant/10 space-y-4">
+          <h2 className="text-lg font-bold text-on-surface font-headline">26. Helpline & Legal Contacts</h2>
+          <p className="text-sm text-on-surface-variant leading-relaxed font-medium">
+            For legal notices, complaints, support requests, or questions regarding these Terms:
+          </p>
 
-              <div className="p-6 bg-surface-dim rounded-2xl border border-outline-variant/30 space-y-4">
-                <div>
-                  <h4 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-0.5">Company</h4>
-                  <p className="text-sm font-semibold text-on-surface">PHS Cleaning Company</p>
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-0.5">Owner</h4>
-                  <p className="text-sm font-semibold text-on-surface">Pavan Kumar</p>
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-0.5">Address</h4>
-                  <p className="text-sm font-semibold text-on-surface leading-snug">
-                    C1-40, Gulmohar Vihar, Near Shivaji Pulia, Naubasta, Kanpur, Uttar Pradesh – 208014, India
-                  </p>
-                </div>
-                
-                <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                  <a href="mailto:phscustomercare15@gmail.com" className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-primary rounded-xl text-on-primary text-xs font-bold hover:bg-primary/90 transition-colors">
-                    <span className="material-symbols-outlined text-[16px]">email</span>phscustomercare15@gmail.com
-                  </a>
-                  <a href="tel:+917408702019" className="inline-flex items-center justify-center gap-2 px-5 py-3 border border-outline-variant rounded-xl text-on-surface text-xs font-bold hover:bg-surface-container-low transition-colors">
-                    <span className="material-symbols-outlined text-[16px]">phone</span>+91 7408702019
-                  </a>
-                </div>
-              </div>
+          <div className="space-y-3 text-sm pt-2">
+            <div className="flex flex-col sm:flex-row justify-between sm:border-b border-outline-variant/5 pb-2">
+              <span className="text-on-surface-variant font-medium text-xs uppercase tracking-wider">Company</span>
+              <span className="font-bold text-on-surface text-xs mt-0.5 sm:mt-0">PHS Cleaning Company</span>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-between sm:border-b border-outline-variant/5 pb-2">
+              <span className="text-on-surface-variant font-medium text-xs uppercase tracking-wider">Proprietor</span>
+              <span className="font-bold text-on-surface text-xs mt-0.5 sm:mt-0">Pavan Kumar</span>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-between sm:border-b border-outline-variant/5 pb-2">
+              <span className="text-on-surface-variant font-medium text-xs uppercase tracking-wider">Office Address</span>
+              <span className="font-bold text-on-surface text-xs mt-0.5 sm:mt-0 text-left sm:text-right max-w-md">C1-40, Gulmohar Vihar, Near Shivaji Pulia, Naubasta, Kanpur, Uttar Pradesh – 208014, India</span>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-between sm:border-b border-outline-variant/5 pb-2">
+              <span className="text-on-surface-variant font-medium text-xs uppercase tracking-wider">Email Address</span>
+              <a href="mailto:phscustomercare15@gmail.com" className="text-primary font-bold hover:text-secondary text-xs mt-0.5 sm:mt-0 font-mono">phscustomercare15@gmail.com</a>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-between pb-2">
+              <span className="text-on-surface-variant font-medium text-xs uppercase tracking-wider">Helpline Phone</span>
+              <a href="tel:+917408702019" className="text-primary font-bold hover:text-secondary text-xs mt-0.5 sm:mt-0 font-mono">+91 7408702019</a>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
       <Footer />
     </div>

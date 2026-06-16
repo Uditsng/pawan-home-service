@@ -3,290 +3,235 @@ import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "Privacy Policy | PHS Cleaning Company",
-  description: "How PHS Cleaning Company collects, uses, and protects your personal information.",
+  description: "Read the Privacy Policy of PHS Cleaning Company to learn how we collect, process, secure, and retain your data in compliance with DPDP Act 2023.",
 };
 
-const sections = [
+interface PolicySection {
+  title: string;
+  content: string;
+  list?: string[];
+  subContent?: string;
+  nestedLists?: { title: string; items: string[] }[];
+  footerText?: string;
+}
+
+const sections: PolicySection[] = [
   {
-    icon: "info",
-    title: "1. Introduction",
-    content: "PHS Cleaning Company (\"PHS\", \"Company\", \"we\", \"our\", or \"us\") is committed to protecting the privacy and personal information of our customers, professionals, website visitors, and application users. This Privacy Policy explains how we collect, use, store, process, and protect your information when you use our website, mobile application, services, or otherwise interact with us. By accessing or using our services, you agree to the collection and use of information in accordance with this Privacy Policy.",
+    title: "1. Scope & Acceptance",
+    content: "PHS Cleaning Company ('PHS', 'Firm', 'we', 'our', or 'us') values your privacy. This Privacy Policy details the types of personal data we collect, process, store, and share when you access our website, mobile application, or book our doorstep services. By registering, creating a profile, completing payments, or booking a service, you explicitly consent to the data collection and processing activities detailed in this policy.",
   },
   {
-    icon: "business",
-    title: "2. Business Information",
-    content: "PHS Cleaning Company is a Sole Proprietorship owned and operated by Pavan Kumar.",
+    title: "2. Data Fiduciary Information",
+    content: "PHS Cleaning Company is a Sole Proprietorship organized under the laws of India, acting as the Data Fiduciary under the Digital Personal Data Protection (DPDP) Act, 2023.",
     list: [
-      "Business Name: PHS Cleaning Company",
-      "Business Type: Sole Proprietorship",
-      "Owner: Pavan Kumar",
-      "Business Address: C1-40, Gulmohar Vihar, Near Shivaji Pulia, Naubasta, Kanpur, Uttar Pradesh - 208014, India",
-      "Email: phscustomercare15@gmail.com",
-      "Phone: +91 7408702019",
-      "Service Area: Kanpur Nagar, Uttar Pradesh, India"
+      "Sole Proprietor & Data Representative: Pavan Kumar",
+      "Registered Business Address: C1-40, Gulmohar Vihar, Near Shivaji Pulia, Naubasta, Kanpur, Uttar Pradesh - 208014, India",
+      "Grievance Inbox: phscustomercare15@gmail.com",
+      "Helpline Phone: +91 7408702019"
     ],
   },
   {
-    icon: "engineering",
-    title: "3. About Our Services",
-    content: "PHS Cleaning Company provides home cleaning and related services through trained professionals assigned and managed by the Company. Our business model operates as follows:",
-    subContent: "Customer → Booking → PHS Cleaning Company → Professional Assignment → Service Delivery. Professionals providing services are engaged, assigned, managed, or hired by PHS Cleaning Company. PHS Cleaning Company is the service provider and is responsible for service management, scheduling, customer support, and operational coordination.",
+    title: "3. Direct Service Data Flow",
+    content: "We directly manage service delivery. We do not transfer your personal information to third-party marketplaces for bidding. All data flows securely from the customer booking portal to our internal operations desk, which then shares strictly necessary operational details (name, phone, address, slot) with the assigned service professional to facilitate doorstep service fulfillment.",
   },
   {
-    icon: "folder_shared",
-    title: "4. Information We Collect",
-    content: "We may collect the following information when you use our services:",
+    title: "4. Categories of Data Collected",
+    content: "We collect personal data that is essential for service delivery, secure payments, and account administration:",
     nestedLists: [
       {
-        title: "Personal Information",
-        items: ["Full Name", "Mobile Number", "Email Address", "Residential or Service Address", "Profile Photograph (if uploaded)"]
+        title: "A. Personally Identifiable Information (PII)",
+        items: ["Full Name", "Contact Mobile Number", "Active Email Address", "Complete Service Address (including Landmarks and Pincodes)"]
       },
       {
-        title: "Service Information",
-        items: ["Service Bookings", "Service Preferences", "Service History", "Booking Status", "Customer Support Communications"]
+        title: "B. Service & Transaction Data",
+        items: ["Booked service categories and pricing", "Historical scheduling records", "Payment status (Success/Failure/Pending)", "UPI or bank transaction references", "Internal booking logs"]
       },
       {
-        title: "Account Information",
-        items: ["User Role (Customer, Professional, Admin)", "Login Credentials", "Account Activity"]
-      },
-      {
-        title: "Transaction Information",
-        items: ["Payment Status", "Transaction References", "Booking Payments"]
+        title: "C. Device & Technical Identifiers",
+        items: ["IP Address", "Device make and model", "Browser type", "Access timestamps", "App crash reports and analytics logs"]
       }
     ],
-    footerText: "PHS Cleaning Company does not intentionally collect sensitive personal information unless required for service delivery or legal compliance."
+    footerText: "We do not collect or store sensitive credit/debit card credentials, Net Banking PINs, or CVV codes. All payments are processed through secure, RBI-authorized third-party payment gateways."
   },
   {
-    icon: "data_usage",
-    title: "5. How We Use Your Information",
-    content: "We use collected information for legitimate business purposes including:",
+    title: "5. Purpose of Data Processing",
+    content: "We process your personal data under the lawful grounds of consent and legitimate business interests:",
     nestedLists: [
       {
-        title: "Service Delivery",
-        items: ["Creating and managing bookings", "Assigning professionals", "Scheduling appointments", "Providing customer support"]
+        title: "Operational Fulfillment",
+        items: ["Creating your account profile", "Verifying service eligibility in your pincode", "Scheduling and assigning service professionals", "Fulfilling quality re-cleans"]
       },
       {
-        title: "Account Management",
-        items: ["Creating user accounts", "Managing user profiles", "Verifying user identity"]
+        title: "Communications & Alerts",
+        items: ["Dispatching automated booking confirmations", "Sending OTPs for login and verification", "Communicating technician arrival times", "Issuing service feedback requests"]
       },
       {
-        title: "Operational Purposes",
-        items: ["Service coordination", "Professional assignment", "Quality monitoring", "Complaint resolution"]
-      },
-      {
-        title: "Communication",
-        items: ["Booking confirmations", "Service reminders", "Important updates", "Customer support responses"]
-      },
-      {
-        title: "Business Improvements",
-        items: ["Service optimization", "User experience enhancement", "Platform performance monitoring", "Analytics and reporting"]
-      },
-      {
-        title: "Legal Compliance",
-        items: ["Regulatory compliance", "Fraud prevention", "Security monitoring", "Enforcement of company policies"]
+        title: "Platform Security & Compliance",
+        items: ["Detecting and preventing fraudulent bookings", "Enforcing Terms & Conditions", "Complying with statutory tax mandates", "Responding to legal orders from law enforcement"]
       }
     ]
   },
   {
-    icon: "lock",
-    title: "6. Payment Information",
-    content: "All bookings require advance payment at the time of booking through available digital payment methods. Payment processing may be handled by authorized third-party payment service providers. PHS Cleaning Company does not store complete debit card, credit card, banking PINs, UPI PINs, CVV numbers, or similar sensitive payment credentials on its systems. Payment service providers process such information according to their own privacy policies and security standards.",
+    title: "6. Security of Payment Operations",
+    content: "All checkout transactions are encrypted using Industry-standard SSL technology. In compliance with PCI-DSS standards and RBI guidelines, we do not store your complete payment card details or net banking credentials. Third-party processors collect, verify, and complete transactions, governed by their respective privacy terms and compliance certificates.",
   },
   {
-    icon: "assignment_ind",
-    title: "7. User Roles and Data Access",
-    content: "Our platform supports the following user roles:",
+    title: "7. Role-Based Access Control (RBAC)",
+    content: "To guarantee data isolation, the database schema implements Row Level Security (RLS) policies based on user roles:",
     nestedLists: [
       {
-        title: "Customer",
-        items: ["Customers may access only information relating to their own account, bookings, profile, and service history."]
+        title: "Customer Access Boundary",
+        items: ["Customers can read and write only their own profiles, transaction entries, saved addresses, and outbound referrals."]
       },
       {
-        title: "Professional",
-        items: ["Professionals may access only information required to perform assigned services."]
+        title: "Professional Access Boundary",
+        items: ["Service professionals can access only operational data (e.g. customer name, phone, address, and scheduled slot) assigned specifically to them by the admin."]
       },
       {
-        title: "Administrator",
-        items: ["Administrators may access information necessary for managing operations, assigning professionals, handling bookings, customer support, and maintaining platform functionality."]
+        title: "Administrator Access Boundary",
+        items: ["Administrators retain operational access to configure settings, verify user records, audit bookings, and resolve support requests."]
       }
     ],
-    footerText: "Access controls are implemented to restrict unauthorized access to user information."
+    footerText: "We enforce strict database query constraints to prevent unauthorized cross-role data exposure."
   },
   {
-    icon: "share",
-    title: "8. Sharing of Information",
-    content: "PHS Cleaning Company does not sell personal information. We may share information only in the following circumstances:",
+    title: "8. Information Sharing & Disclosures",
+    content: "We do not trade, sell, or rent your personal information. Your data is disclosed only under the following operational guidelines:",
     nestedLists: [
       {
-        title: "Service Fulfillment",
-        items: ["Relevant customer details may be shared with assigned professionals for service delivery purposes."]
+        title: "With Service Professionals",
+        items: ["Shared strictly to enable physical access and complete doorstep cleaning or repair tasks."]
       },
       {
-        title: "Service Providers",
-        items: ["We may share information with payment processors, cloud hosting providers, technology partners, and communication service providers where necessary for business operations."]
+        title: "With Technical Service Providers",
+        items: ["Shared with cloud database hosts (Supabase), SMS/OTP gateways (Twilio), push notification services, and payment processors to run platform services."]
       },
       {
-        title: "Legal Requirements",
-        items: ["We may disclose information if required by applicable law, court orders, government authorities, or law enforcement agencies."]
-      },
-      {
-        title: "Business Protection",
-        items: ["Information may be disclosed to prevent fraud, investigate abuse, protect users, or protect Company rights."]
+        title: "Legal Mandates",
+        items: ["Disclosed to regulatory authorities, court officers, or police desks when required to comply with a judicial proceeding or statutory audit."]
       }
     ]
   },
   {
-    icon: "hourglass_empty",
-    title: "9. Data Retention",
-    content: "We retain information only for as long as reasonably necessary to provide services, maintain records, resolve disputes, meet legal obligations, and enforce agreements. Retention periods may vary depending on the nature of the information and applicable legal requirements.",
+    title: "9. Data Retention & Erasure Timeline",
+    content: "We store your personal data only as long as your account remains active or as required to fulfill our legal, accounting, tax, and dispute resolution duties. Upon an explicit account deletion request, we will deactivate your account and wipe all personally identifiable information from our active databases within 30 days, unless required to retain specific transactions for legal audits.",
   },
   {
-    icon: "security",
-    title: "10. Data Security",
-    content: "PHS Cleaning Company takes reasonable administrative, technical, and organizational measures to protect user information against unauthorized access, disclosure, alteration, misuse, or destruction. Despite reasonable safeguards, no electronic system can guarantee absolute security. Users are responsible for maintaining the confidentiality of their login credentials.",
+    title: "10. Administrative & Technical Safeguards",
+    content: "We maintain appropriate technical, physical, and administrative controls (including firewalls, data encryption, and authorized access keys) to safeguard data against accidental loss, unauthorized alteration, or malicious exposure. However, because internet transmissions are never entirely secure, we cannot guarantee absolute security. You are advised to safeguard your mobile device and log credentials.",
   },
   {
-    icon: "how_to_reg",
-    title: "11. Customer Rights",
-    content: "Subject to applicable law, users may request access to their information, correction of inaccurate information, updating account details, deletion of information where legally permissible, or withdrawal of consent where applicable. Requests may be submitted using the contact information provided below.",
+    title: "11. Your Statutory Data Rights",
+    content: "Under the DPDP Act 2023, you hold the following rights regarding your personal data:",
+    list: [
+      "Right to Access: Request a summary of the personal data we process and the reasons for processing.",
+      "Right to Correction: Request correction, completion, or updates to inaccurate or outdated personal data.",
+      "Right to Erasure: Request deletion of your personal data when it is no longer necessary for the purpose collected.",
+      "Right to Withdraw Consent: Revoke consent at any time, which will immediately restrict further processing (though historical transactions will remain for legal compliance)."
+    ],
   },
   {
-    icon: "child_care",
-    title: "12. Children's Privacy",
-    content: "Our services are intended for individuals who are legally capable of entering into binding agreements under applicable law. We do not knowingly collect personal information from children without appropriate authorization. If we become aware that information has been collected improperly, we may remove such information from our systems.",
+    title: "12. Minor Data Restrictions",
+    content: "Our services are directed to adults capable of entering into legal contracts. We do not intentionally compile or request information from minors. If we discover that a minor under 18 has submitted personal information, we will verify the claim and delete the data from our records immediately.",
   },
   {
-    icon: "link",
-    title: "13. Third-Party Services",
-    content: "Our website and application may contain links to third-party services or websites. PHS Cleaning Company is not responsible for third-party privacy practices, content, or security measures. Users should review the privacy policies of such third parties separately.",
+    title: "13. External Hyperlinks",
+    content: "Our applications and websites may feature links to external payment gateways, mapping services, or social portals. We do not oversee or endorse their privacy guidelines, cookies, or data safety policies. You should inspect their respective policies independently.",
   },
   {
-    icon: "cookie",
-    title: "14. Cookies and Similar Technologies",
-    content: "Our website or application may use cookies, analytics tools, and similar technologies to improve functionality, enhance user experience, analyze usage patterns, and improve platform performance. Users may control cookie preferences through browser settings where applicable.",
+    title: "14. Cookies & Session Analytics",
+    content: "We use essential cookies, browser storage, and analytics tokens to persist your login state, remember service selections in your cart, track user navigation flow, and diagnose loading times. You can disable cookies in your browser, but some features of the Platform may cease to function correctly.",
   },
   {
-    icon: "update",
-    title: "15. Changes to This Privacy Policy",
-    content: "PHS Cleaning Company reserves the right to update or modify this Privacy Policy at any time. Changes become effective immediately upon publication on our website, application, or official communication channels. Users are encouraged to review this Privacy Policy periodically.",
+    title: "15. Updates to This Policy",
+    content: "We may update this Privacy Policy to reflect changing business standards or compliance changes. Any modifications will be posted here with an updated revision date. Your continued utilization of our services after updates are published signifies your acceptance of the revised terms.",
   },
 ];
 
 export default function PrivacyPolicyPage() {
   return (
-    <div className="min-h-screen bg-surface font-body">
-      {/* Hero Header */}
-      <section className="relative overflow-hidden bg-primary">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
-        <div className="relative max-w-7xl mx-auto px-4 py-8 md:py-16">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-secondary/15 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-secondary text-3xl">privacy_tip</span>
-            </div>
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-on-primary tracking-tight">Privacy Policy</h1>
-              <p className="mt-2 text-on-primary/70 text-sm">Last Updated: June 2026</p>
-            </div>
-          </div>
-        </div>
-      </section>
+    <div className="min-h-screen bg-surface font-body text-on-surface">
+      {/* Centered Minimal Header */}
+      <header className="max-w-4xl mx-auto px-4 pt-12 pb-8 border-b border-outline-variant/15">
+        <h1 className="text-3xl font-extrabold tracking-tight font-headline">Privacy Policy</h1>
+        <p className="text-sm text-on-surface-variant font-medium mt-1">Last Updated: June 2026</p>
+      </header>
 
       {/* Main Content Sections */}
-      <section className="max-w-4xl mx-auto px-4 py-12 md:py-16 space-y-4">
+      <main className="max-w-4xl mx-auto px-4 py-12 space-y-10">
         {sections.map((s) => (
-          <div key={s.title} className="glass-panel rounded-2xl p-6 md:p-8 hover:shadow-ambient-hover transition-all duration-300">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                <span className="material-symbols-outlined text-[#059669] text-xl drop-shadow-sm">{s.icon}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <h2 className="text-lg font-bold text-on-surface mb-3 leading-tight">{s.title}</h2>
-                <p className="text-sm text-on-surface-variant leading-relaxed whitespace-pre-line">{s.content}</p>
-                
-                {s.list && (
-                  <ul className="mt-4 space-y-2">
-                    {s.list.map((item) => (
-                      <li key={item} className="flex items-start gap-2 text-sm text-on-surface-variant">
-                        <span className="material-symbols-outlined text-secondary text-[16px] mt-0.5 shrink-0">check_circle</span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+          <section key={s.title} className="space-y-3">
+            <h2 className="text-lg font-bold text-on-surface font-headline leading-tight">{s.title}</h2>
+            <p className="text-sm text-on-surface-variant leading-relaxed font-medium">{s.content}</p>
 
-                {s.subContent && (
-                  <div className="mt-4 p-4 bg-surface-dim rounded-xl border border-outline-variant/30 text-center font-semibold text-primary text-sm">
-                    {s.subContent}
+            {s.list && (
+              <ul className="space-y-2 text-sm text-on-surface-variant pl-4">
+                {s.list.map((item) => (
+                  <li key={item} className="list-disc pl-1 font-medium">
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {s.subContent && (
+              <p className="text-xs text-primary font-mono bg-surface-container/30 px-3 py-2 rounded-lg border border-outline-variant/5 inline-block">
+                {s.subContent}
+              </p>
+            )}
+
+            {s.nestedLists && (
+              <div className="space-y-3 pt-2">
+                {s.nestedLists.map((subList) => (
+                  <div key={subList.title} className="space-y-1">
+                    <h4 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">{subList.title}</h4>
+                    <ul className="space-y-1 text-xs text-on-surface-variant pl-4">
+                      {subList.items.map((item) => (
+                        <li key={item} className="list-disc pl-1 font-medium">{item}</li>
+                      ))}
+                    </ul>
                   </div>
-                )}
-
-                {s.nestedLists && (
-                  <div className="mt-4 space-y-4">
-                    {s.nestedLists.map((subList) => (
-                      <div key={subList.title} className="p-4 bg-surface-dim rounded-xl border border-outline-variant/20">
-                        <h4 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">{subList.title}</h4>
-                        <ul className="space-y-1.5">
-                          {subList.items.map((item) => (
-                            <li key={item} className="flex items-start gap-2 text-sm text-on-surface-variant">
-                              <span className="material-symbols-outlined text-secondary text-[14px] mt-0.5 shrink-0">arrow_right</span>
-                              <span>{item}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {s.footerText && (
-                  <p className="mt-3 text-xs text-on-surface-variant/80 italic">{s.footerText}</p>
-                )}
+                ))}
               </div>
-            </div>
-          </div>
+            )}
+
+            {s.footerText && (
+              <p className="text-xs text-on-surface-variant/60 italic font-medium">{s.footerText}</p>
+            )}
+          </section>
         ))}
 
-        {/* Section 16: Contact Us Block */}
-        <div className="glass-panel rounded-3xl p-8 md:p-12 hover:shadow-ambient transition-all duration-300">
-          <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0 mt-0.5">
-              <span className="material-symbols-outlined text-[#059669] text-xl drop-shadow-sm">contact_support</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-bold text-on-surface mb-2">16. Contact Us</h2>
-              <p className="text-sm text-on-surface-variant mb-6 leading-relaxed">
-                If you have questions, concerns, complaints, or requests regarding this Privacy Policy or the handling of your personal information, please contact:
-              </p>
+        {/* Section 16: Contact Details & Privacy Officer */}
+        <section className="pt-6 border-t border-outline-variant/10 space-y-4">
+          <h2 className="text-lg font-bold text-on-surface font-headline">16. Contact Details & Privacy Officer</h2>
+          <p className="text-sm text-on-surface-variant leading-relaxed font-medium">
+            If you have questions, concerns, complaints, or requests regarding this Privacy Policy, your rights under the DPDP Act 2023, or the handling of your personal information, please contact our Grievance Desk:
+          </p>
 
-              <div className="p-6 bg-surface-dim rounded-2xl border border-outline-variant/30 space-y-4">
-                <div>
-                  <h4 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-0.5">Company</h4>
-                  <p className="text-sm font-semibold text-on-surface">PHS Cleaning Company</p>
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-0.5">Owner</h4>
-                  <p className="text-sm font-semibold text-on-surface">Pavan Kumar</p>
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-0.5">Address</h4>
-                  <p className="text-sm font-semibold text-on-surface leading-snug">
-                    C1-40, Gulmohar Vihar, Near Shivaji Pulia, Naubasta, Kanpur, Uttar Pradesh - 208014, India
-                  </p>
-                </div>
-                
-                <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                  <a href="mailto:phscustomercare15@gmail.com" className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-primary rounded-xl text-on-primary text-xs font-bold hover:bg-primary/90 transition-colors">
-                    <span className="material-symbols-outlined text-[16px]">email</span>phscustomercare15@gmail.com
-                  </a>
-                  <a href="tel:+917408702019" className="inline-flex items-center justify-center gap-2 px-5 py-3 border border-outline-variant rounded-xl text-on-surface text-xs font-bold hover:bg-surface-container-low transition-colors">
-                    <span className="material-symbols-outlined text-[16px]">phone</span>+91 7408702019
-                  </a>
-                </div>
-              </div>
+          <div className="space-y-3 text-sm pt-2">
+            <div className="flex flex-col sm:flex-row justify-between sm:border-b border-outline-variant/5 pb-2">
+              <span className="text-on-surface-variant font-medium text-xs uppercase tracking-wider">Fiduciary Entity</span>
+              <span className="font-bold text-on-surface text-xs mt-0.5 sm:mt-0">PHS Cleaning Company</span>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-between sm:border-b border-outline-variant/5 pb-2">
+              <span className="text-on-surface-variant font-medium text-xs uppercase tracking-wider">Grievance Officer</span>
+              <span className="font-bold text-on-surface text-xs mt-0.5 sm:mt-0">Pavan Kumar</span>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-between sm:border-b border-outline-variant/5 pb-2">
+              <span className="text-on-surface-variant font-medium text-xs uppercase tracking-wider">Office Address</span>
+              <span className="font-bold text-on-surface text-xs mt-0.5 sm:mt-0 text-left sm:text-right max-w-md">C1-40, Gulmohar Vihar, Near Shivaji Pulia, Naubasta, Kanpur, Uttar Pradesh – 208014, India</span>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-between sm:border-b border-outline-variant/5 pb-2">
+              <span className="text-on-surface-variant font-medium text-xs uppercase tracking-wider">Email Address</span>
+              <a href="mailto:phscustomercare15@gmail.com" className="text-primary font-bold hover:text-secondary text-xs mt-0.5 sm:mt-0 font-mono">phscustomercare15@gmail.com</a>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-between pb-2">
+              <span className="text-on-surface-variant font-medium text-xs uppercase tracking-wider">Helpline Phone</span>
+              <a href="tel:+917408702019" className="text-primary font-bold hover:text-secondary text-xs mt-0.5 sm:mt-0 font-mono">+91 7408702019</a>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
       <Footer />
     </div>

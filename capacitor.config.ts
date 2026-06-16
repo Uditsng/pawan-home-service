@@ -17,6 +17,9 @@ const config: CapacitorConfig = {
       backgroundColor: "#002261",
       androidScaleType: "CENTER_CROP",
       showSpinner: false
+    },
+    PushNotifications: {
+      presentationOptions: ["badge", "sound", "alert"]
     }
   }
 };

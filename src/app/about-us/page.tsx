@@ -4,309 +4,198 @@ import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "About Us | PHS Cleaning Company",
-  description: "Learn about PHS Cleaning Company — your trusted provider of professional cleaning, repairs, and maintenance services in Kanpur.",
+  description: "Learn about PHS Cleaning Company — Kanpur's trusted doorstep provider of professional home cleaning, deep cleaning, and service solutions. Owned and operated by Pavan Kumar.",
 };
 
 const serviceItems = [
-  "Home Cleaning",
-  "Deep Cleaning",
-  "Bathroom Cleaning",
-  "Kitchen Cleaning",
-  "Room Cleaning",
-  "Floor Cleaning",
-  "Residential Cleaning Services",
-  "Commercial Cleaning Services",
-  "Customized Cleaning Solutions",
+  "Comprehensive Home Deep Cleaning",
+  "Kitchen & Appliance Deep Cleaning",
+  "Bathroom Sanitization & Cleaning",
+  "Sofa, Carpet & Upholstery Shampooing",
+  "Room & Specialized Area Cleaning",
+  "Floor Scrubbing & Polishing Services",
+  "Residential Cleaning & Post-Renovation Cleaning",
+  "Commercial & Office Space Maintenance",
+  "Customized & Seasonal Cleaning Packages",
 ];
 
 const whyChooseUs = [
   {
-    icon: "engineering",
-    title: "Professional Service Management",
-    desc: "Every booking is managed through our internal system to ensure proper scheduling, assignment, and service coordination.",
+    title: "Direct Service Ownership",
+    desc: "Unlike standard third-party listing marketplaces, we are the direct service provider. We own the booking lifecycle, schedule the jobs, assign trained personnel, and stand fully accountable for the quality of the work delivered.",
   },
   {
-    icon: "verified",
-    title: "Trained Professionals",
-    desc: "We work with professionals who are assigned based on operational requirements and service needs.",
+    title: "Vetted & Trained Professionals",
+    desc: "All service professionals undergo background verification, identification checks, and practical training to ensure they meet our strict security, behavioral, and technical operational standards.",
   },
   {
-    icon: "payments",
-    title: "Transparent Pricing",
-    desc: "Customers receive clear pricing before confirming bookings. No hidden charges.",
+    title: "Transparent & Upfront Pricing",
+    desc: "We operate on a transparent pricing model. The base rates, material costs, and GST details are displayed upfront at booking time. We enforce a strict 'no hidden charges' policy.",
   },
   {
-    icon: "touch_app",
-    title: "Easy Booking Process",
-    desc: "Our platform allows customers to book services conveniently from their mobile devices or computers.",
+    title: "Convenient Digital Bookings",
+    desc: "Our responsive web and mobile application allow you to schedule appointments, select preferences, securely complete payments, and manage your service history with ease.",
   },
   {
-    icon: "support_agent",
-    title: "Customer Support",
-    desc: "Our support team is available to assist customers with bookings, service updates, complaints, and general inquiries.",
+    title: "Structured Grievance Support",
+    desc: "Our customer support team is available during standard operating hours to manage reschedules, handle issues, and coordinate solutions for any service delivery concerns.",
   },
   {
-    icon: "assignment_turned_in",
-    title: "Service Accountability",
-    desc: "As the service provider, PHS Cleaning Company takes responsibility for managing bookings, assigning professionals, and addressing customer concerns.",
+    title: "Accountability & Recourse",
+    desc: "Because we manage the professionals directly, we provide structured dispute resolutions, including free re-service sessions and partial refunds for validated complaints.",
   },
 ];
 
 const companyValues = [
-  { icon: "sentiment_satisfied", title: "Customer First", desc: "We place customer satisfaction at the center of our operations." },
-  { icon: "gavel", title: "Integrity", desc: "We believe in honest communication, transparent pricing, and ethical business practices." },
-  { icon: "verified_user", title: "Reliability", desc: "We strive to deliver services on time and as promised." },
-  { icon: "workspace_premium", title: "Quality", desc: "We continuously work to improve service standards and operational excellence." },
-  { icon: "handshake", title: "Respect", desc: "We treat customers, professionals, and team members with professionalism and respect." },
+  { title: "Customer Centricity", desc: "Every service protocol is optimized to prioritize customer comfort, safety, and property preservation." },
+  { title: "Corporate Integrity", desc: "We commit to honest communication, legal compliance, fair wages for our professionals, and transparent pricing." },
+  { title: "Dependability", desc: "We respect your time. Our system is engineered for prompt arrivals, predictable timelines, and consistent results." },
+  { title: "Service Excellence", desc: "We continually test new cleaning products, update standard operating procedures, and refine our service guidelines." },
+  { title: "Mutual Respect", desc: "We foster an ecosystem of respect and dignity between our customers, administrative staff, and service professionals." },
 ];
 
 export default function AboutUsPage() {
   return (
-    <div className="min-h-screen bg-surface font-body">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-primary">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-secondary/8 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3" />
-
-        <div className="relative max-w-7xl mx-auto px-4 py-8 md:py-16">
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-8">
-            <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-surface-container-lowest/10 backdrop-blur-sm flex items-center justify-center shrink-0 overflow-hidden">
-              <Image
-                src="/PHS.png"
-                alt="PHS Cleaning Company Logo"
-                width={80}
-                height={80}
-                className="rounded-2xl"
-              />
-            </div>
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-on-primary tracking-tight">
-                About PHS Cleaning Company
-              </h1>
-              <p className="mt-3 text-on-primary/70 text-base md:text-lg max-w-2xl leading-relaxed">
-                Clean Spaces. Better Living. Trusted Service.
-              </p>
-            </div>
+    <div className="min-h-screen bg-surface font-body text-on-surface">
+      {/* Centered Minimal Header */}
+      <header className="max-w-4xl mx-auto px-4 pt-12 pb-8 border-b border-outline-variant/15 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl border border-outline-variant/20 flex items-center justify-center shrink-0 overflow-hidden bg-white p-1">
+            <Image
+              src="/PHS.png"
+              alt="PHS Cleaning Company Logo"
+              width={48}
+              height={48}
+              className="rounded-lg object-contain"
+            />
+          </div>
+          <div>
+            <h1 className="text-3xl font-extrabold tracking-tight font-headline">
+              About PHS Cleaning Company
+            </h1>
+            <p className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant/50 mt-1">
+              Established in Kanpur, India
+            </p>
           </div>
         </div>
-      </section>
+      </header>
 
-      <section className="max-w-7xl mx-auto px-4 py-12 md:py-16 space-y-12">
-        {/* Welcome Section */}
-        <div className="glass-panel rounded-3xl p-8 md:p-12 hover:shadow-ambient transition-all duration-300">
-          <h2 className="text-2xl font-bold text-on-surface mb-4">Welcome to PHS Cleaning Company</h2>
-          <p className="text-on-surface-variant leading-relaxed">
-            At <strong>PHS Cleaning Company</strong>, we believe that every home and workplace deserves to be clean, hygienic, comfortable, and professionally maintained. We are a Kanpur-based cleaning service company committed to providing reliable, affordable, and high-quality cleaning solutions to households and businesses. Our goal is simple: to help our customers enjoy cleaner, healthier, and more organized spaces without the stress and effort of managing cleaning tasks themselves.
+      <main className="max-w-4xl mx-auto px-4 py-12 space-y-12">
+        {/* Our Business & Purpose */}
+        <section className="space-y-4">
+          <h2 className="text-xl font-bold font-headline tracking-tight">Our Business & Purpose</h2>
+          <p className="text-sm md:text-base text-on-surface-variant leading-relaxed">
+            Founded with the vision of formalizing and elevating the unorganized home maintenance sector, <strong>PHS Cleaning Company</strong> has established itself as Kanpur&apos;s premier service operation. We specialize in providing specialized deep cleaning, sanitization, and technical repair services directly at the doorstep of residential and commercial properties. We resolve the core challenges of the local service industry—unreliable scheduling, lack of accountability, and volatile pricing—by offering a fully structured, digital booking experience managed entirely by our dedicated operations desk.
           </p>
-        </div>
+        </section>
 
-        {/* Who We Are */}
-        <div className="glass-panel rounded-3xl p-8 md:p-12 hover:shadow-ambient transition-all duration-300">
-          <h2 className="text-2xl font-bold text-on-surface mb-4">Who We Are</h2>
-          <div className="space-y-4 text-on-surface-variant leading-relaxed">
+        {/* Legal Identity & Structure */}
+        <section className="space-y-4 pt-6 border-t border-outline-variant/10">
+          <h2 className="text-xl font-bold font-headline tracking-tight">Legal Identity & Structure</h2>
+          <div className="space-y-3 text-sm md:text-base text-on-surface-variant leading-relaxed">
             <p>
-              <strong>PHS Cleaning Company</strong> is a Sole Proprietorship business owned and operated by <strong>Pavan Kumar</strong>.
+              <strong>PHS Cleaning Company</strong> is a legally registered Sole Proprietorship business established under the laws of India, owned and operated exclusively by <strong>Pavan Kumar</strong>.
             </p>
             <p>
-              Unlike marketplace platforms that merely connect customers with independent service providers, PHS Cleaning Company directly manages service operations. Our professionals are assigned and supervised through our internal management process to ensure consistency, accountability, and service quality.
+              Unlike standard aggregator platforms that function as digital bulletin boards or marketplaces, PHS Cleaning Company acts as the primary service provider. We maintain direct oversight over the entire operation. We source, vet, train, assign, and equip the professionals who visit your premises. 
             </p>
-            <div className="mt-6 flex flex-col md:flex-row items-center justify-center gap-4 bg-surface-dim p-6 rounded-2xl border border-outline-variant/30">
-              <span className="font-semibold text-primary">Customer</span>
-              <span className="material-symbols-outlined text-secondary hidden md:block">arrow_forward</span>
-              <span className="material-symbols-outlined text-secondary md:hidden">arrow_downward</span>
-              <span className="font-semibold text-primary">PHS Cleaning Company</span>
-              <span className="material-symbols-outlined text-secondary hidden md:block">arrow_forward</span>
-              <span className="material-symbols-outlined text-secondary md:hidden">arrow_downward</span>
-              <span className="font-semibold text-primary">Professional Assignment</span>
-              <span className="material-symbols-outlined text-secondary hidden md:block">arrow_forward</span>
-              <span className="material-symbols-outlined text-secondary md:hidden">arrow_downward</span>
-              <span className="font-semibold text-primary">Service Completion</span>
-            </div>
-            <p className="mt-4">
-              This approach allows us to maintain greater control over service quality, scheduling, customer support, and issue resolution.
+            <p>
+              This operational model ensures that we maintain complete accountability for service fulfillment, worker behavior, safety standards, and post-service customer resolutions.
             </p>
           </div>
-        </div>
+        </section>
 
         {/* Mission & Vision */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-primary text-on-primary rounded-3xl p-8 relative overflow-hidden flex flex-col justify-between">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-secondary/10 rounded-full blur-2xl pointer-events-none" />
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-xl bg-secondary/15 flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-secondary text-2xl">rocket_launch</span>
-                </div>
-                <h2 className="text-xl font-bold">Our Mission</h2>
-              </div>
-              <p className="text-on-primary/80 text-sm leading-relaxed">
-                Our mission is to make professional cleaning services accessible, affordable, and dependable for every household and business in our service area, creating employment opportunities for skilled professionals.
-              </p>
-            </div>
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-outline-variant/10">
+          <div className="space-y-2">
+            <h3 className="text-lg font-bold font-headline">Our Mission</h3>
+            <p className="text-sm text-on-surface-variant leading-relaxed">
+              To establish Kanpur&apos;s most dependable, transparent, and structured doorstep cleaning service network, empowering skilled local professionals with fair work opportunities while delivering high-caliber sanitization and maintenance solutions to households and offices.
+            </p>
           </div>
-
-          <div className="glass-panel rounded-3xl p-8 relative overflow-hidden flex flex-col justify-between border border-outline-variant/30">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-green-500/5 rounded-full blur-2xl pointer-events-none" />
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-[#059669] text-2xl">visibility</span>
-                </div>
-                <h2 className="text-xl font-bold text-on-surface">Our Vision</h2>
-              </div>
-              <p className="text-on-surface-variant text-sm leading-relaxed">
-                Our vision is to become one of the most trusted cleaning service providers in Kanpur and expand our reputation through reliability, professionalism, and customer-first service.
-              </p>
-            </div>
+          <div className="space-y-2">
+            <h3 className="text-lg font-bold font-headline">Our Vision</h3>
+            <p className="text-sm text-on-surface-variant leading-relaxed">
+              To set the industry benchmark for doorstep maintenance operations in Uttar Pradesh, recognized for strict service quality controls, robust data safety, customer-first grievance resolutions, and verified worker safety protocols.
+            </p>
           </div>
-        </div>
+        </section>
 
-        {/* What We Do */}
-        <div className="glass-panel rounded-3xl p-8 md:p-12">
-          <h2 className="text-2xl font-bold text-on-surface mb-6 text-center">What We Do</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Core Offerings */}
+        <section className="space-y-4 pt-6 border-t border-outline-variant/10">
+          <h2 className="text-xl font-bold font-headline tracking-tight">Our Core Offerings</h2>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-on-surface-variant">
             {serviceItems.map((item) => (
-              <div key={item} className="flex items-center gap-3 p-4 bg-surface-dim rounded-xl border border-outline-variant/20 hover:border-secondary/30 transition-all duration-300">
-                <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-[#059669] text-base">check_circle</span>
-                </div>
-                <span className="text-sm font-semibold text-on-surface">{item}</span>
-              </div>
+              <li key={item} className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0"></span>
+                <span>{item}</span>
+              </li>
             ))}
-          </div>
-        </div>
+          </ul>
+        </section>
 
         {/* Why Choose Us */}
-        <div>
-          <h2 className="text-2xl font-bold text-on-surface mb-8 text-center">Why Choose PHS Cleaning Company</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <section className="space-y-6 pt-6 border-t border-outline-variant/10">
+          <h2 className="text-xl font-bold font-headline tracking-tight">Why Customers Trust PHS</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {whyChooseUs.map((item) => (
-              <div key={item.title} className="glass-panel rounded-2xl p-6 hover:shadow-ambient-hover transition-all duration-300 hover:-translate-y-1 group">
-                <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center mb-4 shrink-0">
-                  <span className="material-symbols-outlined text-[#059669] text-2xl drop-shadow-sm">{item.icon}</span>
-                </div>
-                <h3 className="text-base font-semibold text-on-surface mb-2">{item.title}</h3>
-                <p className="text-sm text-on-surface-variant leading-relaxed">{item.desc}</p>
+              <div key={item.title} className="space-y-1">
+                <h3 className="text-sm font-bold text-on-surface font-headline">{item.title}</h3>
+                <p className="text-xs md:text-sm text-on-surface-variant leading-relaxed font-medium">{item.desc}</p>
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* Quality, Safety, & Technology */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="glass-panel rounded-3xl p-8 hover:shadow-ambient transition-all duration-300">
-            <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center mb-4">
-              <span className="material-symbols-outlined text-[#059669] text-2xl">workspace_premium</span>
-            </div>
-            <h3 className="text-lg font-bold text-on-surface mb-2">Commitment to Quality</h3>
-            <p className="text-sm text-on-surface-variant leading-relaxed">
-              Customer satisfaction is at the heart of everything we do. We continuously work to improve service quality, professional performance, and customer support.
-            </p>
-          </div>
-
-          <div className="glass-panel rounded-3xl p-8 hover:shadow-ambient transition-all duration-300">
-            <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center mb-4">
-              <span className="material-symbols-outlined text-[#059669] text-2xl">shield_person</span>
-            </div>
-            <h3 className="text-lg font-bold text-on-surface mb-2">Safety & Trust</h3>
-            <p className="text-sm text-on-surface-variant leading-relaxed">
-              We focus on professional conduct, customer privacy, secure handling of your details, and ethical business practices.
-            </p>
-          </div>
-
-          <div className="glass-panel rounded-3xl p-8 hover:shadow-ambient transition-all duration-300">
-            <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center mb-4">
-              <span className="material-symbols-outlined text-[#059669] text-2xl">devices</span>
-            </div>
-            <h3 className="text-lg font-bold text-on-surface mb-2">Tech-Driven Convenience</h3>
-            <p className="text-sm text-on-surface-variant leading-relaxed">
-              Our website and mobile application make it easy to create accounts, book services, view history, and contact support.
-            </p>
-          </div>
-        </div>
-
-        {/* Values */}
-        <div>
-          <h2 className="text-2xl font-bold text-on-surface mb-8 text-center">Our Core Values</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* Our Core Values */}
+        <section className="space-y-6 pt-6 border-t border-outline-variant/10">
+          <h2 className="text-xl font-bold font-headline tracking-tight">Our Core Values</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {companyValues.map((val) => (
-              <div key={val.title} className="glass-panel rounded-2xl p-5 text-center flex flex-col items-center">
-                <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center mb-3 shrink-0">
-                  <span className="material-symbols-outlined text-[#059669] text-xl">{val.icon}</span>
-                </div>
-                <h4 className="text-sm font-bold text-on-surface mb-1">{val.title}</h4>
-                <p className="text-xs text-on-surface-variant leading-relaxed">{val.desc}</p>
+              <div key={val.title} className="space-y-1">
+                <h4 className="text-sm font-bold text-on-surface font-headline">{val.title}</h4>
+                <p className="text-xs text-on-surface-variant leading-relaxed font-medium">{val.desc}</p>
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* Service Area */}
-        <div className="bg-primary rounded-3xl p-8 md:p-12 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-secondary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-          <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-secondary/15 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-secondary text-2xl">location_on</span>
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-on-primary mb-1">Service Area</h3>
-                <p className="text-on-primary/70 text-sm leading-relaxed">
-                  Currently, PHS Cleaning Company provides services exclusively within:
-                </p>
-                <p className="text-secondary font-semibold text-base mt-0.5">Kanpur Nagar, Uttar Pradesh, India</p>
-              </div>
+        {/* Service Delivery Coverage */}
+        <section className="p-6 bg-surface-container/30 rounded-xl border border-outline-variant/10 space-y-2">
+          <h3 className="text-base font-bold font-headline text-on-surface">Service Delivery Coverage</h3>
+          <p className="text-xs text-on-surface-variant font-medium">
+            We deliver doorstep services exclusively to properties located within:
+          </p>
+          <p className="text-secondary font-bold text-sm font-headline uppercase tracking-wider">Kanpur Nagar, Uttar Pradesh, India</p>
+        </section>
+
+        {/* Corporate Office & Contacts */}
+        <section className="pt-6 border-t border-outline-variant/10 space-y-4">
+          <h2 className="text-xl font-bold font-headline tracking-tight">Corporate Office & Contacts</h2>
+          <div className="space-y-3 text-sm">
+            <div className="flex flex-col sm:flex-row justify-between sm:border-b border-outline-variant/5 pb-2">
+              <span className="text-on-surface-variant font-medium text-xs uppercase tracking-wider">Business Entity</span>
+              <span className="font-bold text-on-surface text-xs mt-0.5 sm:mt-0">PHS Cleaning Company (Sole Proprietorship)</span>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-between sm:border-b border-outline-variant/5 pb-2">
+              <span className="text-on-surface-variant font-medium text-xs uppercase tracking-wider">Proprietor / Owner</span>
+              <span className="font-bold text-on-surface text-xs mt-0.5 sm:mt-0">Pavan Kumar</span>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-between sm:border-b border-outline-variant/5 pb-2">
+              <span className="text-on-surface-variant font-medium text-xs uppercase tracking-wider">Registered Office Address</span>
+              <span className="font-bold text-on-surface text-xs mt-0.5 sm:mt-0 text-left sm:text-right max-w-md">C1-40, Gulmohar Vihar, Near Shivaji Pulia, Naubasta, Kanpur, Uttar Pradesh – 208014, India</span>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-between sm:border-b border-outline-variant/5 pb-2">
+              <span className="text-on-surface-variant font-medium text-xs uppercase tracking-wider">Correspondence Email</span>
+              <a href="mailto:phscustomercare15@gmail.com" className="text-primary font-bold hover:text-secondary text-xs mt-0.5 sm:mt-0 font-mono">phscustomercare15@gmail.com</a>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-between pb-2">
+              <span className="text-on-surface-variant font-medium text-xs uppercase tracking-wider">Helpline Number</span>
+              <a href="tel:+917408702019" className="text-primary font-bold hover:text-secondary text-xs mt-0.5 sm:mt-0 font-mono">+91 7408702019</a>
             </div>
           </div>
-        </div>
-
-        {/* Contact Info Card */}
-        <div className="glass-panel rounded-3xl p-8 md:p-12 hover:shadow-ambient transition-all duration-300">
-          <h2 className="text-2xl font-bold text-on-surface mb-6">Contact Us</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[
-              { icon: "business", label: "Company Name", value: "PHS Cleaning Company" },
-              { icon: "person", label: "Owner", value: "Pavan Kumar" },
-              {
-                icon: "location_on",
-                label: "Address",
-                value:
-                  "C1-40, Gulmohar Vihar, Near Shivaji Pulia, Naubasta, Kanpur, Uttar Pradesh – 208014, India",
-              },
-              {
-                icon: "email",
-                label: "Email",
-                value: "phscustomercare15@gmail.com",
-                href: "mailto:phscustomercare15@gmail.com",
-              },
-              { icon: "phone", label: "Phone", value: "+91 7408702019", href: "tel:7408702019" },
-            ].map((item) => (
-              <div key={item.label} className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-[#059669] text-xl drop-shadow-sm">
-                    {item.icon}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-1">
-                    {item.label}
-                  </p>
-                  {item.href ? (
-                    <a
-                      href={item.href}
-                      className="text-sm text-primary hover:text-secondary transition-colors font-medium"
-                    >
-                      {item.value}
-                    </a>
-                  ) : (
-                    <p className="text-sm text-on-surface font-medium">{item.value}</p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
       <Footer />
     </div>

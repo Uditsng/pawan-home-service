@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useTransition } from "react";
 import { toggleOnlineStatus } from "@/app/partner/actions";
+import NotificationBell from "./NotificationBell";
 
 interface PartnerHeaderProps {
   /** Initial status fetched server-side from profiles.status */
@@ -78,6 +79,7 @@ export default function PartnerHeader({ initialStatus = "offline" }: PartnerHead
 
           {/* Right Actions */}
           <div className="flex items-center gap-4">
+            <NotificationBell />
             {/* Status Toggle */}
             <button
               onClick={handleToggle}

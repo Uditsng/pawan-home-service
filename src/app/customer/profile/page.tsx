@@ -13,12 +13,25 @@ export default async function ProfilePage() {
     redirect('/login');
   }
 
-  const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+  const [profileResult, settingsResult] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase.from('platform_settings').select('value').eq('key', 'referral_reward_referrer').maybeSingle()
+  ]);
 
   const profile = {
-    full_name: data?.full_name || "Customer",
-    avatar_url: data?.avatar_url || ""
+    full_name: profileResult.data?.full_name || "Customer",
+    avatar_url: profileResult.data?.avatar_url || ""
   };
+
+  let referralReward = "100";
+  if (settingsResult.data) {
+    const rawVal = settingsResult.data.value;
+    try {
+      referralReward = typeof rawVal === 'string' ? JSON.parse(rawVal) : String(rawVal);
+    } catch {
+      referralReward = String(rawVal);
+    }
+  }
 
   return (
     <div className="bg-[#f5f6f8] text-on-background min-h-screen pb-24 flex flex-col font-sans">
@@ -62,7 +75,7 @@ export default async function ProfilePage() {
             <span className="material-symbols-outlined text-[#eab308] text-[18px] md:text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>card_giftcard</span>
             <div className="flex items-center flex-wrap gap-y-1">
               <span className="font-bold text-[13px] md:text-[15px] text-on-surface">Refer & earn</span>
-              <span className="bg-[#fef9c3] text-[#ca8a04] text-[8px] md:text-[9px] font-extrabold px-1.5 py-0.5 rounded-[4px] ml-1.5 md:ml-2 uppercase">Upto ₹100</span>
+              <span className="bg-[#fef9c3] text-[#ca8a04] text-[8px] md:text-[9px] font-extrabold px-1.5 py-0.5 rounded-[4px] ml-1.5 md:ml-2 uppercase">Upto ₹{referralReward}</span>
             </div>
           </div>
           <span className="material-symbols-outlined text-slate-400 text-[18px] md:text-[20px]">chevron_right</span>

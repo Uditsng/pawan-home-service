@@ -254,15 +254,15 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
         <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
           <div>
             <div className="flex items-center gap-1.5">
-              {service.original_price && (
+              {/* {service.original_price && (
                 <span className="text-xs text-on-surface-variant/50 line-through font-semibold">₹{service.original_price}</span>
-              )}
+              )} */}
               <span className="text-lg md:text-xl font-extrabold font-headline text-on-surface tracking-tighter">₹{service.base_price}</span>
-              {service.price_breakdown && (
+              {/* {service.price_breakdown && (
                 <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-secondary bg-secondary/10 px-1.5 py-0.5 rounded-full border border-secondary/20">
                   Rates Apply
                 </span>
-              )}
+              )} */}
             </div>
             <div className="text-[10px] md:text-xs text-on-surface-variant font-medium">
               {service.price_breakdown ? "Base Price" : "Standard Fix Rate"}

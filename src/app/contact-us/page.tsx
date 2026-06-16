@@ -3,192 +3,170 @@ import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "Contact Us | PHS Cleaning Company",
-  description: "Get in touch with PHS Cleaning Company for service bookings, cancellations, payments, and general support.",
+  description: "Get in touch with PHS Cleaning Company support desk. Find helpline numbers, email addresses, registered office location, and grievance officer details.",
 };
 
 const faqs = [
-  { q: "How do I book a service?", a: "Select your desired service, choose a suitable time slot, complete the payment, and confirm your booking." },
-  { q: "How do I join as a service partner?", a: "Register on the platform → Complete verification → Start receiving jobs." },
-  { q: "Are service partners verified?", a: "Yes, all partners go through a verification process before approval." },
-  { q: "Can I reschedule my booking?", a: "Yes, rescheduling is allowed based on partner availability." },
-  { q: "Are there any hidden charges?", a: "No. We maintain transparent pricing with no hidden fees." },
-  { q: "What if a service partner damages something?", a: "Verified partners are responsible for damages caused due to negligence during service delivery." },
+  { 
+    q: "How do I place a doorstep service booking?", 
+    a: "You can book directly via our official platform by registering your mobile number, selecting your service category (e.g. Deep Cleaning, Pest Control), picking an available date/time window, and completing the 100% advance digital payment. A booking ID is generated instantly." 
+  },
+  { 
+    q: "Can I reschedule or cancel a confirmed booking?", 
+    a: "Yes. You can request booking reschedules or cancellations via the Customer Dashboard or by contacting customer support at +91 7408702019 at least 2 hours before the scheduled time slot. Cancellations within the 2-hour window may attract a penalty as per our Cancellation Policy." 
+  },
+  { 
+    q: "How are service professionals assigned to my booking?", 
+    a: "All service professionals are assigned dynamically by the PHS operational system based on qualification, rating, service areas, and availability. PHS maintains direct accountability for the assignment, coordination, and conduct of the assigned professionals." 
+  },
+  { 
+    q: "Are the cleaning agents and tools provided by PHS?", 
+    a: "Yes. Our assigned professionals carry all necessary professional-grade cleaning chemicals, sanitizers, and equipment. If you have specific material preferences or chemical allergies, please notify the operations team prior to arrival." 
+  },
+  { 
+    q: "What should I do if my payment fails but the money is debited?", 
+    a: "In case of transaction failures where funds are debited from your bank account, the bank will automatically reverse the transaction within 3 to 7 business days. Please share the bank transaction reference number with us at phscustomercare15@gmail.com for verification." 
+  },
+  { 
+    q: "Who is responsible in case of property damage during service?", 
+    a: "PHS Cleaning Company supervises all service fulfillment. In the rare event of damage caused due to verified professional negligence, please document the damage with photographs and submit a complaint to our care desk within 24 hours of service completion." 
+  },
 ];
 
 const supportServices = [
-  { icon: "book_online", title: "Booking Assistance", desc: "New service bookings, booking modifications, service scheduling, and rescheduling requests." },
-  { icon: "manage_accounts", title: "Account Support", desc: "Login issues, account management, profile updates, and password assistance." },
-  { icon: "payments", title: "Payment Support", desc: "Payment confirmations, failed transactions, refund-related inquiries, and billing concerns." },
-  { icon: "engineering", title: "Service Support", desc: "Service status updates, professional assignment inquiries, and special requests." },
-  { icon: "rate_review", title: "Complaints & Feedback", desc: "Service quality concerns, customer experience feedback, conduct complaints, and suggestions." },
+  { title: "Booking Coordination", desc: "Assistance with placing new bookings, service scheduling, technician check-in status, and appointment rescheduling." },
+  { title: "Billing & Refund Disputes", desc: "Verification of payment statuses, processing invoice copies, GST breakdowns, duplicate charges, and refund credit tracking." },
+  { title: "Grievances & Quality Feedback", desc: "Submitting quality compliance reports, requesting re-service sessions, reporting professional conduct issues, and rating feedback." },
+  { title: "Account & Profile Queries", desc: "Assistance with customer profile editing, registered address changes, notification settings, and data erasure requests." },
 ];
 
 export default function ContactUsPage() {
   return (
-    <div className="min-h-screen bg-surface font-body">
-      {/* Hero Header */}
-      <section className="relative overflow-hidden bg-primary">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
-        <div className="relative max-w-7xl mx-auto px-4 py-8 md:py-16">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-secondary/15 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-secondary text-3xl">support_agent</span>
+    <div className="min-h-screen bg-surface font-body text-on-surface">
+      {/* Centered Minimal Header */}
+      <header className="max-w-4xl mx-auto px-4 pt-12 pb-8 border-b border-outline-variant/15">
+        <h1 className="text-3xl font-extrabold tracking-tight font-headline">Contact Us</h1>
+        <p className="text-sm text-on-surface-variant font-medium mt-1">
+          We are committed to delivering premium home services. Reach out to our team for assistance.
+        </p>
+      </header>
+
+      <main className="max-w-4xl mx-auto px-4 py-12 space-y-12">
+        {/* Contact Info Channels */}
+        <section className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold text-on-surface-variant/70 uppercase tracking-wider">Email Support Desk</h3>
+            <a href="mailto:phscustomercare15@gmail.com" className="text-base font-bold text-primary hover:text-secondary font-mono">
+              phscustomercare15@gmail.com
+            </a>
+            <p className="text-[10px] text-on-surface-variant/40 font-bold uppercase tracking-wide">Response window: 12-24 hours</p>
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold text-on-surface-variant/70 uppercase tracking-wider">Helpline Number</h3>
+            <a href="tel:+917408702019" className="text-base font-bold text-primary hover:text-secondary font-mono">
+              +91 7408702019
+            </a>
+            <p className="text-[10px] text-on-surface-variant/40 font-bold uppercase tracking-wide">Available: 9:00 AM - 8:00 PM (IST)</p>
+          </div>
+        </section>
+
+        {/* Business Details */}
+        <section className="pt-6 border-t border-outline-variant/10 space-y-4">
+          <h2 className="text-xl font-bold font-headline tracking-tight">Business Identification</h2>
+          <div className="space-y-3 text-sm">
+            <div className="flex flex-col sm:flex-row justify-between sm:border-b border-outline-variant/5 pb-2">
+              <span className="text-on-surface-variant font-medium text-xs uppercase tracking-wider">Entity Name</span>
+              <span className="font-bold text-on-surface text-xs mt-0.5 sm:mt-0">PHS Cleaning Company (Sole Proprietorship)</span>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-between sm:border-b border-outline-variant/5 pb-2">
+              <span className="text-on-surface-variant font-medium text-xs uppercase tracking-wider">Proprietor Name</span>
+              <span className="font-bold text-on-surface text-xs mt-0.5 sm:mt-0">Pavan Kumar</span>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-between sm:border-b border-outline-variant/5 pb-2">
+              <span className="text-on-surface-variant font-medium text-xs uppercase tracking-wider">Registered Address</span>
+              <span className="font-bold text-on-surface text-xs mt-0.5 sm:mt-0 text-left sm:text-right max-w-md">C1-40, Gulmohar Vihar, Near Shivaji Pulia, Naubasta, Kanpur Nagar, Uttar Pradesh – 208014, India</span>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-between pb-2">
+              <span className="text-on-surface-variant font-medium text-xs uppercase tracking-wider">Active Jurisdiction</span>
+              <span className="font-bold text-on-surface text-xs mt-0.5 sm:mt-0">Kanpur Nagar, Uttar Pradesh, India</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Grievance Officer details */}
+        <section className="p-6 bg-surface-container/30 rounded-xl border border-outline-variant/10 space-y-4">
+          <h2 className="text-base font-bold font-headline text-on-surface">Grievance Redressal Officer</h2>
+          <p className="text-xs text-on-surface-variant font-medium leading-relaxed">
+            In compliance with the Information Technology Act, 2000 and the Consumer Protection (E-Commerce) Rules, 2020, the designated Grievance Officer is details below:
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div>
+              <p className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Name</p>
+              <p className="font-bold text-on-surface">Pavan Kumar</p>
             </div>
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-on-primary tracking-tight">Contact Us</h1>
-              <p className="mt-2 text-on-primary/70 text-sm">We&apos;re here to assist you with bookings, payments, and more.</p>
+              <p className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Designation</p>
+              <p className="font-bold text-on-surface">Grievance & Compliance Officer</p>
+            </div>
+            <div className="sm:col-span-2">
+              <p className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Address</p>
+              <p className="font-bold text-on-surface">C1-40, Gulmohar Vihar, Near Shivaji Pulia, Naubasta, Kanpur Nagar, Uttar Pradesh – 208014, India</p>
+            </div>
+            <div>
+              <p className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Contact Email</p>
+              <a href="mailto:phscustomercare15@gmail.com" className="font-bold text-primary font-mono">phscustomercare15@gmail.com</a>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="max-w-4xl mx-auto px-4 py-12 md:py-16 space-y-12">
-        {/* Contact Info Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <a href="mailto:phscustomercare15@gmail.com" className="glass-panel rounded-2xl p-6 hover:shadow-ambient-hover transition-all duration-300 hover:-translate-y-1 group bg-white/70">
-            <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center mb-4">
-              <span className="material-symbols-outlined text-[#059669] text-2xl drop-shadow-sm">email</span>
-            </div>
-            <h3 className="text-base font-semibold text-on-surface mb-1">Email Support</h3>
-            <p className="text-sm text-primary font-medium group-hover:text-secondary transition-colors">phscustomercare15@gmail.com</p>
-          </a>
-          <a href="tel:+917408702019" className="glass-panel rounded-2xl p-6 hover:shadow-ambient-hover transition-all duration-300 hover:-translate-y-1 group bg-white/70">
-            <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center mb-4">
-              <span className="material-symbols-outlined text-[#059669] text-2xl drop-shadow-sm">phone</span>
-            </div>
-            <h3 className="text-base font-semibold text-on-surface mb-1">Phone Support</h3>
-            <p className="text-sm text-primary font-medium group-hover:text-secondary transition-colors">+91 7408702019</p>
-          </a>
-        </div>
-
-        {/* Business Information & Address */}
-        <div className="glass-panel rounded-3xl p-8 md:p-12">
-          <h2 className="text-xl font-bold text-on-surface mb-6">Business Details</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[#059669] text-xl drop-shadow-sm">business</span>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-1">Company</p>
-                <p className="text-sm text-on-surface font-medium">PHS Cleaning Company (Sole Proprietorship)</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[#059669] text-xl drop-shadow-sm">person</span>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-1">Owner</p>
-                <p className="text-sm text-on-surface font-medium">Pavan Kumar</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4 md:col-span-2">
-              <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[#059669] text-xl drop-shadow-sm">location_on</span>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-1">Registered Address</p>
-                <p className="text-sm text-on-surface font-medium leading-relaxed">
-                  C1-40, Gulmohar Vihar, Near Shivaji Pulia, Naubasta, Kanpur Nagar, Uttar Pradesh – 208014, India
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4 md:col-span-2">
-              <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[#059669] text-xl drop-shadow-sm">explore</span>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-1">Service Area</p>
-                <p className="text-sm text-on-surface font-medium">Kanpur Nagar, Uttar Pradesh, India</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Customer Support Services List */}
-        <div>
-          <h2 className="text-2xl font-bold text-on-surface mb-6 text-center">How We Can Assist You</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Support categories */}
+        <section className="pt-6 border-t border-outline-variant/10 space-y-4">
+          <h2 className="text-xl font-bold font-headline tracking-tight">Structured Support Desks</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {supportServices.map((service) => (
-              <div key={service.title} className="glass-panel rounded-2xl p-6 hover:shadow-ambient-hover transition-all duration-300">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="material-symbols-outlined text-[#059669] text-xl">{service.icon}</span>
-                  </div>
-                  <div>
-                    <h3 className="text-base font-semibold text-on-surface mb-2">{service.title}</h3>
-                    <p className="text-sm text-on-surface-variant leading-relaxed">{service.desc}</p>
-                  </div>
-                </div>
+              <div key={service.title} className="space-y-1">
+                <h3 className="text-sm font-bold text-on-surface font-headline">{service.title}</h3>
+                <p className="text-xs md:text-sm text-on-surface-variant leading-relaxed font-medium">{service.desc}</p>
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* Before Contacting Support Checklist */}
-        <div className="glass-panel rounded-3xl p-8 md:p-12">
-          <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0 mt-0.5">
-              <span className="material-symbols-outlined text-[#059669] text-xl drop-shadow-sm">checklist</span>
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-on-surface mb-2">Before Contacting Support</h2>
-              <p className="text-sm text-on-surface-variant mb-4 leading-relaxed">
-                To help us resolve your query more efficiently, please keep the following information ready:
-              </p>
-              <ul className="space-y-2.5">
-                {[
-                  "For Existing Bookings: Booking ID, registered phone number, service address, and date.",
-                  "For Payment Queries: Transaction reference number, payment screenshot, and Booking ID.",
-                  "For Service Complaints: Booking details, description of the issue, and supporting photos if applicable."
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-2 text-sm text-on-surface-variant">
-                    <span className="material-symbols-outlined text-secondary text-[16px] mt-0.5 shrink-0">check_circle</span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
+        {/* Preparation checklist */}
+        <section className="pt-6 border-t border-outline-variant/10 space-y-3">
+          <h2 className="text-xl font-bold font-headline tracking-tight font-headline">Information Required for Resolution</h2>
+          <p className="text-sm text-on-surface-variant leading-relaxed font-medium">
+            To help us resolve your query efficiently, please maintain the following records when contacting us:
+          </p>
+          <ul className="space-y-2 text-sm text-on-surface-variant font-medium">
+            <li className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0 mt-2"></span>
+              <span><strong>For Booking Concerns:</strong> 16-character Booking ID, service address, and registered user mobile number.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0 mt-2"></span>
+              <span><strong>For Billing & Refunds:</strong> UPI/Bank transaction reference ID, timestamp of payment, and payment confirmation status.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0 mt-2"></span>
+              <span><strong>For Quality Compliance:</strong> Specific areas of dissatisfaction, time of service completion, and photographic proof of issues.</span>
+            </li>
+          </ul>
+        </section>
 
         {/* FAQs */}
-        <div>
-          <h2 className="text-2xl font-bold text-on-surface mb-6 text-center">Frequently Asked Questions</h2>
-          <div className="space-y-4">
+        <section className="pt-6 border-t border-outline-variant/10 space-y-6">
+          <h2 className="text-xl font-bold text-on-surface font-headline text-center">Customer FAQs</h2>
+          <div className="space-y-6">
             {faqs.map((faq, i) => (
-              <div key={i} className="glass-panel rounded-2xl p-6 md:p-8 hover:shadow-ambient-hover transition-all duration-300">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="material-symbols-outlined text-[#059669] text-xl drop-shadow-sm">help</span>
-                  </div>
-                  <div>
-                    <h3 className="text-base font-semibold text-on-surface mb-2">{faq.q}</h3>
-                    <p className="text-sm text-on-surface-variant leading-relaxed">{faq.a}</p>
-                  </div>
-                </div>
+              <div key={i} className="space-y-1">
+                <h3 className="text-sm font-bold text-on-surface font-headline leading-snug">{faq.q}</h3>
+                <p className="text-xs md:text-sm text-on-surface-variant leading-relaxed font-medium">{faq.a}</p>
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Support Hours */}
-        <div className="bg-primary rounded-3xl p-8 md:p-12 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-secondary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-          <div className="relative flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-secondary/15 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-secondary text-2xl">schedule</span>
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-on-primary mb-1">Customer Support Hours</h3>
-              <p className="text-on-primary/70 text-sm leading-relaxed">
-                Our team is available <span className="text-secondary font-bold">9:00 AM - 8:00 PM (Monday - Sunday)</span> to help regarding bookings, payments, and service concerns. We make reasonable efforts to respond to customer inquiries as quickly as possible.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
       <Footer />
     </div>

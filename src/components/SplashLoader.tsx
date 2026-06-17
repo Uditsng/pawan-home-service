@@ -49,6 +49,7 @@ export default function SplashLoader() {
             src="/app-icon.png"
             alt="PHS Logo"
             fill
+            sizes="128px"
             className="object-cover rounded-3xl"
             priority
           />

@@ -137,7 +137,7 @@ export function ServiceDataGrid({ services, categories }: { services: ServiceIte
               <button
                 onClick={handleDeleteConfirm}
                 disabled={!!isDeleting}
-                className="px-4 py-2 rounded-xl text-sm font-bold bg-error text-red-500 hover:bg-error/90 shadow-sm shadow-error/20 transition-all disabled:opacity-50 flex items-center gap-2"
+                className="px-4 py-2 rounded-xl text-sm font-bold bg-error text-on-error hover:bg-error/90 shadow-sm shadow-error/20 transition-all disabled:opacity-50 flex items-center gap-2"
               >
                 {isDeleting ? <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span> : null}
                 {isDeleting ? "Deleting..." : "Yes, Delete"}
@@ -250,7 +250,7 @@ export function ServiceDataGrid({ services, categories }: { services: ServiceIte
                         </div>
                       </td>
                       <td className="px-4 py-1.5 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-end gap-1.5">
                           <Link
                             href={`/admin/services/${service.id}/edit`}
                             className="p-1 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-lg transition-colors"

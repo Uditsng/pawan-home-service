@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:741307760558:android:b4a740cd9ac175cca0123f",
+        "mobilesdk_app_id": "1:741307760558:android:2454df38ef22b350a0123f",
         "android_client_info": {
-          "package_name": "com.phs.cleaningcompany"
+          "package_name": "com.phsindia.app"
         }
       },
       "oauth_client": [

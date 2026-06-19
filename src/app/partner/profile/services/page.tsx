@@ -2,6 +2,19 @@ import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import PartnerHeader from "@/components/PartnerHeader";
 import EditServiceAreasForm from "./EditServiceAreasForm";
+import EditServicesForm from "./EditServicesForm";
+
+interface RawService {
+  id: string;
+  title: string;
+  subcategories: {
+    subcategory_name: string;
+    icon_name: string;
+    categories: {
+      category_name: string;
+    } | null;
+  } | null;
+}
 
 export default async function PartnerServicesPage() {
   const supabase = await createClient();
@@ -20,11 +33,34 @@ export default async function PartnerServicesPage() {
 
   const partnerStatus = profileData?.status ?? 'offline';
 
-  // Fetch all services to show active/inactive state
-  const { data: allServices } = await supabase
+  // Fetch all active services with subcategories and categories
+  const { data: services } = await supabase
     .from('services')
-    .select('id, title, category')
-    .order('category', { ascending: true });
+    .select(`
+      id,
+      title,
+      subcategory_id,
+      subcategories (
+        id,
+        subcategory_name,
+        icon_name,
+        categories (
+          id,
+          category_name
+        )
+      )
+    `)
+    .eq('is_active', true);
+
+  const rawServices = (services || []) as unknown as RawService[];
+
+  const availableServices = rawServices.map((s) => ({
+    id: s.id,
+    title: s.title,
+    subcategoryName: s.subcategories?.subcategory_name || "General",
+    categoryName: s.subcategories?.categories?.category_name || "Other",
+    iconName: s.subcategories?.icon_name || "home_repair_service",
+  }));
 
   // Fetch partner's active services
   const { data: partnerServices } = await supabase
@@ -32,23 +68,13 @@ export default async function PartnerServicesPage() {
     .select('service_id')
     .eq('partner_id', user.id);
 
-  const activeServiceIds = new Set((partnerServices || []).map(ps => ps.service_id));
+  const activeServiceIds = (partnerServices || []).map(ps => ps.service_id);
 
   // Fetch partner's service areas (city column stores the locality now)
   const { data: partnerAreas } = await supabase
     .from('partner_service_areas')
     .select('id, pincode, city')
     .eq('partner_id', user.id);
-
-  const getServiceIcon = (category: string) => {
-    switch (category) {
-      case 'cleaning': return '🧹';
-      case 'plumbing': return '🔧';
-      case 'electrician': return '⚡';
-      case 'pest_control': return '🐛';
-      default: return <span className="material-symbols-outlined">home_repair_service</span>;
-    }
-  };
 
   return (
     <div className="bg-[#f5f6f8] text-on-background min-h-screen flex flex-col font-sans pb-24">
@@ -62,47 +88,10 @@ export default async function PartnerServicesPage() {
           </h2>
 
           {/* Services Offered Section */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-6">
-            <div className="p-4 md:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <h3 className="font-extrabold text-[#1c2438] text-[15px]">Services Offered</h3>
-            </div>
-            
-            <div className="divide-y divide-slate-100">
-              {allServices?.map((service) => {
-                const isActive = activeServiceIds.has(service.id);
-                
-                // Hide inactive services if they have too many, or show them? 
-                // The user requested to see [Inactive] state. So we render them.
-                // Wait, if there are many services, maybe only show active and a few inactive?
-                // Let's just show all for now.
-                return (
-                  <div key={service.id} className="p-4 md:p-5 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <span className={`text-[20px] ${!isActive && 'opacity-50 grayscale'}`}>
-                        {getServiceIcon(service.category)}
-                      </span>
-                      <span className={`font-semibold text-[14px] ${isActive ? 'text-[#1c2438]' : 'text-slate-400'}`}>
-                        {service.title}
-                      </span>
-                    </div>
-                    {isActive ? (
-                      <span className="bg-success/10 text-success text-[10px] font-extrabold px-2 py-1 rounded-[6px] uppercase tracking-wide flex items-center gap-1">
-                        Active ✓
-                      </span>
-                    ) : (
-                      <span className="bg-slate-100 text-slate-500 text-[10px] font-extrabold px-2 py-1 rounded-[6px] uppercase tracking-wide">
-                        Inactive
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            
-            <div className="p-4 bg-slate-50 border-t border-slate-100 text-xs text-slate-500 font-semibold">
-              ℹ️ To update your assigned services, please contact the administration team.
-            </div>
-          </div>
+          <EditServicesForm 
+            allServices={availableServices} 
+            initialSelectedServices={activeServiceIds} 
+          />
 
           {/* Service Areas Section */}
           <EditServiceAreasForm initialAreas={

@@ -3,13 +3,28 @@
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import { submitKycDocumentsAction } from "./actions";
+import { submitKycDocumentsAction, saveKycDraftAction } from "./actions";
 import { Button } from "@/components/ui/Button";
 import LogoutButton from "@/components/LogoutButton";
+
+interface KycDocumentsData {
+  aadhaar_url?: string;
+  pan_url?: string;
+  dl_url?: string;
+  experience_years?: number;
+  police_verification_url?: string;
+  police_station_details?: string;
+  selfie_url?: string;
+  address_proof_url?: string;
+  bank_name?: string;
+  bank_account_no?: string;
+  bank_ifsc?: string;
+}
 
 interface PendingClientProps {
   initialKycStatus: string | null;
   rejectionReason: string | null;
+  initialKycDocuments: KycDocumentsData | Record<string, unknown> | null;
   userId: string;
 }
 
@@ -17,13 +32,64 @@ function getFilePath(userId: string, key: string, ext: string): string {
   return `${userId}/${key}-${Date.now()}.${ext}`;
 }
 
+function compressImage(file: File, quality = 0.7, maxWidth = 1600): Promise<File> {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith("image/")) {
+      return resolve(file);
+    }
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
+                type: "image/jpeg",
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            } else {
+              resolve(file);
+            }
+          },
+          "image/jpeg",
+          quality
+        );
+      };
+      img.onerror = () => resolve(file);
+    };
+    reader.onerror = () => resolve(file);
+  });
+}
+
 export default function PendingClient({
   initialKycStatus,
   rejectionReason,
+  initialKycDocuments,
   userId,
 }: PendingClientProps) {
   const [kycStatus, setKycStatus] = useState<string | null>(initialKycStatus);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -37,30 +103,32 @@ export default function PendingClient({
     }
   }, [kycStatus, router]);
 
+  const docs = initialKycDocuments as KycDocumentsData | null;
+
   // Form states
-  const [experience, setExperience] = useState<string>("");
-  const [policeStation, setPoliceStation] = useState<string>("");
-  const [bankName, setBankName] = useState<string>("");
-  const [bankAccount, setBankAccount] = useState<string>("");
-  const [bankIfsc, setBankIfsc] = useState<string>("");
+  const [experience, setExperience] = useState<string>(docs?.experience_years ? String(docs.experience_years) : "");
+  const [policeStation, setPoliceStation] = useState<string>(docs?.police_station_details || "");
+  const [bankName, setBankName] = useState<string>(docs?.bank_name || "");
+  const [bankAccount, setBankAccount] = useState<string>(docs?.bank_account_no || "");
+  const [bankIfsc, setBankIfsc] = useState<string>(docs?.bank_ifsc || "");
 
   // Uploaded URLs
   const [urls, setUrls] = useState<Record<string, string>>({
-    aadhaar: "",
-    pan: "",
-    dl: "",
-    police: "",
-    selfie: "",
-    address: "",
+    aadhaar: docs?.aadhaar_url || "",
+    pan: docs?.pan_url || "",
+    dl: docs?.dl_url || "",
+    police: docs?.police_verification_url || "",
+    selfie: docs?.selfie_url || "",
+    address: docs?.address_proof_url || "",
   });
 
   const [filesSelected, setFilesSelected] = useState<Record<string, string>>({
-    aadhaar: "",
-    pan: "",
-    dl: "",
-    police: "",
-    selfie: "",
-    address: "",
+    aadhaar: docs?.aadhaar_url ? docs.aadhaar_url.split("/").pop() || "Uploaded File" : "",
+    pan: docs?.pan_url ? docs.pan_url.split("/").pop() || "Uploaded File" : "",
+    dl: docs?.dl_url ? docs.dl_url.split("/").pop() || "Uploaded File" : "",
+    police: docs?.police_verification_url ? docs.police_verification_url.split("/").pop() || "Uploaded File" : "",
+    selfie: docs?.selfie_url ? docs.selfie_url.split("/").pop() || "Uploaded File" : "",
+    address: docs?.address_proof_url ? docs.address_proof_url.split("/").pop() || "Uploaded File" : "",
   });
 
   const documentTypes = [
@@ -77,17 +145,20 @@ export default function PendingClient({
     if (!file) return;
 
     setErrorMsg(null);
+    setSuccessMsg(null);
 
-    // Limit to 2MB
-    if (file.size > 2 * 1024 * 1024) {
-      setErrorMsg(`${file.name} exceeds the 2MB size limit.`);
-      return;
-    }
-
-    // Allowed mime types
+    // Mime types allowed
     const allowedTypes = ["image/jpeg", "image/png", "application/pdf"];
     if (!allowedTypes.includes(file.type)) {
       setErrorMsg(`Only JPG, PNG, and PDF files are allowed.`);
+      return;
+    }
+
+    // Dynamic size limit: 10MB for images, 2MB for PDFs
+    const isImage = file.type.startsWith("image/");
+    const sizeLimit = isImage ? 10 * 1024 * 1024 : 2 * 1024 * 1024;
+    if (file.size > sizeLimit) {
+      setErrorMsg(`${file.name} exceeds the ${isImage ? '10MB' : '2MB'} size limit.`);
       return;
     }
 
@@ -95,13 +166,16 @@ export default function PendingClient({
     setIsUploading(true);
 
     try {
+      // Compress if it is an image
+      const fileToUpload = isImage ? await compressImage(file) : file;
+
       const supabase = createClient();
-      const ext = file.name.split(".").pop() || "";
+      const ext = fileToUpload.name.split(".").pop() || "";
       const filePath = getFilePath(userId, key, ext);
 
       const { error: uploadError } = await supabase.storage
         .from("partner-docs")
-        .upload(filePath, file);
+        .upload(filePath, fileToUpload);
 
       if (uploadError) {
         throw new Error(uploadError.message);
@@ -121,9 +195,40 @@ export default function PendingClient({
     }
   };
 
+  const handleSaveDraft = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    startTransition(async () => {
+      const payload = {
+        aadhaar_url: urls.aadhaar || undefined,
+        pan_url: urls.pan || undefined,
+        dl_url: urls.dl || undefined,
+        experience_years: experience ? Number(experience) : null,
+        police_verification_url: urls.police || undefined,
+        police_station_details: policeStation.trim() || undefined,
+        selfie_url: urls.selfie || undefined,
+        address_proof_url: urls.address || undefined,
+        bank_name: bankName.trim() || undefined,
+        bank_account_no: bankAccount.trim() || undefined,
+        bank_ifsc: bankIfsc.trim().toUpperCase() || undefined,
+      };
+
+      const result = await saveKycDraftAction(payload);
+      if (result.success) {
+        setKycStatus("draft");
+        setSuccessMsg("Draft saved successfully! You can resume and submit later.");
+      } else {
+        setErrorMsg(result.error || "Save draft failed.");
+      }
+    });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+    setSuccessMsg(null);
 
     // Validate uploads
     for (const doc of documentTypes) {
@@ -416,6 +521,13 @@ export default function PendingClient({
             </div>
           </div>
 
+          {successMsg && (
+            <div className="p-4 bg-emerald-50 text-emerald-600 text-xs font-bold rounded-xl border border-emerald-200 flex items-center gap-2">
+              <span className="material-symbols-outlined text-sm">check_circle</span>
+              {successMsg}
+            </div>
+          )}
+
           {errorMsg && (
             <div className="p-4 bg-red-50 text-red-600 text-xs font-bold rounded-xl border border-red-200 flex items-center gap-2 animate-pulse">
               <span className="material-symbols-outlined text-sm">error</span>
@@ -426,9 +538,17 @@ export default function PendingClient({
           <div className="pt-6 border-t border-outline-variant/15 flex gap-4">
             <LogoutButton variant="button" className="px-6 py-3 rounded-xl border-2 border-outline-variant hover:bg-surface-container font-bold text-on-surface-variant transition-colors bg-transparent" />
             <Button
+              type="button"
+              onClick={handleSaveDraft}
+              disabled={isUploading || isPending}
+              className="px-6 py-3 bg-white border border-outline-variant/60 text-primary font-extrabold text-xs rounded-xl hover:bg-slate-50 transition-all duration-200 cursor-pointer"
+            >
+              Save Draft
+            </Button>
+            <Button
               type="submit"
               disabled={isUploading || isPending}
-              className="flex-1 py-4 bg-linear-to-br from-[#059669] to-success text-white font-extrabold text-[14px] rounded-xl hover:scale-[1.01] active:scale-95 shadow-[0_8px_20px_rgba(16,185,129,0.25)] transition-all duration-200 border-none cursor-pointer"
+              className="flex-1 py-3 bg-linear-to-br from-[#059669] to-success text-white font-extrabold text-xs rounded-xl hover:scale-[1.01] active:scale-95 shadow-[0_8px_20px_rgba(16,185,129,0.25)] transition-all duration-200 border-none cursor-pointer"
             >
               {isUploading ? "Uploading Documents..." : isPending ? "Submitting Application..." : "Submit KYC Documents"}
             </Button>

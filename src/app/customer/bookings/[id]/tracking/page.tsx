@@ -5,11 +5,12 @@ import { redirect } from "next/navigation";
 import CustomerHeader from "@/components/CustomerHeader";
 import BottomNav from "@/components/BottomNav";
 import type { Metadata } from "next";
+import RatingSection from "@/components/RatingSection";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "Track Professional | PHS Cleaning Company",
-    description: "Track your assigned professional in real-time.",
+    title: "Booking Status | PHS Cleaning Company",
+    description: "View your booking status and details.",
   };
 }
 
@@ -51,6 +52,56 @@ interface BookingDetails {
 interface TrackingPageProps {
   params: Promise<{ id: string }>;
 }
+
+const getStatusBadgeClasses = (status: string) => {
+  switch (status) {
+    case "pending":
+      return "bg-warning/10 text-warning";
+    case "confirmed":
+      return "bg-success/10 text-success";
+    case "assigned":
+    case "accepted":
+      return "bg-teal-500/10 text-teal-600";
+    case "professional_en_route":
+    case "professional_arrived":
+    case "otp_pending":
+    case "in_progress":
+      return "bg-primary/10 text-primary";
+    case "completed":
+      return "bg-surface-container-highest text-on-surface-variant";
+    case "cancelled":
+      return "bg-error/10 text-error";
+    default:
+      return "bg-surface-container text-on-surface-variant";
+  }
+};
+
+const getStatusLabel = (status: string) => {
+  switch (status) {
+    case "pending":
+      return "Pending";
+    case "confirmed":
+      return "Confirmed";
+    case "assigned":
+      return "Assigned";
+    case "accepted":
+      return "Accepted";
+    case "professional_en_route":
+      return "Pro On The Way";
+    case "professional_arrived":
+      return "Pro Arrived";
+    case "otp_pending":
+      return "OTP Pending";
+    case "in_progress":
+      return "In Progress";
+    case "completed":
+      return "Completed";
+    case "cancelled":
+      return "Cancelled";
+    default:
+      return status;
+  }
+};
 
 export default async function BookingTrackingPage({ params }: TrackingPageProps) {
   const resolvedParams = await params;
@@ -104,6 +155,20 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
     redirect("/customer/bookings");
   }
 
+  // Fetch existing review if booking is completed
+  let existingReview: { rating: number; comment: string | null } | null = null;
+  if (booking.status === "completed") {
+    const { data: reviewData } = await supabase
+      .from("reviews")
+      .select("rating, comment")
+      .eq("booking_id", bookingId)
+      .maybeSingle();
+    
+    if (reviewData) {
+      existingReview = reviewData;
+    }
+  }
+
   const bookingRef = `BK-${booking.id.substring(0, 6).toUpperCase()}`;
   const scheduledDate = booking.scheduled_date ? new Date(booking.scheduled_date) : new Date();
   const displayDate = scheduledDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -115,8 +180,6 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
   const isAssigned = !!booking.partner;
   const partnerName = booking.partner?.full_name || "Assigning soon...";
   const partnerAvatar = booking.partner?.avatar_url;
-  const isCompleted = booking.status === "completed";
-  const isCancelled = booking.status === "cancelled";
 
   const statusLevels: Record<string, number> = {
     pending: 1,
@@ -137,26 +200,6 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
 
   return (
     <div className="bg-surface text-on-surface antialiased min-h-screen pb-28 font-body">
-      {/* Dynamic keyframe animations for premium high-fidelity radar effect */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes radar-sweep {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        @keyframes radar-pulse {
-          0% { transform: scale(0.6); opacity: 0.2; }
-          50% { opacity: 0.8; }
-          100% { transform: scale(2); opacity: 0; }
-        }
-        .radar-sweep-line {
-          animation: radar-sweep 8s linear infinite;
-          transform-origin: center;
-        }
-        .radar-ping-aura {
-          animation: radar-pulse 3s cubic-bezier(0.215, 0.610, 0.355, 1) infinite;
-        }
-      `}} />
-
       <CustomerHeader />
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
@@ -173,10 +216,10 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
             </Link>
             <div className="flex items-center gap-3">
               <h1 className="font-headline text-2xl md:text-3xl font-extrabold tracking-tight text-on-surface">
-                Track Professional
+                Booking Status
               </h1>
-              <span className="px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-secondary-container text-on-secondary-container uppercase tracking-wide">
-                {booking.status}
+              <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wide ${getStatusBadgeClasses(booking.status)}`}>
+                {getStatusLabel(booking.status)}
               </span>
             </div>
             <p className="text-on-surface-variant text-xs md:text-sm font-medium mt-1">
@@ -185,136 +228,243 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
           </div>
         </section>
 
-        {/* Dynamic Bento-Grid Layout */}
+        {/* Bento-Grid Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* Main Column: Live Map Scanning Simulator */}
+          {/* Main Column: Status Checklist and Booking Details */}
           <div className="lg:col-span-2 flex flex-col gap-6">
             
-            {/* The Radar Tracking Canvas Container */}
-            <div className="relative overflow-hidden bg-primary rounded-3xl min-h-[420px] md:min-h-[480px] flex items-center justify-center p-6 border border-outline-variant/10 shadow-tactile select-none">
-              
-              {/* Radar Radial Scanning Guides */}
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(166,206,55,0.1)_0%,transparent_70%)] pointer-events-none" />
-              
-              {/* Concentric Circles */}
-              <div className="absolute w-24 h-24 border border-secondary/15 rounded-full pointer-events-none" />
-              <div className="absolute w-48 h-48 border border-secondary/10 rounded-full pointer-events-none" />
-              <div className="absolute w-72 h-72 border border-secondary/5 rounded-full pointer-events-none" />
-              <div className="absolute w-[400px] h-[400px] border border-secondary/5 rounded-full pointer-events-none hidden md:block" />
-              
-              {/* Radar Crosshairs */}
-              <div className="absolute w-full h-px bg-secondary/5 pointer-events-none" />
-              <div className="absolute h-full w-px bg-secondary/5 pointer-events-none" />
+            {/* Service Timeline Progress */}
+            <div className="glass-panel rounded-3xl p-6 md:p-8">
+              <h3 className="font-headline text-base font-bold uppercase tracking-wider text-on-surface-variant mb-6">
+                Service Progress Checklist
+              </h3>
 
-              {/* Sweeping Scan Line */}
-              <div className="absolute w-full h-full inset-0 flex items-center justify-center radar-sweep-line pointer-events-none">
-                <div className="w-1/2 h-px bg-linear-to-r from-secondary/40 via-secondary/10 to-transparent origin-left absolute left-1/2" />
-              </div>
-
-              {/* Home Base (Customer Address Pin) - Static Center */}
-              <div className="absolute z-20 flex flex-col items-center justify-center">
-                <div className="w-10 h-10 rounded-full bg-primary border-2 border-secondary flex items-center justify-center text-secondary shadow-[0_0_20px_rgba(166,206,55,0.4)]">
-                  <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>home</span>
-                </div>
-                <span className="text-[9px] font-black tracking-widest text-secondary mt-1 bg-primary/80 px-1.5 py-0.5 rounded-sm uppercase">You</span>
-              </div>
-
-              {/* Moving Pro Signal Node (Slightly Offset) */}
-              {isAssigned && !isCompleted && !isCancelled && (
-                <div className="absolute z-20 top-1/4 left-1/3 flex flex-col items-center justify-center">
-                  <div className="radar-ping-aura absolute inset-0 w-8 h-8 rounded-full bg-secondary/40 -m-1 pointer-events-none" />
-                  <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center shadow-[0_0_15px_rgba(166,206,55,0.6)]">
-                    <span className="material-symbols-outlined text-base">motorcycle</span>
+              <div className="space-y-6 relative before:content-[''] before:absolute before:left-4 before:top-3 before:bottom-3 before:w-0.5 before:bg-outline-variant/40">
+                {/* Step 1: Placed */}
+                <div className="flex gap-4 relative z-10 hover:translate-x-0.5 transition-transform duration-200">
+                  <div className="w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                    <span className="material-symbols-outlined text-sm font-bold">done</span>
                   </div>
-                  <span className="text-[9px] font-bold text-on-primary bg-primary/80 px-1.5 py-0.5 rounded-sm mt-1 uppercase whitespace-nowrap tracking-wide">
-                    {booking.partner?.full_name ? booking.partner.full_name.split(" ")[0] : "Pro"}
-                  </span>
+                  <div className="flex flex-col justify-center">
+                    <h4 className="text-sm font-bold text-on-surface">Booking Placed</h4>
+                    <p className="text-xs text-on-surface-variant mt-0.5">Request registered and confirmed successfully</p>
+                  </div>
                 </div>
-              )}
 
-              {/* Coming Soon Glassmorphism Overlay */}
-              <div className="relative z-30 max-w-md mx-auto glass-panel rounded-3xl p-6 md:p-8 text-center text-on-surface shadow-2xl">
-                <div className="w-14 h-14 bg-secondary/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-secondary/20">
-                  <span className="material-symbols-outlined text-3xl text-secondary">explore</span>
+                {/* Step 2: Assigned */}
+                <div className="flex gap-4 relative z-10 hover:translate-x-0.5 transition-transform duration-200">
+                  {isAssigned ? (
+                    <div className="w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                      <span className="material-symbols-outlined text-sm font-bold">done</span>
+                    </div>
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0 animate-pulse border border-secondary/20 shadow-sm">
+                      <span className="material-symbols-outlined text-sm font-bold">person_search</span>
+                    </div>
+                  )}
+                  <div className="flex flex-col justify-center">
+                    <h4 className={`text-sm font-bold ${isAssigned ? "text-on-surface" : "text-on-surface-variant animate-pulse"}`}>
+                      {isAssigned ? "Technician Assigned" : "Assigning Technician"}
+                    </h4>
+                    <p className="text-xs text-on-surface-variant mt-0.5">
+                      {isAssigned ? `${booking.partner?.full_name} has been selected for your service` : "Selecting the optimal service professional near you"}
+                    </p>
+                  </div>
                 </div>
-                <span className="inline-flex items-center gap-1 bg-secondary/20 px-2.5 py-0.5 rounded-full text-[10px] font-bold text-on-secondary mb-3 uppercase tracking-wider">
-                  Coming Soon
-                </span>
-                <h2 className="font-headline text-lg md:text-xl font-bold tracking-tight text-on-surface">
-                  Real-time GPS Tracking
-                </h2>
-                <p className="text-on-surface-variant text-xs md:text-sm mt-2 leading-relaxed font-medium">
-                  We are actively developing our advanced live tracking engine! Once completed, you will be able to watch your Professional&apos;s transit route live on this screen, get live traffic updates, and view a dynamic, minute-by-minute ETA.
-                </p>
-                <div className="mt-5 pt-4 border-t border-outline-variant/30 text-[10px] md:text-xs text-on-surface-variant/80 font-medium">
-                  Status: <span className="text-green-600 font-bold">Booking Confirmed</span> &middot; Professional is notified
+
+                {/* Step 3: Transit */}
+                <div className="flex gap-4 relative z-10 hover:translate-x-0.5 transition-transform duration-200">
+                  {actualLevel >= 4 ? (
+                    <div className="w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                      <span className="material-symbols-outlined text-sm font-bold">done</span>
+                    </div>
+                  ) : actualLevel === 3 ? (
+                    <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 animate-pulse border border-primary/20 shadow-sm">
+                      <span className="material-symbols-outlined text-sm font-bold">motorcycle</span>
+                    </div>
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0 shadow-xs">
+                      <span className="material-symbols-outlined text-sm font-bold">lock</span>
+                    </div>
+                  )}
+                  <div className="flex flex-col justify-center">
+                    <h4 className={`text-sm font-bold ${actualLevel >= 3 ? "text-on-surface" : "text-on-surface-variant"}`}>
+                      {actualLevel >= 4 ? "Professional Dispatched" : actualLevel === 3 ? "Professional On The Way" : "Professional Dispatched"}
+                    </h4>
+                    <p className="text-xs text-on-surface-variant mt-0.5">
+                      {actualLevel >= 4 ? "Professional arrived at your location" : actualLevel === 3 ? "Technician is on the way to you" : "Awaiting dispatch status updates"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 4: Started */}
+                <div className="flex gap-4 relative z-10 hover:translate-x-0.5 transition-transform duration-200">
+                  {actualLevel >= 6 ? (
+                    <div className="w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                      <span className="material-symbols-outlined text-sm font-bold">done</span>
+                    </div>
+                  ) : actualLevel === 4 ? (
+                    <div className="w-8 h-8 rounded-full bg-warning/10 text-warning flex items-center justify-center shrink-0 animate-pulse border border-warning/20 shadow-sm">
+                      <span className="material-symbols-outlined text-sm font-bold">vpn_key</span>
+                    </div>
+                  ) : actualLevel === 5 ? (
+                    <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 animate-pulse border border-primary/20 shadow-sm">
+                      <span className="material-symbols-outlined text-sm font-bold">build</span>
+                    </div>
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0 shadow-xs">
+                      <span className="material-symbols-outlined text-sm font-bold">lock</span>
+                    </div>
+                  )}
+                  <div className="flex flex-col justify-center">
+                    <h4 className={`text-sm font-bold ${actualLevel >= 4 ? "text-on-surface" : "text-on-surface-variant"}`}>
+                      {actualLevel >= 6 ? "Service Completed" : actualLevel === 5 ? "Service Active" : actualLevel === 4 ? "Awaiting OTP Verification" : "Service Active"}
+                    </h4>
+                    <p className="text-xs text-on-surface-variant mt-0.5">
+                      {actualLevel >= 6 ? "Work has been completed" : actualLevel === 5 ? "Technician is performing the service" : actualLevel === 4 ? "Provide the Arrival OTP to the technician to start the job" : "Job verification and work in progress"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 5: Completed */}
+                <div className="flex gap-4 relative z-10 hover:translate-x-0.5 transition-transform duration-200">
+                  {actualLevel >= 6 ? (
+                    <div className="w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                      <span className="material-symbols-outlined text-sm font-bold">done</span>
+                    </div>
+                  ) : (booking.status === "otp_pending" && isArrivalOtpVerified) ? (
+                    <div className="w-8 h-8 rounded-full bg-green-500/15 text-[#059669] flex items-center justify-center shrink-0 animate-pulse border border-[#059669]/30 shadow-sm">
+                      <span className="material-symbols-outlined text-sm font-bold">verified_user</span>
+                    </div>
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0 shadow-xs">
+                      <span className="material-symbols-outlined text-sm font-bold">lock</span>
+                    </div>
+                  )}
+                  <div className="flex flex-col justify-center">
+                    <h4 className={`text-sm font-bold ${actualLevel >= 6 ? "text-on-surface" : "text-on-surface-variant"}`}>
+                      {(booking.status === "otp_pending" && isArrivalOtpVerified) ? "Awaiting Completion OTP" : "Appointment Concluded"}
+                    </h4>
+                    <p className="text-xs text-on-surface-variant mt-0.5">
+                      {actualLevel >= 6 ? "Invoice generated and rating feedback recorded" : (booking.status === "otp_pending" && isArrivalOtpVerified) ? "Provide the Completion OTP to the technician to finish" : "Final billing and closing checks"}
+                    </p>
+                  </div>
                 </div>
               </div>
-
             </div>
 
-          </div>
+            {booking.status === "completed" && (
+              <div className="glass-panel rounded-3xl p-6 md:p-8">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-[#059669] drop-shadow-sm">receipt_long</span>
+                  </div>
+                  <div>
+                    <h3 className="font-headline text-base font-bold text-on-surface">Service Invoice & Receipt</h3>
+                    <p className="text-xs text-on-surface-variant">Tax invoice generated successfully</p>
+                  </div>
+                </div>
+                <p className="text-xs text-on-surface-variant mb-6 leading-relaxed">
+                  Your tax invoice is ready. You can view it online, download it as a print-friendly PDF, or share the link.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <Link 
+                    href={`/customer/bookings/${booking.id}/invoice`} 
+                    className="px-5 py-2.5 bg-primary text-on-primary text-xs font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-sm"
+                  >
+                    <span className="material-symbols-outlined text-sm">visibility</span>
+                    View Invoice
+                  </Link>
+                  <Link 
+                    href={`/customer/bookings/${booking.id}/invoice?download=true`} 
+                    className="px-5 py-2.5 bg-surface-container text-on-surface text-xs font-bold rounded-xl border border-outline-variant/15 hover:bg-surface-container-high transition-colors flex items-center gap-1.5"
+                  >
+                    <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
+                    Download PDF
+                  </Link>
+                </div>
+              </div>
+            )}
 
-          {/* Sidebar Column: Professional details & status timeline */}
-          <div className="flex flex-col gap-6">
+            {booking.status === "completed" && (
+              <RatingSection bookingId={booking.id} existingReview={existingReview} />
+            )}
 
             {/* Service & Booking Details Summary Card */}
-            <div className="glass-panel rounded-3xl p-5 md:p-6">
-              <h3 className="font-headline text-sm font-bold uppercase tracking-wider text-on-surface-variant mb-4">
-                Booking Information
-              </h3>
-              <div className="flex gap-3 mb-4">
-                {/* Emerald green actionable container standard as per rule 11-B & 8-H */}
-                <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-[#059669] drop-shadow-sm">{iconName}</span>
+            <div className="glass-panel rounded-3xl p-6 md:p-8">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-outline-variant/30">
+                <div className="flex items-center gap-4">
+                  {/* Emerald green actionable container standard as per rule 11-B & 8-H */}
+                  <div className="w-14 h-14 bg-green-500/10 rounded-2xl flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-2xl text-[#059669] drop-shadow-sm">{iconName}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-on-surface-variant/70 tracking-wider">
+                      Booked Service
+                    </span>
+                    <h3 className="font-headline text-lg md:text-xl font-bold text-on-surface leading-tight mt-0.5">
+                      {booking.services?.title || "Service Appointment"}
+                    </h3>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-headline text-base font-bold text-on-surface leading-tight">
-                    {booking.services?.title || "Service Appointment"}
-                  </h4>
-                  <p className="text-xs text-on-surface-variant font-medium mt-0.5">
-                    Category: {booking.services?.category || "Home Repair"}
+                <div className="flex flex-col md:items-end">
+                  <span className="text-[10px] uppercase font-bold text-on-surface-variant/70 tracking-wider">
+                    Total Amount
+                  </span>
+                  <p className="text-2xl font-bold text-primary mt-0.5">
+                    ₹{booking.total_amount}
                   </p>
                 </div>
               </div>
 
-              <div className="space-y-3 pt-3 border-t border-outline-variant/30 text-xs text-on-surface-variant font-medium">
-                <div className="flex justify-between">
-                  <span>Reference:</span>
-                  <span className="text-on-surface font-bold">#{bookingRef}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Scheduled Slot:</span>
-                  <span className="text-on-surface font-bold text-right">{displayDate} &middot; {displayTime}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Total Amount:</span>
-                  <span className="text-primary font-bold">₹{booking.total_amount}</span>
-                </div>
-                <div className="flex flex-col pt-1">
-                  <span>Address details:</span>
-                  <span className="text-on-surface font-bold mt-0.5 leading-tight">
-                    {booking.address || "Local Delivery Area"}, {booking.city || ""}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-sm">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-on-surface-variant/70 tracking-wider">
+                    Reference Code
                   </span>
+                  <p className="text-on-surface font-bold mt-1">
+                    #{bookingRef}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-on-surface-variant/70 tracking-wider">
+                    Scheduled Slot
+                  </span>
+                  <p className="text-on-surface font-bold mt-1">
+                    {displayDate} &middot; {displayTime}
+                  </p>
+                </div>
+                <div className="md:col-span-2 lg:col-span-1">
+                  <span className="text-[10px] uppercase font-bold text-on-surface-variant/70 tracking-wider">
+                    Service Address
+                  </span>
+                  <p className="text-on-surface font-bold mt-1 leading-tight">
+                    {booking.address || "Local Delivery Area"}, {booking.city || ""}
+                  </p>
                 </div>
               </div>
             </div>
 
+          </div>
+
+          {/* Sidebar Column: Professional details & actions */}
+          <div className="flex flex-col gap-6">
+
             {/* OTP Verification Card */}
             {booking.status === "otp_pending" && (
-              <div className="bg-[#059669]/10 border border-[#059669]/20 rounded-2xl p-5 shadow-xs relative overflow-hidden flex flex-col items-center justify-center text-center animate-pulse">
-                <div className="absolute top-0 right-0 w-12 h-12 bg-[#059669]/5 rounded-bl-full pointer-events-none" />
-                <span className="material-symbols-outlined text-[#059669] text-3xl mb-2 drop-shadow-sm font-bold">
+              <div className="bg-success/10 border border-success/20 rounded-2xl p-5 shadow-xs relative overflow-hidden flex flex-col items-center justify-center text-center animate-pulse">
+                <div className="absolute top-0 right-0 w-12 h-12 bg-success/5 rounded-bl-full pointer-events-none" />
+                <span className="material-symbols-outlined text-success text-3xl mb-2 drop-shadow-sm font-bold">
                   {!booking.arrival_otp_verified ? "vpn_key" : "verified_user"}
                 </span>
-                <h3 className="font-headline font-bold text-sm text-[#059669] uppercase tracking-wider drop-shadow-sm">
+                <h3 className="font-headline font-bold text-sm text-success uppercase tracking-wider drop-shadow-sm">
                   {!booking.arrival_otp_verified ? "Arrival OTP to Start Service" : "Completion OTP to Conclude Service"}
                 </h3>
-                <p className="font-headline text-3xl font-extrabold tracking-widest text-[#059669] mt-2 drop-shadow-sm">
+                <p className="font-headline text-3xl font-extrabold tracking-widest text-success mt-2 drop-shadow-sm">
                   {!booking.arrival_otp_verified ? booking.arrival_otp : booking.completion_otp}
                 </p>
-                <p className="text-[11px] text-[#059669]/80 font-medium mt-2 max-w-[220px]">
+                <p className="text-[11px] text-success/80 font-medium mt-2 max-w-[220px]">
                   Share this 6-digit verification code with your Professional to {!booking.arrival_otp_verified ? "start the job" : "complete the job"}.
                 </p>
               </div>
@@ -382,128 +532,6 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
                   </p>
                 </div>
               )}
-            </div>
-
-            {/* Stepper Timeline Progress */}
-            <div className="glass-panel rounded-3xl p-5 md:p-6">
-              <h3 className="font-headline text-sm font-bold uppercase tracking-wider text-on-surface-variant mb-4">
-                Service Checklist
-              </h3>
-
-              <div className="space-y-5 relative before:content-[''] before:absolute before:left-3 before:top-2.5 before:bottom-2 before:w-0.5 before:bg-outline-variant/40">
-                
-                {/* Step 1: Placed */}
-                <div className="flex gap-3 relative z-10">
-                  <div className="w-6 h-6 rounded-full bg-green-600 text-white flex items-center justify-center shrink-0">
-                    <span className="material-symbols-outlined text-xs">done</span>
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-on-surface">Booking Placed</h4>
-                    <p className="text-[10px] text-on-surface-variant">Request registered and confirmed</p>
-                  </div>
-                </div>
-
-                {/* Step 2: Assigned */}
-                <div className="flex gap-3 relative z-10">
-                  {isAssigned ? (
-                    <div className="w-6 h-6 rounded-full bg-green-600 text-white flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-xs">done</span>
-                    </div>
-                  ) : (
-                    <div className="w-6 h-6 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0 animate-pulse border border-secondary/20">
-                      <span className="material-symbols-outlined text-xs">person_search</span>
-                    </div>
-                  )}
-                  <div>
-                    <h4 className="text-xs font-bold text-on-surface">
-                      {isAssigned ? "Technician Assigned" : "Assigning Technician"}
-                    </h4>
-                    <p className="text-[10px] text-on-surface-variant">
-                      {isAssigned ? `${booking.partner?.full_name} is scheduled` : "Assigning optimal service technician"}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Step 3: Transit */}
-                <div className="flex gap-3 relative z-10">
-                  {actualLevel >= 4 ? (
-                    <div className="w-6 h-6 rounded-full bg-green-600 text-white flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-xs">done</span>
-                    </div>
-                  ) : actualLevel === 3 ? (
-                    <div className="w-6 h-6 rounded-full bg-blue-400/15 text-blue-500 flex items-center justify-center shrink-0 animate-pulse border border-blue-400/30">
-                      <span className="material-symbols-outlined text-xs">motorcycle</span>
-                    </div>
-                  ) : (
-                    <div className="w-6 h-6 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-xs">lock</span>
-                    </div>
-                  )}
-                  <div>
-                    <h4 className={`text-xs font-bold ${actualLevel >= 3 ? "text-on-surface" : "text-on-surface-variant"}`}>
-                      {actualLevel >= 4 ? "Professional Dispatched" : actualLevel === 3 ? "Professional En Route" : "Professional Dispatched"}
-                    </h4>
-                    <p className="text-[10px] text-on-surface-variant">
-                      {actualLevel >= 4 ? "Professional arrived at your location" : actualLevel === 3 ? "Technician is on the way to you" : "Real-time GPS dispatch state"}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Step 4: Started */}
-                <div className="flex gap-3 relative z-10">
-                  {actualLevel >= 6 ? (
-                    <div className="w-6 h-6 rounded-full bg-green-600 text-white flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-xs">done</span>
-                    </div>
-                  ) : actualLevel === 4 ? (
-                    <div className="w-6 h-6 rounded-full bg-amber-500/15 text-amber-600 flex items-center justify-center shrink-0 animate-pulse border border-amber-500/30">
-                      <span className="material-symbols-outlined text-xs">vpn_key</span>
-                    </div>
-                  ) : actualLevel === 5 ? (
-                    <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 animate-pulse border border-primary/20">
-                      <span className="material-symbols-outlined text-xs">build</span>
-                    </div>
-                  ) : (
-                    <div className="w-6 h-6 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-xs">lock</span>
-                    </div>
-                  )}
-                  <div>
-                    <h4 className={`text-xs font-bold ${actualLevel >= 4 ? "text-on-surface" : "text-on-surface-variant"}`}>
-                      {actualLevel >= 6 ? "Service Completed" : actualLevel === 5 ? "Service Active" : actualLevel === 4 ? "Awaiting OTP Verification" : "Service Active"}
-                    </h4>
-                    <p className="text-[10px] text-on-surface-variant">
-                      {actualLevel >= 6 ? "Work is finished" : actualLevel === 5 ? "Technician is performing the service" : actualLevel === 4 ? "Please provide Arrival OTP to technician" : "Job verify & progress checking"}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Step 5: Completed */}
-                <div className="flex gap-3 relative z-10">
-                  {actualLevel >= 6 ? (
-                    <div className="w-6 h-6 rounded-full bg-green-600 text-white flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-xs">done</span>
-                    </div>
-                  ) : (booking.status === "otp_pending" && isArrivalOtpVerified) ? (
-                    <div className="w-6 h-6 rounded-full bg-green-500/15 text-[#059669] flex items-center justify-center shrink-0 animate-pulse border border-[#059669]/30">
-                      <span className="material-symbols-outlined text-xs">verified_user</span>
-                    </div>
-                  ) : (
-                    <div className="w-6 h-6 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-xs">lock</span>
-                    </div>
-                  )}
-                  <div>
-                    <h4 className={`text-xs font-bold ${actualLevel >= 6 ? "text-on-surface" : "text-on-surface-variant"}`}>
-                      {(booking.status === "otp_pending" && isArrivalOtpVerified) ? "Awaiting Completion OTP" : "Appointment Concluded"}
-                    </h4>
-                    <p className="text-[10px] text-on-surface-variant">
-                      {actualLevel >= 6 ? "Invoicing & expert feedback" : (booking.status === "otp_pending" && isArrivalOtpVerified) ? "Provide Completion OTP to technician" : "Invoicing & expert feedback"}
-                    </p>
-                  </div>
-                </div>
-
-              </div>
             </div>
 
             {/* Back CTA Button block */}

@@ -5,16 +5,20 @@ import { useState } from "react";
 interface Service {
   id: string;
   title: string;
-  category: string;
+  subcategoryName: string;
+  categoryName: string;
+  iconName: string;
 }
 
 interface Props {
   services: Service[];
+  initialSelectedServices?: string[];
 }
 
-export default function ServiceSelectionDrawer({ services }: Props) {
+export default function ServiceSelectionDrawer({ services, initialSelectedServices }: Props) {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [selectedServices, setSelectedServices] = useState<string[]>(initialSelectedServices || []);
+  const [selectedSubcat, setSelectedSubcat] = useState("All");
 
   const toggleService = (id: string) => {
     if (selectedServices.includes(id)) {
@@ -24,15 +28,12 @@ export default function ServiceSelectionDrawer({ services }: Props) {
     }
   };
 
-  const getServiceIcon = (category: string) => {
-    switch (category) {
-      case 'cleaning': return <span className="text-2xl mb-2 block">🧹</span>;
-      case 'plumbing': return <span className="text-2xl mb-2 block">🔧</span>;
-      case 'electrician': return <span className="text-2xl mb-2 block">⚡</span>;
-      case 'pest_control': return <span className="text-2xl mb-2 block">🐛</span>;
-      default: return <span className="material-symbols-outlined text-[#059669] drop-shadow-sm text-2xl mb-2">home_repair_service</span>;
-    }
-  };
+  // Extract unique subcategories dynamically from DB services
+  const subcategories = ["All", ...Array.from(new Set(services.map((s) => s.subcategoryName)))];
+
+  const filteredServices = selectedSubcat === "All"
+    ? services
+    : services.filter((s) => s.subcategoryName === selectedSubcat);
 
   return (
     <div className="w-full">
@@ -123,31 +124,58 @@ export default function ServiceSelectionDrawer({ services }: Props) {
             </button>
           </div>
 
+          {/* Subcategory scrollable tab bar */}
+          {services.length > 0 && (
+            <div className="px-6 pt-4 pb-2 shrink-0 overflow-x-auto flex gap-2 scrollbar-none">
+              {subcategories.map((subcat) => {
+                const isActive = selectedSubcat === subcat;
+                return (
+                  <button
+                    key={subcat}
+                    type="button"
+                    onClick={() => setSelectedSubcat(subcat)}
+                    className={`px-4 py-1.5 rounded-full text-xs font-black whitespace-nowrap transition-all uppercase tracking-wider cursor-pointer border ${
+                      isActive
+                        ? "bg-secondary text-primary border-secondary shadow-sm"
+                        : "bg-surface-container-low text-on-surface-variant border-outline-variant/35 hover:bg-surface-container"
+                    }`}
+                  >
+                    {subcat}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           <div className="p-6 overflow-y-auto flex-1">
-            {services.length === 0 ? (
+            {filteredServices.length === 0 ? (
               <div className="text-center py-10">
                 <span className="material-symbols-outlined text-4xl text-outline-variant mb-2">work_off</span>
-                <p className="text-on-surface-variant font-medium">No services currently available.</p>
+                <p className="text-on-surface-variant font-medium">No services match selection.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3">
-                {services.map((service) => {
+              <div className="grid grid-cols-2 gap-2.5">
+                {filteredServices.map((service) => {
                   const isSelected = selectedServices.includes(service.id);
                   return (
                     <button
                       type="button"
                       key={service.id} 
                       onClick={() => toggleService(service.id)}
-                      className={`p-4 border-2 rounded-2xl flex flex-col items-center text-center transition-all duration-300 ${
+                      className={`p-2.5 border rounded-2xl flex items-center gap-2.5 text-left transition-all duration-300 ${
                         isSelected 
-                          ? "border-secondary bg-secondary/10 shadow-[0_8px_20px_rgba(42,245,152,0.15)]" 
+                          ? "border-secondary bg-secondary/10 shadow-[0_4px_12px_rgba(166,206,55,0.15)]" 
                           : "border-outline-variant/30 bg-surface-container-lowest hover:border-secondary/50 hover:bg-surface-container-low"
                       }`}
                     >
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 transition-transform ${isSelected ? "scale-110 bg-white shadow-sm" : "bg-green-500/10"}`}>
-                        {getServiceIcon(service.category)}
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-transform ${
+                        isSelected ? "scale-105 bg-white shadow-sm" : "bg-green-500/10"
+                      }`}>
+                        <span className="material-symbols-outlined text-[18px] text-[#059669] drop-shadow-sm">
+                          {service.iconName}
+                        </span>
                       </div>
-                      <span className="font-bold text-sm text-on-surface leading-tight">
+                      <span className="font-bold text-xs text-primary leading-tight line-clamp-2">
                         {service.title}
                       </span>
                     </button>

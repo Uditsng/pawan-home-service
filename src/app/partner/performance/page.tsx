@@ -76,6 +76,20 @@ export default async function PerformancePage() {
 
   const reviews = (reviewsData || []) as unknown as ReviewWithCustomer[];
 
+  // ─── Fetch rating distribution ────────────────────────────
+  const { data: distributionData } = await supabase
+    .from("reviews")
+    .select("rating")
+    .eq("partner_id", user.id);
+
+  const distribution = [0, 0, 0, 0, 0]; // 5, 4, 3, 2, 1 star counts
+  distributionData?.forEach((r) => {
+    if (r.rating >= 1 && r.rating <= 5) {
+      distribution[5 - r.rating]++;
+    }
+  });
+  const totalReviews = distributionData?.length || 0;
+
   // ─── Calculate badge eligibility ──────────────────────────
   const ratingAvg = profile?.rating_avg || 0;
   const completionRate =
@@ -135,28 +149,62 @@ export default async function PerformancePage() {
           {/* Rating Card */}
           <div className="md:col-span-2 bg-surface-container-lowest border border-outline-variant/10 rounded-2xl p-6 relative overflow-hidden group shadow-[0_2px_8px_rgba(15,23,42,0.02)]">
             <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary"></div>
-            <div className="flex justify-between items-start mb-8 pl-1 text-on-surface">
-              <div>
-                <p className="font-label text-[10px] font-black uppercase tracking-widest text-on-surface-variant mb-2">
-                  Overall Rating
-                </p>
-                <h3 className="font-headline font-black text-[40px] leading-none tracking-tighter">
-                  {ratingAvg > 0 ? ratingAvg.toFixed(1) : "—"}
-                </h3>
+            <p className="font-label text-[10px] font-black uppercase tracking-widest text-on-surface-variant mb-4 pl-1">
+              Overall Rating & Breakdown
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start pl-1">
+              {/* Overall Score */}
+              <div className="sm:w-1/3 flex flex-col justify-between">
+                <div>
+                  <h3 className="font-headline font-black text-[56px] leading-none tracking-tighter text-on-surface">
+                    {ratingAvg > 0 ? ratingAvg.toFixed(1) : "—"}
+                  </h3>
+                  <div className="flex items-center gap-0.5 mt-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <span
+                        key={star}
+                        className={`material-symbols-outlined text-base ${
+                          star <= Math.round(ratingAvg)
+                            ? "text-secondary font-fill"
+                            : "text-on-surface-variant/20"
+                        }`}
+                      >
+                        star
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <span className="text-on-surface-variant text-[11px] font-bold bg-surface-container-high/50 px-2.5 py-1 rounded-md">
+                    {totalReviews} review{totalReviews !== 1 ? "s" : ""}
+                  </span>
+                </div>
               </div>
-              <div className="bg-primary-container/10 border border-primary-container/20 p-3 rounded-xl flex items-center justify-center">
-                <span
-                  className="material-symbols-outlined text-primary text-[28px]"
-                  style={{ fontVariationSettings: "'FILL' 1" }}
-                >
-                  star
-                </span>
+
+              {/* Distribution Bars */}
+              <div className="flex-1 w-full space-y-2">
+                {distribution.map((count, index) => {
+                  const stars = 5 - index;
+                  const percentage = totalReviews > 0 ? Math.round((count / totalReviews) * 100) : 0;
+                  return (
+                    <div key={stars} className="flex items-center gap-3 text-xs">
+                      <span className="w-6 font-semibold text-on-surface-variant text-right">
+                        {stars}★
+                      </span>
+                      <div className="flex-1 h-2 bg-surface-container-high rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-secondary rounded-full transition-all duration-500"
+                          style={{ width: `${percentage}%` }}
+                        ></div>
+                      </div>
+                      <span className="w-8 text-on-surface-variant/70 text-right font-medium">
+                        {count}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
-            <div className="flex items-center gap-2 pl-1">
-              <span className="text-on-surface-variant text-[11px] font-bold">
-                {profile?.rating_count || 0} reviews
-              </span>
             </div>
           </div>
 

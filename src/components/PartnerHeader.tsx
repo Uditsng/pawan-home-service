@@ -18,7 +18,7 @@ export default function PartnerHeader({ initialStatus = "offline" }: PartnerHead
   const [errorMsg, setErrorMsg]     = useState<string | null>(null);
 
   const isOnline = status === "active";
-  const isBusy   = ["professional_en_route", "professional_arrived", "otp_pending", "in_progress", "confirmed", "accepted"].includes(status);
+  const isBusy   = ["busy", "professional_en_route", "professional_arrived", "otp_pending", "in_progress", "confirmed", "accepted"].includes(status);
 
   const handleToggle = () => {
     if (isBusy) return; // Cannot change while on a job

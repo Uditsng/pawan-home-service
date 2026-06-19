@@ -82,6 +82,28 @@ export async function triggerDispatchBatch(
       })
       .eq("id", bookingId);
 
+    // Log the broadcast event in audit trail and booking events
+    await serviceClient.from("booking_events").insert({
+      booking_id: bookingId,
+      event_type: "OFFER_BROADCASTED",
+      actor: "SYSTEM",
+      metadata: {
+        broadcast_tier: tier,
+        partner_count: partnerIds.length,
+        dispatched_partner_ids: partnerIds,
+      },
+    });
+
+    await serviceClient.from("booking_audit_trail").insert({
+      booking_id: bookingId,
+      action: "OFFER_BROADCASTED",
+      actor: "SYSTEM",
+      metadata: {
+        broadcast_tier: tier,
+        partner_count: partnerIds.length,
+      },
+    });
+
     // 4. Fetch booking details for the push notification body
     const { data: booking } = await serviceClient
       .from("bookings")

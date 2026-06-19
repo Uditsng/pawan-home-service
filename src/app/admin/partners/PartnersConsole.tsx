@@ -10,7 +10,8 @@ import {
   updatePartnerStatusAction,
   onboardPartnerAction,
   editPartnerAction,
-  reviewKycAction
+  reviewKycAction,
+  savePartnerNoteAction
 } from "./actions";
 
 interface PartnersConsoleProps {
@@ -25,7 +26,7 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
   // Search & Filter States
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("All");
-  const [selectedCity, setSelectedCity] = useState<string>("All");
+  const [selectedArea, setSelectedArea] = useState<string>("All");
 
   // Pagination States
   const [currentPage, setCurrentPage] = useState(1);
@@ -70,6 +71,19 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
   const [kycSuccess, setKycSuccess] = useState<string | null>(null);
   const [kycError, setKycError] = useState<string | null>(null);
 
+  // Reviews Modal States
+  const [selectedReviewsPartner, setSelectedReviewsPartner] = useState<SerializedPartner | null>(null);
+
+  // Profile Drawer States
+  const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
+  const [selectedProfilePartner, setSelectedProfilePartner] = useState<SerializedPartner | null>(null);
+  const [activeProfileTab, setActiveProfileTab] = useState<"overview" | "bookings" | "reviews" | "notes">("overview");
+
+  // Profile Note States
+  const [partnerNoteInput, setPartnerNoteInput] = useState("");
+  const [partnerRiskTriggerInput, setPartnerRiskTriggerInput] = useState("");
+  const [drawerActionError, setDrawerActionError] = useState<string | null>(null);
+
   // Dropdown UI state for specific row actions (Portal-based to avoid overflow clipping)
   const [dropdownMenu, setDropdownMenu] = useState<{
     partnerId: string;
@@ -90,10 +104,14 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
     };
   }, []);
 
-  // Compile list of unique cities dynamically filled by partners/technicians
-  const allCities = Array.from(
-    new Set(partners.flatMap(p => p.cities))
-  ).filter(Boolean);
+  // Compile list of unique service areas covered by partners
+  const allAreas = Array.from(
+    new Set(
+      partners.flatMap(p => 
+        p.service_areas?.map(sa => sa.city ? `${sa.city} (${sa.pincode})` : sa.pincode) || []
+      )
+    )
+  ).filter(Boolean).sort();
 
   // --- Filtering Logic ---
   const filteredPartners = partners.filter(partner => {
@@ -116,9 +134,13 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
       if (selectedStatus === "Suspended" && partner.status !== "suspended") return false;
     }
 
-    // 3. City Covered Filter
-    if (selectedCity !== "All" && !partner.cities.includes(selectedCity)) {
-      return false;
+    // 3. Area Covered Filter
+    if (selectedArea !== "All") {
+      const hasArea = partner.service_areas?.some(sa => {
+        const areaStr = sa.city ? `${sa.city} (${sa.pincode})` : sa.pincode;
+        return areaStr === selectedArea;
+      });
+      if (!hasArea) return false;
     }
 
     return true;
@@ -214,6 +236,50 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
         setOnboardError((err as Error).message || "Failed to create technician.");
       }
     });
+  };
+
+  const handleSavePartnerNote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProfilePartner) return;
+
+    startTransition(async () => {
+      try {
+        const triggerToSave = partnerRiskTriggerInput.trim() || selectedProfilePartner.risk_trigger || "";
+        await savePartnerNoteAction(selectedProfilePartner.id, partnerNoteInput, triggerToSave);
+        
+        // Update local state
+        setPartners(prev => prev.map(p => {
+          if (p.id === selectedProfilePartner.id) {
+            return { 
+              ...p, 
+              internal_note: partnerNoteInput, 
+              risk_trigger: triggerToSave 
+            };
+          }
+          return p;
+        }));
+
+        setSelectedProfilePartner(prev => prev ? { 
+          ...prev, 
+          internal_note: partnerNoteInput, 
+          risk_trigger: triggerToSave 
+        } : null);
+
+        setPartnerNoteInput("");
+        setPartnerRiskTriggerInput("");
+        setDrawerActionError(null);
+      } catch (err: unknown) {
+        setDrawerActionError((err as Error).message || "Failed to save note.");
+      }
+    });
+  };
+
+  const openProfileDrawer = (partner: SerializedPartner) => {
+    setSelectedProfilePartner(partner);
+    setPartnerNoteInput(partner.internal_note || "");
+    setPartnerRiskTriggerInput(partner.risk_trigger || "");
+    setIsProfileDrawerOpen(true);
+    setActiveProfileTab("overview");
   };
 
   const handleEditSubmit = (e: React.FormEvent) => {
@@ -379,16 +445,16 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
               </select>
             </div>
 
-            {/* Filter: City */}
+            {/* Filter: Area */}
             <div className="flex flex-col gap-1">
               <select
-                value={selectedCity}
-                onChange={(e) => handleFilterChange(setSelectedCity, e.target.value)}
+                value={selectedArea}
+                onChange={(e) => handleFilterChange(setSelectedArea, e.target.value)}
                 className="w-full bg-surface-container-low text-primary text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-2 rounded-lg border border-outline-variant/30 focus:border-secondary/60 focus:outline-none transition-all cursor-pointer"
               >
-                <option value="All">📍 All Cities</option>
-                {allCities.map(city => (
-                  <option key={city} value={city}>{city}</option>
+                <option value="All">📍 All Areas</option>
+                {allAreas.map(area => (
+                  <option key={area} value={area}>{area}</option>
                 ))}
               </select>
             </div>
@@ -418,7 +484,7 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
                 <th className="py-2 px-3">Identity</th>
                 <th className="py-2 px-3 text-center w-28">Performance</th>
                 <th className="py-2 px-3 text-center w-36">Reliability & Cancel</th>
-                <th className="py-2 px-3 w-56">Status & Service Area</th>
+                <th className="py-2 px-3 w-40">Status</th>
                 <th className="py-2 px-3 text-right w-16">Actions</th>
               </tr>
             </thead>
@@ -446,16 +512,9 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
                             <span>{partner.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}</span>
                           )}
                         </div>
-                        <div className="space-y-0.5 min-w-0">
+                        <div className="min-w-0">
                           <h4 className="text-[11px] font-bold text-primary font-headline uppercase leading-none tracking-tight truncate">{partner.full_name}</h4>
-                          <p className="text-[9px] text-on-surface-variant/70 font-medium truncate max-w-[180px]">
-                            {partner.skills.slice(0, 2).join(" • ") || "General Services"}
-                          </p>
-                          <div className="flex gap-1 items-center mt-0.5">
-                            <span className="bg-primary/5 text-primary border border-primary/10 text-[7.5px] font-extrabold px-1 rounded uppercase">
-                              {partner.cities[0] || 'Roorkee'}
-                            </span>
-                          </div>
+                          <p className="text-[9px] text-on-surface-variant/60 font-semibold mt-0.5">{partner.phone}</p>
                         </div>
                       </div>
                     </td>
@@ -521,33 +580,39 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
                           </span>
                         )}
                       </div>
-
-                      <div className="text-[9px] text-on-surface-variant/70 font-semibold truncate max-w-[200px]">
-                        Pincodes: {partner.pincodes.join(", ") || "None"}
-                      </div>
                     </td>
 
                     {/* Col 5: Actions */}
                     <td className="py-1.5 px-3 text-right">
-                      <Button
-                        variant="ghost"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          if (dropdownMenu?.partnerId === partner.id) {
-                            setDropdownMenu(null);
-                          } else {
-                            setDropdownMenu({
-                              partnerId: partner.id,
-                              rect,
-                              partner
-                            });
-                          }
-                        }}
-                        className="p-1 h-6 w-6 rounded-lg hover:bg-surface-container-high transition-colors inline-flex items-center justify-center"
-                      >
-                        <span className="material-symbols-outlined text-base">more_vert</span>
-                      </Button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          variant="slate"
+                          onClick={() => openProfileDrawer(partner)}
+                          className="bg-surface-container hover:bg-primary hover:text-white rounded-lg p-1 transition-all flex items-center justify-center cursor-pointer shrink-0"
+                          title="View Profile"
+                        >
+                          <span className="material-symbols-outlined text-base">visibility</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            if (dropdownMenu?.partnerId === partner.id) {
+                              setDropdownMenu(null);
+                            } else {
+                              setDropdownMenu({
+                                partnerId: partner.id,
+                                rect,
+                                partner
+                              });
+                            }
+                          }}
+                          className="p-1 h-6 w-6 rounded-lg hover:bg-surface-container-high transition-colors inline-flex items-center justify-center shrink-0"
+                        >
+                          <span className="material-symbols-outlined text-base">more_vert</span>
+                        </Button>
+                      </div>
                     </td>
 
                   </tr>
@@ -1143,6 +1208,15 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
               >
                 <span className="material-symbols-outlined text-xs">bolt</span> Assign Dispatch Job
               </button>
+              <button
+                onClick={() => {
+                  setSelectedReviewsPartner(dropdownMenu.partner);
+                  setDropdownMenu(null);
+                }}
+                className="w-full text-left px-2.5 py-1.5 text-xs font-bold text-[#1c2438] hover:bg-surface-container-low rounded-lg transition-colors flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-xs">rate_review</span> View Reviews ({dropdownMenu.partner.reviews.length})
+              </button>
             </div>
 
             <div className="py-0.5">
@@ -1183,6 +1257,414 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
           </div>
         </>,
         document.body
+      )}
+      {/* ─── 8. REVIEWS & RATINGS DETAIL MODAL ─── */}
+      {selectedReviewsPartner && (
+        <div className="fixed inset-0 bg-[#002261]/25 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          {/* Closer backdrop */}
+          <div className="absolute inset-0 cursor-pointer" onClick={() => setSelectedReviewsPartner(null)} />
+
+          {/* Modal Container */}
+          <div className="relative w-full max-w-lg bg-white rounded-[32px] overflow-hidden shadow-2xl p-6 border border-outline-variant/30 animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            
+            {/* Header */}
+            <div className="flex justify-between items-start mb-4 shrink-0">
+              <div>
+                <span className="text-[10px] font-black text-secondary uppercase tracking-[0.2em]">Technician Performance Feedback</span>
+                <h3 className="text-xl font-bold font-headline text-primary uppercase mt-1">Reviews ({selectedReviewsPartner.reviews.length})</h3>
+                <p className="text-[11px] text-on-surface-variant/70 font-medium mt-1">
+                  Showing ratings and comments for <span className="font-bold">{selectedReviewsPartner.full_name}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedReviewsPartner(null)}
+                className="p-1.5 rounded-xl hover:bg-surface-container transition-colors"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {/* Overall Summary block inside Modal */}
+            <div className="bg-surface-container-low rounded-2xl p-4 mb-4 flex items-center gap-4 shrink-0">
+              <div className="text-center bg-white px-4 py-3 rounded-xl border border-outline-variant/10 min-w-[80px]">
+                <span className="text-3xl font-black text-primary leading-none tracking-tight">
+                  {selectedReviewsPartner.rating_avg ? selectedReviewsPartner.rating_avg.toFixed(1) : "—"}
+                </span>
+                <div className="flex items-center justify-center text-amber-500 gap-0.5 mt-1">
+                  <span className="material-symbols-outlined text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                </div>
+              </div>
+              <div className="text-xs">
+                <p className="font-bold text-primary">Aggregate score from completed jobs.</p>
+                <p className="text-on-surface-variant font-medium mt-0.5">
+                  Technician reliability rate is <span className="font-bold">{selectedReviewsPartner.reliability_rate}%</span>.
+                </p>
+              </div>
+            </div>
+
+            {/* Scrollable Reviews List */}
+            <div className="flex-1 overflow-y-auto pr-1 space-y-3 min-h-0">
+              {selectedReviewsPartner.reviews.length === 0 ? (
+                <div className="text-center py-12 text-on-surface-variant">
+                  <span className="material-symbols-outlined text-4xl mb-2 opacity-35">rate_review</span>
+                  <p className="font-bold text-sm">No reviews yet</p>
+                  <p className="text-xs mt-1 text-on-surface-variant/60">
+                    This technician has not received any customer ratings yet.
+                  </p>
+                </div>
+              ) : (
+                selectedReviewsPartner.reviews.map((review) => (
+                  <div
+                    key={review.id}
+                    className="p-4 bg-surface-container-lowest border border-outline-variant/10 rounded-2xl space-y-2 hover:bg-surface-container-low/20 transition-all"
+                  >
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-xs overflow-hidden border border-outline-variant/10">
+                          {review.customer?.avatar_url ? (
+                            <Image
+                              src={review.customer.avatar_url}
+                              alt={review.customer.full_name || "User"}
+                              width={32}
+                              height={32}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span>{review.customer?.full_name?.charAt(0).toUpperCase() || "?"}</span>
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-primary">{review.customer?.full_name || "Anonymous"}</p>
+                          <p className="text-[10px] text-on-surface-variant/50 font-medium">
+                            {new Date(review.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <span
+                            key={star}
+                            className={`material-symbols-outlined text-sm ${
+                              star <= review.rating ? "text-secondary font-fill" : "text-on-surface-variant/20"
+                            }`}
+                          >
+                            star
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {review.comment && (
+                      <p className="text-xs text-on-surface-variant font-medium leading-relaxed italic bg-surface-container-low/30 p-2.5 rounded-xl border border-outline-variant/5">
+                        &ldquo;{review.comment}&rdquo;
+                      </p>
+                    )}
+
+                    {review.bookings?.services?.title && (
+                      <div className="flex items-center gap-1.5 text-[9px] font-bold text-on-surface-variant bg-surface-container-high/40 px-2.5 py-1 rounded-md w-fit">
+                        <span className="material-symbols-outlined text-[10px]">build</span>
+                        <span>{review.bookings.services.title}</span>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="mt-4 pt-4 border-t border-outline-variant/10 shrink-0">
+              <Button
+                variant="slate"
+                className="w-full py-2.5 rounded-xl text-xs"
+                onClick={() => setSelectedReviewsPartner(null)}
+              >
+                Close Panel
+              </Button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ─── 9. SEAMLESS PARTNER PROFILE DETAILS DRAWER ─── */}
+      {isProfileDrawerOpen && selectedProfilePartner && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex justify-end z-50 transition-opacity">
+          {/* Overlay closer */}
+          <div className="absolute inset-0" onClick={() => setIsProfileDrawerOpen(false)} />
+          
+          <div className="relative w-full max-w-lg bg-surface-container-lowest h-full shadow-[0_0_50px_rgba(0,0,0,0.15)] flex flex-col z-10 border-l border-outline-variant/20 animate-in slide-in-from-right duration-300">
+            {/* Drawer Header */}
+            <div className="p-6 bg-primary text-white flex justify-between items-start">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center font-black text-sm border border-white/15 overflow-hidden shrink-0">
+                  {selectedProfilePartner.avatar_url ? (
+                    <Image src={selectedProfilePartner.avatar_url} alt={selectedProfilePartner.full_name} width={48} height={48} className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{selectedProfilePartner.full_name ? selectedProfilePartner.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : "P"}</span>
+                  )}
+                </div>
+                <div>
+                  <h4 className="text-base font-bold uppercase tracking-tight flex items-center gap-1.5">
+                    {selectedProfilePartner.full_name || "Unknown Partner"}
+                    {selectedProfilePartner.service_tier === "premium" && (
+                      <span className="material-symbols-outlined text-secondary text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
+                    )}
+                  </h4>
+                  <p className="text-xs opacity-80 font-normal mt-0.5">{selectedProfilePartner.email || "No email linked"}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsProfileDrawerOpen(false)}
+                className="p-1 rounded-lg hover:bg-white/10 text-white transition-colors"
+              >
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            {/* Tab Selectors */}
+            <div className="flex border-b border-outline-variant/10 bg-surface-container-low/50 px-4">
+              <button
+                onClick={() => setActiveProfileTab("overview")}
+                className={`grow py-3 text-[10px] font-bold uppercase tracking-wider border-b-2 text-center transition-all ${
+                  activeProfileTab === "overview" ? "border-secondary text-primary" : "border-transparent text-on-surface-variant hover:text-primary"
+                }`}
+              >
+                Overview
+              </button>
+              <button
+                onClick={() => setActiveProfileTab("bookings")}
+                className={`grow py-3 text-[10px] font-bold uppercase tracking-wider border-b-2 text-center transition-all ${
+                  activeProfileTab === "bookings" ? "border-secondary text-primary" : "border-transparent text-on-surface-variant hover:text-primary"
+                }`}
+              >
+                Jobs ({selectedProfilePartner.bookings.length})
+              </button>
+              <button
+                onClick={() => setActiveProfileTab("reviews")}
+                className={`grow py-3 text-[10px] font-bold uppercase tracking-wider border-b-2 text-center transition-all ${
+                  activeProfileTab === "reviews" ? "border-secondary text-primary" : "border-transparent text-on-surface-variant hover:text-primary"
+                }`}
+              >
+                Reviews ({selectedProfilePartner.reviews.length})
+              </button>
+              <button
+                onClick={() => setActiveProfileTab("notes")}
+                className={`grow py-3 text-[10px] font-bold uppercase tracking-wider border-b-2 text-center transition-all ${
+                  activeProfileTab === "notes" ? "border-secondary text-primary" : "border-transparent text-on-surface-variant hover:text-primary"
+                }`}
+              >
+                Notes
+              </button>
+            </div>
+
+            {/* Drawer Body Scroll Container */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              
+              {/* Overview Tab */}
+              {activeProfileTab === "overview" && (
+                <div className="space-y-6 text-xs text-primary font-bold">
+                  {/* Status & Compliance */}
+                  <div className="space-y-4 pb-4 border-b border-outline-variant/10">
+                    <h5 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70">Operational Profile</h5>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-[9px] uppercase tracking-wider text-on-surface-variant/50">Status</p>
+                        <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full inline-block mt-1 ${
+                          selectedProfilePartner.status === 'active' ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20' :
+                          selectedProfilePartner.status === 'busy' ? 'bg-amber-500/10 text-amber-700 border border-amber-500/20' :
+                          selectedProfilePartner.status === 'suspended' ? 'bg-red-500/10 text-red-600 border border-red-500/20' :
+                          'bg-slate-500/10 text-on-surface-variant border border-outline-variant/40'
+                        }`}>
+                          {selectedProfilePartner.status}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-[9px] uppercase tracking-wider text-on-surface-variant/50">Compliance (KYC)</p>
+                        <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full inline-block mt-1 ${
+                          selectedProfilePartner.kyc_status === 'approved' ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20' :
+                          selectedProfilePartner.kyc_status === 'rejected' ? 'bg-red-500/10 text-red-600 border border-red-500/20' :
+                          'bg-amber-500/10 text-amber-700 border border-amber-500/20'
+                        }`}>
+                          {selectedProfilePartner.kyc_status}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Skills / Services Covered */}
+                  <div className="space-y-2 pb-4 border-b border-outline-variant/10">
+                    <h5 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70">Assigned Services</h5>
+                    {selectedProfilePartner.skills.length > 0 ? (
+                      <p className="text-xs font-semibold text-primary leading-relaxed">
+                        {selectedProfilePartner.skills.join(", ")}
+                      </p>
+                    ) : (
+                      <p className="text-[10px] text-on-surface-variant/60 font-medium italic">No services mapped yet.</p>
+                    )}
+                  </div>
+
+                  {/* Territory coverage */}
+                  <div className="space-y-2">
+                    <h5 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70">Service Areas</h5>
+                    {selectedProfilePartner.service_areas && selectedProfilePartner.service_areas.length > 0 ? (
+                      <p className="text-xs font-semibold text-primary leading-relaxed">
+                        {selectedProfilePartner.service_areas.map(area => {
+                          const areaName = area.city || "Area";
+                          return `${areaName} (${area.pincode})`;
+                        }).join(", ")}
+                      </p>
+                    ) : (
+                      <p className="text-[10px] text-on-surface-variant/60 font-medium italic">No service areas mapped yet.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Jobs ledger history Tab */}
+              {activeProfileTab === "bookings" && (
+                <div className="space-y-4">
+                  <h5 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70 mb-2">Job History</h5>
+                  {selectedProfilePartner.bookings.length > 0 ? (
+                    <div className="divide-y divide-outline-variant/10">
+                      {selectedProfilePartner.bookings.map(b => (
+                        <div key={b.id} className="py-3.5 flex justify-between items-center gap-3 text-xs">
+                          <div>
+                            <p className="font-bold text-primary uppercase">{b.services?.title || "Service Job"}</p>
+                            <p className="text-[10px] text-on-surface-variant/60 mt-0.5 font-medium">Customer: {b.customer?.full_name || "Unknown"}</p>
+                            <p className="text-[9px] text-on-surface-variant/40 mt-0.5 font-semibold">{new Date(b.created_at).toLocaleDateString()}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-primary">₹{b.total_amount}</p>
+                            <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full inline-block mt-1 ${
+                              b.status === 'completed' ? 'bg-emerald-100 text-emerald-800' :
+                              b.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
+                            }`}>
+                              {b.status}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-10">
+                      <span className="material-symbols-outlined text-2xl text-on-surface-variant/35">build</span>
+                      <p className="text-[11px] font-semibold text-on-surface-variant/70 mt-1">No jobs completed yet</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Reviews History Tab */}
+              {activeProfileTab === "reviews" && (
+                <div className="space-y-4">
+                  <h5 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70 mb-2">Reviews History</h5>
+                  {selectedProfilePartner.reviews.length > 0 ? (
+                    <div className="divide-y divide-outline-variant/10">
+                      {selectedProfilePartner.reviews.map(r => (
+                        <div key={r.id} className="py-3.5 space-y-2 text-xs">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <p className="font-bold text-primary">{r.customer?.full_name || "Anonymous"}</p>
+                              <p className="text-[9px] text-on-surface-variant/40 mt-0.5 font-semibold">{new Date(r.created_at).toLocaleDateString()}</p>
+                            </div>
+                            <div className="flex items-center gap-0.5">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <span
+                                  key={star}
+                                  className={`material-symbols-outlined text-xs ${
+                                    star <= r.rating ? "text-secondary font-fill" : "text-on-surface-variant/20"
+                                  }`}
+                                >
+                                  star
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          {r.comment && (
+                            <p className="text-[11px] text-on-surface-variant/70 italic font-medium leading-relaxed bg-surface-container-low/40 p-2.5 rounded-lg border border-outline-variant/5">
+                              &ldquo;{r.comment}&rdquo;
+                            </p>
+                          )}
+                          {r.bookings?.services?.title && (
+                            <span className="text-[8px] font-black uppercase text-on-surface-variant/60 bg-surface-container/60 px-2 py-0.5 rounded inline-block">
+                              {r.bookings.services.title}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-10">
+                      <span className="material-symbols-outlined text-2xl text-on-surface-variant/35">rate_review</span>
+                      <p className="text-[11px] font-semibold text-on-surface-variant/70 mt-1">No reviews recorded yet</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Notes & Override Tab */}
+              {activeProfileTab === "notes" && (
+                <div className="space-y-5">
+                  <h5 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70 mb-2">CRM Admin Notes</h5>
+                  
+                  {selectedProfilePartner.internal_note ? (
+                    <div className="border border-outline-variant/15 p-3.5 rounded-xl bg-surface-container-low/30">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/50">Active internal note</p>
+                      <p className="text-xs text-on-surface-variant mt-1.5 italic font-normal leading-relaxed">
+                        &quot;{selectedProfilePartner.internal_note}&quot;
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs font-semibold text-on-surface-variant/50 italic">No notes logged for this user yet.</p>
+                  )}
+
+                  <form onSubmit={handleSavePartnerNote} className="space-y-4 border-t border-outline-variant/15 pt-4">
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-black uppercase tracking-wider text-on-surface-variant/70">Add/Edit Profile Note</label>
+                      <textarea
+                        required
+                        rows={3}
+                        value={partnerNoteInput}
+                        onChange={(e) => setPartnerNoteInput(e.target.value)}
+                        placeholder="Log internal comments here..."
+                        className="w-full border border-outline-variant/20 rounded-xl p-3 bg-surface-container-low focus:ring-1 focus:ring-secondary/50 outline-none text-xs transition-all placeholder:text-on-surface-variant/40 font-semibold"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-black uppercase tracking-wider text-on-surface-variant/70">Update Risk Trigger Reason (Optional)</label>
+                      <input
+                        type="text"
+                        value={partnerRiskTriggerInput}
+                        onChange={(e) => setPartnerRiskTriggerInput(e.target.value)}
+                        placeholder="e.g. KYC Suspicious, Low Rating Alert"
+                        className="w-full border border-outline-variant/20 rounded-xl p-3 bg-surface-container-low focus:ring-1 focus:ring-secondary/50 outline-none text-xs transition-all placeholder:text-on-surface-variant/40 font-semibold"
+                      />
+                    </div>
+
+                    {drawerActionError && (
+                      <div className="p-3 bg-error/10 border border-error/20 text-error text-xs rounded-xl flex items-start gap-2">
+                        <span className="material-symbols-outlined text-sm">error</span>
+                        <span>{drawerActionError}</span>
+                      </div>
+                    )}
+
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      className="w-full bg-secondary hover:brightness-105 hover:scale-[1.01] text-primary rounded-xl py-3 font-black text-xs uppercase tracking-widest transition-all"
+                      disabled={isPending}
+                    >
+                      {isPending ? "Saving changes..." : "Save CRM Profile Metadata"}
+                    </Button>
+                  </form>
+                </div>
+              )}
+
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

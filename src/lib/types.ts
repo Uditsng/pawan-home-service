@@ -86,6 +86,7 @@ export interface Booking {
   city: string | null;
   area: string | null;             // colony/locality for dispatch matching
   pincode: string | null;
+  address: string | null;
   broadcast_tier: number;
   last_broadcast_at: string | null;
   scheduled_date: string | null;
@@ -96,6 +97,8 @@ export interface Booking {
   cancelled_at: string | null;
   cancelled_by: CancelledBy | null;
   cancellation_reason: string | null;
+  arrival_otp_expires_at?: string | null;
+  completion_otp_expires_at?: string | null;
 }
 
 // ─── Cart & Orders ───────────────────────────────────────────
@@ -211,6 +214,7 @@ export type NotificationType =
   | 'service_started'
   | 'service_completed'
   | 'booking_cancelled'
+  | 'review_received'
   | 'general';
 
 export interface AppNotification {

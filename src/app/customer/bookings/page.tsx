@@ -15,7 +15,7 @@ export default async function BookingsPage() {
   // Fetch bookings with service + partner details
   const { data: bookings } = await supabase
     .from('bookings')
-    .select('*, services(title, category), partner:partner_id(full_name, avatar_url)')
+    .select('*, services(title, category), partner:partner_id(full_name, avatar_url), reviews:reviews(id, rating, comment)')
     .eq('customer_id', user.id)
     .order('scheduled_date', { ascending: false });
 

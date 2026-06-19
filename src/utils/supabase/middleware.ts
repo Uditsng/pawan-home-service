@@ -87,9 +87,31 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Guard against Supabase being temporarily unreachable.
+  // Without this, a ConnectTimeoutError hangs every request for ~10s,
+  // causing cascading slowdowns across the entire app.
+  let user: { id: string } | null = null
+  try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 5000)
+    const result = await supabase.auth.getUser()
+    clearTimeout(timeoutId)
+    user = result.data.user
+  } catch (err) {
+    const isNetworkError =
+      err instanceof Error &&
+      (err.message.includes('fetch failed') ||
+        err.message.includes('ConnectTimeout') ||
+        err.message.includes('ECONNREFUSED') ||
+        (err as NodeJS.ErrnoException).code === 'UND_ERR_CONNECT_TIMEOUT')
+    if (isNetworkError) {
+      // Fail open: let the request through rather than hanging the app.
+      // The individual page's server-side data fetch will handle auth errors.
+      console.warn('[middleware] Supabase unreachable, failing open for:', request.nextUrl.pathname)
+      return supabaseResponse
+    }
+    throw err
+  }
 
   const pathname = request.nextUrl.pathname
 

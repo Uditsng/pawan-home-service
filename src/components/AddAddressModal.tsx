@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { saveAddress } from "@/app/actions/address";
 
 interface AddAddressModalProps {
@@ -10,6 +10,13 @@ interface AddAddressModalProps {
 }
 
 type AddressLabel = "Home" | "Work" | "Other";
+
+interface PostOffice {
+  Name: string;
+  Pincode: string;
+  District: string;
+  State: string;
+}
 
 const LABEL_CONFIG: { label: AddressLabel; icon: string }[] = [
   { label: "Home", icon: "home" },
@@ -26,6 +33,59 @@ export default function AddAddressModal({ isOpen, onClose, onSaved }: AddAddress
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [pincode, setPincode] = useState("");
+
+  const [suggestions, setSuggestions] = useState<PostOffice[]>([]);
+  const [isPincodeLoading, setIsPincodeLoading] = useState(false);
+  const [pincodeError, setPincodeError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchAreas = async () => {
+      const trimmedPin = pincode.trim();
+      if (trimmedPin.length !== 6 || !/^\d+$/.test(trimmedPin)) {
+        setSuggestions([]);
+        setPincodeError(null);
+        return;
+      }
+
+      setIsPincodeLoading(true);
+      setPincodeError(null);
+      try {
+        const res = await fetch(`https://api.postalpincode.in/pincode/${trimmedPin}`);
+        const data = await res.json();
+        
+        if (data && data[0] && data[0].Status === "Success" && data[0].PostOffice) {
+          // Filter unique names to avoid duplicates
+          const uniqueOffices = data[0].PostOffice.filter((v: PostOffice, i: number, a: PostOffice[]) => 
+            a.findIndex(t => (t.Name === v.Name)) === i
+          );
+          setSuggestions(uniqueOffices);
+
+          // Pre-populate City and State from first result immediately
+          const firstOffice = data[0].PostOffice[0];
+          setCity(firstOffice.District);
+          setState(firstOffice.State);
+        } else {
+          setSuggestions([]);
+          setPincodeError("Invalid pincode or no areas found.");
+        }
+      } catch {
+        setPincodeError("Failed to fetch areas.");
+        setSuggestions([]);
+      } finally {
+        setIsPincodeLoading(false);
+      }
+    };
+
+    const debounceTimer = setTimeout(fetchAreas, 400);
+    return () => clearTimeout(debounceTimer);
+  }, [pincode]);
+
+  const handleSelectArea = (office: PostOffice) => {
+    setAreaColony(office.Name);
+    setCity(office.District);
+    setState(office.State);
+    setSuggestions([]);
+  };
   
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -97,6 +157,8 @@ export default function AddAddressModal({ isOpen, onClose, onSaved }: AddAddress
     setCity("");
     setState("");
     setPincode("");
+    setSuggestions([]);
+    setPincodeError(null);
     setSelectedLabel("Home");
     setMakeDefault(false);
     onSaved?.();
@@ -156,34 +218,58 @@ export default function AddAddressModal({ isOpen, onClose, onSaved }: AddAddress
 
           {/* Form Fields */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Pincode Field */}
             <div className="sm:col-span-2">
               <label className="block text-[12px] font-semibold text-on-surface-variant uppercase tracking-widest mb-1.5">
-                House / Flat Number *
+                Pincode *
               </label>
-              <input
-                type="text"
-                required
-                value={houseFlat}
-                onChange={(e) => setHouseFlat(e.target.value)}
-                placeholder="e.g. Flat 302, 3rd Floor"
-                className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-[14px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-secondary/45 focus:border-secondary transition-all"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  required
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  value={pincode}
+                  onChange={(e) => setPincode(e.target.value.replace(/\D/g, ""))}
+                  placeholder="6-digit pincode"
+                  className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-[14px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-secondary/45 focus:border-secondary transition-all font-mono"
+                />
+                {isPincodeLoading && (
+                  <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                    <div className="w-4 h-4 border-2 border-secondary border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                )}
+              </div>
+              {pincodeError && (
+                <p className="text-[12px] text-error font-medium mt-1 pl-1">
+                  {pincodeError}
+                </p>
+              )}
             </div>
 
-            <div className="sm:col-span-2">
-              <label className="block text-[12px] font-semibold text-on-surface-variant uppercase tracking-widest mb-1.5">
-                Building / Society Name *
-              </label>
-              <input
-                type="text"
-                required
-                value={buildingSociety}
-                onChange={(e) => setBuildingSociety(e.target.value)}
-                placeholder="e.g. Sunshine Apartments"
-                className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-[14px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-secondary/45 focus:border-secondary transition-all"
-              />
-            </div>
+            {/* Suggestions list */}
+            {suggestions.length > 0 && (
+              <div className="sm:col-span-2 bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-3 shadow-md -mt-1 animate-[slideDown_0.2s_ease-out] z-10 max-h-48 overflow-y-auto">
+                <p className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">
+                  Suggested Areas for {pincode}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestions.map((office) => (
+                    <button
+                      type="button"
+                      key={`${office.Pincode}-${office.Name}`}
+                      onClick={() => handleSelectArea(office)}
+                      className="px-3 py-1.5 rounded-full text-[13px] font-semibold transition-all border bg-surface border-outline-variant/50 text-on-surface-variant hover:border-secondary/50 hover:bg-secondary/5 cursor-pointer animate-fade-in"
+                    >
+                      {office.Name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
+            {/* Area / Colony */}
             <div className="sm:col-span-2">
               <label className="block text-[12px] font-semibold text-on-surface-variant uppercase tracking-widest mb-1.5">
                 Area / Colony *
@@ -198,6 +284,7 @@ export default function AddAddressModal({ isOpen, onClose, onSaved }: AddAddress
               />
             </div>
 
+            {/* Landmark (Optional) */}
             <div className="sm:col-span-2">
               <label className="block text-[12px] font-semibold text-on-surface-variant uppercase tracking-widest mb-1.5">
                 Landmark <span className="text-on-surface-variant/50 font-normal">(Optional)</span>
@@ -211,48 +298,33 @@ export default function AddAddressModal({ isOpen, onClose, onSaved }: AddAddress
               />
             </div>
 
-            <div>
-              <label className="block text-[12px] font-semibold text-on-surface-variant uppercase tracking-widest mb-1.5">
-                City *
-              </label>
-              <input
-                type="text"
-                required
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="e.g. Lucknow"
-                className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-[14px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-secondary/45 focus:border-secondary transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[12px] font-semibold text-on-surface-variant uppercase tracking-widest mb-1.5">
-                State *
-              </label>
-              <input
-                type="text"
-                required
-                value={state}
-                onChange={(e) => setState(e.target.value)}
-                placeholder="e.g. Uttar Pradesh"
-                className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-[14px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-secondary/45 focus:border-secondary transition-all"
-              />
-            </div>
-
+            {/* Building / Society Name */}
             <div className="sm:col-span-2">
               <label className="block text-[12px] font-semibold text-on-surface-variant uppercase tracking-widest mb-1.5">
-                Pincode *
+                Building / Society Name *
               </label>
               <input
                 type="text"
                 required
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={6}
-                value={pincode}
-                onChange={(e) => setPincode(e.target.value.replace(/\D/g, ""))}
-                placeholder="6-digit pincode"
-                className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-[14px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-secondary/45 focus:border-secondary transition-all font-mono"
+                value={buildingSociety}
+                onChange={(e) => setBuildingSociety(e.target.value)}
+                placeholder="e.g. Sunshine Apartments"
+                className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-[14px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-secondary/45 focus:border-secondary transition-all"
+              />
+            </div>
+
+            {/* House / Flat Number */}
+            <div className="sm:col-span-2">
+              <label className="block text-[12px] font-semibold text-on-surface-variant uppercase tracking-widest mb-1.5">
+                House / Flat Number *
+              </label>
+              <input
+                type="text"
+                required
+                value={houseFlat}
+                onChange={(e) => setHouseFlat(e.target.value)}
+                placeholder="e.g. Flat 302, 3rd Floor"
+                className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-[14px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-secondary/45 focus:border-secondary transition-all"
               />
             </div>
           </div>

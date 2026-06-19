@@ -12,11 +12,74 @@ type Booking = {
   services: {
     title: string;
     category: string;
-  };
+  } | null;
   partner: {
     full_name: string;
     avatar_url: string | null;
   } | null;
+  reviews?: {
+    id: string;
+    rating: number;
+    comment: string | null;
+  }[] | null;
+};
+
+const getStatusClasses = (status: string) => {
+  switch (status) {
+    case "pending":
+    case "reassigned":
+      return "bg-warning/10 text-warning";
+    case "confirmed":
+    case "assigned":
+    case "accepted":
+      return "bg-success/10 text-success";
+    case "professional_en_route":
+    case "professional_arrived":
+    case "otp_pending":
+    case "in_progress":
+      return "bg-primary/10 text-primary";
+    case "completed":
+      return "bg-surface-container-high text-on-surface-variant";
+    case "cancelled":
+    case "expired":
+    case "refunded":
+      return "bg-error/10 text-error";
+    default:
+      return "bg-surface-container-high text-on-surface-variant";
+  }
+};
+
+const getStatusLabel = (status: string) => {
+  switch (status) {
+    case "pending":
+      return "Pending";
+    case "confirmed":
+      return "Confirmed";
+    case "assigned":
+      return "Assigned";
+    case "accepted":
+      return "Accepted";
+    case "professional_en_route":
+      return "Pro On The Way";
+    case "professional_arrived":
+      return "Pro Arrived";
+    case "otp_pending":
+      return "OTP Pending";
+    case "in_progress":
+      return "In Progress";
+    case "completed":
+      return "Completed";
+    case "cancelled":
+      return "Cancelled";
+    case "reassigned":
+      return "Reassigned";
+    case "expired":
+      return "Expired";
+    case "refunded":
+      return "Refunded";
+    default:
+      return status;
+  }
 };
 
 export default function BookingsClient({ bookings }: { bookings: Booking[] }) {
@@ -27,13 +90,28 @@ export default function BookingsClient({ bookings }: { bookings: Booking[] }) {
   const filteredBookings = bookings.filter((booking) => {
     switch (activeTab) {
       case "Upcoming":
-        return booking.status === "pending" || booking.status === "confirmed" || booking.status === "accepted";
+        return (
+          booking.status === "pending" ||
+          booking.status === "confirmed" ||
+          booking.status === "assigned" ||
+          booking.status === "accepted" ||
+          booking.status === "reassigned"
+        );
       case "Ongoing":
-        return booking.status === "in_progress";
+        return (
+          booking.status === "professional_en_route" ||
+          booking.status === "professional_arrived" ||
+          booking.status === "otp_pending" ||
+          booking.status === "in_progress"
+        );
       case "Completed":
         return booking.status === "completed";
       case "Cancelled":
-        return booking.status === "cancelled";
+        return (
+          booking.status === "cancelled" ||
+          booking.status === "expired" ||
+          booking.status === "refunded"
+        );
       default:
         return true;
     }
@@ -93,14 +171,8 @@ export default function BookingsClient({ bookings }: { bookings: Booking[] }) {
                       </div>
                     </div>
                   </div>
-                  <span className={`px-2 md:px-3 py-0.5 md:py-1 text-[9px] md:text-xs font-bold rounded-full font-headline tracking-wide uppercase shrink-0 ${booking.status === 'pending' ? 'bg-surface-container-high text-on-surface-variant' :
-                    booking.status === 'confirmed' ? 'bg-primary-fixed text-on-primary-fixed-variant' :
-                      booking.status === 'in_progress' ? 'bg-secondary-fixed text-on-secondary-fixed-variant' :
-                        booking.status === 'completed' ? 'bg-primary/20 text-primary-container' :
-                          booking.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                            'bg-surface-container-high text-on-surface-variant'
-                    }`}>
-                    {booking.status}
+                  <span className={`px-2 md:px-3 py-0.5 md:py-1 text-[9px] md:text-xs font-bold rounded-full font-headline tracking-wide uppercase shrink-0 ${getStatusClasses(booking.status)}`}>
+                    {getStatusLabel(booking.status)}
                   </span>
                 </div>
 
@@ -131,7 +203,7 @@ export default function BookingsClient({ bookings }: { bookings: Booking[] }) {
                   </div>
                 )}
 
-                {booking.status === 'pending' && !booking.partner && (
+                {(booking.status === 'pending' || booking.status === 'reassigned') && !booking.partner && (
                   <div className="flex items-center gap-2 p-3 md:p-4 rounded-xl bg-surface-container-low/50 border border-outline-variant/10 mb-4 md:mb-6">
                     <span className="material-symbols-outlined text-on-surface-variant text-xs md:text-sm">info</span>
                     <p className="text-[10px] md:text-xs text-on-surface-variant font-medium">We are finding the best Professional for you. You will be notified shortly.</p>
@@ -139,13 +211,13 @@ export default function BookingsClient({ bookings }: { bookings: Booking[] }) {
                 )}
 
                 <div className="flex flex-col sm:flex-row gap-2 md:gap-3">
-                  <Link href={`/customer/bookings/${booking.id}/tracking`} className="flex-1 py-2.5 md:py-3 px-3 md:px-4 rounded-xl bg-primary text-on-primary font-bold font-headline text-xs md:text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-95">
+                  <Link href={booking.status === 'completed' ? `/customer/bookings/${booking.id}/invoice` : `/customer/bookings/${booking.id}/tracking`} className="flex-1 py-2.5 md:py-3 px-3 md:px-4 rounded-xl bg-primary text-on-primary font-bold font-headline text-xs md:text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-95">
                     {booking.status === 'completed' ? (
                       <>
                         <span className="material-symbols-outlined text-base md:text-lg">receipt_long</span>
                         View Receipt
                       </>
-                    ) : booking.status === 'cancelled' ? (
+                    ) : ['cancelled', 'expired', 'refunded'].includes(booking.status) ? (
                       <>
                         <span className="material-symbols-outlined text-base md:text-lg">info</span>
                         Details
@@ -157,6 +229,18 @@ export default function BookingsClient({ bookings }: { bookings: Booking[] }) {
                       </>
                     )}
                   </Link>
+                  {booking.status === 'completed' && (!booking.reviews || booking.reviews.length === 0) && (
+                    <Link href={`/customer/bookings/${booking.id}/tracking`} className="px-4 md:px-6 py-2.5 md:py-3 rounded-xl bg-secondary text-on-secondary font-bold font-headline text-xs md:text-sm transition-all hover:brightness-110 active:scale-95 flex items-center justify-center gap-1.5 shadow-sm">
+                      <span className="material-symbols-outlined text-base md:text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                      Rate & Review
+                    </Link>
+                  )}
+                  {booking.status === 'completed' && booking.reviews && booking.reviews.length > 0 && (
+                    <div className="px-4 md:px-6 py-2.5 md:py-3 rounded-xl bg-surface-container-high text-on-surface-variant font-bold font-headline text-xs md:text-sm flex items-center justify-center gap-1.5 border border-outline-variant/10">
+                      <span className="material-symbols-outlined text-base md:text-lg text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                      <span>{booking.reviews[0].rating} ★ Rated</span>
+                    </div>
+                  )}
                   {/* Reschedule logic placeholder */}
                   {activeTab === "Upcoming" && (
                     <button className="px-4 md:px-6 py-2.5 md:py-3 rounded-xl bg-surface-container-low text-on-surface font-bold font-headline text-xs md:text-sm transition-all hover:bg-surface-container-high active:scale-95">

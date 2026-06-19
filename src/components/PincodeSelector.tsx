@@ -27,12 +27,6 @@ export default function PincodeSelector({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (initialAreas && initialAreas.length > 0) {
-      setSelectedAreas(initialAreas);
-    }
-  }, [initialAreas]);
-
-  useEffect(() => {
     const fetchAreas = async () => {
       if (pincodeInput.length !== 6 || !/^\d+$/.test(pincodeInput)) {
         setSuggestions([]);

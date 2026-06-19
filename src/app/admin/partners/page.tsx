@@ -34,6 +34,11 @@ export interface PartnerReview {
   } | null;
 }
 
+export interface PartnerServiceArea {
+  pincode: string;
+  city: string;
+}
+
 export interface SerializedPartner {
   id: string;
   full_name: string;
@@ -55,6 +60,9 @@ export interface SerializedPartner {
   pincodes: string[];
   bookings: PartnerBooking[];
   reviews: PartnerReview[];
+  internal_note?: string | null;
+  risk_trigger?: string | null;
+  service_areas?: PartnerServiceArea[];
 }
 
 interface RawPartnerProfile {
@@ -76,6 +84,8 @@ interface RawPartnerProfile {
   acceptance_rate?: number | null;
   cancellation_rate?: number | null;
   is_available?: boolean | null;
+  internal_note?: string | null;
+  risk_trigger?: string | null;
   partner_services?: {
     services: {
       id: string;
@@ -266,6 +276,11 @@ export default async function AdminPartnersPage() {
     const uniqueCities = Array.from(new Set(citiesCovered));
     const pincodesCovered = p.partner_service_areas?.map((sa) => sa.pincode).filter((pc): pc is string => typeof pc === "string") || [];
 
+    const serviceAreas: PartnerServiceArea[] = p.partner_service_areas?.map((sa) => ({
+      pincode: sa.pincode,
+      city: sa.city
+    })) || [];
+
     // Flatten bookings and reviews safely
     const bookings: PartnerBooking[] = (p.bookings || []).map((b) => ({
       id: b.id,
@@ -325,7 +340,10 @@ export default async function AdminPartnersPage() {
       cities: uniqueCities,
       pincodes: pincodesCovered,
       bookings,
-      reviews
+      reviews,
+      internal_note: p.internal_note || null,
+      risk_trigger: p.risk_trigger || null,
+      service_areas: serviceAreas
     };
   });
 
@@ -373,7 +391,7 @@ export default async function AdminPartnersPage() {
             <div>
               <h4 className="text-sm font-black text-amber-800 uppercase tracking-tight">Database Schema Upgrade Required</h4>
               <p className="text-xs text-amber-700 mt-1 font-medium leading-relaxed">
-                The profiles table is missing the columns <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold">service_tier</code>, <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold text-[11px]">kyc_status</code>, <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold font-black text-[11px]">kyc_rejection_reason</code>, and <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold font-black text-[11px]">kyc_documents</code>. Please run the migration query inside your Supabase Dashboard SQL editor to unlock compliance flows.
+                The profiles table is missing the columns <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold">service_tier</code>, <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold text-[11px]">kyc_status</code>, <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold text-[11px]">kyc_rejection_reason</code>, and <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold text-[11px]">kyc_documents</code>. Please run the migration query inside your Supabase Dashboard SQL editor to unlock compliance flows.
               </p>
             </div>
           </div>

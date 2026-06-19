@@ -60,7 +60,7 @@ export async function completeOnboarding(formData: FormData) {
 
   const { error: paError } = await supabase
     .from('partner_service_areas')
-    .upsert(partnerAreas, { onConflict: 'partner_id, pincode', ignoreDuplicates: true });
+    .upsert(partnerAreas, { onConflict: 'partner_id, pincode, city', ignoreDuplicates: true });
 
   if (paError) {
     console.error('PA Error:', paError);

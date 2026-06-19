@@ -17,15 +17,46 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
     redirect("/login");
   }
 
-  // Fetch all active services
-  // The user reported services not showing. We still filter by is_active, but added a fallback if it fails.
+  // Fetch all active services with subcategories and categories
   const { data: services } = await supabase
     .from('services')
-    .select('id, title, category')
-    .eq('is_active', true)
-    .order('category', { ascending: true });
+    .select(`
+      id,
+      title,
+      subcategory_id,
+      subcategories (
+        id,
+        subcategory_name,
+        icon_name,
+        categories (
+          id,
+          category_name
+        )
+      )
+    `)
+    .eq('is_active', true);
 
-  const availableServices = services || [];
+  interface RawService {
+    id: string;
+    title: string;
+    subcategories: {
+      subcategory_name: string;
+      icon_name: string;
+      categories: {
+        category_name: string;
+      } | null;
+    } | null;
+  }
+
+  const rawServices = (services || []) as unknown as RawService[];
+
+  const availableServices = rawServices.map((s) => ({
+    id: s.id,
+    title: s.title,
+    subcategoryName: s.subcategories?.subcategory_name || "General",
+    categoryName: s.subcategories?.categories?.category_name || "Other",
+    iconName: s.subcategories?.icon_name || "home_repair_service",
+  }));
 
   return (
     <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-6 antialiased">
@@ -77,7 +108,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
             <Link href="/login" className="px-6 py-4 rounded-xl border-2 border-outline-variant/30 font-bold text-on-surface-variant hover:bg-surface-container-low transition-colors flex items-center justify-center">
               Cancel
             </Link>
-            <Button variant="gradient" className="flex-1 py-4 bg-linear-to-br from-[#059669] to-[#10b981] text-white font-extrabold text-[15px] rounded-xl hover:scale-[1.02] active:scale-95 shadow-[0_8px_20px_rgba(16,185,129,0.3)] transition-all duration-300 border-none">
+            <Button variant="gradient" className="flex-1 py-4 bg-linear-to-br from-[#059669] to-success text-white font-extrabold text-[15px] rounded-xl hover:scale-[1.02] active:scale-95 shadow-[0_8px_20px_rgba(16,185,129,0.3)] transition-all duration-300 border-none">
               Save & Go Live
             </Button>
           </div>

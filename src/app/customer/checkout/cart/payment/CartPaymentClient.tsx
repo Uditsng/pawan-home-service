@@ -131,6 +131,32 @@ export default function CartPaymentClient({
           theme: {
             color: "#002261", // Premium Brand Navy
           },
+          method: {
+            card: true,
+            upi: true,
+            netbanking: true,
+            wallet: false,
+            emi: false,
+            paylater: false,
+          },
+          config: {
+            display: {
+              blocks: {
+                preferred: {
+                  name: "Payment Options",
+                  instruments: [
+                    { method: "card" },
+                    { method: "upi" },
+                    { method: "netbanking" },
+                  ],
+                },
+              },
+              sequence: ["block.preferred"],
+              preferences: {
+                show_default_blocks: false,
+              },
+            },
+          },
           handler: async function (response: RazorpaySuccessResponse) {
             startTransition(async () => {
               try {

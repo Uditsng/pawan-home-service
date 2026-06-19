@@ -196,7 +196,7 @@ export default async function CheckoutSuccessPage({
                 </h2>
               </div>
               <div className="text-right">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-outline mb-1">Total Paid (COD)</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-outline mb-1">Total Paid</p>
                 <p className="font-headline text-base md:text-lg font-black text-primary">₹{overallAmount}</p>
               </div>
             </div>

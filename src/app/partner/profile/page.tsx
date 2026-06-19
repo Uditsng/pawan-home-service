@@ -35,9 +35,8 @@ export default async function PartnerProfilePage() {
 
   return (
     <div className="bg-[#f5f6f8] text-on-background min-h-screen pb-24 flex flex-col font-sans">
-      {/* Primary Header Section */}
       <div className="bg-primary text-on-primary pt-5 md:pt-6 pb-6 md:pb-8 px-4 md:px-6 flex gap-4">
-        <div className="flex items-center gap-3 md:gap-4 max-w-3xl mx-auto w-full">
+        <div className="flex items-center gap-3 md:gap-4 max-w-3xl mx-auto">
           <div className="w-[60px] h-[60px] md:w-[76px] md:h-[76px] rounded-full overflow-hidden bg-surface-container-low flex items-center justify-center shrink-0 relative">
             {profile.avatar_url ? (
               <Image src={profile.avatar_url} alt={profile.full_name || "Technician"} fill className="object-cover" sizes="76px" />
@@ -48,9 +47,17 @@ export default async function PartnerProfilePage() {
           <div>
             <div className="flex items-center gap-2 mb-0.5 md:mb-1">
               <h1 className="text-[18px] md:text-[22px] font-extrabold tracking-wide">{profile.full_name || "Technician"}</h1>
-              <span className="bg-success text-on-success text-[9px] font-extrabold px-1.5 py-0.5 rounded-[4px] uppercase">Available</span>
+              {profile.status === "active" && (
+                <span className="bg-success text-on-success text-[9px] font-extrabold px-1.5 py-0.5 rounded-[4px] uppercase">Online</span>
+              )}
+              {profile.status === "offline" && (
+                <span className="bg-surface-container-highest text-on-surface-variant text-[9px] font-extrabold px-1.5 py-0.5 rounded-[4px] uppercase">Offline</span>
+              )}
+              {["busy", "professional_en_route", "professional_arrived", "otp_pending", "in_progress"].includes(profile.status) && (
+                <span className="bg-warning/20 text-warning text-[9px] font-extrabold px-1.5 py-0.5 rounded-[4px] uppercase">On Job</span>
+              )}
             </div>
-            <p className="text-[12px] md:text-[13px] text-on-primary/70 font-medium break-all">ID: #{profile.id.substring(0, 8).toUpperCase()}</p>
+            {/* <p className="text-[12px] md:text-[13px] text-on-primary/70 font-medium break-all">ID: #{profile.id.substring(0, 8).toUpperCase()}</p> */}
             <p className="text-[12px] md:text-[13px] text-on-primary/70 font-medium break-all mb-1.5 md:mb-2">{profile.phone || user.email}</p>
             <Link href="/partner/profile/edit" className="text-[12px] md:text-[13px] text-on-primary font-bold flex items-center hover:opacity-80 transition-opacity">
               Edit profile <span className="material-symbols-outlined text-[13px] md:text-[14px] ml-0.5">edit_square</span>
@@ -79,15 +86,6 @@ export default async function PartnerProfilePage() {
 
         {/* Links List */}
         <div className="bg-white rounded-[16px] md:rounded-[20px] shadow-sm overflow-hidden flex flex-col">
-          <div className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group cursor-pointer">
-            <div className="flex items-center gap-3 md:gap-4">
-              <span className="material-symbols-outlined text-slate-500 text-[18px] md:text-[20px]">toggle_on</span>
-              <span className="font-semibold text-[13px] md:text-[15px] text-[#1c2438]">Accepting New Jobs</span>
-            </div>
-            <div className="relative inline-block w-10 h-6 rounded-full bg-success transition-colors">
-              <div className="absolute top-1 left-5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform"></div>
-            </div>
-          </div>
 
           <Link href="/partner/profile/services" className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
             <div className="flex items-center gap-3 md:gap-4">

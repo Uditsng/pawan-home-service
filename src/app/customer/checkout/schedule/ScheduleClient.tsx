@@ -138,18 +138,17 @@ export default function ScheduleClient({
     return [...filteredMorningSlots, ...filteredAfternoonSlots];
   }, [filteredMorningSlots, filteredAfternoonSlots]);
 
-  // Set default selected time if empty
-  useEffect(() => {
-    if (allSlots.length > 0 && (!selectedTime || !allSlots.includes(selectedTime))) {
-      // setTimeout to avoid synchronous state update in effect
-      setTimeout(() => setSelectedTime(allSlots[0]), 0);
-    } else if (allSlots.length === 0 && selectedTime !== "") {
-      setTimeout(() => setSelectedTime(""), 0);
+  // Derive the active selected time slot. If the stored selection is not in the list of
+  // available slots, default to the first available slot (or empty if none).
+  const effectiveSelectedTime = useMemo(() => {
+    if (selectedTime && allSlots.includes(selectedTime)) {
+      return selectedTime;
     }
-  }, [allSlots, selectedTime, selectedFullDate]);
+    return allSlots[0] || "";
+  }, [selectedTime, allSlots]);
 
   const handleContinue = () => {
-    if (!selectedTime || !selectedAddressId) return;
+    if (!effectiveSelectedTime || !selectedAddressId) return;
 
     const year = selectedFullDate.getFullYear();
     const formattedMonth = (selectedFullDate.getMonth() + 1).toString().padStart(2, '0');
@@ -159,14 +158,14 @@ export default function ScheduleClient({
       const payload = new URLSearchParams({
         serviceId: service.id,
         date: `${year}-${formattedMonth}-${formattedDate}`,
-        time: selectedTime,
+        time: effectiveSelectedTime,
         addressId: selectedAddressId,
       });
       router.push(`/customer/checkout/payment?${payload.toString()}`);
     } else {
       const payload = new URLSearchParams({
         date: `${year}-${formattedMonth}-${formattedDate}`,
-        time: selectedTime,
+        time: effectiveSelectedTime,
         addressId: selectedAddressId,
       });
       router.push(`/customer/checkout/cart/payment?${payload.toString()}`);
@@ -207,7 +206,7 @@ export default function ScheduleClient({
                 onClick={() => setIsAddressSelectorExpanded(!isAddressSelectorExpanded)}
                 className="text-xs font-bold text-primary hover:text-primary/80 transition-colors px-3 py-1.5 rounded-full border border-outline-variant/20 bg-surface-container-lowest"
               >
-                {isAddressSelectorExpanded ? "Done" : "Confirm / Change"}
+                {isAddressSelectorExpanded ? "Done" : "Change"}
               </button>
             )}
           </div>
@@ -343,7 +342,7 @@ export default function ScheduleClient({
           {allSlots.length > 0 ? (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-1.5">
               {allSlots.map(time => {
-                const isSelected = selectedTime === time;
+                const isSelected = effectiveSelectedTime === time;
                 return (
                   <button
                     key={time}
@@ -386,15 +385,15 @@ export default function ScheduleClient({
             <div className="text-right">
               <p className="text-[9px] font-bold text-on-surface-variant uppercase tracking-widest">Selected Slot</p>
               <p className="font-bold text-primary text-xs md:text-sm">
-                {monthShort} {selectedDateNum}{selectedTime ? `, ${selectedTime}` : ''}
+                {monthShort} {selectedDateNum}{effectiveSelectedTime ? `, ${effectiveSelectedTime}` : ''}
               </p>
             </div>
           </div>
           <button
             onClick={handleContinue}
-            disabled={!selectedTime || !selectedAddressId}
+            disabled={!effectiveSelectedTime || !selectedAddressId}
             className={`mb-1 w-full py-3 rounded-xl font-headline font-extrabold text-sm md:text-base flex items-center justify-center gap-2 transition-all
-              ${(!selectedTime || !selectedAddressId) ? 'bg-surface-container text-on-surface/30 cursor-not-allowed' : 'bg-secondary text-white shadow-[0_10px_24px_rgba(253,118,26,0.2)] hover:opacity-90 active:scale-[0.98]'}`}
+              ${(!effectiveSelectedTime || !selectedAddressId) ? 'bg-surface-container text-on-surface/30 cursor-not-allowed' : 'bg-secondary text-white shadow-[0_10px_24px_rgba(253,118,26,0.2)] hover:opacity-90 active:scale-[0.98]'}`}
           >
             {service ? "Continue To Booking" : "Continue To Payment"}
             <span className="material-symbols-outlined text-lg">arrow_forward</span>

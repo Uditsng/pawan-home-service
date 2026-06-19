@@ -136,7 +136,7 @@ export default async function PartnerDashboardPage() {
                 </p>
                 <p className="font-semibold text-[15px] mt-0.5">
                   {activeJob.services?.title} —{" "}
-                  {activeJob.city || "Location TBD"}
+                  {activeJob.address || activeJob.city || "Location TBD"}
                 </p>
               </div>
             </div>
@@ -267,16 +267,16 @@ export default async function PartnerDashboardPage() {
                     </div>
                   </div>
                   <div className="hidden sm:block w-px h-10 bg-outline-variant/20"></div>
-                  <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-primary-container text-2xl">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <span className="material-symbols-outlined text-primary-container text-2xl shrink-0 mt-0.5">
                       location_on
                     </span>
-                    <div className="text-sm">
+                    <div className="text-sm min-w-0">
                       <p className="text-on-surface-variant font-label text-[10px] uppercase font-bold tracking-widest">
                         Location
                       </p>
-                      <p className="font-semibold text-on-surface mt-0.5">
-                        {nextAssignedJob.city || "TBD"}
+                      <p className="font-semibold text-on-surface mt-0.5 leading-tight wrap-break-words">
+                        {nextAssignedJob.address || nextAssignedJob.city || "TBD"}
                       </p>
                     </div>
                   </div>
@@ -365,8 +365,8 @@ export default async function PartnerDashboardPage() {
                       <p className="font-bold text-[17px] font-headline text-on-surface">
                         {job.services?.title || "Service"}
                       </p>
-                      <p className="text-xs font-medium text-on-surface-variant flex items-center mt-0.5 gap-1">
-                        {job.city || "Location TBD"}
+                      <p className="text-xs font-medium text-on-surface-variant mt-0.5 leading-tight max-w-[200px] sm:max-w-md wrap-break-words">
+                        {job.address || job.city || "Location TBD"}
                       </p>
                     </div>
                   </div>

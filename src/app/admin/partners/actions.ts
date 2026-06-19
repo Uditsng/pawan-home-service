@@ -235,3 +235,35 @@ export async function editPartnerAction(data: {
   revalidatePath('/admin/partners');
   return { success: true };
 }
+
+/**
+ * Save CRM Internal Note and Risk Trigger Reason for Partner
+ */
+export async function savePartnerNoteAction(
+  partnerId: string, 
+  noteText: string, 
+  riskTrigger?: string
+) {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const updateData: Record<string, unknown> = {
+    internal_note: noteText
+  };
+
+  if (riskTrigger !== undefined) {
+    updateData.risk_trigger = riskTrigger;
+  }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update(updateData)
+    .eq('id', partnerId);
+
+  if (error) {
+    return handleDatabaseError(error);
+  }
+
+  revalidatePath('/admin/partners');
+  return { success: true };
+}

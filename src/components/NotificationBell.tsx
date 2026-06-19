@@ -60,7 +60,12 @@ export default function NotificationBell() {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const supabase = createClient();
+  // IMPORTANT: createClient() must be in a ref — NOT called directly in the render body.
+  // Calling it in the render body creates a new object every render, which causes
+  // useCallback([supabase]) to produce a new function every render, which causes
+  // useEffect([fetchUnreadCount]) to fire every render → infinite loop.
+  const supabaseRef = useRef(createClient());
+  const supabase = supabaseRef.current;
 
   // ─── Fetch notifications ────────────────────────────────────
   const fetchNotifications = useCallback(
@@ -98,10 +103,10 @@ export default function NotificationBell() {
   }, [supabase]);
 
   // ─── Initial load & polling ─────────────────────────────────
+  // NOTE: fetchUnreadCount is now stable (empty dep array), so this effect
+  // fires exactly once on mount and cleans up the interval on unmount.
   useEffect(() => {
-    setTimeout(() => {
-      fetchUnreadCount();
-    }, 0);
+    fetchUnreadCount();
 
     // Poll for unread count every 30 seconds
     const interval = setInterval(fetchUnreadCount, 30_000);
@@ -195,7 +200,7 @@ export default function NotificationBell() {
       {isOpen && (
         <div
           id="notification-dropdown"
-          className="fixed md:absolute left-4 right-4 md:left-auto md:right-0 top-20 md:top-full mt-3 md:w-[360px] max-h-[480px] bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-2xl z-[100] flex flex-col overflow-hidden"
+          className="fixed md:absolute left-4 right-4 md:left-auto md:right-0 top-20 md:top-full mt-3 md:w-[360px] max-h-[480px] bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-2xl z-100 flex flex-col overflow-hidden"
           style={{ animation: "slideDown 0.2s ease-out" }}
         >
           {/* Header */}

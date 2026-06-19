@@ -22,6 +22,26 @@ import {
 
 // ─── Props Interface ─────────────────────────────────────────
 
+interface AuditTrailLog {
+  id: string;
+  booking_id?: string;
+  action: string;
+  actor: string;
+  timestamp: string;
+  metadata?: Record<string, unknown> | null;
+}
+
+interface NotificationLog {
+  id: string;
+  booking_id?: string;
+  title: string;
+  role?: string | null;
+  message?: string | null;
+  body?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
 interface BookingsCommandProps {
   initialBookings: SerializedBooking[];
   serviceCategories: string[];
@@ -91,14 +111,12 @@ export function BookingsCommand({
   const [activeDrawerTab, setActiveDrawerTab] = useState<"timeline" | "details" | "partner" | "actions">("timeline");
 
   // Dynamic Audit trail & notifications states
-  const [auditTrail, setAuditTrail] = useState<any[]>([]);
-  const [notificationsLog, setNotificationsLog] = useState<any[]>([]);
+  const [auditTrail, setAuditTrail] = useState<AuditTrailLog[]>([]);
+  const [notificationsLog, setNotificationsLog] = useState<NotificationLog[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
   useEffect(() => {
     if (!selectedBooking?.id || !isDetailDrawerOpen) {
-      setAuditTrail([]);
-      setNotificationsLog([]);
       return;
     }
 
@@ -322,6 +340,8 @@ export function BookingsCommand({
   };
 
   const openDetailDrawer = (booking: SerializedBooking) => {
+    setAuditTrail([]);
+    setNotificationsLog([]);
     setSelectedBooking(booking);
     setActiveDrawerTab("timeline");
     setIsDetailDrawerOpen(true);
@@ -1023,20 +1043,23 @@ export function BookingsCommand({
                     <p className="text-xs text-on-surface-variant/50 italic">No notifications logged for this booking yet.</p>
                   ) : (
                     <div className="space-y-3">
-                      {notificationsLog.map((notif) => (
-                        <div key={notif.id} className="bg-surface-container/50 border border-outline-variant/10 p-3 rounded-xl space-y-1">
-                          <div className="flex justify-between items-start">
-                            <h6 className="text-xs font-bold text-primary">{notif.title}</h6>
-                            <span className="text-[8px] font-black uppercase bg-primary/10 text-primary px-1.5 py-0.5 rounded-sm tracking-wider">
-                              {notif.role || "user"}
-                            </span>
+                      {notificationsLog.map((notif) => {
+                        const dateStr = notif.created_at || notif.updated_at;
+                        return (
+                          <div key={notif.id} className="bg-surface-container/50 border border-outline-variant/10 p-3 rounded-xl space-y-1">
+                            <div className="flex justify-between items-start">
+                              <h6 className="text-xs font-bold text-primary">{notif.title}</h6>
+                              <span className="text-[8px] font-black uppercase bg-primary/10 text-primary px-1.5 py-0.5 rounded-sm tracking-wider">
+                                {notif.role || "user"}
+                              </span>
+                            </div>
+                            <p className="text-xs text-on-surface-variant/85 leading-normal">{notif.message || notif.body}</p>
+                            <p className="text-[9px] text-on-surface-variant/50">
+                              Sent: {dateStr ? format(new Date(dateStr), "PPP · p") : "Unknown Date"}
+                            </p>
                           </div>
-                          <p className="text-xs text-on-surface-variant/85 leading-normal">{notif.message || notif.body}</p>
-                          <p className="text-[9px] text-on-surface-variant/50">
-                            Sent: {format(new Date(notif.created_at || notif.updated_at), "PPP · p")}
-                          </p>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>

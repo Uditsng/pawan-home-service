@@ -78,6 +78,14 @@ export default function JobsClient({
   const [actionError, setActionError]   = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [enteredOtps, setEnteredOtps]   = useState<Record<string, string>>({});
+  const [currentTime, setCurrentTime]   = useState<Date>(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Live job offers (updated via Realtime)
   const [offeredJobs, setOfferedJobs] = useState<JobOffer[]>(initialOfferedJobs);
@@ -273,6 +281,22 @@ export default function JobsClient({
     }
   }
 
+  function getStatusLabel(status: string) {
+    switch (status) {
+      case "pending":                 return "Pending";
+      case "confirmed":               return "Confirmed";
+      case "assigned":                return "Assigned";
+      case "accepted":                return "Accepted";
+      case "professional_en_route":   return "On The Way";
+      case "professional_arrived":    return "Arrived";
+      case "otp_pending":             return "OTP Pending";
+      case "in_progress":             return "In Progress";
+      case "completed":               return "Completed";
+      case "cancelled":               return "Cancelled";
+      default:                        return status.replace(/_/g, " ");
+    }
+  }
+
   function getActionButton(job: BookingWithDetails) {
     if (activeTab === "assigned") {
       return (
@@ -322,25 +346,40 @@ export default function JobsClient({
       }
       if (job.status === "professional_arrived" || (job.status === "otp_pending" && !(job as { arrival_otp_verified?: boolean }).arrival_otp_verified)) {
         const enteredOtp = enteredOtps[job.id] || "";
+        const arrivalExpiresAt = job.arrival_otp_expires_at ? new Date(job.arrival_otp_expires_at) : null;
+        const isArrivalExpired = arrivalExpiresAt ? currentTime > arrivalExpiresAt : false;
         return (
           <div className="flex flex-col gap-1 w-full max-w-[280px]">
-            <p className="text-[10px] font-bold text-amber-600 mb-1">Enter Arrival OTP from customer:</p>
+            <p className="text-[10px] font-bold text-amber-600 mb-1">
+              {isArrivalExpired ? "Arrival OTP has expired:" : "Enter Arrival OTP from customer:"}
+            </p>
             <div className="flex gap-2">
               <input
                 type="text"
                 maxLength={6}
                 placeholder="6-digit OTP"
                 value={enteredOtp}
+                disabled={isArrivalExpired || isPending}
                 onChange={(e) => setEnteredOtps({ ...enteredOtps, [job.id]: e.target.value })}
-                className="flex-1 bg-surface-container border border-outline-variant/35 text-xs font-mono font-bold tracking-widest text-center py-2 px-3 rounded-xl focus:outline-none focus:border-secondary"
+                className="flex-1 bg-surface-container border border-outline-variant/35 text-xs font-mono font-bold tracking-widest text-center py-2 px-3 rounded-xl focus:outline-none focus:border-secondary disabled:opacity-50"
               />
-              <button
-                disabled={isPending || enteredOtp.length !== 6}
-                onClick={() => handleAction(() => verifyArrivalOtp(job.id, enteredOtp), "OTP verified! Service started.")}
-                className="bg-linear-to-br from-[#00685f] to-[#008378] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md hover:brightness-110 active:scale-95 disabled:opacity-50"
-              >
-                Verify
-              </button>
+              {!isArrivalExpired ? (
+                <button
+                  disabled={isPending || enteredOtp.length !== 6}
+                  onClick={() => handleAction(() => verifyArrivalOtp(job.id, enteredOtp), "OTP verified! Service started.")}
+                  className="bg-linear-to-br from-[#00685f] to-[#008378] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md hover:brightness-110 active:scale-95 disabled:opacity-50"
+                >
+                  Verify
+                </button>
+              ) : (
+                <button
+                  disabled={isPending}
+                  onClick={() => handleAction(() => reachLocation(job.id), "New Arrival OTP generated & sent to customer.")}
+                  className="bg-linear-to-br from-[#00685f] to-[#008378] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md hover:brightness-110 active:scale-95 disabled:opacity-50"
+                >
+                  Resend
+                </button>
+              )}
             </div>
           </div>
         );
@@ -358,25 +397,40 @@ export default function JobsClient({
       }
       if (job.status === "otp_pending" && (job as { arrival_otp_verified?: boolean }).arrival_otp_verified) {
         const enteredOtp = enteredOtps[job.id] || "";
+        const completionExpiresAt = job.completion_otp_expires_at ? new Date(job.completion_otp_expires_at) : null;
+        const isCompletionExpired = completionExpiresAt ? currentTime > completionExpiresAt : false;
         return (
           <div className="flex flex-col gap-1 w-full max-w-[280px]">
-            <p className="text-[10px] font-bold text-amber-600 mb-1">Enter Completion OTP from customer:</p>
+            <p className="text-[10px] font-bold text-amber-600 mb-1">
+              {isCompletionExpired ? "Completion OTP has expired:" : "Enter Completion OTP from customer:"}
+            </p>
             <div className="flex gap-2">
               <input
                 type="text"
                 maxLength={6}
                 placeholder="6-digit OTP"
                 value={enteredOtp}
+                disabled={isCompletionExpired || isPending}
                 onChange={(e) => setEnteredOtps({ ...enteredOtps, [job.id]: e.target.value })}
-                className="flex-1 bg-surface-container border border-outline-variant/35 text-xs font-mono font-bold tracking-widest text-center py-2 px-3 rounded-xl focus:outline-none focus:border-secondary"
+                className="flex-1 bg-surface-container border border-outline-variant/35 text-xs font-mono font-bold tracking-widest text-center py-2 px-3 rounded-xl focus:outline-none focus:border-secondary disabled:opacity-50"
               />
-              <button
-                disabled={isPending || enteredOtp.length !== 6}
-                onClick={() => handleAction(() => verifyCompletionOtp(job.id, enteredOtp), "Completion OTP verified! Service closed.")}
-                className="bg-linear-to-br from-[#00685f] to-[#008378] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md hover:brightness-110 active:scale-95 disabled:opacity-50"
-              >
-                Verify
-              </button>
+              {!isCompletionExpired ? (
+                <button
+                  disabled={isPending || enteredOtp.length !== 6}
+                  onClick={() => handleAction(() => verifyCompletionOtp(job.id, enteredOtp), "Completion OTP verified! Service closed.")}
+                  className="bg-linear-to-br from-[#00685f] to-[#008378] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md hover:brightness-110 active:scale-95 disabled:opacity-50"
+                >
+                  Verify
+                </button>
+              ) : (
+                <button
+                  disabled={isPending}
+                  onClick={() => handleAction(() => requestCompletion(job.id), "New Completion OTP generated & sent to customer.")}
+                  className="bg-linear-to-br from-[#00685f] to-[#008378] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md hover:brightness-110 active:scale-95 disabled:opacity-50"
+                >
+                  Resend
+                </button>
+              )}
             </div>
           </div>
         );
@@ -400,7 +454,7 @@ export default function JobsClient({
     if (!b) return null;
     const isClaiming = claimingId === b.id;
     const payout = Math.round(Number(b.total_amount) * 0.8);
-    const location = b.area ? `${b.area}, ${b.city || ""}` : b.city || "Kanpur Nagar";
+    const location = b.address || (b.area ? `${b.area}, ${b.city || ""}` : b.city || "Kanpur Nagar");
 
     return (
       <div
@@ -436,9 +490,9 @@ export default function JobsClient({
             <h3 className="font-headline font-bold text-[16px] text-on-surface leading-tight">
               {b.services?.title ?? "Service"}
             </h3>
-            <div className="flex items-center gap-1.5 mt-1">
-              <span className="material-symbols-outlined text-[14px] text-on-surface-variant">location_on</span>
-              <span className="text-xs font-semibold text-on-surface-variant truncate">{location}</span>
+            <div className="flex items-start gap-1.5 mt-1">
+              <span className="material-symbols-outlined text-[14px] text-on-surface-variant mt-0.5 shrink-0">location_on</span>
+              <span className="text-xs font-semibold text-on-surface-variant leading-tight">{location}</span>
             </div>
           </div>
         </div>
@@ -670,7 +724,7 @@ export default function JobsClient({
                     {(job.status === "in_progress" || job.status === "confirmed") && (
                       <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
                     )}
-                    {job.status.replace(/_/g, " ")}
+                    {getStatusLabel(job.status)}
                   </span>
                 </div>
 
@@ -679,11 +733,15 @@ export default function JobsClient({
                     <span className="material-symbols-outlined text-[16px] text-on-surface-variant/50">calendar_clock</span>
                     {job.scheduled_date ? new Date(job.scheduled_date).toLocaleString("en-IN") : "Date TBD"}
                   </div>
-                  <div className="flex items-center gap-3 text-[13px] text-on-surface-variant font-medium">
-                    <span className="material-symbols-outlined text-[16px] text-on-surface-variant/50">location_on</span>
-                    {(job as { area?: string | null }).area
-                      ? `${(job as { area?: string | null }).area}, ${job.city || ""}`
-                      : job.city || "Location TBD"}
+                  <div className="flex items-start gap-3 text-[13px] text-on-surface-variant font-medium">
+                    <span className="material-symbols-outlined text-[16px] text-on-surface-variant/50 mt-0.5 shrink-0">location_on</span>
+                    <span className="leading-tight">
+                      {job.address || 
+                        (job.area
+                          ? `${job.area}, ${job.city || ""}`
+                          : job.city || "Location TBD")
+                      }
+                    </span>
                   </div>
                   {job.customer?.full_name && (
                     <div className="flex items-center gap-3 text-[13px] text-on-surface-variant font-medium">

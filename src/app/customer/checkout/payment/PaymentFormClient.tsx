@@ -129,6 +129,32 @@ export default function PaymentFormClient({
           theme: {
             color: "#002261", // Premium Brand Navy
           },
+          method: {
+            card: true,
+            upi: true,
+            netbanking: true,
+            wallet: false,
+            emi: false,
+            paylater: false,
+          },
+          config: {
+            display: {
+              blocks: {
+                preferred: {
+                  name: "Payment Options",
+                  instruments: [
+                    { method: "card" },
+                    { method: "upi" },
+                    { method: "netbanking" },
+                  ],
+                },
+              },
+              sequence: ["block.preferred"],
+              preferences: {
+                show_default_blocks: false,
+              },
+            },
+          },
           handler: async function (response: RazorpaySuccessResponse) {
             startTransition(async () => {
               try {
@@ -225,7 +251,7 @@ export default function PaymentFormClient({
               </div>
 
               {/* Duration */}
-              <div className="flex items-start gap-3">
+              {/* <div className="flex items-start gap-3">
                 <div className="w-10 h-10 bg-primary/5 rounded-xl flex items-center justify-center shrink-0">
                   <span className="material-symbols-outlined text-primary text-xl">schedule</span>
                 </div>
@@ -233,7 +259,7 @@ export default function PaymentFormClient({
                   <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Estimated Duration</p>
                   <p className="font-bold text-sm text-on-surface leading-tight mt-0.5">60 Minutes</p>
                 </div>
-              </div>
+              </div> */}
 
               {/* Dynamic Service Address */}
               <div className="flex items-start gap-3 min-w-0">
@@ -243,9 +269,9 @@ export default function PaymentFormClient({
                 <div className="min-w-0">
                   <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Service Location</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-xs font-extrabold text-on-surface bg-surface-container px-2 py-0.5 rounded-full uppercase tracking-wider scale-90 shrink-0">
+                    {/* <span className="text-xs font-extrabold text-on-surface bg-surface-container px-2 py-0.5 rounded-full uppercase tracking-wider scale-90 shrink-0">
                       {addressObj.label || "Home"}
-                    </span>
+                    </span> */}
                     <p className="font-bold text-sm text-on-surface truncate leading-tight">
                       {addressObj.formatted_address}
                     </p>
@@ -309,7 +335,7 @@ export default function PaymentFormClient({
           </div>
 
           {/* 4. SECURE PAYMENT & TRUST ELEMENTS */}
-          <div className="bg-primary/5 border border-primary/10 rounded-3xl p-5 md:p-6 space-y-4 relative overflow-hidden">
+          {/* <div className="bg-primary/5 border border-primary/10 rounded-3xl p-5 md:p-6 space-y-4 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full blur-xl pointer-events-none" />
 
             <div className="flex items-center gap-3">
@@ -335,7 +361,7 @@ export default function PaymentFormClient({
                 </p>
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* 5. TERMS CONFIRMATION CHECKBOX */}
           <div className="px-2 py-1">
@@ -362,7 +388,7 @@ export default function PaymentFormClient({
           </div>
 
           {/* STICKY BOTTOM NAVIGATION BAR */}
-          <footer className="fixed bottom-0 left-0 w-full z-50 bg-[#f7f9fb]/90 backdrop-blur-2xl border-t border-outline-variant/10 p-3 md:p-4 pb-safe flex items-center">
+          <footer className="fixed bottom-0 left-0 w-full z-50 bg-[#f7f9fb]/90 backdrop-blur-2xl border-t border-outline-variant/10 p-3 md:p-4 pb-2 flex items-center">
             <div className="max-w-xl mx-auto flex gap-3 md:gap-4 items-center w-full">
               <div className="flex-1">
                 <p className="text-[9px] md:text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Total Payable</p>

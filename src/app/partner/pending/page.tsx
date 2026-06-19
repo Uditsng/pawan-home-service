@@ -13,7 +13,7 @@ export default async function PartnerPendingPage() {
   // Fetch partner profile
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, status, kyc_status, kyc_rejection_reason")
+    .select("role, status, kyc_status, kyc_rejection_reason, kyc_documents")
     .eq("id", user.id)
     .single();
 
@@ -25,6 +25,7 @@ export default async function PartnerPendingPage() {
     <PendingClient
       initialKycStatus={profile.kyc_status}
       rejectionReason={profile.kyc_rejection_reason}
+      initialKycDocuments={profile.kyc_documents}
       userId={user.id}
     />
   );

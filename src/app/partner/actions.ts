@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import type { BookingStatus } from "@/lib/types";
 import { notifyCustomer, notifyPartner } from "@/lib/notifications";
 import crypto from "crypto";
+import { triggerDispatchBatch } from "@/app/actions/dispatch";
 
 // ─── Helper: Get authenticated partner or throw ──────────────
 
@@ -117,6 +118,25 @@ export async function rejectJob(
         needs_admin_attention: true,
       }
     );
+
+    // Safeguard check before calling triggerDispatchBatch
+    const { data: latestBooking } = await supabase
+      .from("bookings")
+      .select("status, partner_id")
+      .eq("id", bookingId)
+      .single();
+
+    if (latestBooking) {
+      const isPending = latestBooking.status === "pending";
+      const isUnassigned = latestBooking.partner_id === null;
+      const isNotCancelled = latestBooking.status !== "cancelled";
+      const isNotCompleted = latestBooking.status !== "completed";
+
+      if (isPending && isUnassigned && isNotCancelled && isNotCompleted) {
+        // Trigger re-dispatch batch (which automatically excludes rejecting partner)
+        void triggerDispatchBatch(bookingId, 1);
+      }
+    }
   } else {
     // Log successful reassignment
     await logBookingEvent(
@@ -462,7 +482,7 @@ export async function startRoute(
     .single();
 
   if (bookingInfo?.customer_id) {
-    const svcTitle = (bookingInfo.services as any)?.title ?? "your service";
+    const svcTitle = (bookingInfo.services as unknown as { title: string } | null)?.title ?? "your service";
     void notifyCustomer(
       bookingInfo.customer_id,
       "Professional Dispatched",
@@ -498,14 +518,14 @@ export async function reachLocation(
     })
     .eq("id", bookingId)
     .eq("partner_id", user.id)
-    .eq("status", "professional_en_route")
+    .in("status", ["professional_en_route", "professional_arrived", "otp_pending"])
     .select("id")
     .single();
 
   if (errorArrived || !bookingArrived) {
     return {
       success: false,
-      error: "Cannot mark arrived. Job must be 'professional_en_route' status.",
+      error: "Cannot mark arrived. Job must be in en-route, arrived, or OTP pending status.",
     };
   }
 
@@ -555,7 +575,7 @@ export async function reachLocation(
     .single();
 
   if (bookingInfo?.customer_id) {
-    const svcTitle = (bookingInfo.services as any)?.title ?? "your service";
+    const svcTitle = (bookingInfo.services as unknown as { title: string } | null)?.title ?? "your service";
     void notifyCustomer(
       bookingInfo.customer_id,
       "Professional Arrived",
@@ -715,14 +735,14 @@ export async function requestCompletion(
     })
     .eq("id", bookingId)
     .eq("partner_id", user.id)
-    .eq("status", "in_progress")
+    .in("status", ["in_progress", "otp_pending"])
     .select("id, customer_id")
     .single();
 
   if (error || !data) {
     return {
       success: false,
-      error: "Cannot request completion. Job must be in progress.",
+      error: "Cannot request completion. Job must be in progress or OTP pending.",
     };
   }
 
@@ -908,7 +928,7 @@ export async function saveServiceAreas(
 
   const { error: insertError } = await supabase
     .from('partner_service_areas')
-    .upsert(partnerAreas, { onConflict: 'partner_id, pincode', ignoreDuplicates: true });
+    .upsert(partnerAreas, { onConflict: 'partner_id, pincode, city', ignoreDuplicates: true });
 
   if (insertError) {
     console.error('Insert Service Areas Error:', insertError);
@@ -988,6 +1008,23 @@ export async function claimJobOffer(
   }
 
   if (offer.status !== "offered") {
+    // Log failed claim due to conflict (already claimed/expired)
+    await logBookingEvent(supabase, bookingId, "CLAIM_FAILED_ALREADY_CLAIMED", "PARTNER", {
+      partner_id: user.id,
+      reason: "offer_not_in_offered_status",
+      offer_status: offer.status,
+    });
+    await supabase.from("booking_audit_trail").insert({
+      booking_id: bookingId,
+      action: "CLAIM_FAILED_ALREADY_CLAIMED",
+      actor: "PARTNER",
+      metadata: {
+        partner_id: user.id,
+        reason: "offer_not_in_offered_status",
+        offer_status: offer.status,
+      },
+    });
+
     return {
       success: false,
       alreadyClaimed: true,
@@ -1008,6 +1045,21 @@ export async function claimJobOffer(
   const claimResult = result as { success: boolean; reason?: string };
 
   if (!claimResult.success) {
+    // Log failed claim due to conflict (another partner claimed it first)
+    await logBookingEvent(supabase, bookingId, "CLAIM_FAILED_ALREADY_CLAIMED", "PARTNER", {
+      partner_id: user.id,
+      reason: claimResult.reason || "rpc_claim_failed",
+    });
+    await supabase.from("booking_audit_trail").insert({
+      booking_id: bookingId,
+      action: "CLAIM_FAILED_ALREADY_CLAIMED",
+      actor: "PARTNER",
+      metadata: {
+        partner_id: user.id,
+        reason: claimResult.reason || "rpc_claim_failed",
+      },
+    });
+
     // Another partner claimed it in the milliseconds between our check and RPC
     return {
       success: false,
@@ -1046,3 +1098,86 @@ export async function claimJobOffer(
   revalidatePath("/partner", "layout");
   return { success: true };
 }
+
+export async function savePartnerServices(
+  serviceIds: string[]
+): Promise<{ success: boolean; error?: string }> {
+  const { supabase, user, error: authError } = await getAuthenticatedPartner();
+  if (!user) return { success: false, error: authError ?? "Not authenticated" };
+
+  if (serviceIds.length === 0) {
+    return { success: false, error: "Please select at least one service." };
+  }
+
+  // 1. Delete existing services for the partner
+  const { error: deleteError } = await supabase
+    .from('partner_services')
+    .delete()
+    .eq('partner_id', user.id);
+
+  if (deleteError) {
+    console.error('Delete Services Error:', deleteError);
+    return { success: false, error: "Failed to clear existing services." };
+  }
+
+  // 2. Insert new services
+  const partnerServices = serviceIds.map(service_id => ({
+    partner_id: user.id,
+    service_id
+  }));
+
+  const { error: insertError } = await supabase
+    .from('partner_services')
+    .upsert(partnerServices, { onConflict: 'partner_id, service_id', ignoreDuplicates: true });
+
+  if (insertError) {
+    console.error('Insert Services Error:', insertError);
+    return { success: false, error: "Failed to save services." };
+  }
+
+
+  revalidatePath("/partner/profile/services", "page");
+  return { success: true };
+}
+
+// ─── UPDATE PARTNER PROFILE ───────────────────────────────────
+// Updates the partner's display name, phone, and optionally avatar_url.
+// Avatar URL is uploaded client-side to the Avatar bucket; only the
+// resulting public URL is passed here and stored.
+
+export async function updatePartnerProfile(
+  formData: FormData
+): Promise<{ success: boolean; error?: string }> {
+  const { supabase, user, error: authError } = await getAuthenticatedPartner();
+  if (!user) return { success: false, error: authError ?? "Not authenticated" };
+
+  const fullName = (formData.get("full_name") as string | null)?.trim();
+  const phone    = (formData.get("phone") as string | null)?.trim();
+  const avatarUrl = (formData.get("avatar_url") as string | null)?.trim();
+
+  if (!fullName) {
+    return { success: false, error: "Full name is required." };
+  }
+
+  const updatePayload: Record<string, string | null> = {
+    full_name: fullName,
+    phone: phone || null,
+  };
+
+  if (avatarUrl) {
+    updatePayload.avatar_url = avatarUrl;
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update(updatePayload)
+    .eq("id", user.id);
+
+  if (error) {
+    return { success: false, error: "Failed to update profile." };
+  }
+
+  revalidatePath("/partner/profile", "page");
+  return { success: true };
+}
+

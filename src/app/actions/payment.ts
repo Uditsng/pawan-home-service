@@ -112,11 +112,11 @@ export async function createRazorpayOrderAction(payload: {
     return { freeOrder: true, amount: 0, currency: "INR" };
   }
 
-  const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.trim();
+  const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim();
   if (!keyId || !keySecret) {
     console.error("[Razorpay] Missing API credentials in environment.");
-    throw new Error("Razorpay API credentials are not configured on the server.");
+    throw new Error(`Razorpay API credentials are not configured on the server. (NEXT_PUBLIC_RAZORPAY_KEY_ID configured: ${!!keyId}, RAZORPAY_KEY_SECRET configured: ${!!keySecret})`);
   }
 
   // Create order via Razorpay API
@@ -137,7 +137,7 @@ export async function createRazorpayOrderAction(payload: {
   if (!razorpayResp.ok) {
     const errText = await razorpayResp.text();
     console.error("[Razorpay] Order creation failed:", errText);
-    throw new Error("Failed to initialize payment gateway order.");
+    throw new Error(`Failed to initialize payment gateway order: ${errText}`);
   }
 
   const razorpayOrder = await razorpayResp.json();
@@ -173,7 +173,7 @@ export async function verifyRazorpayPaymentAction(payload: {
     if (!payload.razorpay_order_id || !payload.razorpay_payment_id || !payload.razorpay_signature) {
       return { success: false, error: "Missing payment credentials." };
     }
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim();
     if (!keySecret) return { success: false, error: "Razorpay credentials missing on server." };
 
     const generatedSignature = crypto
@@ -183,7 +183,10 @@ export async function verifyRazorpayPaymentAction(payload: {
 
     if (generatedSignature !== payload.razorpay_signature) {
       console.error("[Razorpay] Invalid signature detected. Possible tampering attempt.");
-      return { success: false, error: "Payment verification failed." };
+      return {
+        success: false,
+        error: `Payment verification failed (signature mismatch). Please check that your API keys are correct.`,
+      };
     }
   }
 

@@ -2,7 +2,6 @@ import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import BookingsClient from "./BookingsClient";
-import CustomerHeader from "@/components/CustomerHeader";
 
 export default async function BookingsPage() {
   const supabase = await createClient();
@@ -21,7 +20,6 @@ export default async function BookingsPage() {
 
   return (
     <div className="bg-surface text-on-surface antialiased min-h-screen pb-24">
-      <CustomerHeader />
 
       <main className="max-w-7xl mx-auto pb-8">
         {/* Page Title */}

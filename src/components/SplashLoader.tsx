@@ -29,7 +29,7 @@ export default function SplashLoader() {
       }, 500);
 
       return () => clearTimeout(removeTimer);
-    }, 1200); // Keep visible for 1.2s to look natural and let Next.js hydrate
+    }, 0); // Start fade-out immediately on mount
 
     return () => clearTimeout(fadeTimer);
   }, []);

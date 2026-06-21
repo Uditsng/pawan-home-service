@@ -2,6 +2,9 @@ import "@/app/brand-theme.css";
 import { CartProvider } from "@/lib/cart/CartContext";
 import CartDrawer from "@/components/CartDrawer";
 
+import CustomerHeader from "@/components/CustomerHeader";
+import HeaderVisibilityWrapper from "./HeaderVisibilityWrapper";
+
 export default function CustomerMobileLayout({
   children,
 }: {
@@ -9,10 +12,10 @@ export default function CustomerMobileLayout({
 }) {
   return (
     <CartProvider>
-      <div className="min-h-screen w-full brand-identity bg-surface text-on-surface">
+      <HeaderVisibilityWrapper header={<CustomerHeader />}>
         {children}
         <CartDrawer />
-      </div>
+      </HeaderVisibilityWrapper>
     </CartProvider>
   );
 }

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/utils/supabase/server";
-import CustomerHeader from "@/components/CustomerHeader";
 import AddToCartButton from "@/components/AddToCartButton";
 
 interface ServiceWithSubcategory {
@@ -60,7 +59,6 @@ export default async function CategoryServiceListingPage({ params }: { params: P
 
   return (
     <div className="bg-surface font-body text-on-surface antialiased min-h-screen pb-24">
-      <CustomerHeader />
 
       {/* Category Title Bar */}
       <div className="max-w-7xl mx-auto px-4 md:px-6 pt-4 md:pt-6 pb-2">

@@ -2,7 +2,6 @@ import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/utils/supabase/server";
 import SearchInput from "@/components/SearchInput";
 import Link from "next/link";
-import CustomerHeader from "@/components/CustomerHeader";
 
 
 export default async function SearchPage({
@@ -57,7 +56,6 @@ export default async function SearchPage({
   return (
 
     <div className="bg-surface font-body text-on-surface min-h-screen pb-24">
-      <CustomerHeader />
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 pt-4 md:pt-6">
         <SearchInput defaultValue={q || ""} />

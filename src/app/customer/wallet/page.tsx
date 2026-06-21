@@ -1,5 +1,4 @@
 import BottomNav from "@/components/BottomNav";
-import CustomerHeader from "@/components/CustomerHeader";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
@@ -61,7 +60,6 @@ export default async function WalletPage() {
 
   return (
     <div className="bg-[#f5f6f8] text-on-surface antialiased min-h-screen pb-24 font-body">
-      <CustomerHeader />
 
       <main className="max-w-xl mx-auto px-4 md:px-5 pt-4 pb-8 space-y-4">
 

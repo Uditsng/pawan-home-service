@@ -1,5 +1,4 @@
 import BottomNav from "@/components/BottomNav";
-import CustomerHeader from "@/components/CustomerHeader";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -10,7 +9,6 @@ export const metadata: Metadata = {
 export default function DeleteAccountComingSoonPage() {
   return (
     <div className="bg-surface text-on-surface antialiased min-h-screen pb-24 font-body">
-      <CustomerHeader />
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-12 md:py-20 flex flex-col items-center justify-center">
 

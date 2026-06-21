@@ -2,7 +2,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-import CustomerHeader from "@/components/CustomerHeader";
 import BottomNav from "@/components/BottomNav";
 import type { Metadata } from "next";
 import InvoiceClientActions from "./InvoiceClientActions";
@@ -206,7 +205,6 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
 
     return (
       <div className="bg-surface text-on-surface min-h-screen pb-20 font-body flex flex-col justify-between">
-        <CustomerHeader />
         <main className="max-w-3xl mx-auto px-4 py-16 text-center">
           <div className="w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
             <span className="material-symbols-outlined text-amber-600 text-3xl font-bold">hourglass_empty</span>
@@ -239,10 +237,6 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
 
   return (
     <div className="bg-surface text-on-surface antialiased min-h-screen pb-24 font-body selection:bg-secondary/30">
-      <div className="no-print">
-        <CustomerHeader />
-      </div>
-
       <main className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8">
         
         {/* Navigation & Controls (hidden in print) */}

@@ -2,7 +2,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-import CustomerHeader from "@/components/CustomerHeader";
 import BottomNav from "@/components/BottomNav";
 import type { Metadata } from "next";
 import RatingSection from "@/components/RatingSection";
@@ -200,7 +199,6 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
 
   return (
     <div className="bg-surface text-on-surface antialiased min-h-screen pb-28 font-body">
-      <CustomerHeader />
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
 

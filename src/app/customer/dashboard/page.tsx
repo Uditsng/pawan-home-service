@@ -2,7 +2,6 @@ import Image from "next/image";
 import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/utils/supabase/server";
 import DashboardCarousel from "./DashboardCarousel";
-import CustomerHeader from "@/components/CustomerHeader";
 import DashboardGridClient from "./DashboardGridClient";
 
 interface ServiceWithSubcategory {
@@ -60,7 +59,6 @@ export default async function CustomerDashboard() {
 
   return (
     <div className="bg-surface font-body text-on-surface antialiased min-h-screen pb-24">
-      <CustomerHeader />
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 pt-4 md:pt-6">
 

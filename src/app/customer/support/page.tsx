@@ -1,5 +1,4 @@
 import BottomNav from "@/components/BottomNav";
-import CustomerHeader from "@/components/CustomerHeader";
 import SupportClient from "./SupportClient";
 import { Metadata } from "next";
 
@@ -11,7 +10,6 @@ export const metadata: Metadata = {
 export default function SupportPage() {
   return (
     <div className="bg-surface text-on-surface antialiased min-h-screen pb-28 font-body">
-      <CustomerHeader />
 
       <main className="max-w-3xl mx-auto px-4 py-8 md:py-12">
         {/* Header */}

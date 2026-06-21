@@ -257,16 +257,14 @@ export default function ServicesShowcaseClient({
                   id={`chip-${catSlug}`}
                   href={`#cat-${catSlug}`}
                   onClick={(e) => handleCategoryClick(e, catSlug, cat.id)}
-                  className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full font-bold text-xs shrink-0 transition-all select-none snap-start active:scale-95 duration-150 ${
-                    isActive
+                  className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full font-bold text-xs shrink-0 transition-all select-none snap-start active:scale-95 duration-150 ${isActive
                       ? "bg-primary text-white shadow-xs"
                       : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high"
-                  }`}
+                    }`}
                 >
                   <span
-                    className={`material-symbols-outlined text-sm ${
-                      isActive ? "text-secondary" : "text-[#059669]"
-                    }`}
+                    className={`material-symbols-outlined text-sm ${isActive ? "text-secondary" : "text-[#059669]"
+                      }`}
                   >
                     {firstIcon}
                   </span>
@@ -389,9 +387,8 @@ export default function ServicesShowcaseClient({
                       aria-label={isExpanded ? "Collapse category" : "Expand category"}
                     >
                       <span
-                        className={`material-symbols-outlined text-lg transition-transform duration-200 ${
-                          isExpanded ? "rotate-180" : ""
-                        }`}
+                        className={`material-symbols-outlined text-lg transition-transform duration-200 ${isExpanded ? "rotate-180" : ""
+                          }`}
                       >
                         keyboard_arrow_down
                       </span>
@@ -401,11 +398,10 @@ export default function ServicesShowcaseClient({
 
                 {/* Main section contents (hidden on mobile when collapsed, always open on desktop) */}
                 <div
-                  className={`grid transition-all duration-200 ${
-                    isExpanded
+                  className={`grid transition-all duration-200 ${isExpanded
                       ? "grid-rows-[1fr] opacity-100"
                       : "grid-rows-[0fr] opacity-0 sm:grid-rows-[1fr] sm:opacity-100"
-                  } overflow-hidden`}
+                    } overflow-hidden`}
                 >
                   <div className="min-h-0 space-y-4">
 

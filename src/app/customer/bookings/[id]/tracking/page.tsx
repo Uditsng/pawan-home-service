@@ -163,7 +163,7 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
       .select("rating, comment")
       .eq("booking_id", bookingId)
       .maybeSingle();
-    
+
     if (reviewData) {
       existingReview = reviewData;
     }
@@ -171,10 +171,10 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
 
   const bookingRef = `BK-${booking.id.substring(0, 6).toUpperCase()}`;
   const scheduledDate = booking.scheduled_date ? new Date(booking.scheduled_date) : new Date();
-  const displayDate = scheduledDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  const displayTime = scheduledDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const displayDate = scheduledDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Kolkata" });
+  const displayTime = scheduledDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 
-  const iconName = booking.services?.subcategories?.icon_name || 
+  const iconName = booking.services?.subcategories?.icon_name ||
     (booking.services?.category === "cleaning" ? "cleaning_services" : "home_repair_service");
 
   const isAssigned = !!booking.partner;
@@ -203,12 +203,12 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
       <CustomerHeader />
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
-        
+
         {/* Navigation & Header */}
         <section className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <Link 
-              href="/customer/bookings" 
+            <Link
+              href="/customer/bookings"
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-on-surface-variant hover:text-primary transition-colors mb-2"
             >
               <span className="material-symbols-outlined text-sm">arrow_back</span>
@@ -230,10 +230,10 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
 
         {/* Bento-Grid Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
+
           {/* Main Column: Status Checklist and Booking Details */}
           <div className="lg:col-span-2 flex flex-col gap-6">
-            
+
             {/* Service Timeline Progress */}
             <div className="glass-panel rounded-3xl p-6 md:p-8">
               <h3 className="font-headline text-base font-bold uppercase tracking-wider text-on-surface-variant mb-6">
@@ -369,15 +369,15 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
                   Your tax invoice is ready. You can view it online, download it as a print-friendly PDF, or share the link.
                 </p>
                 <div className="flex flex-wrap gap-3">
-                  <Link 
-                    href={`/customer/bookings/${booking.id}/invoice`} 
+                  <Link
+                    href={`/customer/bookings/${booking.id}/invoice`}
                     className="px-5 py-2.5 bg-primary text-on-primary text-xs font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-sm"
                   >
                     <span className="material-symbols-outlined text-sm">visibility</span>
                     View Invoice
                   </Link>
-                  <Link 
-                    href={`/customer/bookings/${booking.id}/invoice?download=true`} 
+                  <Link
+                    href={`/customer/bookings/${booking.id}/invoice?download=true`}
                     className="px-5 py-2.5 bg-surface-container text-on-surface text-xs font-bold rounded-xl border border-outline-variant/15 hover:bg-surface-container-high transition-colors flex items-center gap-1.5"
                   >
                     <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
@@ -475,7 +475,7 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
               <h3 className="font-headline text-sm font-bold uppercase tracking-wider text-on-surface-variant mb-4">
                 Your Professional
               </h3>
-              
+
               {isAssigned ? (
                 <div>
                   <div className="flex items-center gap-3">
@@ -512,8 +512,8 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-outline-variant/30 flex gap-2">
-                    <button 
-                      disabled 
+                    <button
+                      disabled
                       className="flex-1 py-2 rounded-xl bg-surface-container text-on-surface-variant text-xs font-bold flex items-center justify-center gap-1.5 opacity-65 cursor-not-allowed"
                     >
                       <span className="material-symbols-outlined text-sm">phone</span>
@@ -536,14 +536,14 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
 
             {/* Back CTA Button block */}
             <div className="flex flex-col gap-2">
-              <Link 
-                href="/customer/bookings" 
+              <Link
+                href="/customer/bookings"
                 className="w-full text-center py-3 bg-primary text-on-primary font-bold rounded-xl font-headline transition-opacity hover:opacity-90 active:scale-98 text-xs md:text-sm shadow-sm"
               >
                 Back to Bookings List
               </Link>
-              <Link 
-                href="/customer/dashboard" 
+              <Link
+                href="/customer/dashboard"
                 className="w-full text-center py-3 bg-surface-container text-on-surface font-bold rounded-xl font-headline transition-colors hover:bg-surface-container-high active:scale-98 text-xs md:text-sm"
               >
                 Go to Home Dashboard

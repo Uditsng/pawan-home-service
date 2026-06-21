@@ -785,6 +785,7 @@ export async function verifyCompletionOtp(
     .single();
 
   if (fetchError || !booking) {
+    console.error("[verifyCompletionOtp] Fetch booking failed:", fetchError?.message);
     return { success: false, error: "Booking not found." };
   }
 
@@ -843,7 +844,19 @@ export async function verifyCompletionOtp(
     .eq("id", bookingId);
 
   if (updateError) {
-    return { success: false, error: "Failed to mark booking completed." };
+    // Log the real database error for debugging (visible in server logs / Vercel logs)
+    console.error(
+      "[verifyCompletionOtp] DB update failed for booking", bookingId,
+      "|", updateError.code, "|", updateError.message,
+      updateError.details ? `| details: ${updateError.details}` : ""
+    );
+    return {
+      success: false,
+      error:
+        process.env.NODE_ENV === "development"
+          ? `DB Error (${updateError.code}): ${updateError.message}`
+          : "Failed to mark booking completed. Please try again or contact support.",
+    };
   }
 
   await logBookingEvent(supabase, bookingId, "COMPLETION_OTP_VERIFIED", "SYSTEM");

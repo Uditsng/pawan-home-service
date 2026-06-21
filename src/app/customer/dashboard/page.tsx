@@ -140,8 +140,8 @@ export default async function CustomerDashboard() {
           <div className="flex items-center justify-center gap-4 bg-surface-container-low/75 border border-outline-variant/10 py-3 px-5 rounded-2xl max-w-xs md:max-w-sm mx-auto shadow-2xs">
             <div className="flex items-center gap-1.5 text-xs font-bold text-on-surface">
               <svg className="w-4 h-4 text-[#059669]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 22C12 22 20 18 20 12V5L12 2L4 5V12C4 18 12 22 12 22Z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M9 11L11 13L15 9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M12 22C12 22 20 18 20 12V5L12 2L4 5V12C4 18 12 22 12 22Z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M9 11L11 13L15 9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               Verified
             </div>
@@ -159,8 +159,8 @@ export default async function CustomerDashboard() {
             <div className="h-4 w-px bg-outline-variant/30" />
             <div className="flex items-center gap-1.5 text-xs font-bold text-on-surface">
               <svg className="w-4 h-4 text-[#059669]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.5"/>
-                <path d="M12 6V12L15 14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.5" />
+                <path d="M12 6V12L15 14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               Reliable
             </div>

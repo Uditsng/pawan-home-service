@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { updateSettingsAction } from "./actions";
+import { updateSettingsAction, migrateServiceImagesAction } from "./actions";
 
 interface SettingsConsoleProps {
   initialTaxRate: string;
@@ -33,6 +33,38 @@ export function SettingsConsole({
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [migrationResult, setMigrationResult] = useState<{
+    success: boolean;
+    processed: number;
+    migrated: number;
+    skipped: number;
+    failed: number;
+    logs: string[];
+    error?: string;
+  } | null>(null);
+
+  const handleMigrateImages = async () => {
+    setIsMigrating(true);
+    setMigrationResult(null);
+    try {
+      const res = await migrateServiceImagesAction();
+      setMigrationResult(res);
+    } catch (err: unknown) {
+      setMigrationResult({
+        success: false,
+        processed: 0,
+        migrated: 0,
+        skipped: 0,
+        failed: 0,
+        logs: [],
+        error: (err as Error).message || "Failed to execute migration."
+      });
+    } finally {
+      setIsMigrating(false);
+    }
+  };
 
   const handleAddCity = (e: React.FormEvent) => {
     e.preventDefault();
@@ -237,6 +269,81 @@ export function SettingsConsole({
             />
             <p className="text-[10px] text-on-surface-variant/50 font-medium">Discount applied to friend&apos;s first booking checkout.</p>
           </div>
+        </div>
+      </Card>
+
+      {/* Service Image Migration */}
+      <Card variant="solid" className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+            <span className="material-symbols-outlined">cloud_sync</span>
+          </div>
+          <h3 className="text-lg font-bold tracking-tight text-primary font-headline">Service Image Asset Migration</h3>
+        </div>
+        <div className="space-y-4">
+          <p className="text-xs text-on-surface-variant font-medium leading-relaxed">
+            Migrate the catalog&apos;s local image assets from the project codebase (<code>/public/assets/services/</code>) to your cloud-hosted Supabase Storage. This action automatically creates the <code>services</code> bucket, uploads the images, and updates database records to use public storage URLs.
+          </p>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="primary"
+              onClick={handleMigrateImages}
+              disabled={isMigrating}
+              className="bg-primary hover:bg-primary/95 shadow-md flex items-center gap-2 cursor-pointer select-none"
+            >
+              {isMigrating && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
+              {isMigrating ? "Migrating Assets..." : "Run CDN Image Migration"}
+            </Button>
+          </div>
+
+          {/* Migration Result Report */}
+          {migrationResult && (
+            <div className="space-y-3 p-4 bg-surface-container rounded-xl border border-outline-variant/20 animate-in slide-in-from-top-2 duration-200">
+              <div className="flex items-center gap-2">
+                <span className={`material-symbols-outlined ${migrationResult.success ? "text-secondary" : "text-error"}`}>
+                  {migrationResult.success ? "check_circle" : "error"}
+                </span>
+                <h4 className="text-xs font-black uppercase tracking-wider text-primary">
+                  Migration Status: {migrationResult.success ? "Completed Successfully" : "Failed / Incomplete"}
+                </h4>
+              </div>
+              {migrationResult.error && (
+                <p className="text-xs text-error font-bold text-[11px]">{migrationResult.error}</p>
+              )}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-surface p-3 rounded-lg border border-outline-variant/10 text-center">
+                <div>
+                  <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase block">Processed</span>
+                  <span className="text-base font-black text-primary">{migrationResult.processed}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase block">Migrated</span>
+                  <span className="text-base font-black text-secondary">{migrationResult.migrated}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase block">Skipped</span>
+                  <span className="text-base font-black text-on-surface-variant">{migrationResult.skipped}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase block">Failed</span>
+                  <span className={`text-base font-black ${migrationResult.failed > 0 ? "text-error" : "text-on-surface-variant"}`}>
+                    {migrationResult.failed}
+                  </span>
+                </div>
+              </div>
+              {migrationResult.logs && migrationResult.logs.length > 0 && (
+                <div className="space-y-1">
+                  <span className="text-[9px] font-bold text-on-surface-variant/50 uppercase block">Activity Logs</span>
+                  <div className="max-h-40 overflow-y-auto bg-surface p-3 rounded-lg border border-outline-variant/10 font-mono text-[10px] text-on-surface-variant/80 space-y-1">
+                    {migrationResult.logs.map((log, idx) => (
+                      <div key={idx} className="border-b border-outline-variant/5 pb-0.5 last:border-0">
+                        {log}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </Card>
 

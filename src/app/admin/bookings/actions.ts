@@ -43,7 +43,12 @@ export async function updateBookingStatusAction(
   }
 
   if (status === "completed") {
-    updateData.completed_at = new Date().toISOString();
+    const now = new Date().toISOString();
+    updateData.completed_at = now;
+    updateData.service_completed_at = now;
+    // Set completion_otp_verified so the invoice auto-creation trigger fires
+    updateData.completion_otp_verified = true;
+    updateData.completion_otp_verified_at = now;
   }
 
   if (status === "in_progress") {

@@ -77,7 +77,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
             Select your expertise and service areas to start receiving auto-assigned jobs.
           </p>
         </div>
-        
+
         <form action={completeOnboarding} className="space-y-10">
 
           <div className="space-y-4">
@@ -85,7 +85,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
               <span className="material-symbols-outlined text-secondary">handyman</span>
               Which services do you offer?
             </h3>
-            
+
             <ServiceSelectionDrawer services={availableServices} />
           </div>
 
@@ -94,7 +94,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
               <span className="material-symbols-outlined text-secondary">location_on</span>
               Which areas do you serve?
             </h3>
-            
+
             <PincodeSelector />
           </div>
 

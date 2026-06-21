@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/utils/supabase/auth-checks";
+import { createAdminClient } from "@/utils/supabase/admin";
 
 /**
  * Update Partner Role/Status (Approval/Blocking)
@@ -88,5 +89,33 @@ export async function deleteService(serviceId: string) {
   }
 
   revalidatePath('/admin/services');
+}
+
+/**
+ * Helper action to verify/create the services bucket in Supabase storage.
+ */
+export async function ensureServicesBucketAction() {
+  await requireAdmin();
+  const supabase = createAdminClient();
+
+  const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+  if (listError) {
+    throw new Error(`Failed to list storage buckets: ${listError.message}`);
+  }
+
+  const exists = buckets.some(b => b.id === "services");
+  if (!exists) {
+    const { error: createError } = await supabase.storage.createBucket("services", {
+      public: true,
+      fileSizeLimit: 1048576, // 1MB
+      allowedMimeTypes: ["image/png", "image/jpeg", "image/webp"]
+    });
+
+    if (createError) {
+      throw new Error(`Failed to create services storage bucket: ${createError.message}`);
+    }
+  }
+
+  return { success: true };
 }
 

@@ -256,11 +256,12 @@ export default async function PartnerDashboardPage() {
                         {nextAssignedJob.scheduled_date
                           ? new Date(
                             nextAssignedJob.scheduled_date
-                          ).toLocaleString(undefined, {
+                          ).toLocaleString("en-IN", {
                             hour: "2-digit",
                             minute: "2-digit",
                             month: "short",
                             day: "numeric",
+                            timeZone: "Asia/Kolkata",
                           })
                           : "TBD"}
                       </p>
@@ -374,8 +375,8 @@ export default async function PartnerDashboardPage() {
                     <p className="font-bold font-headline text-[15px] text-primary bg-primary/5 px-3 py-1 rounded-lg">
                       {job.scheduled_date
                         ? new Date(job.scheduled_date).toLocaleTimeString(
-                          undefined,
-                          { hour: "2-digit", minute: "2-digit" }
+                          "en-IN",
+                          { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" }
                         )
                         : "TBD"}
                     </p>

@@ -231,9 +231,9 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
   const bookingDate = invoiceData.booking?.scheduled_date ? new Date(invoiceData.booking.scheduled_date) : new Date();
   const invoiceDate = new Date(invoiceData.created_at);
 
-  const displayBookingDate = bookingDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + " &middot; " + bookingDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  const displayInvoiceDate = invoiceDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  const displayPaymentDate = invoiceDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+  const displayBookingDate = bookingDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Kolkata" }) + " &middot; " + bookingDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
+  const displayInvoiceDate = invoiceDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Kolkata" });
+  const displayPaymentDate = invoiceDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 
   const bookingRef = `BK-${invoiceData.booking?.id.substring(0, 6).toUpperCase()}`;
 

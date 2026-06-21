@@ -144,8 +144,8 @@ export default function BookingsClient({ bookings }: { bookings: Booking[] }) {
         ) : (
           filteredBookings.map((booking) => {
             const dateObj = new Date(booking.scheduled_date || booking.created_at);
-            const dateStr = dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-            const timeStr = dateObj.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+            const dateStr = dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Kolkata" });
+            const timeStr = dateObj.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 
             return (
               <div key={booking.id} className="glass-panel rounded-2xl p-3 md:p-4 transition-all duration-300">

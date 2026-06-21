@@ -79,18 +79,18 @@ export default async function PartnerServicesPage() {
   return (
     <div className="bg-[#f5f6f8] text-on-background min-h-screen flex flex-col font-sans pb-24">
       <PartnerHeader initialStatus={partnerStatus} />
-      
+
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 md:px-5 pt-6 space-y-6">
-        
+
         <div>
           <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 ml-1">
             Professional Details
           </h2>
 
           {/* Services Offered Section */}
-          <EditServicesForm 
-            allServices={availableServices} 
-            initialSelectedServices={activeServiceIds} 
+          <EditServicesForm
+            allServices={availableServices}
+            initialSelectedServices={activeServiceIds}
           />
 
           {/* Service Areas Section */}

@@ -97,7 +97,9 @@ export interface Booking {
   cancelled_at: string | null;
   cancelled_by: CancelledBy | null;
   cancellation_reason: string | null;
+  arrival_otp_verified?: boolean | null;
   arrival_otp_expires_at?: string | null;
+  completion_otp_verified?: boolean | null;
   completion_otp_expires_at?: string | null;
 }
 

@@ -34,10 +34,10 @@ interface BookingRow {
   partner?: ProfilePartner | null;
 }
 
-export default async function CheckoutSuccessPage({ 
-  searchParams 
-}: { 
-  searchParams: Promise<{ bookingId?: string, orderId?: string }> 
+export default async function CheckoutSuccessPage({
+  searchParams
+}: {
+  searchParams: Promise<{ bookingId?: string, orderId?: string }>
 }) {
   const resolvedParams = await searchParams;
   const { bookingId, orderId } = resolvedParams;
@@ -71,8 +71,8 @@ export default async function CheckoutSuccessPage({
 
     overallAmount = orderData.total_amount;
     const scheduledDate = orderData.scheduled_date ? new Date(orderData.scheduled_date) : new Date();
-    displayDate = scheduledDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-    displayTime = scheduledDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    displayDate = scheduledDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'Asia/Kolkata' });
+    displayTime = scheduledDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' });
 
     // Fetch all child bookings in order with services and partner profile relations
     const { data: bookingsData } = await supabase
@@ -118,8 +118,8 @@ export default async function CheckoutSuccessPage({
 
     overallAmount = bookingData.total_amount;
     const scheduledDate = bookingData.scheduled_date ? new Date(bookingData.scheduled_date) : new Date();
-    displayDate = scheduledDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-    displayTime = scheduledDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    displayDate = scheduledDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'Asia/Kolkata' });
+    displayTime = scheduledDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' });
 
     let partnerInfo: ProfilePartner | null = null;
     if (bookingData.partner_id) {

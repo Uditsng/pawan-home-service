@@ -41,7 +41,7 @@ export default async function AdminServicesPage() {
           <h1 className="text-2xl font-bold tracking-tighter text-primary font-headline">Services</h1>
           <p className="text-on-surface-variant font-medium mt-1 opacity-60 text-sm">Manage and edit your active services.</p>
         </div>
-        <Link 
+        <Link
           href="/admin/services/create"
           className="px-8 py-4 bg-primary text-white rounded-[20px] font-black text-xs uppercase tracking-widest flex items-center gap-3 shadow-xl shadow-primary/20 hover:scale-105 transition-all shrink-0"
         >

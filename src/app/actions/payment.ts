@@ -234,7 +234,14 @@ export async function verifyRazorpayPaymentAction(payload: {
     }
   }
 
-  const timestamp = new Date(`${payload.date} ${payload.time}`);
+  // Parse time and date in IST (UTC+05:30) to prevent server/client timezone discrepancies
+  const [timeStr, modifier] = payload.time.split(' ');
+  let [hours, minutes] = timeStr.split(':').map(Number);
+  if (modifier === 'PM' && hours !== 12) hours += 12;
+  if (modifier === 'AM' && hours === 12) hours = 0;
+
+  const isoStr = `${payload.date}T${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00+05:30`;
+  const timestamp = new Date(isoStr);
 
   // 4. Create Database Records
   if (payload.serviceId) {

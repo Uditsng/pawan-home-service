@@ -82,12 +82,12 @@ export default function ScheduleClient({
     });
   }, []);
 
-  // Pre-determined time slots (7:00 AM to 7:00 PM, 30-min intervals)
+  // Pre-determined time slots (7:00 AM to 9:00 PM, 30-min intervals)
   const availableMorningSlots = [
     '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM'
   ];
   const availableAfternoonSlots = [
-    '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM', '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM', '5:00 PM', '5:30 PM', '6:00 PM', '6:30 PM', '7:00 PM'
+    '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM', '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM', '5:00 PM', '5:30 PM', '6:00 PM', '6:30 PM', '7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM', '9:00 PM'
   ];
 
   const today = new Date();
@@ -119,7 +119,7 @@ export default function ScheduleClient({
     const nowMinutes = currentHour * 60 + currentMinute;
     return availableMorningSlots.filter(slot => {
       const slotMinutes = getMinutesFromSlot(slot);
-      return slotMinutes > nowMinutes + 60; // At least 1 hour notice
+      return slotMinutes >= nowMinutes;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isToday, currentHour, currentMinute]);
@@ -129,7 +129,7 @@ export default function ScheduleClient({
     const nowMinutes = currentHour * 60 + currentMinute;
     return availableAfternoonSlots.filter(slot => {
       const slotMinutes = getMinutesFromSlot(slot);
-      return slotMinutes > nowMinutes + 60; // At least 1 hour notice
+      return slotMinutes >= nowMinutes;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isToday, currentHour, currentMinute]);

@@ -2,6 +2,7 @@
 
 import { useState, useActionState } from "react";
 import { Button } from "@/components/ui/Button";
+import { ImageUploadField } from "@/components/ui/ImageUploadField";
 
 type Subcategory = {
   id: string;
@@ -143,11 +144,7 @@ export function EditServiceForm({
             </div>
           </div>
         </div>
-        <div>
-          <label className="block text-sm font-bold text-on-surface-variant mb-2">Service Image URL (Optional)</label>
-          <input name="image_url" type="text" defaultValue={initialData.image_url || ""} className="w-full border border-outline-variant/20 rounded-lg p-3 bg-surface-container focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="e.g. /assets/services/sofa_cleaning.png or Cloudinary link" />
-          <p className="text-[10px] text-on-surface-variant/70 mt-1">Supports local asset paths or external CDNs like Cloudinary, Imgur, etc.</p>
-        </div>
+        <ImageUploadField defaultValue={initialData.image_url || ""} />
       </div>
 
       {/* Price Section */}

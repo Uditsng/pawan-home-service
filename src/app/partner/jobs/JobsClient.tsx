@@ -344,7 +344,7 @@ export default function JobsClient({
           </button>
         );
       }
-      if (job.status === "professional_arrived" || (job.status === "otp_pending" && !(job as { arrival_otp_verified?: boolean }).arrival_otp_verified)) {
+      if (job.status === "professional_arrived" || (job.status === "otp_pending" && !job.arrival_otp_verified)) {
         const enteredOtp = enteredOtps[job.id] || "";
         const arrivalExpiresAt = job.arrival_otp_expires_at ? new Date(job.arrival_otp_expires_at) : null;
         const isArrivalExpired = arrivalExpiresAt ? currentTime > arrivalExpiresAt : false;
@@ -395,7 +395,7 @@ export default function JobsClient({
           </button>
         );
       }
-      if (job.status === "otp_pending" && (job as { arrival_otp_verified?: boolean }).arrival_otp_verified) {
+      if (job.status === "otp_pending" && job.arrival_otp_verified) {
         const enteredOtp = enteredOtps[job.id] || "";
         const completionExpiresAt = job.completion_otp_expires_at ? new Date(job.completion_otp_expires_at) : null;
         const isCompletionExpired = completionExpiresAt ? currentTime > completionExpiresAt : false;
@@ -503,7 +503,7 @@ export default function JobsClient({
             <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant mb-1">Schedule</p>
             <p className="text-xs font-bold text-on-surface">
               {b.scheduled_date
-                ? new Date(b.scheduled_date).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
+                ? new Date(b.scheduled_date).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "Asia/Kolkata" })
                 : "TBD"}
             </p>
           </div>
@@ -541,7 +541,7 @@ export default function JobsClient({
 
         {/* Time received */}
         <p className="text-[10px] text-on-surface-variant/60 font-medium mt-2 text-right">
-          Received {new Date(offer.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+          Received {new Date(offer.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" })}
         </p>
       </div>
     );
@@ -731,7 +731,7 @@ export default function JobsClient({
                 <div className="space-y-2 mb-5 pl-1">
                   <div className="flex items-center gap-3 text-[13px] text-on-surface-variant font-medium">
                     <span className="material-symbols-outlined text-[16px] text-on-surface-variant/50">calendar_clock</span>
-                    {job.scheduled_date ? new Date(job.scheduled_date).toLocaleString("en-IN") : "Date TBD"}
+                    {job.scheduled_date ? new Date(job.scheduled_date).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "Date TBD"}
                   </div>
                   <div className="flex items-start gap-3 text-[13px] text-on-surface-variant font-medium">
                     <span className="material-symbols-outlined text-[16px] text-on-surface-variant/50 mt-0.5 shrink-0">location_on</span>

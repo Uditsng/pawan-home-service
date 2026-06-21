@@ -53,7 +53,7 @@ export default function ServiceSelectionDrawer({ services, initialSelectedServic
             add_circle
           </span>
           <span className="font-semibold text-primary">
-            {selectedServices.length > 0 
+            {selectedServices.length > 0
               ? `${selectedServices.length} Service(s) Selected`
               : "Select Services to Offer"}
           </span>
@@ -89,24 +89,21 @@ export default function ServiceSelectionDrawer({ services, initialSelectedServic
       )}
 
       {/* Slider Drawer (Bottom Sheet) */}
-      <div 
-        className={`fixed inset-0 z-50 flex items-end justify-center pointer-events-none transition-opacity duration-300 ${
-          isOpen ? "opacity-100" : "opacity-0"
-        }`}
+      <div
+        className={`fixed inset-0 z-50 flex items-end justify-center pointer-events-none transition-opacity duration-300 ${isOpen ? "opacity-100" : "opacity-0"
+          }`}
       >
         {/* Backdrop */}
-        <div 
-          className={`absolute inset-0 bg-primary/40 backdrop-blur-sm transition-opacity duration-300 ${
-            isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-          }`}
+        <div
+          className={`absolute inset-0 bg-primary/40 backdrop-blur-sm transition-opacity duration-300 ${isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+            }`}
           onClick={() => setIsOpen(false)}
         />
 
         {/* Sheet Content */}
-        <div 
-          className={`relative w-full max-w-lg bg-surface rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out flex flex-col max-h-[85vh] ${
-            isOpen ? "translate-y-0 pointer-events-auto" : "translate-y-full pointer-events-none"
-          }`}
+        <div
+          className={`relative w-full max-w-lg bg-surface rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out flex flex-col max-h-[85vh] ${isOpen ? "translate-y-0 pointer-events-auto" : "translate-y-full pointer-events-none"
+            }`}
         >
           {/* Handle */}
           <div className="flex justify-center pt-3 pb-2 shrink-0 cursor-pointer" onClick={() => setIsOpen(false)}>
@@ -134,11 +131,10 @@ export default function ServiceSelectionDrawer({ services, initialSelectedServic
                     key={subcat}
                     type="button"
                     onClick={() => setSelectedSubcat(subcat)}
-                    className={`px-4 py-1.5 rounded-full text-xs font-black whitespace-nowrap transition-all uppercase tracking-wider cursor-pointer border ${
-                      isActive
+                    className={`px-4 py-1.5 rounded-full text-xs font-black whitespace-nowrap transition-all uppercase tracking-wider cursor-pointer border ${isActive
                         ? "bg-secondary text-primary border-secondary shadow-sm"
                         : "bg-surface-container-low text-on-surface-variant border-outline-variant/35 hover:bg-surface-container"
-                    }`}
+                      }`}
                   >
                     {subcat}
                   </button>
@@ -160,17 +156,15 @@ export default function ServiceSelectionDrawer({ services, initialSelectedServic
                   return (
                     <button
                       type="button"
-                      key={service.id} 
+                      key={service.id}
                       onClick={() => toggleService(service.id)}
-                      className={`p-2.5 border rounded-2xl flex items-center gap-2.5 text-left transition-all duration-300 ${
-                        isSelected 
-                          ? "border-secondary bg-secondary/10 shadow-[0_4px_12px_rgba(166,206,55,0.15)]" 
+                      className={`p-2.5 border rounded-2xl flex items-center gap-2.5 text-left transition-all duration-300 ${isSelected
+                          ? "border-secondary bg-secondary/10 shadow-[0_4px_12px_rgba(166,206,55,0.15)]"
                           : "border-outline-variant/30 bg-surface-container-lowest hover:border-secondary/50 hover:bg-surface-container-low"
-                      }`}
+                        }`}
                     >
-                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-transform ${
-                        isSelected ? "scale-105 bg-white shadow-sm" : "bg-green-500/10"
-                      }`}>
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-transform ${isSelected ? "scale-105 bg-white shadow-sm" : "bg-green-500/10"
+                        }`}>
                         <span className="material-symbols-outlined text-[18px] text-[#059669] drop-shadow-sm">
                           {service.iconName}
                         </span>

@@ -1,6 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-import PartnerHeader from "@/components/PartnerHeader";
 import EditServiceAreasForm from "./EditServiceAreasForm";
 import EditServicesForm from "./EditServicesForm";
 
@@ -24,33 +23,38 @@ export default async function PartnerServicesPage() {
     redirect("/login");
   }
 
-  // Fetch partner status for header toggle
-  const { data: profileData } = await supabase
-    .from('profiles')
-    .select('status')
-    .eq('id', user!.id)
-    .single();
-
-  const partnerStatus = profileData?.status ?? 'offline';
-
-  // Fetch all active services with subcategories and categories
-  const { data: services } = await supabase
-    .from('services')
-    .select(`
-      id,
-      title,
-      subcategory_id,
-      subcategories (
+  // ─── Fetch services, partner services, and partner areas in parallel ───
+  const [servicesResult, partnerServicesResult, partnerAreasResult] = await Promise.all([
+    supabase
+      .from('services')
+      .select(`
         id,
-        subcategory_name,
-        icon_name,
-        categories (
+        title,
+        subcategory_id,
+        subcategories (
           id,
-          category_name
+          subcategory_name,
+          icon_name,
+          categories (
+            id,
+            category_name
+          )
         )
-      )
-    `)
-    .eq('is_active', true);
+      `)
+      .eq('is_active', true),
+    supabase
+      .from('partner_services')
+      .select('service_id')
+      .eq('partner_id', user.id),
+    supabase
+      .from('partner_service_areas')
+      .select('id, pincode, city')
+      .eq('partner_id', user.id)
+  ]);
+
+  const services = servicesResult.data;
+  const partnerServices = partnerServicesResult.data;
+  const partnerAreas = partnerAreasResult.data;
 
   const rawServices = (services || []) as unknown as RawService[];
 
@@ -62,24 +66,10 @@ export default async function PartnerServicesPage() {
     iconName: s.subcategories?.icon_name || "home_repair_service",
   }));
 
-  // Fetch partner's active services
-  const { data: partnerServices } = await supabase
-    .from('partner_services')
-    .select('service_id')
-    .eq('partner_id', user.id);
-
   const activeServiceIds = (partnerServices || []).map(ps => ps.service_id);
-
-  // Fetch partner's service areas (city column stores the locality now)
-  const { data: partnerAreas } = await supabase
-    .from('partner_service_areas')
-    .select('id, pincode, city')
-    .eq('partner_id', user.id);
 
   return (
     <div className="bg-[#f5f6f8] text-on-background min-h-screen flex flex-col font-sans pb-24">
-      <PartnerHeader initialStatus={partnerStatus} />
-
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 md:px-5 pt-6 space-y-6">
 
         <div>

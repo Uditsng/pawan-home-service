@@ -2,7 +2,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
-import PartnerBottomNav from "@/components/PartnerBottomNav";
 import LogoutButton from "@/components/LogoutButton";
 import type { PartnerProfile } from "@/lib/types";
 
@@ -59,7 +58,7 @@ export default async function PartnerProfilePage() {
             </div>
             {/* <p className="text-[12px] md:text-[13px] text-on-primary/70 font-medium break-all">ID: #{profile.id.substring(0, 8).toUpperCase()}</p> */}
             <p className="text-[12px] md:text-[13px] text-on-primary/70 font-medium break-all mb-1.5 md:mb-2">{profile.phone || user.email}</p>
-            <Link href="/partner/profile/edit" className="text-[12px] md:text-[13px] text-on-primary font-bold flex items-center hover:opacity-80 transition-opacity">
+            <Link href="/partner/profile/edit" prefetch={false} className="text-[12px] md:text-[13px] text-on-primary font-bold flex items-center hover:opacity-80 transition-opacity">
               Edit profile <span className="material-symbols-outlined text-[13px] md:text-[14px] ml-0.5">edit_square</span>
             </Link>
           </div>
@@ -87,7 +86,7 @@ export default async function PartnerProfilePage() {
         {/* Links List */}
         <div className="bg-white rounded-[16px] md:rounded-[20px] shadow-sm overflow-hidden flex flex-col">
 
-          <Link href="/partner/profile/services" className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
+          <Link href="/partner/profile/services" prefetch={false} className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
             <div className="flex items-center gap-3 md:gap-4">
               <span className="material-symbols-outlined text-slate-500 text-[18px] md:text-[20px]">work</span>
               <span className="font-semibold text-[13px] md:text-[15px] text-[#1c2438]">Services & Areas</span>
@@ -95,7 +94,7 @@ export default async function PartnerProfilePage() {
             <span className="material-symbols-outlined text-slate-300 text-[18px] md:text-[20px] group-hover:text-slate-400 transition-colors">chevron_right</span>
           </Link>
 
-          <Link href="/partner/profile/bank" className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
+          <Link href="/partner/profile/bank" prefetch={false} className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
             <div className="flex items-center gap-3 md:gap-4">
               <span className="material-symbols-outlined text-slate-500 text-[18px] md:text-[20px]">account_balance</span>
               <span className="font-semibold text-[13px] md:text-[15px] text-[#1c2438]">Bank Details</span>
@@ -103,7 +102,7 @@ export default async function PartnerProfilePage() {
             <span className="material-symbols-outlined text-slate-300 text-[18px] md:text-[20px] group-hover:text-slate-400 transition-colors">chevron_right</span>
           </Link>
 
-          <Link href="/partner/profile/settings" className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
+          <Link href="/partner/profile/settings" prefetch={false} className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
             <div className="flex items-center gap-3 md:gap-4">
               <span className="material-symbols-outlined text-slate-500 text-[18px] md:text-[20px]">settings</span>
               <span className="font-semibold text-[13px] md:text-[15px] text-[#1c2438]">App Settings</span>
@@ -111,7 +110,7 @@ export default async function PartnerProfilePage() {
             <span className="material-symbols-outlined text-slate-300 text-[18px] md:text-[20px] group-hover:text-slate-400 transition-colors">chevron_right</span>
           </Link>
           
-          <Link href="/partner/support" className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
+          <Link href="/partner/support" prefetch={false} className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
             <div className="flex items-center gap-3 md:gap-4">
               <span className="material-symbols-outlined text-slate-500 text-[18px] md:text-[20px]">support_agent</span>
               <span className="font-semibold text-[13px] md:text-[15px] text-[#1c2438]">Help & Support</span>
@@ -119,7 +118,7 @@ export default async function PartnerProfilePage() {
             <span className="material-symbols-outlined text-slate-300 text-[18px] md:text-[20px] group-hover:text-slate-400 transition-colors">chevron_right</span>
           </Link>
 
-          <Link href="/partner/delete-account" className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
+          <Link href="/partner/delete-account" prefetch={false} className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
             <div className="flex items-center gap-3 md:gap-4">
               <span className="material-symbols-outlined text-slate-500 text-[18px] md:text-[20px]">delete_forever</span>
               <span className="font-semibold text-[13px] md:text-[15px] text-[#1c2438]">Request account deletion</span>
@@ -136,8 +135,6 @@ export default async function PartnerProfilePage() {
         </div>
 
       </main>
-
-      <PartnerBottomNav />
     </div>
   );
 }

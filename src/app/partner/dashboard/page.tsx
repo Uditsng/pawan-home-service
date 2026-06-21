@@ -1,6 +1,4 @@
 import Link from "next/link";
-import PartnerBottomNav from "@/components/PartnerBottomNav";
-import PartnerHeader from "@/components/PartnerHeader";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import type { BookingWithDetails, PartnerProfile } from "@/lib/types";
@@ -116,8 +114,6 @@ export default async function PartnerDashboardPage() {
 
   return (
     <div className="bg-surface font-body text-on-surface min-h-screen pb-32">
-      <PartnerHeader initialStatus={profile?.status ?? "offline"} />
-
       <main className="max-w-7xl mx-auto px-6 mt-6 space-y-8 relative">
         {/* Active Job Banner */}
         {activeJob ? (
@@ -430,8 +426,6 @@ export default async function PartnerDashboardPage() {
           </div>
         </div>
       </main>
-
-      <PartnerBottomNav />
     </div>
   );
 }

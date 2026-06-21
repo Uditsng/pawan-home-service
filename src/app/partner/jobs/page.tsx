@@ -1,5 +1,3 @@
-import PartnerBottomNav from "@/components/PartnerBottomNav";
-import PartnerHeader from "@/components/PartnerHeader";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import JobsClient, { RawOfferRow } from "./JobsClient";
@@ -88,8 +86,6 @@ export default async function PartnerJobsPage() {
 
   return (
     <div className="bg-surface font-body text-on-surface antialiased min-h-screen pb-24">
-      <PartnerHeader initialStatus={partnerStatus} />
-
       <main className="max-w-7xl mx-auto px-5 pt-6 space-y-6">
         <div className="flex justify-between items-center">
           <div>
@@ -110,8 +106,6 @@ export default async function PartnerJobsPage() {
           offeredJobs={offeredJobs}
         />
       </main>
-
-      <PartnerBottomNav />
     </div>
   );
 }

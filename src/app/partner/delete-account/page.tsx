@@ -1,8 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import PartnerHeader from "@/components/PartnerHeader";
-import PartnerBottomNav from "@/components/PartnerBottomNav";
 
 export const metadata = {
   title: "Delete Account | PHS Cleaning Company",
@@ -23,7 +21,6 @@ export default async function PartnerDeleteAccountPage() {
 
   return (
     <div className="bg-[#f5f6f8] text-on-background min-h-screen pb-24 flex flex-col font-sans">
-      <PartnerHeader initialStatus={profile?.status ?? "offline"} />
 
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 md:px-5 pt-4 md:pt-5 flex flex-col justify-center py-12 md:py-20">
         <div className="flex items-center gap-3 mb-6">
@@ -71,8 +68,6 @@ export default async function PartnerDeleteAccountPage() {
           </div>
         </div>
       </main>
-
-      <PartnerBottomNav />
     </div>
   );
 }

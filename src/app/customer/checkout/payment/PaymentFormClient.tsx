@@ -36,6 +36,7 @@ interface PaymentFormClientProps {
   time: string;
   taxRatePercent: number;
   referralDiscount: number;
+  walletBalance?: number;
 }
 
 export default function PaymentFormClient({
@@ -46,16 +47,23 @@ export default function PaymentFormClient({
   time,
   taxRatePercent,
   referralDiscount,
+  walletBalance = 0,
 }: PaymentFormClientProps) {
   const router = useRouter();
   const [isAgreed, setIsAgreed] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [useWallet, setUseWallet] = useState(false);
 
   // Price Breakdown Calculation
   const subtotal = service.base_price;
   const gstTax = Math.round(subtotal * (taxRatePercent / 100));
   const totalPrice = Math.max(0, subtotal + gstTax - referralDiscount);
+
+  // Wallet Calculations
+  const walletAmount = walletBalance;
+  const walletApplied = useWallet ? Math.min(walletAmount, totalPrice) : 0;
+  const finalPrice = Math.max(0, totalPrice - walletApplied);
 
   // Format Display Date
   const dateObj = new Date(`${date}T12:00:00`);
@@ -91,6 +99,7 @@ export default function PaymentFormClient({
           addressId: addressId,
           date: date,
           time: time,
+          walletAmountToUse: walletApplied,
         });
 
         if (rzOrder.freeOrder) {
@@ -101,6 +110,7 @@ export default function PaymentFormClient({
             addressId: addressId,
             date: date,
             time: time,
+            walletAmountToUse: walletApplied,
           });
 
           if (verifyRes.success && verifyRes.bookingId) {
@@ -167,6 +177,7 @@ export default function PaymentFormClient({
                   addressId: addressId,
                   date: date,
                   time: time,
+                  walletAmountToUse: walletApplied,
                 });
 
                 if (verifyRes.success && verifyRes.bookingId) {
@@ -250,17 +261,6 @@ export default function PaymentFormClient({
                 </div>
               </div>
 
-              {/* Duration */}
-              {/* <div className="flex items-start gap-3">
-                <div className="w-10 h-10 bg-primary/5 rounded-xl flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-primary text-xl">schedule</span>
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Estimated Duration</p>
-                  <p className="font-bold text-sm text-on-surface leading-tight mt-0.5">60 Minutes</p>
-                </div>
-              </div> */}
-
               {/* Dynamic Service Address */}
               <div className="flex items-start gap-3 min-w-0">
                 <div className="w-10 h-10 bg-primary/5 rounded-xl flex items-center justify-center shrink-0">
@@ -269,9 +269,6 @@ export default function PaymentFormClient({
                 <div className="min-w-0">
                   <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Service Location</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    {/* <span className="text-xs font-extrabold text-on-surface bg-surface-container px-2 py-0.5 rounded-full uppercase tracking-wider scale-90 shrink-0">
-                      {addressObj.label || "Home"}
-                    </span> */}
                     <p className="font-bold text-sm text-on-surface truncate leading-tight">
                       {addressObj.formatted_address}
                     </p>
@@ -293,6 +290,40 @@ export default function PaymentFormClient({
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* 2. PHS WALLET SELECTION CARD */}
+          <div className="bg-white border border-outline-variant/10 rounded-3xl p-5 md:p-6 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary/5 rounded-xl flex items-center justify-center shrink-0 text-primary">
+                  <span className="material-symbols-outlined text-xl">account_balance_wallet</span>
+                </div>
+                <div>
+                  <p className="text-xs font-extrabold text-on-surface uppercase tracking-wider">PHS Wallet</p>
+                  <p className="text-sm font-bold text-on-surface-variant mt-0.5">Available Balance: <span className="text-primary font-black">₹{walletAmount}</span></p>
+                </div>
+              </div>
+              {walletAmount > 0 ? (
+                <label className="relative inline-flex items-center cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={useWallet}
+                    onChange={(e) => setUseWallet(e.target.checked)}
+                    disabled={isPending}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-outline-variant/30 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary"></div>
+                </label>
+              ) : (
+                <span className="text-xs text-on-surface-variant/40 font-bold uppercase tracking-wider">Empty</span>
+              )}
+            </div>
+            {useWallet && walletApplied > 0 && (
+              <p className="text-xs font-semibold text-[#059669] bg-green-500/10 p-2.5 rounded-xl border border-secondary/20">
+                Applied <span className="font-extrabold">₹{walletApplied}</span> from PHS Wallet.
+              </p>
+            )}
           </div>
 
           {/* 3. PRICE BREAKDOWN CARD */}
@@ -324,44 +355,24 @@ export default function PaymentFormClient({
                   <span className="text-[#059669]">-₹{referralDiscount}</span>
                 </div>
               )}
+              {useWallet && walletApplied > 0 && (
+                <div className="flex justify-between items-center text-sm font-bold">
+                  <span className="flex items-center gap-1.5 text-[#059669]">
+                    <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>account_balance_wallet</span>
+                    Paid from Wallet
+                  </span>
+                  <span className="text-[#059669]">-₹{walletApplied}</span>
+                </div>
+              )}
 
               <hr className="border-t border-dashed border-outline-variant/30 my-3" />
 
               <div className="flex justify-between items-center">
                 <p className="font-extrabold text-base text-on-surface">Total Payable (All taxes included)</p>
-                <p className="text-2xl font-black text-on-surface tracking-tight">₹{totalPrice}</p>
+                <p className="text-2xl font-black text-on-surface tracking-tight">₹{finalPrice}</p>
               </div>
             </div>
           </div>
-
-          {/* 4. SECURE PAYMENT & TRUST ELEMENTS */}
-          {/* <div className="bg-primary/5 border border-primary/10 rounded-3xl p-5 md:p-6 space-y-4 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full blur-xl pointer-events-none" />
-
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary">
-                <span className="material-symbols-outlined text-xl">lock</span>
-              </div>
-              <div>
-                <p className="text-xs font-extrabold text-on-surface uppercase tracking-widest">SSL Encrypted Checkout</p>
-                <p className="text-[11px] text-on-surface-variant mt-0.5 leading-normal">
-                  Your payments are processed securely via industry-standard 256-bit encryption protocols.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 border-t border-primary/10 pt-4">
-              <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center shrink-0 text-[#059669]">
-                <span className="material-symbols-outlined text-xl">verified_user</span>
-              </div>
-              <div>
-                <p className="text-xs font-extrabold text-on-surface uppercase tracking-wider">100% Satisfaction Guarantee</p>
-                <p className="text-[11px] text-on-surface-variant mt-0.5 leading-normal">
-                  Refund is guaranteed if you cancel in compliance with the cancellation policy or if a professional fails to arrive.
-                </p>
-              </div>
-            </div>
-          </div> */}
 
           {/* 5. TERMS CONFIRMATION CHECKBOX */}
           <div className="px-2 py-1">
@@ -392,7 +403,7 @@ export default function PaymentFormClient({
             <div className="max-w-xl mx-auto flex gap-3 md:gap-4 items-center w-full">
               <div className="flex-1">
                 <p className="text-[9px] md:text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Total Payable</p>
-                <p className="text-xl md:text-2xl font-black text-on-background">₹{totalPrice}</p>
+                <p className="text-xl md:text-2xl font-black text-on-background">₹{finalPrice}</p>
               </div>
               <button
                 type="submit"
@@ -410,7 +421,7 @@ export default function PaymentFormClient({
                   </>
                 ) : (
                   <>
-                    Pay &amp; Book
+                    {finalPrice === 0 ? "Book with Wallet" : "Pay & Book"}
                     <span className="material-symbols-outlined text-[20px] md:text-[24px]">payments</span>
                   </>
                 )}

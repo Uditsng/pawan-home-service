@@ -25,6 +25,7 @@ interface SendNotificationParams {
   body: string;
   type: NotificationType;
   metadata?: Record<string, unknown>;
+  recipientRole?: 'customer' | 'partner' | 'admin';
 }
 
 // ─── Core Send Function ─────────────────────────────────────
@@ -39,7 +40,7 @@ interface SendNotificationParams {
  *   void sendNotification({ ... })
  */
 export async function sendNotification(params: SendNotificationParams): Promise<void> {
-  const { userIds, title, body, type, metadata = {} } = params;
+  const { userIds, title, body, type, metadata = {}, recipientRole } = params;
   const targets = Array.isArray(userIds) ? userIds : [userIds];
 
   if (targets.length === 0) return;
@@ -91,7 +92,7 @@ export async function sendNotification(params: SendNotificationParams): Promise<
     }
 
     // 2. Attempt FCM push (non-critical)
-    await sendFcmPush(targets, title, body, type, metadata);
+    await sendFcmPush(targets, title, body, type, metadata, recipientRole);
   } catch (err) {
     // Never throw — notifications must not break the caller
     console.error("[notifications] Unexpected error:", (err as Error).message);
@@ -105,7 +106,8 @@ async function sendFcmPush(
   title: string,
   body: string,
   type: NotificationType,
-  metadata: Record<string, unknown>
+  metadata: Record<string, unknown>,
+  recipientRole?: 'customer' | 'partner' | 'admin'
 ): Promise<void> {
   const messaging = getFirebaseMessaging();
   if (!messaging) return; // FCM not configured
@@ -129,6 +131,10 @@ async function sendFcmPush(
 
     const tokens = tokenRows.map((t: { fcm_token: string }) => t.fcm_token);
 
+    const isPartnerJobAlert = recipientRole === 'partner' && (type === 'new_job_offer' || type === 'partner_assigned');
+    const channelId = isPartnerJobAlert ? 'service_assignment' : 'phs_bookings';
+    const iosSound = isPartnerJobAlert ? 'service_alert.wav' : 'default';
+
     // Send multicast message
     const response = await messaging.sendEachForMulticast({
       tokens,
@@ -141,9 +147,17 @@ async function sendFcmPush(
       android: {
         priority: "high",
         notification: {
-          channelId: "phs_bookings",
+          channelId: channelId,
           icon: "ic_notification",
           color: "#002261",
+        },
+      },
+      // iOS-specific config
+      apns: {
+        payload: {
+          aps: {
+            sound: iosSound,
+          },
         },
       },
       // Web push config
@@ -195,7 +209,7 @@ export async function notifyCustomer(
   type: NotificationType,
   metadata?: Record<string, unknown>
 ): Promise<void> {
-  return sendNotification({ userIds: customerId, title, body, type, metadata });
+  return sendNotification({ userIds: customerId, title, body, type, metadata, recipientRole: 'customer' });
 }
 
 /** Notify a partner about a job */
@@ -206,7 +220,7 @@ export async function notifyPartner(
   type: NotificationType,
   metadata?: Record<string, unknown>
 ): Promise<void> {
-  return sendNotification({ userIds: partnerId, title, body, type, metadata });
+  return sendNotification({ userIds: partnerId, title, body, type, metadata, recipientRole: 'partner' });
 }
 
 /** Notify all admins */
@@ -226,7 +240,7 @@ export async function notifyAdmins(
     if (!admins || admins.length === 0) return;
 
     const adminIds = admins.map((a: { id: string }) => a.id);
-    return sendNotification({ userIds: adminIds, title, body, type, metadata });
+    return sendNotification({ userIds: adminIds, title, body, type, metadata, recipientRole: 'admin' });
   } catch (err) {
     console.error("[notifications] notifyAdmins error:", (err as Error).message);
   }

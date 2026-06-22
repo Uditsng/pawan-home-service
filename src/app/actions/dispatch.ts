@@ -124,6 +124,7 @@ export async function triggerDispatchBatch(
         body:     `${serviceTitle} in ${locationLabel} — Payout: ₹${payout}`,
         type:     "new_job_offer",
         metadata: { booking_id: bookingId, tier },
+        recipientRole: "partner",
       });
     }
 

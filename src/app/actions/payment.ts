@@ -28,7 +28,7 @@ interface DBAddress {
 }
 
 /**
- * Creates a Razorpay Order server-side after calculating prices.
+ * Creates a Razorpay Order server-side after calculating prices and validating wallet options.
  */
 export async function createRazorpayOrderAction(payload: {
   serviceId?: string;
@@ -36,6 +36,7 @@ export async function createRazorpayOrderAction(payload: {
   addressId: string;
   date: string;
   time: string;
+  walletAmountToUse?: number;
 }): Promise<RazorpayOrderResult> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -90,7 +91,7 @@ export async function createRazorpayOrderAction(payload: {
   let referralDiscount = 0;
   const { data: profile } = await supabase
     .from("profiles")
-    .select("referred_by")
+    .select("referred_by, wallet_balance")
     .eq("id", user.id)
     .single();
   if (profile?.referred_by) {
@@ -108,7 +109,19 @@ export async function createRazorpayOrderAction(payload: {
   const gstTax = Math.round(subtotal * (taxRatePercent / 100));
   const totalPrice = Math.max(0, subtotal + gstTax - referralDiscount);
 
-  if (totalPrice <= 0) {
+  // Validate wallet usage
+  let walletAmountToUse = Number(payload.walletAmountToUse || 0);
+  if (walletAmountToUse > 0) {
+    const serverWalletBalance = Number(profile?.wallet_balance || 0);
+    if (walletAmountToUse > serverWalletBalance) {
+      throw new Error("Insufficient wallet balance.");
+    }
+    walletAmountToUse = Math.min(walletAmountToUse, totalPrice);
+  }
+
+  const finalPrice = Math.max(0, totalPrice - walletAmountToUse);
+
+  if (finalPrice <= 0) {
     return { freeOrder: true, amount: 0, currency: "INR" };
   }
 
@@ -128,7 +141,7 @@ export async function createRazorpayOrderAction(payload: {
       Authorization: `Basic ${authHeader}`,
     },
     body: JSON.stringify({
-      amount: totalPrice * 100, // paise
+      amount: finalPrice * 100, // paise
       currency: "INR",
       receipt: `rcpt_${Date.now()}`,
     }),
@@ -163,6 +176,7 @@ export async function verifyRazorpayPaymentAction(payload: {
   addressId: string;
   date: string;
   time: string;
+  walletAmountToUse?: number;
 }): Promise<VerificationResult> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -219,7 +233,7 @@ export async function verifyRazorpayPaymentAction(payload: {
   let referralDiscount = 0;
   const { data: profile } = await supabase
     .from("profiles")
-    .select("referred_by")
+    .select("referred_by, wallet_balance")
     .eq("id", user.id)
     .single();
   if (profile?.referred_by) {
@@ -231,6 +245,15 @@ export async function verifyRazorpayPaymentAction(payload: {
     if ((completedCount ?? 0) === 0) {
       const rawDiscount = parseFloat(settingsMap["referral_reward_referred"] || "50");
       if (!isNaN(rawDiscount) && rawDiscount > 0) referralDiscount = rawDiscount;
+    }
+  }
+
+  // Verify wallet balance on server
+  const walletAmountToUse = Number(payload.walletAmountToUse || 0);
+  if (walletAmountToUse > 0) {
+    const serverWalletBalance = Number(profile?.wallet_balance || 0);
+    if (walletAmountToUse > serverWalletBalance) {
+      return { success: false, error: "Insufficient wallet balance." };
     }
   }
 
@@ -281,6 +304,22 @@ export async function verifyRazorpayPaymentAction(payload: {
       return { success: false, error: "Failed to save booking." };
     }
 
+    // Deduct from wallet if used
+    if (walletAmountToUse > 0) {
+      const { data: walletRes, error: walletError } = await supabase.rpc("use_wallet_balance", {
+        p_user_id: user.id,
+        p_amount: walletAmountToUse,
+        p_booking_id: booking.id,
+      });
+
+      if (walletError || !walletRes || !walletRes.success) {
+        console.error("[payment] Wallet debit failed:", walletError || walletRes?.error);
+        // Clean up booking on failure to avoid unpaid bookings
+        await supabase.from("bookings").delete().eq("id", booking.id);
+        return { success: false, error: walletRes?.error || "Failed to debit wallet balance." };
+      }
+    }
+
     // Record Payment
     await supabase.from("payments").insert({
       customer_id: user.id,
@@ -301,6 +340,7 @@ export async function verifyRazorpayPaymentAction(payload: {
         customer_id: user.id,
         service_id: service.id,
         amount: totalPrice,
+        wallet_amount_used: walletAmountToUse,
         payment_verified: true,
       },
     });
@@ -354,6 +394,21 @@ export async function verifyRazorpayPaymentAction(payload: {
     if (orderError || !order) {
       console.error("[payment] Order creation failed:", orderError);
       return { success: false, error: "Failed to create order." };
+    }
+
+    // Deduct from wallet if used (using order_id as generic UUID reference)
+    if (walletAmountToUse > 0) {
+      const { data: walletRes, error: walletError } = await supabase.rpc("use_wallet_balance", {
+        p_user_id: user.id,
+        p_amount: walletAmountToUse,
+        p_booking_id: order.id,
+      });
+
+      if (walletError || !walletRes || !walletRes.success) {
+        console.error("[payment] Wallet debit failed for order:", walletError || walletRes?.error);
+        await supabase.from("orders").delete().eq("id", order.id);
+        return { success: false, error: walletRes?.error || "Failed to debit wallet balance." };
+      }
     }
 
     // Record Payment

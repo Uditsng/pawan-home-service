@@ -29,6 +29,7 @@ interface CartPaymentClientProps {
   time: string;
   taxRatePercent: number;
   referralDiscount: number;
+  walletBalance?: number;
 }
 
 export default function CartPaymentClient({
@@ -38,12 +39,14 @@ export default function CartPaymentClient({
   time,
   taxRatePercent,
   referralDiscount,
+  walletBalance = 0,
 }: CartPaymentClientProps) {
   const router = useRouter();
   const { items, itemCount, subtotal, clearCart } = useCart();
   const [isAgreed, setIsAgreed] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [useWallet, setUseWallet] = useState(false);
 
   // Redirect if cart is empty
   useEffect(() => {
@@ -55,6 +58,11 @@ export default function CartPaymentClient({
   // Calculations
   const gstTax = Math.round(subtotal * (taxRatePercent / 100));
   const totalPrice = Math.max(0, subtotal + gstTax - referralDiscount);
+
+  // Wallet Calculations
+  const walletAmount = walletBalance;
+  const walletApplied = useWallet ? Math.min(walletAmount, totalPrice) : 0;
+  const finalPrice = Math.max(0, totalPrice - walletApplied);
 
   // Format Display Date
   const dateObj = new Date(`${date}T12:00:00`);
@@ -92,6 +100,7 @@ export default function CartPaymentClient({
           addressId: addressId,
           date: date,
           time: time,
+          walletAmountToUse: walletApplied,
         });
 
         if (rzOrder.freeOrder) {
@@ -102,6 +111,7 @@ export default function CartPaymentClient({
             addressId: addressId,
             date: date,
             time: time,
+            walletAmountToUse: walletApplied,
           });
 
           if (verifyRes.success && verifyRes.orderId) {
@@ -129,7 +139,7 @@ export default function CartPaymentClient({
           description: `Booking for ${itemCount} Services`,
           order_id: rzOrder.orderId,
           theme: {
-            color: "#002261", // Premium Brand Navy
+            color: "#002261", // Premium Brand Navy/Dark Blue
           },
           method: {
             card: true,
@@ -169,6 +179,7 @@ export default function CartPaymentClient({
                   addressId: addressId,
                   date: date,
                   time: time,
+                  walletAmountToUse: walletApplied,
                 });
 
                 if (verifyRes.success && verifyRes.orderId) {
@@ -204,7 +215,7 @@ export default function CartPaymentClient({
   }
 
   return (
-    <div className="bg-surface text-on-surface min-h-screen pb-32">
+    <div className="bg-surface text-on-surface min-h-screen pb-32 font-body">
       {/* Top Header Bar */}
       <header className="sticky top-0 w-full z-50 bg-white/80 backdrop-blur-lg border-b border-outline-variant/10 py-4 px-4 md:px-6">
         <div className="max-w-xl mx-auto flex items-center gap-3">
@@ -315,6 +326,40 @@ export default function CartPaymentClient({
             </div>
           </div>
 
+          {/* 2. PHS WALLET SELECTION CARD */}
+          <div className="bg-white border border-outline-variant/10 rounded-3xl p-5 md:p-6 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary/5 rounded-xl flex items-center justify-center shrink-0 text-primary">
+                  <span className="material-symbols-outlined text-xl">account_balance_wallet</span>
+                </div>
+                <div>
+                  <p className="text-xs font-extrabold text-on-surface uppercase tracking-wider">PHS Wallet</p>
+                  <p className="text-sm font-bold text-on-surface-variant mt-0.5">Available Balance: <span className="text-primary font-black">₹{walletAmount}</span></p>
+                </div>
+              </div>
+              {walletAmount > 0 ? (
+                <label className="relative inline-flex items-center cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={useWallet}
+                    onChange={(e) => setUseWallet(e.target.checked)}
+                    disabled={isPending}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-outline-variant/30 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary"></div>
+                </label>
+              ) : (
+                <span className="text-xs text-on-surface-variant/40 font-bold uppercase tracking-wider">Empty</span>
+              )}
+            </div>
+            {useWallet && walletApplied > 0 && (
+              <p className="text-xs font-semibold text-primary bg-secondary-container p-2.5 rounded-xl border border-secondary/20">
+                Applied <span className="font-extrabold">₹{walletApplied}</span> from PHS Wallet.
+              </p>
+            )}
+          </div>
+
           {/* 3. BILLING DETAILS CARD */}
           <div className="bg-white border border-outline-variant/10 rounded-3xl p-5 md:p-6 shadow-xs space-y-4">
             <div className="flex items-center gap-2 border-b border-outline-variant/10 pb-3">
@@ -332,16 +377,24 @@ export default function CartPaymentClient({
                 <span className="font-bold text-on-surface">₹{gstTax}</span>
               </div>
               {referralDiscount > 0 && (
-                <div className="flex justify-between items-center text-secondary-container bg-emerald-500/10 px-3 py-2 rounded-xl border border-secondary/20">
+                <div className="flex justify-between items-center text-secondary bg-emerald-500/10 px-3 py-2 rounded-xl border border-secondary/20">
                   <span className="flex items-center gap-1 font-bold text-emerald-700 text-xs uppercase tracking-wide">
                     <span className="material-symbols-outlined text-sm">redeem</span> Referral Reward
                   </span>
                   <span className="font-black text-emerald-700">-₹{referralDiscount}</span>
                 </div>
               )}
+              {useWallet && walletApplied > 0 && (
+                <div className="flex justify-between items-center text-primary bg-secondary-container px-3 py-2 rounded-xl border border-secondary/20">
+                  <span className="flex items-center gap-1 font-bold text-xs uppercase tracking-wide">
+                    <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>account_balance_wallet</span> Paid from Wallet
+                  </span>
+                  <span className="font-black">-₹{walletApplied}</span>
+                </div>
+              )}
               <div className="border-t border-outline-variant/30 pt-3 flex justify-between items-center text-base md:text-lg">
                 <span className="font-headline font-extrabold text-on-surface">Total Amount</span>
-                <span className="font-headline font-black text-primary text-xl md:text-2xl">₹{totalPrice}</span>
+                <span className="font-headline font-black text-primary text-xl md:text-2xl">₹{finalPrice}</span>
               </div>
             </div>
           </div>
@@ -357,7 +410,7 @@ export default function CartPaymentClient({
                 className="w-5 h-5 rounded-md border border-outline-variant text-primary focus:ring-primary focus:ring-offset-2 shrink-0 mt-0.5 accent-primary cursor-pointer"
               />
               <span className="text-xs text-on-surface-variant font-medium leading-normal">
-                I agree to the PHS Cleaning Company <a href="/terms-conditions" target="_blank" className="text-primary font-bold hover:underline">Terms &amp; Conditions</a> and understand that I am making a secure payment of <span className="font-bold text-on-surface">₹{totalPrice}</span>.
+                I agree to the PHS Cleaning Company <a href="/terms-conditions" target="_blank" className="text-primary font-bold hover:underline">Terms &amp; Conditions</a> and understand that I am making a secure payment of <span className="font-bold text-on-surface">₹{finalPrice}</span>.
               </span>
             </label>
 
@@ -379,7 +432,7 @@ export default function CartPaymentClient({
                 </>
               ) : (
                 <>
-                  Pay &amp; Confirm Booking
+                  {finalPrice === 0 ? "Book with Wallet" : "Pay & Confirm Booking"}
                   <span className="material-symbols-outlined text-[20px] md:text-[24px]">verified_user</span>
                 </>
               )}
@@ -390,3 +443,4 @@ export default function CartPaymentClient({
     </div>
   );
 }
+

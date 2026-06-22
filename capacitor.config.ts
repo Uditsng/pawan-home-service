@@ -19,7 +19,7 @@ const config: CapacitorConfig = {
       showSpinner: false
     },
     PushNotifications: {
-      presentationOptions: ["badge", "sound", "alert"]
+      presentationOptions: ["badge"]
     }
   }
 };

@@ -228,7 +228,9 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
             cities: [],
             pincodes: [],
             bookings: [],
-            reviews: []
+            reviews: [],
+            bookings_count: 0,
+            reviews_count: 0
           };
           setPartners(prev => [newPartner, ...prev]);
           setOnboardSuccess("New Technician onboarded successfully! Edit profile to add skills.");

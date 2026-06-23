@@ -134,7 +134,7 @@ export default function ContactUsPage() {
 
         {/* Preparation checklist */}
         <section className="pt-6 border-t border-outline-variant/10 space-y-3">
-          <h2 className="text-xl font-bold font-headline tracking-tight font-headline">Information Required for Resolution</h2>
+          <h2 className="text-xl font-bold font-headline tracking-tight">Information Required for Resolution</h2>
           <p className="text-sm text-on-surface-variant leading-relaxed font-medium">
             To help us resolve your query efficiently, please maintain the following records when contacting us:
           </p>

@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { SerializedPartner } from "./page";
+import { SerializedPartner, PartnerBooking, PartnerReview } from "./page";
 import {
   updatePartnerStatusAction,
   onboardPartnerAction,
@@ -15,6 +15,39 @@ import {
   getPartnerBookingsAction,
   getPartnerReviewsAction
 } from "./actions";
+
+interface RawBookingFromAction {
+  id: string;
+  status: string;
+  total_amount: number | string;
+  created_at: string;
+  scheduled_date: string | null;
+  pincode: string | null;
+  city: string | null;
+  services: {
+    title: string | null;
+    category: string | null;
+  } | null;
+  customer: {
+    full_name: string | null;
+  } | null;
+}
+
+interface RawReviewFromAction {
+  id: string;
+  rating: number | string;
+  comment: string | null;
+  created_at: string;
+  bookings: {
+    services: {
+      title: string | null;
+    } | null;
+  } | null;
+  customer: {
+    full_name: string | null;
+    avatar_url: string | null;
+  } | null;
+}
 
 interface PartnersConsoleProps {
   initialPartners: SerializedPartner[];
@@ -26,12 +59,12 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
   const [isPending, startTransition] = useTransition();
 
   // On-demand bookings and reviews cache
-  const [drawerBookings, setDrawerBookings] = useState<any[] | null>(null);
+  const [drawerBookings, setDrawerBookings] = useState<PartnerBooking[] | null>(null);
   const [isLoadingDrawerBookings, setIsLoadingDrawerBookings] = useState(false);
-  const [drawerReviews, setDrawerReviews] = useState<any[] | null>(null);
+  const [drawerReviews, setDrawerReviews] = useState<PartnerReview[] | null>(null);
   const [isLoadingDrawerReviews, setIsLoadingDrawerReviews] = useState(false);
 
-  const [loadedReviews, setLoadedReviews] = useState<any[] | null>(null);
+  const [loadedReviews, setLoadedReviews] = useState<PartnerReview[] | null>(null);
   const [isLoadingReviews, setIsLoadingReviews] = useState(false);
 
   // Search & Filter States
@@ -299,7 +332,7 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
     setDrawerBookings(null);
     getPartnerBookingsAction(partner.id)
       .then((data) => {
-        const mapped = (data || []).map((b: any) => ({
+        const mapped = (data as unknown as RawBookingFromAction[] || []).map((b) => ({
           id: b.id,
           status: b.status,
           total_amount: Number(b.total_amount || 0),
@@ -325,7 +358,7 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
     setDrawerReviews(null);
     getPartnerReviewsAction(partner.id)
       .then((data) => {
-        const mapped = (data || []).map((r: any) => ({
+        const mapped = (data as unknown as RawReviewFromAction[] || []).map((r) => ({
           id: r.id,
           rating: Number(r.rating || 5),
           comment: r.comment || null,
@@ -352,7 +385,7 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
     setLoadedReviews(null);
     getPartnerReviewsAction(partner.id)
       .then((data) => {
-        const mapped = (data || []).map((r: any) => ({
+        const mapped = (data as unknown as RawReviewFromAction[] || []).map((r) => ({
           id: r.id,
           rating: Number(r.rating || 5),
           comment: r.comment || null,

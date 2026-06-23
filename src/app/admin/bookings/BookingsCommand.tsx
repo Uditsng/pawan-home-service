@@ -953,7 +953,7 @@ export function BookingsCommand({
                   <div className="relative border-l-2 border-outline-variant/30 pl-6 ml-3 space-y-6">
                     {selectedBooking.completed_at && (
                       <div className="relative">
-                        <span className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-secondary border-2 border-white"></span>
+                        <span className="absolute left-[-31px] top-0 w-4 h-4 rounded-full bg-secondary border-2 border-white"></span>
                         <p className="text-xs font-bold text-primary">Service Completed</p>
                         <p className="text-[10px] text-on-surface-variant/60 mt-0.5">
                           {format(new Date(selectedBooking.completed_at), "PPP · p")}
@@ -962,7 +962,7 @@ export function BookingsCommand({
                     )}
                     {selectedBooking.cancelled_at && (
                       <div className="relative">
-                        <span className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-red-500 border-2 border-white"></span>
+                        <span className="absolute left-[-31px] top-0 w-4 h-4 rounded-full bg-red-500 border-2 border-white"></span>
                         <p className="text-xs font-bold text-red-600">Booking Cancelled</p>
                         <p className="text-[10px] text-on-surface-variant/60 mt-0.5">
                           By: {selectedBooking.cancelled_by || "System"} · {format(new Date(selectedBooking.cancelled_at), "PPP · p")}
@@ -976,7 +976,7 @@ export function BookingsCommand({
                     )}
                     {selectedBooking.started_at && (
                       <div className="relative">
-                        <span className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-blue-500 border-2 border-white"></span>
+                        <span className="absolute left-[-31px] top-0 w-4 h-4 rounded-full bg-blue-500 border-2 border-white"></span>
                         <p className="text-xs font-bold text-primary">Service In Progress</p>
                         <p className="text-[10px] text-on-surface-variant/60 mt-0.5">
                           {format(new Date(selectedBooking.started_at), "PPP · p")}
@@ -985,7 +985,7 @@ export function BookingsCommand({
                     )}
                     {selectedBooking.accepted_at && (
                       <div className="relative">
-                        <span className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-primary border-2 border-white"></span>
+                        <span className="absolute left-[-31px] top-0 w-4 h-4 rounded-full bg-primary border-2 border-white"></span>
                         <p className="text-xs font-bold text-primary">Technician Assigned</p>
                         <p className="text-[10px] text-on-surface-variant/60 mt-0.5">
                           {selectedBooking.partner?.full_name || "Technician"} confirmed · {format(new Date(selectedBooking.accepted_at), "PPP · p")}
@@ -993,7 +993,7 @@ export function BookingsCommand({
                       </div>
                     )}
                     <div className="relative">
-                      <span className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-on-surface-variant/30 border-2 border-white"></span>
+                      <span className="absolute left-[-31px] top-0 w-4 h-4 rounded-full bg-on-surface-variant/30 border-2 border-white"></span>
                       <p className="text-xs font-bold text-primary">Booking Created</p>
                       <p className="text-[10px] text-on-surface-variant/60 mt-0.5">
                         {selectedBooking.created_at ? format(new Date(selectedBooking.created_at), "PPP · p") : "N/A"}
@@ -1012,7 +1012,7 @@ export function BookingsCommand({
                     <div className="relative border-l-2 border-outline-variant/30 pl-6 ml-3 space-y-4">
                       {auditTrail.map((log) => (
                         <div key={log.id} className="relative">
-                          <span className="absolute -left-[31px] top-0.5 w-4 h-4 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center">
+                          <span className="absolute left-[-31px] top-0.5 w-4 h-4 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center">
                             <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                           </span>
                           <div className="flex justify-between items-start">

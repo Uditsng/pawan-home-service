@@ -156,18 +156,33 @@ export default function MobileSetup() {
         });
 
         // 2g. Routing Helper for click actions
-        const handleNotificationClick = (data: any) => {
+        const handleNotificationClick = (data: Record<string, unknown> | null | undefined) => {
           console.log("[Push/Local] Routing click action with data:", data);
-          const bookingId = data?.booking_id || (typeof data?.metadata === "string" ? JSON.parse(data.metadata)?.booking_id : data?.metadata?.booking_id);
+          if (!data) return;
+
+          let bookingId: unknown = data.booking_id;
+          
+          if (!bookingId && data.metadata) {
+            if (typeof data.metadata === "string") {
+              try {
+                bookingId = (JSON.parse(data.metadata) as Record<string, unknown>)?.booking_id;
+              } catch {
+                // ignore
+              }
+            } else {
+              bookingId = (data.metadata as Record<string, unknown>)?.booking_id;
+            }
+          }
 
           if (bookingId) {
+            const bookingIdStr = String(bookingId);
             const currentPath = window.location.pathname;
             if (currentPath.startsWith("/partner")) {
               router.push("/partner/jobs");
             } else if (currentPath.startsWith("/admin")) {
               router.push("/admin/bookings");
             } else {
-              router.push(`/customer/bookings/${bookingId}/tracking`);
+              router.push(`/customer/bookings/${bookingIdStr}/tracking`);
             }
           }
         };

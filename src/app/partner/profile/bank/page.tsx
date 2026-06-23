@@ -48,7 +48,7 @@ export default async function PartnerBankDetailsPage() {
         {!hasBankDetails ? (
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-outline-variant/10 text-center">
             <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <span className="material-symbols-outlined text-4xl text-[#ef4444] drop-shadow-sm">account_balance_wallet</span>
+              <span className="material-symbols-outlined text-4xl text-error drop-shadow-sm">account_balance_wallet</span>
             </div>
             <h2 className="text-lg font-black text-[#1c2438] mb-2">No Bank Details Found</h2>
             <p className="text-sm text-slate-500 font-medium mb-6 leading-relaxed max-w-md mx-auto">

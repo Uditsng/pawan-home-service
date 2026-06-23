@@ -30,6 +30,7 @@ type ServiceInitialData = {
   original_price?: number | null;
   price_breakdown?: string | null;
   description: string;
+  pricing_model?: 'fixed' | 'hourly';
   page_content?: {
     included_features?: string[] | null;
     excluded_features?: string[] | null;
@@ -40,13 +41,36 @@ type ServiceInitialData = {
 export function EditServiceForm({ 
   categories, 
   initialData, 
+  initialDurationRates = [],
   action 
 }: { 
   categories: Category[], 
   initialData: ServiceInitialData,
+  initialDurationRates?: { duration: number; price: number }[],
   action: (prevState: FormActionState, formData: FormData) => Promise<FormActionState> 
 }) {
   const [state, formAction, isPending] = useActionState(action, { type: null, message: null });
+  
+  const [pricingModel, setPricingModel] = useState<"fixed" | "hourly">(initialData.pricing_model || "fixed");
+  const [durationRates, setDurationRates] = useState<{ duration: number; price: number }[]>(
+    initialDurationRates.length > 0 ? initialDurationRates : [{ duration: 60, price: 199 }]
+  );
+
+  const addDurationRate = () => {
+    setDurationRates(prev => [...prev, { duration: 60, price: 199 }]);
+  };
+
+  const removeDurationRate = (index: number) => {
+    setDurationRates(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateDurationRate = (index: number, field: "duration" | "price", value: number) => {
+    setDurationRates(prev => {
+      const copy = [...prev];
+      copy[index][field] = value;
+      return copy;
+    });
+  };
   
   const initialIcon = categories.flatMap(c => c.subcategories).find(s => s.id === initialData.subcategory_id)?.icon_name || "home";
   const [selectedIcon, setSelectedIcon] = useState<string>(initialIcon);
@@ -147,12 +171,33 @@ export function EditServiceForm({
         <ImageUploadField defaultValue={initialData.image_url || ""} />
       </div>
 
-      {/* Price Section */}
+      {/* Pricing Model Section */}
       <div>
-        <h2 className="text-lg font-bold mb-3 border-b border-outline-variant/10 pb-2 text-primary">Pricing</h2>
+        <h2 className="text-lg font-bold mb-3 border-b border-outline-variant/10 pb-2 text-primary">Pricing Model</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-bold text-on-surface-variant mb-2">Service Starting at (₹)</label>
+            <label className="block text-sm font-bold text-on-surface-variant mb-2">Pricing Model</label>
+            <select
+              name="pricing_model"
+              value={pricingModel}
+              onChange={(e) => setPricingModel(e.target.value as "fixed" | "hourly")}
+              className="w-full border border-outline-variant/20 rounded-lg p-3 bg-surface-container focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+            >
+              <option value="fixed">Fixed Pricing (Outcome-Based)</option>
+              <option value="hourly">Hourly Pricing (Duration-Based)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Price Section */}
+      <div>
+        <h2 className="text-lg font-bold mb-3 border-b border-outline-variant/10 pb-2 text-primary">Pricing Details</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-bold text-on-surface-variant mb-2">
+              {pricingModel === "hourly" ? "Starting / Base Price (₹)" : "Service Starting at (₹)"}
+            </label>
             <input name="base_price" required type="number" step="0.01" defaultValue={initialData.base_price} className="w-full border border-outline-variant/20 rounded-lg p-3 bg-surface-container focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="e.g. 599.00" />
           </div>
           <div>
@@ -164,6 +209,57 @@ export function EditServiceForm({
             <input name="price_breakdown" type="text" defaultValue={initialData.price_breakdown || ""} className="w-full border border-outline-variant/20 rounded-lg p-3 bg-surface-container focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="e.g. Rupee 200 for each piece or seat" />
           </div>
         </div>
+
+        {pricingModel === "hourly" && (
+          <div className="mt-6 bg-surface-container-low p-4 rounded-xl border border-outline-variant/10">
+            <h3 className="font-bold mb-3 text-primary text-sm">Duration Pricing Table</h3>
+            <p className="text-xs text-on-surface-variant mb-4">
+              Configure different duration options and their respective prices for this service.
+            </p>
+            <div className="space-y-3">
+              {durationRates.map((rate, i) => (
+                <div key={i} className="flex gap-4 items-center">
+                  <div className="flex-1">
+                    <label className="block text-xs font-bold text-on-surface-variant mb-1">Duration</label>
+                    <select
+                      value={rate.duration}
+                      onChange={(e) => updateDurationRate(i, "duration", parseInt(e.target.value))}
+                      className="w-full border border-outline-variant/20 rounded-lg p-2.5 bg-surface-container focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all"
+                    >
+                      <option value={30}>30 Minutes</option>
+                      <option value={60}>1 Hour</option>
+                      <option value={120}>2 Hours</option>
+                      <option value={180}>3 Hours</option>
+                      <option value={240}>4 Hours</option>
+                      <option value={360}>6 Hours</option>
+                      <option value={480}>8 Hours</option>
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-bold text-on-surface-variant mb-1">Price (₹)</label>
+                    <input
+                      type="number"
+                      value={rate.price}
+                      min={1}
+                      onChange={(e) => updateDurationRate(i, "price", parseFloat(e.target.value) || 0)}
+                      className="w-full border border-outline-variant/20 rounded-lg p-2 bg-surface-container focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all"
+                      placeholder="Price"
+                    />
+                  </div>
+                  {durationRates.length > 1 && (
+                    <Button type="button" variant="outline" onClick={() => removeDurationRate(i)} className="mt-5 px-3">
+                      <span className="material-symbols-outlined text-sm">close</span>
+                    </Button>
+                  )}
+                </div>
+              ))}
+              <input type="hidden" name="duration_rates_json" value={JSON.stringify(durationRates)} />
+              <Button type="button" variant="ghost" onClick={addDurationRate} className="w-full mt-2 text-sm text-secondary">
+                + Add Duration Option
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Middle Section: Description */}

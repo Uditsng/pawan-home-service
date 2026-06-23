@@ -49,14 +49,22 @@ interface InvoiceDetails {
 }
 
 // Auto-recovery: If booking is completed but no invoice row exists, generate it.
-async function ensureInvoiceExists(bookingId: string, supabase: any, userId: string): Promise<InvoiceDetails | null> {
+async function ensureInvoiceExists(bookingId: string, supabase: any, userId: string, isAdmin: boolean, isPartner: boolean): Promise<InvoiceDetails | null> {
   // Query booking details first
-  const { data: booking } = await supabase
+  let query = supabase
     .from("bookings")
     .select("*, services:service_id(title, category), partner:partner_id(full_name)")
-    .eq("id", bookingId)
-    .eq("customer_id", userId)
-    .single();
+    .eq("id", bookingId);
+
+  if (!isAdmin) {
+    if (isPartner) {
+      query = query.eq("partner_id", userId);
+    } else {
+      query = query.eq("customer_id", userId);
+    }
+  }
+
+  const { data: booking } = await query.single();
 
   if (!booking) return null;
 
@@ -109,7 +117,7 @@ async function ensureInvoiceExists(bookingId: string, supabase: any, userId: str
     .from("invoices")
     .insert({
       booking_id: bookingId,
-      customer_id: userId,
+      customer_id: booking.customer_id,
       partner_id: booking.partner_id,
       subtotal,
       tax_rate: taxRatePercent,
@@ -153,6 +161,16 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
     redirect("/login");
   }
 
+  // Resolve user role
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  const isAdmin = profile?.role === "admin";
+  const isPartner = profile?.role === "partner";
+
   // Fetch the invoice
   let { data: invoice } = await supabase
     .from("invoices")
@@ -186,7 +204,7 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
 
   // If no invoice but booking completed, attempt auto-recovery
   if (!invoice) {
-    const recovered = await ensureInvoiceExists(bookingId, supabase, user.id);
+    const recovered = await ensureInvoiceExists(bookingId, supabase, user.id, isAdmin, isPartner);
     if (recovered) {
       invoice = recovered;
     }
@@ -194,12 +212,20 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
 
   // If invoice still doesn't exist, check booking status to see if it's pending completion
   if (!invoice) {
-    const { data: booking } = await supabase
+    let bookingQuery = supabase
       .from("bookings")
       .select("status")
-      .eq("id", bookingId)
-      .eq("customer_id", user.id)
-      .maybeSingle();
+      .eq("id", bookingId);
+
+    if (!isAdmin) {
+      if (isPartner) {
+        bookingQuery = bookingQuery.eq("partner_id", user.id);
+      } else {
+        bookingQuery = bookingQuery.eq("customer_id", user.id);
+      }
+    }
+
+    const { data: booking } = await bookingQuery.maybeSingle();
 
     const isCompleted = booking?.status === "completed";
 

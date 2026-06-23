@@ -5,33 +5,36 @@ import { ServiceDataGrid } from "./ServiceDataGrid";
 export default async function AdminServicesPage() {
   const supabase = await createClient();
 
-  // Fetch categories with subcategories
-  const { data: categories } = await supabase
-    .from('categories')
-    .select(`
-      id,
-      category_name,
-      subcategories (
+  // Fetch categories and services in parallel
+  const [categoriesRes, servicesRes] = await Promise.all([
+    supabase
+      .from('categories')
+      .select(`
         id,
-        subcategory_name,
-        icon_name
-      )
-    `);
-
-  // Fetch services with related subcategory and category info
-  const { data: services } = await supabase
-    .from('services')
-    .select(`
-      *,
-      subcategories (
-        subcategory_name,
-        icon_name,
-        categories (
-          category_name
+        category_name,
+        subcategories (
+          id,
+          subcategory_name,
+          icon_name
         )
-      )
-    `)
-    .order('created_at', { ascending: false });
+      `),
+    supabase
+      .from('services')
+      .select(`
+        *,
+        subcategories (
+          subcategory_name,
+          icon_name,
+          categories (
+            category_name
+          )
+        )
+      `)
+      .order('created_at', { ascending: false })
+  ]);
+
+  const categories = categoriesRes.data;
+  const services = servicesRes.data;
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-7xl mx-auto">

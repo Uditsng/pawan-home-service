@@ -60,6 +60,8 @@ export interface SerializedPartner {
   pincodes: string[];
   bookings: PartnerBooking[];
   reviews: PartnerReview[];
+  bookings_count: number;
+  reviews_count: number;
   internal_note?: string | null;
   risk_trigger?: string | null;
   service_areas?: PartnerServiceArea[];
@@ -153,8 +155,8 @@ export default async function AdminPartnersPage() {
   let partners: RawPartnerProfile[] = [];
   let isSchemaError = false;
 
-  // Try fetching profiles joined with services, service areas, bookings, and reviews
-  const { data, error } = await supabase
+  // Start queries in parallel: profiles simplified (no bookings or reviews joined) and active services
+  const profilesPromise = supabase
     .from('profiles')
     .select(`
       *,
@@ -165,31 +167,28 @@ export default async function AdminPartnersPage() {
         id,
         pincode,
         city
-      ),
-      bookings:bookings!bookings_partner_id_fkey(
-        id,
-        status,
-        total_amount,
-        created_at,
-        scheduled_date,
-        pincode,
-        city,
-        services:services(title, category),
-        customer:profiles!bookings_customer_id_fkey(full_name)
-      ),
-      reviews:reviews!reviews_partner_id_fkey(
-        id,
-        rating,
-        comment,
-        created_at,
-        bookings:bookings!reviews_booking_id_fkey(
-          services:services(title)
-        ),
-        customer:profiles!reviews_customer_id_fkey(full_name, avatar_url)
       )
     `)
     .eq('role', 'partner')
     .limit(1000);
+
+  const servicesPromise = supabase
+    .from('services')
+    .select(`
+      id,
+      title,
+      subcategories (
+        subcategory_name,
+        categories (
+          category_name
+        )
+      )
+    `)
+    .eq('is_active', true);
+
+  const [profilesRes, servicesRes] = await Promise.all([profilesPromise, servicesPromise]);
+  const { data, error } = profilesRes;
+  const { data: allServicesData } = servicesRes;
 
   if (error) {
     // Catch missing columns error (code 42703 or message check) and fallback
@@ -220,27 +219,6 @@ export default async function AdminPartnersPage() {
             id,
             pincode,
             city
-          ),
-          bookings:bookings!bookings_partner_id_fkey(
-            id,
-            status,
-            total_amount,
-            created_at,
-            scheduled_date,
-            pincode,
-            city,
-            services:services(title, category),
-            customer:profiles!bookings_customer_id_fkey(full_name)
-          ),
-          reviews:reviews!reviews_partner_id_fkey(
-            id,
-            rating,
-            comment,
-            created_at,
-            bookings:bookings!reviews_booking_id_fkey(
-              services:services(title)
-            ),
-            customer:profiles!reviews_customer_id_fkey(full_name, avatar_url)
           )
         `)
         .eq('role', 'partner')
@@ -281,43 +259,9 @@ export default async function AdminPartnersPage() {
       city: sa.city
     })) || [];
 
-    // Flatten bookings and reviews safely
-    const bookings: PartnerBooking[] = (p.bookings || []).map((b) => ({
-      id: b.id,
-      status: b.status,
-      total_amount: Number(b.total_amount || 0),
-      created_at: b.created_at,
-      scheduled_date: b.scheduled_date || null,
-      pincode: b.pincode || null,
-      city: b.city || null,
-      services: b.services ? {
-        title: b.services.title || "Home Service",
-        category: b.services.category || ""
-      } : null,
-      customer: b.customer ? {
-        full_name: b.customer.full_name || "Unknown Customer"
-      } : null
-    }));
-
-    const reviews: PartnerReview[] = (p.reviews || []).map((r) => ({
-      id: r.id,
-      rating: Number(r.rating || 5),
-      comment: r.comment || null,
-      created_at: r.created_at,
-      bookings: r.bookings ? {
-        services: r.bookings.services ? {
-          title: r.bookings.services.title || "Home Service"
-        } : null
-      } : null,
-      customer: r.customer ? {
-        full_name: r.customer.full_name || "Anonymous",
-        avatar_url: r.customer.avatar_url || null
-      } : null
-    }));
-
     // Calculate reliable rates
-    const accepted = p.jobs_accepted_count || bookings.filter(b => b.status !== 'cancelled' && b.status !== 'pending').length;
-    const offered = p.jobs_offered_count || bookings.length;
+    const accepted = p.jobs_accepted_count || 0;
+    const offered = p.jobs_offered_count || 0;
     const reliabilityRate = offered > 0 ? Math.round((accepted / offered) * 100) : 98;
 
     return {
@@ -332,15 +276,17 @@ export default async function AdminPartnersPage() {
       kyc_rejection_reason: p.kyc_rejection_reason || null,
       kyc_documents: p.kyc_documents || null,
       rating_avg: p.rating_avg || 4.8,
-      jobs_done: accepted || p.jobs_accepted_count || 0,
-      jobs_cancelled: p.jobs_cancelled_count || bookings.filter(b => b.status === 'cancelled').length || 0,
+      jobs_done: accepted,
+      jobs_cancelled: p.jobs_cancelled_count || 0,
       reliability_rate: reliabilityRate,
       skills,
       categories: uniqueCategories,
       cities: uniqueCities,
       pincodes: pincodesCovered,
-      bookings,
-      reviews,
+      bookings: [], // Load on-demand
+      reviews: [], // Load on-demand
+      bookings_count: p.jobs_offered_count || 0,
+      reviews_count: p.rating_count || 0,
       internal_note: p.internal_note || null,
       risk_trigger: p.risk_trigger || null,
       service_areas: serviceAreas
@@ -348,20 +294,6 @@ export default async function AdminPartnersPage() {
   });
 
   // Fetch all active services for skills mapping
-  const { data: allServicesData } = await supabase
-    .from('services')
-    .select(`
-      id,
-      title,
-      subcategories (
-        subcategory_name,
-        categories (
-          category_name
-        )
-      )
-    `)
-    .eq('is_active', true);
-
   const allServices = ((allServicesData || []) as unknown as RawServiceQueryItem[]).map((s) => {
     const subcat = Array.isArray(s.subcategories) ? s.subcategories[0] : s.subcategories;
     const cat = subcat ? (Array.isArray(subcat.categories) ? subcat.categories[0] : subcat.categories) : null;

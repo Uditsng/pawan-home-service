@@ -20,10 +20,12 @@ interface Address {
 
 export default function ScheduleClient({
   service,
-  initialAddresses
+  initialAddresses,
+  duration
 }: {
-  service: { id: string; duration_minutes: number } | null;
+  service: { id: string; duration_minutes: number; pricing_model?: 'fixed' | 'hourly' } | null;
   initialAddresses: Address[];
+  duration?: number;
 }) {
   const router = useRouter();
   const { items, itemCount } = useCart();
@@ -155,12 +157,16 @@ export default function ScheduleClient({
     const formattedDate = selectedFullDate.getDate().toString().padStart(2, '0');
 
     if (service) {
-      const payload = new URLSearchParams({
+      const paramsObj: Record<string, string> = {
         serviceId: service.id,
         date: `${year}-${formattedMonth}-${formattedDate}`,
         time: effectiveSelectedTime,
         addressId: selectedAddressId,
-      });
+      };
+      if (duration) {
+        paramsObj.duration = duration.toString();
+      }
+      const payload = new URLSearchParams(paramsObj);
       router.push(`/customer/checkout/payment?${payload.toString()}`);
     } else {
       const payload = new URLSearchParams({
@@ -372,8 +378,14 @@ export default function ScheduleClient({
             <div>
               {service ? (
                 <>
-                  <p className="text-[9px] font-bold text-on-surface-variant uppercase tracking-widest">Estimated duration</p>
-                  <p className="font-bold text-on-surface text-xs md:text-sm">{service.duration_minutes} Minutes</p>
+                  <p className="text-[9px] font-bold text-on-surface-variant uppercase tracking-widest">
+                    {service.pricing_model === "hourly" ? "Selected Duration" : "Estimated duration"}
+                  </p>
+                  <p className="font-bold text-on-surface text-xs md:text-sm">
+                    {service.pricing_model === "hourly" && duration
+                      ? (duration === 30 ? "30 Minutes" : `${duration / 60} Hour${duration / 60 === 1 ? "" : "s"}`)
+                      : `${service.duration_minutes} Minutes`}
+                  </p>
                 </>
               ) : (
                 <>

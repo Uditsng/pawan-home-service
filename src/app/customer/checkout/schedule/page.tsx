@@ -2,9 +2,10 @@ import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import ScheduleClient from "./ScheduleClient";
 
-export default async function CheckoutSchedulePage({ searchParams }: { searchParams: Promise<{ serviceId?: string }> }) {
+export default async function CheckoutSchedulePage({ searchParams }: { searchParams: Promise<{ serviceId?: string; duration?: string }> }) {
   const resolvedSearchParams = await searchParams;
   const serviceId = resolvedSearchParams.serviceId;
+  const durationParam = resolvedSearchParams.duration;
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -23,7 +24,7 @@ export default async function CheckoutSchedulePage({ searchParams }: { searchPar
   if (serviceId) {
     const { data: serviceData, error } = await supabase
       .from("services")
-      .select("id, title, category")
+      .select("id, title, category, pricing_model")
       .eq("id", serviceId)
       .single();
 
@@ -45,6 +46,7 @@ export default async function CheckoutSchedulePage({ searchParams }: { searchPar
       title: string;
       category: string;
       duration_minutes?: number;
+      pricing_model?: 'fixed' | 'hourly';
     }
 
     // Inject duration_minutes manually since it might be missing from the DB
@@ -54,10 +56,13 @@ export default async function CheckoutSchedulePage({ searchParams }: { searchPar
     };
   }
 
+  const durationVal = durationParam ? parseInt(durationParam, 10) : undefined;
+
   return (
     <ScheduleClient 
       service={service} 
-      initialAddresses={savedAddresses || []} 
+      initialAddresses={savedAddresses || []}
+      duration={durationVal}
     />
   );
 }

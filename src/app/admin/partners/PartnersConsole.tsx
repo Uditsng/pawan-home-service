@@ -11,7 +11,9 @@ import {
   onboardPartnerAction,
   editPartnerAction,
   reviewKycAction,
-  savePartnerNoteAction
+  savePartnerNoteAction,
+  getPartnerBookingsAction,
+  getPartnerReviewsAction
 } from "./actions";
 
 interface PartnersConsoleProps {
@@ -22,6 +24,15 @@ interface PartnersConsoleProps {
 export function PartnersConsole({ initialPartners, allServices = [] }: PartnersConsoleProps) {
   const [partners, setPartners] = useState<SerializedPartner[]>(initialPartners);
   const [isPending, startTransition] = useTransition();
+
+  // On-demand bookings and reviews cache
+  const [drawerBookings, setDrawerBookings] = useState<any[] | null>(null);
+  const [isLoadingDrawerBookings, setIsLoadingDrawerBookings] = useState(false);
+  const [drawerReviews, setDrawerReviews] = useState<any[] | null>(null);
+  const [isLoadingDrawerReviews, setIsLoadingDrawerReviews] = useState(false);
+
+  const [loadedReviews, setLoadedReviews] = useState<any[] | null>(null);
+  const [isLoadingReviews, setIsLoadingReviews] = useState(false);
 
   // Search & Filter States
   const [searchTerm, setSearchTerm] = useState("");
@@ -280,6 +291,84 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
     setPartnerRiskTriggerInput(partner.risk_trigger || "");
     setIsProfileDrawerOpen(true);
     setActiveProfileTab("overview");
+
+    // Load bookings on-demand
+    setIsLoadingDrawerBookings(true);
+    setDrawerBookings(null);
+    getPartnerBookingsAction(partner.id)
+      .then((data) => {
+        const mapped = (data || []).map((b: any) => ({
+          id: b.id,
+          status: b.status,
+          total_amount: Number(b.total_amount || 0),
+          created_at: b.created_at,
+          scheduled_date: b.scheduled_date || null,
+          pincode: b.pincode || null,
+          city: b.city || null,
+          services: b.services ? {
+            title: b.services.title || "Home Service",
+            category: b.services.category || ""
+          } : null,
+          customer: b.customer ? {
+            full_name: b.customer.full_name || "Unknown Customer"
+          } : null
+        }));
+        setDrawerBookings(mapped);
+      })
+      .catch(console.error)
+      .finally(() => setIsLoadingDrawerBookings(false));
+
+    // Load reviews on-demand
+    setIsLoadingDrawerReviews(true);
+    setDrawerReviews(null);
+    getPartnerReviewsAction(partner.id)
+      .then((data) => {
+        const mapped = (data || []).map((r: any) => ({
+          id: r.id,
+          rating: Number(r.rating || 5),
+          comment: r.comment || null,
+          created_at: r.created_at,
+          bookings: r.bookings ? {
+            services: r.bookings.services ? {
+              title: r.bookings.services.title || "Home Service"
+            } : null
+          } : null,
+          customer: r.customer ? {
+            full_name: r.customer.full_name || "Anonymous",
+            avatar_url: r.customer.avatar_url || null
+          } : null
+        }));
+        setDrawerReviews(mapped);
+      })
+      .catch(console.error)
+      .finally(() => setIsLoadingDrawerReviews(false));
+  };
+
+  const openReviewsModal = (partner: SerializedPartner) => {
+    setSelectedReviewsPartner(partner);
+    setIsLoadingReviews(true);
+    setLoadedReviews(null);
+    getPartnerReviewsAction(partner.id)
+      .then((data) => {
+        const mapped = (data || []).map((r: any) => ({
+          id: r.id,
+          rating: Number(r.rating || 5),
+          comment: r.comment || null,
+          created_at: r.created_at,
+          bookings: r.bookings ? {
+            services: r.bookings.services ? {
+              title: r.bookings.services.title || "Home Service"
+            } : null
+          } : null,
+          customer: r.customer ? {
+            full_name: r.customer.full_name || "Anonymous",
+            avatar_url: r.customer.avatar_url || null
+          } : null
+        }));
+        setLoadedReviews(mapped);
+      })
+      .catch(console.error)
+      .finally(() => setIsLoadingReviews(false));
   };
 
   const handleEditSubmit = (e: React.FormEvent) => {
@@ -1210,12 +1299,12 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
               </button>
               <button
                 onClick={() => {
-                  setSelectedReviewsPartner(dropdownMenu.partner);
+                  openReviewsModal(dropdownMenu.partner);
                   setDropdownMenu(null);
                 }}
                 className="w-full text-left px-2.5 py-1.5 text-xs font-bold text-[#1c2438] hover:bg-surface-container-low rounded-lg transition-colors flex items-center gap-1.5"
               >
-                <span className="material-symbols-outlined text-xs">rate_review</span> View Reviews ({dropdownMenu.partner.reviews.length})
+                <span className="material-symbols-outlined text-xs">rate_review</span> View Reviews ({dropdownMenu.partner.reviews_count})
               </button>
             </div>
 
@@ -1271,7 +1360,7 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
             <div className="flex justify-between items-start mb-4 shrink-0">
               <div>
                 <span className="text-[10px] font-black text-secondary uppercase tracking-[0.2em]">Technician Performance Feedback</span>
-                <h3 className="text-xl font-bold font-headline text-primary uppercase mt-1">Reviews ({selectedReviewsPartner.reviews.length})</h3>
+                <h3 className="text-xl font-bold font-headline text-primary uppercase mt-1">Reviews ({selectedReviewsPartner.reviews_count})</h3>
                 <p className="text-[11px] text-on-surface-variant/70 font-medium mt-1">
                   Showing ratings and comments for <span className="font-bold">{selectedReviewsPartner.full_name}</span>
                 </p>
@@ -1304,7 +1393,12 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
 
             {/* Scrollable Reviews List */}
             <div className="flex-1 overflow-y-auto pr-1 space-y-3 min-h-0">
-              {selectedReviewsPartner.reviews.length === 0 ? (
+              {isLoadingReviews ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <span className="material-symbols-outlined animate-spin text-3xl text-primary mb-2">progress_activity</span>
+                  <p className="text-xs text-on-surface-variant font-bold">Loading reviews...</p>
+                </div>
+              ) : !loadedReviews || loadedReviews.length === 0 ? (
                 <div className="text-center py-12 text-on-surface-variant">
                   <span className="material-symbols-outlined text-4xl mb-2 opacity-35">rate_review</span>
                   <p className="font-bold text-sm">No reviews yet</p>
@@ -1313,7 +1407,7 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
                   </p>
                 </div>
               ) : (
-                selectedReviewsPartner.reviews.map((review) => (
+                loadedReviews.map((review) => (
                   <div
                     key={review.id}
                     className="p-4 bg-surface-container-lowest border border-outline-variant/10 rounded-2xl space-y-2 hover:bg-surface-container-low/20 transition-all"
@@ -1437,7 +1531,7 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
                   activeProfileTab === "bookings" ? "border-secondary text-primary" : "border-transparent text-on-surface-variant hover:text-primary"
                 }`}
               >
-                Jobs ({selectedProfilePartner.bookings.length})
+                Jobs ({selectedProfilePartner.bookings_count})
               </button>
               <button
                 onClick={() => setActiveProfileTab("reviews")}
@@ -1445,7 +1539,7 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
                   activeProfileTab === "reviews" ? "border-secondary text-primary" : "border-transparent text-on-surface-variant hover:text-primary"
                 }`}
               >
-                Reviews ({selectedProfilePartner.reviews.length})
+                Reviews ({selectedProfilePartner.reviews_count})
               </button>
               <button
                 onClick={() => setActiveProfileTab("notes")}
@@ -1525,9 +1619,14 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
               {activeProfileTab === "bookings" && (
                 <div className="space-y-4">
                   <h5 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70 mb-2">Job History</h5>
-                  {selectedProfilePartner.bookings.length > 0 ? (
+                  {isLoadingDrawerBookings ? (
+                    <div className="flex flex-col items-center justify-center py-8">
+                      <span className="material-symbols-outlined animate-spin text-2xl text-primary mb-2">progress_activity</span>
+                      <p className="text-[10px] text-on-surface-variant font-bold">Loading jobs...</p>
+                    </div>
+                  ) : drawerBookings && drawerBookings.length > 0 ? (
                     <div className="divide-y divide-outline-variant/10">
-                      {selectedProfilePartner.bookings.map(b => (
+                      {drawerBookings.map(b => (
                         <div key={b.id} className="py-3.5 flex justify-between items-center gap-3 text-xs">
                           <div>
                             <p className="font-bold text-primary uppercase">{b.services?.title || "Service Job"}</p>
@@ -1559,9 +1658,14 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
               {activeProfileTab === "reviews" && (
                 <div className="space-y-4">
                   <h5 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70 mb-2">Reviews History</h5>
-                  {selectedProfilePartner.reviews.length > 0 ? (
+                  {isLoadingDrawerReviews ? (
+                    <div className="flex flex-col items-center justify-center py-8">
+                      <span className="material-symbols-outlined animate-spin text-2xl text-primary mb-2">progress_activity</span>
+                      <p className="text-[10px] text-on-surface-variant font-bold">Loading reviews...</p>
+                    </div>
+                  ) : drawerReviews && drawerReviews.length > 0 ? (
                     <div className="divide-y divide-outline-variant/10">
-                      {selectedProfilePartner.reviews.map(r => (
+                      {drawerReviews.map(r => (
                         <div key={r.id} className="py-3.5 space-y-2 text-xs">
                           <div className="flex justify-between items-center">
                             <div>

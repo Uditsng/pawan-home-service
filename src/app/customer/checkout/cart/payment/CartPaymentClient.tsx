@@ -93,6 +93,10 @@ export default function CartPaymentClient({
     startTransition(async () => {
       try {
         const serviceIds = items.map((i) => i.serviceId);
+        const mappedCartItems = items.map((i) => ({
+          serviceId: i.serviceId,
+          selectedDuration: i.selectedDuration,
+        }));
 
         // 1. Create Razorpay order on server
         const rzOrder = await createRazorpayOrderAction({
@@ -101,6 +105,7 @@ export default function CartPaymentClient({
           date: date,
           time: time,
           walletAmountToUse: walletApplied,
+          cartItems: mappedCartItems,
         });
 
         if (rzOrder.freeOrder) {
@@ -112,6 +117,7 @@ export default function CartPaymentClient({
             date: date,
             time: time,
             walletAmountToUse: walletApplied,
+            cartItems: mappedCartItems,
           });
 
           if (verifyRes.success && verifyRes.orderId) {
@@ -180,6 +186,7 @@ export default function CartPaymentClient({
                   date: date,
                   time: time,
                   walletAmountToUse: walletApplied,
+                  cartItems: mappedCartItems,
                 });
 
                 if (verifyRes.success && verifyRes.orderId) {
@@ -271,6 +278,11 @@ export default function CartPaymentClient({
                         <div className="min-w-0">
                           <p className="font-bold text-sm text-on-surface truncate leading-tight">{item.title}</p>
                           <p className="text-[10px] text-on-surface-variant font-medium mt-0.5">{item.subcategoryName}</p>
+                          {item.pricingModel === "hourly" && item.selectedDuration && (
+                            <p className="text-[10px] text-secondary font-bold mt-0.5">
+                              Duration: {item.selectedDuration === 30 ? "30 Mins" : `${item.selectedDuration / 60} Hr${item.selectedDuration / 60 === 1 ? "" : "s"}`}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <span className="font-black text-sm text-primary shrink-0 ml-2">₹{item.basePrice}</span>

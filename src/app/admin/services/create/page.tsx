@@ -46,6 +46,8 @@ export default async function AdminCreateServicePage() {
     const price_breakdown = formData.get("price_breakdown") as string;
     const description = formData.get("description") as string;
     const image_url = formData.get("image_url") as string || null;
+    const pricing_model = (formData.get("pricing_model") as string) || "fixed";
+    const duration_rates_raw = formData.get("duration_rates_json") as string;
 
     // Arrays separated by newline
     const includedRaw = formData.get("included_features") as string;
@@ -78,7 +80,7 @@ export default async function AdminCreateServicePage() {
       ]
     };
 
-    const { error } = await db.from("services").insert({
+    const { data: newService, error } = await db.from("services").insert({
       title,
       subcategory_id,
       base_price,
@@ -88,11 +90,31 @@ export default async function AdminCreateServicePage() {
       is_active: true,
       page_content,
       image_url,
-    });
+      pricing_model,
+    }).select("id").single();
 
     if (error) {
       console.error(error);
       return { type: "error", message: error.message };
+    }
+
+    if (pricing_model === "hourly" && newService?.id && duration_rates_raw) {
+      try {
+        const rates = JSON.parse(duration_rates_raw) as { duration: number; price: number }[];
+        const rows = rates.map(r => ({
+          service_id: newService.id,
+          duration_minutes: r.duration,
+          price: r.price
+        }));
+        if (rows.length > 0) {
+          const { error: ratesErr } = await db.from("service_duration_pricing").insert(rows);
+          if (ratesErr) {
+            console.error("Failed to insert duration rates:", ratesErr);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to parse duration rates:", e);
+      }
     }
 
     revalidatePath('/admin/services');

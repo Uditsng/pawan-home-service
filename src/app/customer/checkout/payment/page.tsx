@@ -5,10 +5,10 @@ import PaymentFormClient from "./PaymentFormClient";
 export default async function CheckoutPaymentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ serviceId?: string; date?: string; time?: string; addressId?: string }>;
+  searchParams: Promise<{ serviceId?: string; date?: string; time?: string; addressId?: string; duration?: string }>;
 }) {
   const resolvedParams = await searchParams;
-  const { serviceId, date, time, addressId } = resolvedParams;
+  const { serviceId, date, time, addressId, duration } = resolvedParams;
 
   if (!serviceId || !date || !time || !addressId) {
     redirect("/customer/dashboard");
@@ -21,7 +21,7 @@ export default async function CheckoutPaymentPage({
 
   const [addressResult, serviceResult, settingsResult, profileResult, completedBookingsResult] = await Promise.all([
     supabase.from("user_addresses").select("formatted_address, city, pincode, label").eq("id", addressId).eq("user_id", user.id).single(),
-    supabase.from("services").select("id, title, base_price, category").eq("id", serviceId).single(),
+    supabase.from("services").select("id, title, base_price, category, pricing_model").eq("id", serviceId).single(),
     supabase.from("platform_settings").select("key, value").in("key", ["tax_rate", "referral_reward_referred"]),
     supabase.from("profiles").select("referred_by, wallet_balance").eq("id", user.id).single(),
     supabase.from("bookings").select("id", { count: "exact" }).eq("customer_id", user.id).eq("status", "completed"),
@@ -59,9 +59,31 @@ export default async function CheckoutPaymentPage({
 
   const walletBalance = Number(profileResult.data?.wallet_balance || 0);
 
+  let finalBasePrice = Number(service.base_price);
+  let parsedDuration: number | undefined = undefined;
+
+  if (service.pricing_model === "hourly") {
+    parsedDuration = duration ? parseInt(duration, 10) : 60;
+    const { data: pricingData } = await supabase
+      .from("service_duration_pricing")
+      .select("price")
+      .eq("service_id", service.id)
+      .eq("duration_minutes", parsedDuration)
+      .single();
+
+    if (pricingData) {
+      finalBasePrice = Number(pricingData.price);
+    }
+  }
+
+  const enrichedService = {
+    ...service,
+    base_price: finalBasePrice,
+  };
+
   return (
     <PaymentFormClient
-      service={service}
+      service={enrichedService}
       addressObj={addressObj}
       addressId={addressId}
       date={date}
@@ -69,6 +91,7 @@ export default async function CheckoutPaymentPage({
       taxRatePercent={taxRatePercent}
       referralDiscount={referralDiscount}
       walletBalance={walletBalance}
+      duration={parsedDuration}
     />
   );
 }

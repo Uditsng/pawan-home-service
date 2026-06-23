@@ -52,38 +52,54 @@ export default async function AdminInvoicesPage() {
     redirect("/login");
   }
 
-  // Fetch all invoices
-  const { data: invoicesRaw, error } = await supabase
-    .from("invoices")
-    .select(`
-      id,
-      invoice_number,
-      subtotal,
-      tax_rate,
-      tax_amount,
-      discount_amount,
-      grand_total,
-      payment_method,
-      transaction_id,
-      created_at,
-      booking:booking_id (
+  // Fetch invoices and missing invoice bookings in parallel
+  const [invoicesRes, missingInvoicesRes] = await Promise.all([
+    supabase
+      .from("invoices")
+      .select(`
+        id,
+        invoice_number,
+        subtotal,
+        tax_rate,
+        tax_amount,
+        discount_amount,
+        grand_total,
+        payment_method,
+        transaction_id,
+        created_at,
+        booking:booking_id (
+          id,
+          status,
+          scheduled_date,
+          services:service_id (title)
+        ),
+        customer:customer_id (
+          id,
+          full_name,
+          phone,
+          email
+        ),
+        partner:partner_id (
+          id,
+          full_name
+        )
+      `)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("bookings")
+      .select(`
         id,
         status,
+        total_amount,
         scheduled_date,
-        services:service_id (title)
-      ),
-      customer:customer_id (
-        id,
-        full_name,
-        phone,
-        email
-      ),
-      partner:partner_id (
-        id,
-        full_name
-      )
-    `)
-    .order("created_at", { ascending: false });
+        services:service_id (title),
+        customer:customer_id (full_name, phone)
+      `)
+      .eq("status", "completed")
+  ]);
+
+  const { data: invoicesRaw, error } = invoicesRes;
+  const { data: missingInvoicesBookings } = missingInvoicesRes;
 
   if (error) {
     console.error("Failed to fetch invoices for admin console:", error);
@@ -119,19 +135,6 @@ export default async function AdminInvoicesPage() {
       full_name: inv.partner.full_name
     } : null
   }));
-
-  // Fetch list of bookings completed but without invoices (for manual override/generation list)
-  const { data: missingInvoicesBookings } = await supabase
-    .from("bookings")
-    .select(`
-      id,
-      status,
-      total_amount,
-      scheduled_date,
-      services:service_id (title),
-      customer:customer_id (full_name, phone)
-    `)
-    .eq("status", "completed");
 
   // Filter in JS to find bookings that do NOT have a corresponding invoice in the fetched list
   const existingBookingIds = new Set(invoices.map(i => i.booking?.id).filter(Boolean));

@@ -267,3 +267,72 @@ export async function savePartnerNoteAction(
   revalidatePath('/admin/partners');
   return { success: true };
 }
+
+/**
+ * Fetch Bookings for a specific Partner on-demand (used in Fleet details drawer)
+ */
+export async function getPartnerBookingsAction(partnerId: string) {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('bookings')
+    .select(`
+      id,
+      status,
+      total_amount,
+      created_at,
+      scheduled_date,
+      pincode,
+      city,
+      services:services (
+        title,
+        category
+      ),
+      customer:profiles!bookings_customer_id_fkey (
+        full_name
+      )
+    `)
+    .eq('partner_id', partnerId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+}
+
+/**
+ * Fetch Reviews for a specific Partner on-demand (used in Fleet details drawer & reviews modal)
+ */
+export async function getPartnerReviewsAction(partnerId: string) {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('reviews')
+    .select(`
+      id,
+      rating,
+      comment,
+      created_at,
+      bookings:bookings!reviews_booking_id_fkey (
+        services:services (
+          title
+        )
+      ),
+      customer:profiles!reviews_customer_id_fkey (
+        full_name,
+        avatar_url
+      )
+    `)
+    .eq('partner_id', partnerId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+}

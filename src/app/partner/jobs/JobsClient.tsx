@@ -11,7 +11,8 @@ import {
   verifyCompletionOtp,
   claimJobOffer,
 } from "../actions";
-import type { BookingWithDetails } from "@/lib/types";
+import type { BookingWithDetails, BookingExtension } from "@/lib/types";
+import { requestExtensionAction } from "@/app/actions/extensions";
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -79,6 +80,37 @@ export default function JobsClient({
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [enteredOtps, setEnteredOtps]   = useState<Record<string, string>>({});
   const [currentTime, setCurrentTime]   = useState<Date>(new Date());
+
+  // Job states for polling/realtime updates
+  const [assigned, setAssigned] = useState<BookingWithDetails[]>(assignedJobs);
+  const [active, setActive] = useState<BookingWithDetails[]>(activeJobs);
+  const [completed, setCompleted] = useState<BookingWithDetails[]>(completedJobs);
+
+  // Time Extension states
+  const [extensionsMap, setExtensionsMap] = useState<Record<string, BookingExtension[]>>({});
+  const [extensionModalOpen, setExtensionModalOpen] = useState(false);
+  const [extensionJob, setExtensionJob] = useState<BookingWithDetails | null>(null);
+  const [pricingOptions, setPricingOptions] = useState<{ duration_minutes: number; price: number }[]>([]);
+  const [selectedExtMinutes, setSelectedExtMinutes] = useState<number>(60);
+
+  const getHourlyTimeRemaining = useCallback((job: BookingWithDetails) => {
+    if (job.status !== "in_progress" || !job.started_at || !job.selected_duration_minutes) {
+      return 0;
+    }
+    const startedAtMs = new Date(job.started_at).getTime();
+    const durationMs = job.selected_duration_minutes * 60 * 1000;
+    const expireTimeMs = startedAtMs + durationMs;
+    const diff = expireTimeMs - currentTime.getTime();
+    return Math.max(0, Math.floor(diff / 1000));
+  }, [currentTime]);
+
+  const formatSecondsLeft = useCallback((seconds: number) => {
+    if (seconds <= 0) return "00:00:00";
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -173,20 +205,125 @@ export default function JobsClient({
     };
   }, [refreshOffers]);
 
+  // Polling for active jobs & extensions
+  const refreshJobs = useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const [assignedRes, activeRes, completedRes] = await Promise.all([
+        supabase
+          .from("bookings")
+          .select("*, services:service_id(title, category), customer:customer_id(full_name)")
+          .eq("partner_id", user.id)
+          .in("status", ["assigned", "confirmed"])
+          .order("scheduled_date", { ascending: true }),
+        supabase
+          .from("bookings")
+          .select("*, services:service_id(title, category), customer:customer_id(full_name)")
+          .eq("partner_id", user.id)
+          .in("status", ["accepted", "professional_en_route", "professional_arrived", "otp_pending", "in_progress"])
+          .order("scheduled_date", { ascending: true }),
+        supabase
+          .from("bookings")
+          .select("*, services:service_id(title, category), customer:customer_id(full_name)")
+          .eq("partner_id", user.id)
+          .eq("status", "completed")
+          .order("completed_at", { ascending: false })
+          .limit(20)
+      ]);
+
+      if (assignedRes.data) setAssigned(assignedRes.data as BookingWithDetails[]);
+      if (activeRes.data) {
+        const jobs = activeRes.data as BookingWithDetails[];
+        setActive(jobs);
+        
+        if (jobs.length > 0) {
+          const { data: exts } = await supabase
+            .from("booking_extensions")
+            .select("*")
+            .in("booking_id", jobs.map(j => j.id))
+            .order("created_at", { ascending: false });
+          if (exts) {
+            const grouped = exts.reduce((acc, row) => {
+              if (!acc[row.booking_id]) acc[row.booking_id] = [];
+              acc[row.booking_id].push(row);
+              return acc;
+            }, {} as Record<string, BookingExtension[]>);
+            setExtensionsMap(grouped);
+          }
+        }
+      }
+      if (completedRes.data) setCompleted(completedRes.data as BookingWithDetails[]);
+    } catch (err) {
+      console.error("Error refreshing jobs:", err);
+    }
+  }, []);
+
+  const fetchPricingOptionsForJob = async (serviceId: string) => {
+    try {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("service_duration_pricing")
+        .select("duration_minutes, price")
+        .eq("service_id", serviceId)
+        .order("duration_minutes", { ascending: true });
+      if (data) {
+        setPricingOptions(data);
+        if (data.length > 0) {
+          setSelectedExtMinutes(data[0].duration_minutes);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching pricing options:", err);
+    }
+  };
+
+  const openExtensionModal = (job: BookingWithDetails) => {
+    setExtensionJob(job);
+    setPricingOptions([]);
+    setExtensionModalOpen(true);
+    void fetchPricingOptionsForJob(job.service_id);
+  };
+
+  const handleRequestExtensionSubmit = async () => {
+    if (!extensionJob) return;
+    setActionError(null);
+    setActionSuccess(null);
+    setExtensionModalOpen(false);
+    
+    startTransition(async () => {
+      const res = await requestExtensionAction(extensionJob.id, selectedExtMinutes);
+      if (res.success) {
+        setActionSuccess("Time extension requested successfully!");
+        void refreshJobs();
+      } else {
+        setActionError(res.error || "Failed to request extension.");
+      }
+    });
+  };
+
+  useEffect(() => {
+    void refreshJobs();
+    const interval = setInterval(refreshJobs, 6000);
+    return () => clearInterval(interval);
+  }, [refreshJobs]);
+
   // ─── Tabs ─────────────────────────────────────────────────────
   const tabs: { key: TabKey; label: string; count: number; dot?: boolean }[] = [
     { key: "offers",    label: "Job Offers", count: offeredJobs.length, dot: offeredJobs.length > 0 },
-    { key: "assigned",  label: "Assigned",   count: assignedJobs.length },
-    { key: "active",    label: "Active",     count: activeJobs.length },
-    { key: "completed", label: "Completed",  count: completedJobs.length },
+    { key: "assigned",  label: "Assigned",   count: assigned.length },
+    { key: "active",    label: "Active",     count: active.length },
+    { key: "completed", label: "Completed",  count: completed.length },
   ];
 
   const currentJobs =
     activeTab === "assigned"
-      ? assignedJobs
+      ? assigned
       : activeTab === "active"
-        ? activeJobs
-        : completedJobs;
+        ? active
+        : completed;
 
   // ─── Action helpers ──────────────────────────────────────────
   function handleAction(
@@ -385,14 +522,28 @@ export default function JobsClient({
         );
       }
       if (job.status === "in_progress") {
+        const isHourly = job.pricing_model === "hourly";
         return (
-          <button
-            disabled={isPending}
-            onClick={() => handleAction(() => requestCompletion(job.id), "Completion OTP requested. Ask the customer for OTP.")}
-            className="bg-linear-to-br from-[#00685f] to-[#008378] text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-[0_4px_12px_rgba(0,104,95,0.25)] hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
-          >
-            {isPending ? "Processing..." : "Complete Service"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              disabled={isPending}
+              onClick={() => handleAction(() => requestCompletion(job.id), "Completion OTP requested. Ask the customer for OTP.")}
+              className="bg-linear-to-br from-[#00685f] to-[#008378] text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-[0_4px_12px_rgba(0,104,95,0.25)] hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 shrink-0"
+            >
+              {isPending ? "Processing..." : "Complete Service"}
+            </button>
+            {isHourly && (
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => openExtensionModal(job)}
+                className="px-4 py-2.5 border-2 border-primary/20 text-primary font-body rounded-xl font-bold uppercase tracking-wider text-[10px] hover:bg-primary/5 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1 shrink-0"
+              >
+                <span className="material-symbols-outlined text-[14px]">more_time</span>
+                Request Time
+              </button>
+            )}
+          </div>
         );
       }
       if (job.status === "otp_pending" && job.arrival_otp_verified) {
@@ -622,6 +773,80 @@ export default function JobsClient({
         </div>
       )}
 
+      {/* ─── Request More Time Modal ───────────────────────── */}
+      {extensionModalOpen && extensionJob && (
+        <div className="fixed inset-0 z-200 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-2xl font-body">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-headline font-bold text-lg text-on-surface">
+                Request More Time
+              </h3>
+              <button
+                type="button"
+                onClick={() => setExtensionModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-surface-container-low flex items-center justify-center hover:bg-surface-container-high transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm">close</span>
+              </button>
+            </div>
+            
+            <p className="text-xs text-on-surface-variant mb-4 leading-relaxed">
+              Select the additional duration you require. The customer will receive an alert to approve and pay for the extension before work continues.
+            </p>
+
+            {pricingOptions.length === 0 ? (
+              <div className="py-6 text-center text-xs text-on-surface-variant flex items-center justify-center gap-2">
+                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                Loading pricing rates...
+              </div>
+            ) : (
+              <div className="space-y-2 mb-6">
+                <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Select Extension Rate</p>
+                <div className="grid grid-cols-1 gap-2">
+                  {pricingOptions.map((opt) => {
+                    const isSelected = selectedExtMinutes === opt.duration_minutes;
+                    const label = opt.duration_minutes === 30 ? "30 Minutes" : `${opt.duration_minutes / 60} Hour${opt.duration_minutes / 60 === 1 ? "" : "s"}`;
+                    return (
+                      <button
+                        key={opt.duration_minutes}
+                        type="button"
+                        onClick={() => setSelectedExtMinutes(opt.duration_minutes)}
+                        className={`w-full p-3 rounded-xl border text-left flex justify-between items-center transition-all ${
+                          isSelected
+                            ? "bg-primary border-primary text-white shadow-md"
+                            : "bg-surface border-outline-variant/10 text-on-surface hover:bg-surface-container-low hover:border-outline-variant/30"
+                        }`}
+                      >
+                        <span className="text-xs font-bold">{label} Extension</span>
+                        <span className={`text-xs font-black ${isSelected ? "text-white" : "text-primary"}`}>₹{opt.price}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setExtensionModalOpen(false)}
+                className="flex-1 py-3 rounded-xl border border-outline-variant/20 font-bold text-sm text-on-surface-variant hover:bg-surface-container-low transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRequestExtensionSubmit}
+                disabled={isPending || pricingOptions.length === 0}
+                className="flex-1 py-3 rounded-xl bg-primary text-white font-bold text-sm shadow-lg hover:bg-primary/95 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isPending ? "Sending..." : "Submit Request"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ─── Tab Bar ────────────────────────────────────────── */}
       <div className="px-3 flex gap-2 overflow-x-auto no-scrollbar max-w-7xl mx-auto">
         {tabs.map((tab) => (
@@ -747,6 +972,71 @@ export default function JobsClient({
                     <div className="flex items-center gap-3 text-[13px] text-on-surface-variant font-medium">
                       <span className="material-symbols-outlined text-[16px] text-on-surface-variant/50">person</span>
                       {job.customer.full_name}
+                    </div>
+                  )}
+                  
+                  {/* Hourly Job Countdown Timer */}
+                  {job.pricing_model === "hourly" && (
+                    <div className="flex items-center justify-between p-3 bg-primary/5 rounded-xl border border-primary/10 mt-3 font-body">
+                      <div>
+                        <p className="text-[9px] uppercase font-bold text-primary/70 tracking-wider">Booked Duration</p>
+                        <p className="text-xs font-extrabold text-primary">{job.selected_duration_minutes} Mins</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[9px] uppercase font-bold text-primary/70 tracking-wider">Time Remaining</p>
+                        {job.status === "in_progress" && job.started_at ? (
+                          <p className={`text-xs font-black tracking-tight ${getHourlyTimeRemaining(job) < 600 && getHourlyTimeRemaining(job) > 0 ? "text-red-600 animate-pulse font-extrabold" : "text-primary"}`}>
+                            {formatSecondsLeft(getHourlyTimeRemaining(job))}
+                          </p>
+                        ) : (
+                          <p className="text-xs font-bold text-on-surface-variant/70">Awaiting Start</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Hourly Extension Status Check */}
+                  {job.pricing_model === "hourly" && extensionsMap[job.id]?.length > 0 && (
+                    <div className="mt-3 p-3 bg-surface-container-low rounded-xl border border-outline-variant/15 text-[11px] font-semibold text-on-surface-variant font-body">
+                      {(() => {
+                        const latest = extensionsMap[job.id][0];
+                        const durationStr = latest.additional_minutes >= 60
+                          ? `${latest.additional_minutes / 60} Hr${latest.additional_minutes === 60 ? "" : "s"}`
+                          : `${latest.additional_minutes} Mins`;
+                        if (latest.status === "requested") {
+                          return (
+                            <span className="text-amber-600 flex items-center gap-1.5 animate-pulse">
+                              <span className="material-symbols-outlined text-[14px]">hourglass_empty</span>
+                              Requested +{durationStr} (₹{latest.additional_amount}) &middot; Awaiting approval
+                            </span>
+                          );
+                        }
+                        if (latest.status === "payment_pending") {
+                          return (
+                            <span className="text-blue-600 flex items-center gap-1.5 animate-pulse">
+                              <span className="material-symbols-outlined text-[14px]">pending_payment</span>
+                              Approved &middot; Awaiting customer payment (₹{latest.additional_amount})
+                            </span>
+                          );
+                        }
+                        if (latest.status === "rejected") {
+                          return (
+                            <span className="text-red-600 flex items-center gap-1.5">
+                              <span className="material-symbols-outlined text-[14px]">cancel</span>
+                              Extension Rejected by Customer
+                            </span>
+                          );
+                        }
+                        if (latest.status === "paid" || latest.status === "active") {
+                          return (
+                            <span className="text-[#059669] flex items-center gap-1.5">
+                              <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                              Extension Activated +{durationStr}
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                   )}
                 </div>

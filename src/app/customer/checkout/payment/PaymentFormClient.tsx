@@ -37,6 +37,7 @@ interface PaymentFormClientProps {
   taxRatePercent: number;
   referralDiscount: number;
   walletBalance?: number;
+  duration?: number;
 }
 
 export default function PaymentFormClient({
@@ -48,6 +49,7 @@ export default function PaymentFormClient({
   taxRatePercent,
   referralDiscount,
   walletBalance = 0,
+  duration,
 }: PaymentFormClientProps) {
   const router = useRouter();
   const [isAgreed, setIsAgreed] = useState(false);
@@ -100,6 +102,7 @@ export default function PaymentFormClient({
           date: date,
           time: time,
           walletAmountToUse: walletApplied,
+          duration: duration,
         });
 
         if (rzOrder.freeOrder) {
@@ -111,6 +114,7 @@ export default function PaymentFormClient({
             date: date,
             time: time,
             walletAmountToUse: walletApplied,
+            duration: duration,
           });
 
           if (verifyRes.success && verifyRes.bookingId) {
@@ -178,6 +182,7 @@ export default function PaymentFormClient({
                   date: date,
                   time: time,
                   walletAmountToUse: walletApplied,
+                  duration: duration,
                 });
 
                 if (verifyRes.success && verifyRes.bookingId) {
@@ -245,6 +250,11 @@ export default function PaymentFormClient({
                 <div>
                   <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Service</p>
                   <p className="font-bold text-sm text-on-surface leading-tight mt-0.5">{service.title}</p>
+                  {duration && (
+                    <p className="text-xs text-secondary font-bold mt-1">
+                      Duration: {duration === 30 ? "30 Minutes" : `${duration / 60} Hour${duration / 60 === 1 ? "" : "s"}`}
+                    </p>
+                  )}
                 </div>
               </div>
 

@@ -73,6 +73,7 @@ export interface Service {
   is_active: boolean;
   created_at: string;
   page_content: string | null;
+  pricing_model?: 'fixed' | 'hourly';
 }
 
 export interface Booking {
@@ -101,6 +102,12 @@ export interface Booking {
   arrival_otp_expires_at?: string | null;
   completion_otp_verified?: boolean | null;
   completion_otp_expires_at?: string | null;
+  pricing_model?: 'fixed' | 'hourly';
+  selected_duration_minutes?: number | null;
+  base_price?: number | null;
+  final_price?: number | null;
+  notified_30m_remaining?: boolean | null;
+  notified_time_completed?: boolean | null;
 }
 
 // ─── Cart & Orders ───────────────────────────────────────────
@@ -112,6 +119,8 @@ export interface CartItem {
   basePrice: number;
   subcategoryName: string;
   categorySlug: string;
+  pricingModel?: 'fixed' | 'hourly';
+  selectedDuration?: number;
 }
 
 export interface Order {
@@ -135,7 +144,7 @@ export interface OrderWithBookings extends Order {
 // ─── Joined / Enriched Models ────────────────────────────────
 
 export interface BookingWithDetails extends Booking {
-  services: { title: string; category?: string } | null;
+  services: { title: string; category?: string; pricing_model?: 'fixed' | 'hourly' } | null;
   customer: { full_name: string } | null;
   partner: { full_name: string; avatar_url: string | null; phone: string | null } | null;
 }
@@ -205,6 +214,29 @@ export interface BookingRejection {
   created_at: string;
 }
 
+// ─── Booking Extensions ──────────────────────────────────────
+
+export type ExtensionStatus =
+  | 'requested'
+  | 'approved'
+  | 'rejected'
+  | 'payment_pending'
+  | 'paid'
+  | 'active'
+  | 'completed';
+
+export interface BookingExtension {
+  id: string;
+  booking_id: string;
+  requested_by_partner_id: string | null;
+  additional_minutes: number;
+  additional_amount: number;
+  status: ExtensionStatus;
+  approved_at: string | null;
+  paid_at: string | null;
+  created_at: string;
+}
+
 // ─── Notification Types ─────────────────────────────────────
 
 export type NotificationType =
@@ -217,7 +249,15 @@ export type NotificationType =
   | 'service_completed'
   | 'booking_cancelled'
   | 'review_received'
-  | 'general';
+  | 'general'
+  | 'extension_requested'
+  | 'extension_approved'
+  | 'extension_rejected'
+  | 'extension_payment_pending'
+  | 'extension_paid'
+  | 'extension_activated'
+  | 'time_remaining_30m'
+  | 'time_completed';
 
 export interface AppNotification {
   id: string;

@@ -53,6 +53,53 @@ export default async function AdminDashboardPage() {
     throw new Error(error?.message || "Failed to load dashboard metrics.");
   }
 
+  // Fetch hourly stats
+  const { count: totalHourlyBookings } = await supabase
+    .from("bookings")
+    .select("id", { count: "exact", head: true })
+    .eq("pricing_model", "hourly");
+
+  const { count: totalExtensions } = await supabase
+    .from("booking_extensions")
+    .select("id", { count: "exact", head: true });
+
+  const { data: approvedCountData } = await supabase
+    .from("booking_extensions")
+    .select("id")
+    .in("status", ["approved", "paid", "active", "completed"]);
+  const approvedCount = approvedCountData?.length || 0;
+
+  const { data: resolvedCountData } = await supabase
+    .from("booking_extensions")
+    .select("id")
+    .in("status", ["approved", "rejected", "paid", "active", "completed"]);
+  const resolvedCount = resolvedCountData?.length || 0;
+  const approvalRate = resolvedCount > 0 ? (approvedCount / resolvedCount) * 100 : 0;
+
+  const { data: revenueData } = await supabase
+    .from("booking_extensions")
+    .select("additional_amount")
+    .in("status", ["paid", "active", "completed"]);
+  const extensionRevenue = (revenueData || []).reduce((sum, row) => sum + Number(row.additional_amount || 0), 0);
+
+  const { data: avgDurationData } = await supabase
+    .from("bookings")
+    .select("selected_duration_minutes")
+    .eq("pricing_model", "hourly");
+  const hourlyBookings = avgDurationData || [];
+  const avgBookingDuration = hourlyBookings.length > 0
+    ? hourlyBookings.reduce((sum, b) => sum + (b.selected_duration_minutes || 0), 0) / hourlyBookings.length
+    : 0;
+
+  const { data: avgExtendedData } = await supabase
+    .from("booking_extensions")
+    .select("additional_minutes")
+    .in("status", ["paid", "active", "completed"]);
+  const extendedRows = avgExtendedData || [];
+  const avgExtendedDuration = extendedRows.length > 0
+    ? extendedRows.reduce((sum, b) => sum + (b.additional_minutes || 0), 0) / extendedRows.length
+    : 0;
+
   const metrics = metricsRaw as unknown as AdminDashboardMetrics;
 
   const monthlyGMV = Number(metrics.monthly_gmv || 0);
@@ -200,6 +247,39 @@ export default async function AdminDashboardPage() {
         </div>
       </div>
 
+      {/* ─── SECTION 2: HOURLY SERVICES & EXTENSIONS REPORT ─── */}
+      <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 p-5 shadow-sm space-y-4">
+        <div>
+          <h3 className="text-sm font-bold text-primary font-headline tracking-tight">Hourly Services & Extensions Report</h3>
+          <p className="text-[8px] font-black uppercase tracking-widest text-on-surface-variant/40 mt-0.5">Real-time stats for duration-based bookings</p>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="bg-surface p-4 rounded-xl border border-outline-variant/10">
+            <span className="text-[8px] font-black uppercase tracking-widest text-on-surface-variant/50 block mb-1">Total Hourly Bookings</span>
+            <span className="text-lg font-black text-primary">{totalHourlyBookings || 0}</span>
+          </div>
+          <div className="bg-surface p-4 rounded-xl border border-outline-variant/10">
+            <span className="text-[8px] font-black uppercase tracking-widest text-on-surface-variant/50 block mb-1">Extension Requests</span>
+            <span className="text-lg font-black text-primary">{totalExtensions || 0}</span>
+          </div>
+          <div className="bg-surface p-4 rounded-xl border border-outline-variant/10">
+            <span className="text-[8px] font-black uppercase tracking-widest text-on-surface-variant/50 block mb-1">Extension Revenue</span>
+            <span className="text-lg font-black text-secondary">₹{extensionRevenue.toLocaleString()}</span>
+          </div>
+          <div className="bg-surface p-4 rounded-xl border border-outline-variant/10">
+            <span className="text-[8px] font-black uppercase tracking-widest text-on-surface-variant/50 block mb-1">Extension Approval Rate</span>
+            <span className="text-lg font-black text-primary">{approvalRate.toFixed(1)}%</span>
+          </div>
+          <div className="bg-surface p-4 rounded-xl border border-outline-variant/10">
+            <span className="text-[8px] font-black uppercase tracking-widest text-on-surface-variant/50 block mb-1">Avg Booking Duration</span>
+            <span className="text-lg font-black text-primary">{(avgBookingDuration / 60).toFixed(1)} hrs</span>
+          </div>
+          <div className="bg-surface p-4 rounded-xl border border-outline-variant/10">
+            <span className="text-[8px] font-black uppercase tracking-widest text-on-surface-variant/50 block mb-1">Avg Extended Duration</span>
+            <span className="text-lg font-black text-primary">{avgExtendedDuration.toFixed(1)} mins</span>
+          </div>
+        </div>
+      </div>
 
       {/* ─── SECTION 4: LIVE OPS LEDGER ────────────────────── */}
       <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 shadow-sm overflow-hidden">

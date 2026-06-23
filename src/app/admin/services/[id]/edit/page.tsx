@@ -26,6 +26,21 @@ export default async function AdminEditServicePage({ params }: { params: Promise
     redirect('/admin/services');
   }
 
+  // Fetch duration rates if it's an hourly service
+  let durationRates: { duration: number; price: number }[] = [];
+  if (serviceData && serviceData.pricing_model === "hourly") {
+    const { data: ratesData } = await supabase
+      .from("service_duration_pricing")
+      .select("duration_minutes, price")
+      .eq("service_id", id);
+    if (ratesData) {
+      durationRates = ratesData.map(r => ({
+        duration: r.duration_minutes,
+        price: Number(r.price)
+      }));
+    }
+  }
+
   // Fetch categories and subcategories
   const { data: categoriesData } = await supabase
     .from('categories')
@@ -58,6 +73,8 @@ export default async function AdminEditServicePage({ params }: { params: Promise
     const price_breakdown = formData.get("price_breakdown") as string;
     const description = formData.get("description") as string;
     const image_url = formData.get("image_url") as string || null;
+    const pricing_model = (formData.get("pricing_model") as string) || "fixed";
+    const duration_rates_raw = formData.get("duration_rates_json") as string;
 
     // Arrays separated by newline
     const includedRaw = formData.get("included_features") as string;
@@ -99,11 +116,36 @@ export default async function AdminEditServicePage({ params }: { params: Promise
       description,
       page_content,
       image_url,
+      pricing_model,
     }).eq("id", id);
 
     if (error) {
       console.error(error);
       return { type: "error", message: error.message };
+    }
+
+    // Update duration rates
+    // A. Delete existing duration rates first
+    await db.from("service_duration_pricing").delete().eq("service_id", id);
+
+    // B. Re-insert rates if hourly
+    if (pricing_model === "hourly" && duration_rates_raw) {
+      try {
+        const rates = JSON.parse(duration_rates_raw) as { duration: number; price: number }[];
+        const rows = rates.map(r => ({
+          service_id: id,
+          duration_minutes: r.duration,
+          price: r.price
+        }));
+        if (rows.length > 0) {
+          const { error: ratesErr } = await db.from("service_duration_pricing").insert(rows);
+          if (ratesErr) {
+            console.error("Failed to insert duration rates:", ratesErr);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to parse duration rates:", e);
+      }
     }
 
     revalidatePath('/admin/services');
@@ -120,7 +162,7 @@ export default async function AdminEditServicePage({ params }: { params: Promise
         <h1 className="text-3xl font-bold font-headline text-primary">Edit Service</h1>
       </div>
 
-      <EditServiceForm categories={categoriesData || []} initialData={serviceData} action={editServiceAction} />
+      <EditServiceForm categories={categoriesData || []} initialData={serviceData} initialDurationRates={durationRates} action={editServiceAction} />
     </div>
   );
 }

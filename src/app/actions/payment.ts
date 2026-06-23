@@ -37,6 +37,8 @@ export async function createRazorpayOrderAction(payload: {
   date: string;
   time: string;
   walletAmountToUse?: number;
+  duration?: number;
+  cartItems?: { serviceId: string; selectedDuration?: number }[];
 }): Promise<RazorpayOrderResult> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -56,18 +58,51 @@ export async function createRazorpayOrderAction(payload: {
   if (payload.serviceId) {
     const { data: service } = await supabase
       .from("services")
-      .select("base_price")
+      .select("base_price, pricing_model")
       .eq("id", payload.serviceId)
       .single();
     if (!service) throw new Error("Service not found");
-    subtotal = Number(service.base_price);
+    
+    if (service.pricing_model === "hourly") {
+      const durationVal = payload.duration || 60;
+      const { data: durPricing } = await supabase
+        .from("service_duration_pricing")
+        .select("price")
+        .eq("service_id", payload.serviceId)
+        .eq("duration_minutes", durationVal)
+        .single();
+      if (!durPricing) {
+        throw new Error(`Pricing not configured for duration ${durationVal} minutes`);
+      }
+      subtotal = Number(durPricing.price);
+    } else {
+      subtotal = Number(service.base_price);
+    }
   } else if (payload.serviceIds && payload.serviceIds.length > 0) {
     const { data: services } = await supabase
       .from("services")
-      .select("base_price")
+      .select("id, base_price, pricing_model")
       .in("id", payload.serviceIds);
     if (!services || services.length === 0) throw new Error("Services not found");
-    subtotal = services.reduce((sum, s) => sum + Number(s.base_price), 0);
+    
+    for (const s of services) {
+      if (s.pricing_model === "hourly") {
+        const itemDuration = payload.cartItems?.find(ci => ci.serviceId === s.id)?.selectedDuration;
+        const durationVal = itemDuration || 60;
+        const { data: durPricing } = await supabase
+          .from("service_duration_pricing")
+          .select("price")
+          .eq("service_id", s.id)
+          .eq("duration_minutes", durationVal)
+          .single();
+        if (!durPricing) {
+          throw new Error(`Pricing not configured for duration ${durationVal} minutes on service ${s.id}`);
+        }
+        subtotal += Number(durPricing.price);
+      } else {
+        subtotal += Number(s.base_price);
+      }
+    }
   } else {
     throw new Error("No services specified");
   }
@@ -177,6 +212,8 @@ export async function verifyRazorpayPaymentAction(payload: {
   date: string;
   time: string;
   walletAmountToUse?: number;
+  duration?: number;
+  cartItems?: { serviceId: string; selectedDuration?: number }[];
 }): Promise<VerificationResult> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -271,12 +308,28 @@ export async function verifyRazorpayPaymentAction(payload: {
     // Single service booking
     const { data: service } = await supabase
       .from("services")
-      .select("id, title, base_price")
+      .select("id, title, base_price, pricing_model")
       .eq("id", payload.serviceId)
       .single();
     if (!service) return { success: false, error: "Service not found." };
 
-    const basePrice = Number(service.base_price);
+    let basePrice = Number(service.base_price);
+    let selectedDurationMinutes: number | null = null;
+
+    if (service.pricing_model === "hourly") {
+      selectedDurationMinutes = payload.duration || 60;
+      const { data: durPricing } = await supabase
+        .from("service_duration_pricing")
+        .select("price")
+        .eq("service_id", service.id)
+        .eq("duration_minutes", selectedDurationMinutes)
+        .single();
+      if (!durPricing) {
+        return { success: false, error: `Pricing not configured for duration ${selectedDurationMinutes} minutes.` };
+      }
+      basePrice = Number(durPricing.price);
+    }
+
     const gstTax = Math.round(basePrice * (taxRatePercent / 100));
     const totalPrice = Math.max(0, basePrice + gstTax - referralDiscount);
 
@@ -295,6 +348,10 @@ export async function verifyRazorpayPaymentAction(payload: {
         scheduled_date: timestamp.toISOString(),
         wallet_discount_applied: referralDiscount,
         payment_status: "paid",
+        pricing_model: service.pricing_model,
+        selected_duration_minutes: selectedDurationMinutes,
+        base_price: basePrice,
+        final_price: totalPrice,
       })
       .select("id")
       .single();
@@ -362,14 +419,42 @@ export async function verifyRazorpayPaymentAction(payload: {
     // Multi-service Cart Checkout
     const { data: dbServices } = await supabase
       .from("services")
-      .select("id, title, base_price")
+      .select("id, title, base_price, pricing_model")
       .in("id", payload.serviceIds);
 
     if (!dbServices || dbServices.length === 0) {
       return { success: false, error: "Services not found." };
     }
 
-    const subtotal = dbServices.reduce((sum, s) => sum + Number(s.base_price), 0);
+    let subtotal = 0;
+    const serviceDetailsMap: Record<string, { basePrice: number; pricingModel: "fixed" | "hourly"; selectedDuration: number | null }> = {};
+
+    for (const s of dbServices) {
+      let serviceBasePrice = Number(s.base_price);
+      let selectedDuration: number | null = null;
+      
+      if (s.pricing_model === "hourly") {
+        const itemDuration = payload.cartItems?.find(ci => ci.serviceId === s.id)?.selectedDuration;
+        selectedDuration = itemDuration || 60;
+        const { data: durPricing } = await supabase
+          .from("service_duration_pricing")
+          .select("price")
+          .eq("service_id", s.id)
+          .eq("duration_minutes", selectedDuration)
+          .single();
+        if (!durPricing) {
+          return { success: false, error: `Pricing not configured for duration ${selectedDuration} minutes on service ${s.title}` };
+        }
+        serviceBasePrice = Number(durPricing.price);
+      }
+      subtotal += serviceBasePrice;
+      serviceDetailsMap[s.id] = {
+        basePrice: serviceBasePrice,
+        pricingModel: (s.pricing_model || "fixed") as "fixed" | "hourly",
+        selectedDuration,
+      };
+    }
+
     const totalTax = Math.round(subtotal * (taxRatePercent / 100));
     const totalOrderAmount = Math.max(0, subtotal + totalTax - referralDiscount);
 
@@ -425,7 +510,8 @@ export async function verifyRazorpayPaymentAction(payload: {
     const discountPerItem = Math.round((referralDiscount / dbServices.length) * 100) / 100;
 
     for (const service of dbServices) {
-      const basePrice = Number(service.base_price);
+      const details = serviceDetailsMap[service.id];
+      const basePrice = details.basePrice;
       const gstTax = Math.round(basePrice * (taxRatePercent / 100));
       const bookingPrice = Math.max(0, basePrice + gstTax - discountPerItem);
 
@@ -444,6 +530,10 @@ export async function verifyRazorpayPaymentAction(payload: {
           scheduled_date: timestamp.toISOString(),
           wallet_discount_applied: discountPerItem,
           payment_status: "paid",
+          pricing_model: details.pricingModel,
+          selected_duration_minutes: details.selectedDuration,
+          base_price: basePrice,
+          final_price: bookingPrice,
         })
         .select("id")
         .single();

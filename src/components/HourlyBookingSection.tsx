@@ -1,0 +1,175 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import Link from "next/link";
+import AddToCartButton from "@/components/AddToCartButton";
+
+interface PricingOption {
+  duration_minutes: number;
+  price: number;
+}
+
+interface HourlyBookingSectionProps {
+  serviceId: string;
+  serviceTitle: string;
+  iconName: string;
+  categorySlug: string;
+  subcategoryName: string;
+  basePrice: number;
+  pricingModel: "fixed" | "hourly";
+  pricingOptions: PricingOption[];
+}
+
+export default function HourlyBookingSection({
+  serviceId,
+  serviceTitle,
+  iconName,
+  categorySlug,
+  subcategoryName,
+  basePrice,
+  pricingModel,
+  pricingOptions = [],
+}: HourlyBookingSectionProps) {
+  const isHourly = pricingModel === "hourly";
+
+  // Default to 1 hour (60 mins) or first option if available
+  const initialDuration = useMemo(() => {
+    if (!isHourly || pricingOptions.length === 0) return 60;
+    const hasOneHour = pricingOptions.find((o) => o.duration_minutes === 60);
+    return hasOneHour ? 60 : pricingOptions[0].duration_minutes;
+  }, [isHourly, pricingOptions]);
+
+  const [selectedDuration, setSelectedDuration] = useState<number>(initialDuration);
+
+  const activePrice = useMemo(() => {
+    if (!isHourly || pricingOptions.length === 0) return basePrice;
+    const option = pricingOptions.find((o) => o.duration_minutes === selectedDuration);
+    return option ? Number(option.price) : basePrice;
+  }, [isHourly, selectedDuration, pricingOptions, basePrice]);
+
+  const durationLabel = (minutes: number) => {
+    if (minutes === 30) return "30 Minutes";
+    const hours = minutes / 60;
+    return `${hours} Hour${hours === 1 ? "" : "s"}`;
+  };
+
+  const scheduleUrl = useMemo(() => {
+    const params = new URLSearchParams({
+      serviceId,
+      duration: selectedDuration.toString(),
+    });
+    return `/customer/checkout/schedule?${params.toString()}`;
+  }, [serviceId, selectedDuration]);
+
+  return (
+    <div className="space-y-6">
+      {/* 1. Pricing & Duration Selection Card */}
+      {isHourly && pricingOptions.length > 0 && (
+        <section className="max-w-3xl mx-auto">
+          <div className="bg-surface-container-low border border-outline-variant/20 rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-xs">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/5 rounded-full blur-2xl pointer-events-none" />
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+              <div className="space-y-4 flex-1">
+                <div className="inline-flex items-center gap-1.5 bg-secondary/10 px-3 py-1 rounded-full text-secondary font-bold text-xs border border-secondary/20">
+                  <span className="material-symbols-outlined text-xs font-bold">schedule</span> Duration Selection
+                </div>
+                <h3 className="text-xl md:text-2xl font-extrabold text-on-surface font-headline tracking-tighter">
+                  Select Service Duration
+                </h3>
+                
+                {/* Duration options list */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {pricingOptions.map((opt) => {
+                    const isSelected = selectedDuration === opt.duration_minutes;
+                    return (
+                      <button
+                        key={opt.duration_minutes}
+                        type="button"
+                        onClick={() => setSelectedDuration(opt.duration_minutes)}
+                        className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all text-center ${
+                          isSelected
+                            ? "bg-primary border-primary text-white shadow-md shadow-primary/10"
+                            : "bg-surface border-outline-variant/10 text-on-surface hover:bg-surface-container-low hover:border-outline-variant/30"
+                        }`}
+                      >
+                        {durationLabel(opt.duration_minutes)}
+                        <span className="block text-[10px] font-medium opacity-80 mt-0.5">₹{opt.price}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Dynamic Price Display */}
+              <div className="bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant/20 min-w-[220px] shadow-xs flex flex-col justify-center shrink-0">
+                <span className="text-[10px] md:text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1">
+                  Selected Duration Price
+                </span>
+                <div className="flex items-baseline gap-1.5 mb-2">
+                  <span className="text-3xl font-black text-primary font-headline tracking-tighter">₹{activePrice}</span>
+                  <span className="text-xs text-on-surface-variant font-medium">/ {durationLabel(selectedDuration)}</span>
+                </div>
+                <div className="border-t border-outline-variant/30 pt-2 mt-2">
+                  <span className="text-[10px] text-on-surface-variant/80 font-bold uppercase tracking-wider block mb-1">Pricing Model</span>
+                  <span className="text-xs text-secondary font-extrabold">Duration-Based Billing</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* 2. Customer Dispute Warnings / Disclaimer */}
+      {isHourly && (
+        <section className="max-w-3xl mx-auto bg-amber-500/10 border border-amber-500/20 rounded-2xl p-5 shadow-xs">
+          <div className="flex gap-3">
+            <span className="material-symbols-outlined text-amber-600 text-2xl shrink-0">gavel</span>
+            <div className="space-y-1">
+              <h4 className="font-bold text-sm text-on-surface">Hourly Service Policy & Terms</h4>
+              <p className="text-xs text-on-surface-variant leading-relaxed">
+                • Hourly services are charged based on booked time, not task completion.
+              </p>
+              <p className="text-xs text-on-surface-variant leading-relaxed">
+                • If additional time is required, your professional may request an extension. Additional work will continue only after your approval and payment.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* 3. Floating Bottom Bar */}
+      <div className="fixed bottom-0 left-0 w-full bg-surface-container-lowest border-t border-outline-variant/30 p-3 md:p-4 z-50 flex items-center justify-between shadow-[0_-10px_20px_rgba(0,0,0,0.05)] pb-safe">
+        <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-lg md:text-xl font-extrabold font-headline text-on-surface tracking-tighter">₹{activePrice}</span>
+            </div>
+            <div className="text-[10px] md:text-xs text-on-surface-variant font-medium">
+              {isHourly ? `Price for ${durationLabel(selectedDuration)}` : "Standard Fixed Rate"}
+            </div>
+          </div>
+          <div className="flex items-center gap-3 min-w-[280px]">
+            <AddToCartButton
+              item={{
+                serviceId,
+                title: serviceTitle,
+                iconName,
+                basePrice: activePrice,
+                subcategoryName,
+                categorySlug,
+                pricingModel,
+                selectedDuration,
+              }}
+            />
+            <Link
+              href={scheduleUrl}
+              className="px-6 md:px-8 py-2.5 text-xs md:text-sm bg-primary text-white font-headline font-bold rounded-lg shadow-md hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center shrink-0"
+            >
+              Book Now
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

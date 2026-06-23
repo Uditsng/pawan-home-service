@@ -108,6 +108,9 @@ export interface Booking {
   final_price?: number | null;
   notified_30m_remaining?: boolean | null;
   notified_time_completed?: boolean | null;
+  meeting_location?: string | null;
+  destination?: string | null;
+  expected_bags?: number | null;
 }
 
 // ─── Cart & Orders ───────────────────────────────────────────

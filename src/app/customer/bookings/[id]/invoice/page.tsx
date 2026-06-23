@@ -32,6 +32,12 @@ interface InvoiceDetails {
     address: string | null;
     city: string | null;
     pincode: string | null;
+    pricing_model: string | null;
+    selected_duration_minutes: number | null;
+    base_price: number | null;
+    meeting_location: string | null;
+    destination: string | null;
+    expected_bags: number | null;
     services: {
       title: string;
       category: string;
@@ -73,7 +79,7 @@ async function ensureInvoiceExists(bookingId: string, supabase: any, userId: str
   // Let's check if invoice already exists
   const { data: existing } = await supabase
     .from("invoices")
-    .select("*, booking:booking_id(id, status, scheduled_date, created_at, address, city, pincode, services:service_id(title, category)), customer:customer_id(full_name, phone, email), partner:partner_id(id, full_name)")
+    .select("*, booking:booking_id(id, status, scheduled_date, created_at, address, city, pincode, pricing_model, selected_duration_minutes, base_price, meeting_location, destination, expected_bags, services:service_id(title, category)), customer:customer_id(full_name, phone, email), partner:partner_id(id, full_name)")
     .eq("booking_id", bookingId)
     .maybeSingle();
 
@@ -139,7 +145,7 @@ async function ensureInvoiceExists(bookingId: string, supabase: any, userId: str
   // Fetch fully joined invoice
   const { data: fullyJoined } = await supabase
     .from("invoices")
-    .select("*, booking:booking_id(id, status, scheduled_date, created_at, address, city, pincode, services:service_id(title, category)), customer:customer_id(full_name, phone, email), partner:partner_id(id, full_name)")
+    .select("*, booking:booking_id(id, status, scheduled_date, created_at, address, city, pincode, pricing_model, selected_duration_minutes, base_price, meeting_location, destination, expected_bags, services:service_id(title, category)), customer:customer_id(full_name, phone, email), partner:partner_id(id, full_name)")
     .eq("id", inserted.id)
     .single();
 
@@ -184,6 +190,12 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
         address,
         city,
         pincode,
+        pricing_model,
+        selected_duration_minutes,
+        base_price,
+        meeting_location,
+        destination,
+        expected_bags,
         services:service_id (
           title,
           category
@@ -252,6 +264,15 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
   }
 
   const invoiceData = invoice as unknown as InvoiceDetails;
+
+  const { data: extensionsData } = await supabase
+    .from("booking_extensions")
+    .select("*")
+    .eq("booking_id", bookingId)
+    .in("status", ["paid", "active", "completed"]);
+  const extensionRows = extensionsData || [];
+  const totalExtensionAmount = extensionRows.reduce((sum, ext) => sum + Number(ext.additional_amount), 0);
+
   const bookingDate = invoiceData.booking?.scheduled_date ? new Date(invoiceData.booking.scheduled_date) : new Date();
   const invoiceDate = new Date(invoiceData.created_at);
 
@@ -260,6 +281,10 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
   const displayPaymentDate = invoiceDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 
   const bookingRef = `BK-${invoiceData.booking?.id.substring(0, 6).toUpperCase()}`;
+
+  const initialGrandTotal = Number(invoiceData.grand_total) - totalExtensionAmount;
+  const initialSubtotal = Math.round(((initialGrandTotal + invoiceData.discount_amount) / (1 + (invoiceData.tax_rate / 100))) * 100) / 100;
+  const initialTax = Math.round(((initialGrandTotal + invoiceData.discount_amount) - initialSubtotal) * 100) / 100;
 
   return (
     <div className="bg-surface text-on-surface antialiased min-h-screen pb-24 font-body selection:bg-secondary/30">
@@ -415,13 +440,58 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
                       <p className="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-wide">
                         Category: {invoiceData.booking?.services?.category || "Cleaning"}
                       </p>
+                      {/* CarryBuddy Details if CarryBuddy */}
+                      {invoiceData.booking?.services?.title === "CarryBuddy" && (
+                        <div className="mt-2 p-2 bg-slate-50 rounded-lg border border-slate-100/50 space-y-1 text-[11px] font-medium text-slate-600 max-w-sm">
+                          <p className="flex items-start gap-1">
+                            <span className="font-bold text-slate-800 shrink-0">Meet At:</span>
+                            <span>{invoiceData.booking.meeting_location}</span>
+                          </p>
+                          <p className="flex items-start gap-1">
+                            <span className="font-bold text-slate-800 shrink-0">Drop At:</span>
+                            <span>{invoiceData.booking.destination || "Not Specified"}</span>
+                          </p>
+                          <p className="flex items-start gap-1">
+                            <span className="font-bold text-slate-800 shrink-0">Expected Bags:</span>
+                            <span>{invoiceData.booking.expected_bags || 0} bags</span>
+                          </p>
+                        </div>
+                      )}
                     </td>
                     <td className="py-4 px-4 text-center text-slate-800">1</td>
-                    <td className="py-4 px-4 text-right">₹{(invoiceData.subtotal + invoiceData.discount_amount).toFixed(2)}</td>
-                    <td className="py-4 px-4 text-right text-green-600 font-bold">-₹{invoiceData.discount_amount.toFixed(2)}</td>
-                    <td className="py-4 px-4 text-right">₹{invoiceData.tax_amount.toFixed(2)}</td>
-                    <td className="py-4 pl-4 text-right font-bold text-slate-800">₹{invoiceData.grand_total.toFixed(2)}</td>
+                    <td className="py-4 px-4 text-right">₹{(initialSubtotal + invoiceData.discount_amount).toFixed(2)}</td>
+                    <td className="py-4 px-4 text-right text-green-600 font-bold">
+                      {invoiceData.discount_amount > 0 ? `-₹${invoiceData.discount_amount.toFixed(2)}` : "₹0.00"}
+                    </td>
+                    <td className="py-4 px-4 text-right">₹{initialTax.toFixed(2)}</td>
+                    <td className="py-4 pl-4 text-right font-bold text-slate-800">₹{initialGrandTotal.toFixed(2)}</td>
                   </tr>
+                  {extensionRows.map((ext, idx) => {
+                    const extAmt = Number(ext.additional_amount);
+                    const extSub = Math.round((extAmt / (1 + (invoiceData.tax_rate / 100))) * 100) / 100;
+                    const extTax = Math.round((extAmt - extSub) * 100) / 100;
+                    const hours = ext.additional_minutes >= 60 ? Math.floor(ext.additional_minutes / 60) : 0;
+                    const mins = ext.additional_minutes % 60;
+                    const durationLabel = hours > 0 
+                      ? `${hours} Hour${hours > 1 ? "s" : ""}${mins > 0 ? ` ${mins} Mins` : ""}`
+                      : `${mins} Mins`;
+
+                    return (
+                      <tr key={ext.id || idx}>
+                        <td className="py-4 pr-4 font-bold text-slate-800">
+                          Time Extension (+{durationLabel})
+                          <p className="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-wide">
+                            Requested by Pro · Paid on {ext.paid_at ? new Date(ext.paid_at).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "Asia/Kolkata" }) : "—"}
+                          </p>
+                        </td>
+                        <td className="py-4 px-4 text-center text-slate-800">1</td>
+                        <td className="py-4 px-4 text-right">₹{extSub.toFixed(2)}</td>
+                        <td className="py-4 px-4 text-right text-slate-400 font-normal">₹0.00</td>
+                        <td className="py-4 px-4 text-right">₹{extTax.toFixed(2)}</td>
+                        <td className="py-4 pl-4 text-right font-bold text-slate-800">₹{extAmt.toFixed(2)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -457,9 +527,15 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
             {/* Calculations totals */}
             <div className="w-full md:max-w-xs ml-auto space-y-2.5 font-medium text-slate-500">
               <div className="flex justify-between text-slate-600">
-                <span>Subtotal</span>
-                <span>₹{(invoiceData.subtotal + invoiceData.discount_amount).toFixed(2)}</span>
+                <span>Initial Service Subtotal</span>
+                <span>₹{(initialSubtotal + invoiceData.discount_amount).toFixed(2)}</span>
               </div>
+              {totalExtensionAmount > 0 && (
+                <div className="flex justify-between text-slate-600">
+                  <span>Extensions Subtotal</span>
+                  <span>₹{(invoiceData.subtotal - initialSubtotal).toFixed(2)}</span>
+                </div>
+              )}
               {invoiceData.discount_amount > 0 && (
                 <div className="flex justify-between text-green-600 font-bold">
                   <span>Discount (Referral / Wallet)</span>

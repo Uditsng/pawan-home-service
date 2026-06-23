@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "copy-image": "node copy-image.js"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.0",

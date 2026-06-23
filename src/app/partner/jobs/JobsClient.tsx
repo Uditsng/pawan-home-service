@@ -664,6 +664,27 @@ export default function JobsClient({
           </div>
         </div>
 
+        {/* CarryBuddy Details (Offers tab) */}
+        {(b.meeting_location || b.expected_bags) && (
+          <div className="mb-4 p-3 bg-surface-container-lowest rounded-xl border border-outline-variant/15 space-y-1">
+            <div className="flex items-center gap-1.5 text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
+              <span className="material-symbols-outlined text-secondary text-base">directions_walk</span>
+              CarryBuddy Details
+            </div>
+            <p className="text-xs text-on-surface font-medium leading-relaxed">
+              <span className="font-bold text-on-surface-variant">Meet At:</span> {b.meeting_location}
+            </p>
+            {b.destination && (
+              <p className="text-xs text-on-surface font-medium leading-relaxed">
+                <span className="font-bold text-on-surface-variant">Drop At:</span> {b.destination}
+              </p>
+            )}
+            <p className="text-xs text-on-surface font-medium leading-relaxed">
+              <span className="font-bold text-on-surface-variant">Bags:</span> {b.expected_bags || 1}
+            </p>
+          </div>
+        )}
+
         {/* Payout + Accept */}
         <div className="flex items-center justify-between pt-3 border-t border-outline-variant/15">
           <div>
@@ -972,6 +993,27 @@ export default function JobsClient({
                     <div className="flex items-center gap-3 text-[13px] text-on-surface-variant font-medium">
                       <span className="material-symbols-outlined text-[16px] text-on-surface-variant/50">person</span>
                       {job.customer.full_name}
+                    </div>
+                  )}
+
+                  {/* CarryBuddy Details */}
+                  {(job.meeting_location || job.expected_bags) && (
+                    <div className="flex flex-col gap-1.5 p-3 bg-surface-container-low rounded-2xl border border-outline-variant/10 mt-3">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-on-surface">
+                        <span className="material-symbols-outlined text-secondary text-base">directions_walk</span>
+                        CarryBuddy Details
+                      </div>
+                      <p className="text-xs text-on-surface-variant font-medium mt-0.5 leading-relaxed">
+                        <span className="font-bold text-on-surface-variant/80">Meet At:</span> {job.meeting_location}
+                      </p>
+                      {job.destination && (
+                        <p className="text-xs text-on-surface-variant font-medium leading-relaxed">
+                          <span className="font-bold text-on-surface-variant/80">Drop At:</span> {job.destination}
+                        </p>
+                      )}
+                      <p className="text-xs text-on-surface-variant font-medium leading-relaxed">
+                        <span className="font-bold text-on-surface-variant/80">Expected Bags/Items:</span> {job.expected_bags || 1}
+                      </p>
                     </div>
                   )}
                   

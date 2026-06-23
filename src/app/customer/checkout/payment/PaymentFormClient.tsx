@@ -38,6 +38,9 @@ interface PaymentFormClientProps {
   referralDiscount: number;
   walletBalance?: number;
   duration?: number;
+  meetingLocation?: string;
+  destination?: string;
+  expectedBags?: string;
 }
 
 export default function PaymentFormClient({
@@ -50,6 +53,9 @@ export default function PaymentFormClient({
   referralDiscount,
   walletBalance = 0,
   duration,
+  meetingLocation,
+  destination,
+  expectedBags,
 }: PaymentFormClientProps) {
   const router = useRouter();
   const [isAgreed, setIsAgreed] = useState(false);
@@ -103,6 +109,9 @@ export default function PaymentFormClient({
           time: time,
           walletAmountToUse: walletApplied,
           duration: duration,
+          meetingLocation: meetingLocation,
+          destination: destination,
+          expectedBags: expectedBags,
         });
 
         if (rzOrder.freeOrder) {
@@ -115,6 +124,9 @@ export default function PaymentFormClient({
             time: time,
             walletAmountToUse: walletApplied,
             duration: duration,
+            meetingLocation: meetingLocation,
+            destination: destination,
+            expectedBags: expectedBags,
           });
 
           if (verifyRes.success && verifyRes.bookingId) {
@@ -183,6 +195,9 @@ export default function PaymentFormClient({
                   time: time,
                   walletAmountToUse: walletApplied,
                   duration: duration,
+                  meetingLocation: meetingLocation,
+                  destination: destination,
+                  expectedBags: expectedBags,
                 });
 
                 if (verifyRes.success && verifyRes.bookingId) {
@@ -244,7 +259,11 @@ export default function PaymentFormClient({
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
                   <span className="material-symbols-outlined text-[#059669] text-xl">
-                    {service.category === "cleaning" ? "home_work" : "bug_report"}
+                    {service.category === "Cleaning & Housekeeping" || service.category === "cleaning"
+                      ? "home_work"
+                      : service.category === "Personal Assistance Services"
+                      ? "shopping_bag"
+                      : "bug_report"}
                   </span>
                 </div>
                 <div>
@@ -288,6 +307,29 @@ export default function PaymentFormClient({
                   </p>
                 </div>
               </div>
+
+              {/* CarryBuddy Details Summary */}
+              {(meetingLocation || expectedBags) && (
+                <div className="flex items-start gap-3 p-3 bg-surface-container-low rounded-2xl border border-outline-variant/10">
+                  <div className="w-10 h-10 bg-secondary/10 rounded-xl flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-secondary text-xl">directions_walk</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">CarryBuddy Details</p>
+                    <p className="text-xs font-semibold text-on-surface mt-1 leading-relaxed">
+                      <span className="font-bold text-on-surface-variant">Meet At:</span> {meetingLocation}
+                    </p>
+                    {destination && (
+                      <p className="text-xs text-on-surface mt-0.5 leading-relaxed">
+                        <span className="font-bold text-on-surface-variant">Drop At:</span> {destination}
+                      </p>
+                    )}
+                    <p className="text-xs text-on-surface mt-0.5 leading-relaxed">
+                      <span className="font-bold text-on-surface-variant">Bags/Items:</span> {expectedBags}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Cancellation Policy summary info */}
               <div className="flex items-start gap-3 p-3.5 bg-surface-container-lowest rounded-2xl border border-outline-variant/10">

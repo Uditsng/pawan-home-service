@@ -40,6 +40,7 @@ export default async function PartnerJobsPage() {
         id, booking_id, broadcast_tier, created_at,
         bookings:booking_id (
           id, service_id, city, area, pincode, scheduled_date, total_amount, address,
+          meeting_location, destination, expected_bags,
           services:service_id ( title, category )
         )
       `)
@@ -73,6 +74,9 @@ export default async function PartnerJobsPage() {
             scheduled_date: rawBooking.scheduled_date,
             total_amount: Number(rawBooking.total_amount || 0),
             address: rawBooking.address,
+            meeting_location: rawBooking.meeting_location,
+            destination: rawBooking.destination,
+            expected_bags: rawBooking.expected_bags,
             services: rawService
               ? {
                   title: rawService.title,

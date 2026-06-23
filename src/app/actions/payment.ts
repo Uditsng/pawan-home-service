@@ -39,6 +39,9 @@ export async function createRazorpayOrderAction(payload: {
   walletAmountToUse?: number;
   duration?: number;
   cartItems?: { serviceId: string; selectedDuration?: number }[];
+  meetingLocation?: string;
+  destination?: string;
+  expectedBags?: string;
 }): Promise<RazorpayOrderResult> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -214,6 +217,9 @@ export async function verifyRazorpayPaymentAction(payload: {
   walletAmountToUse?: number;
   duration?: number;
   cartItems?: { serviceId: string; selectedDuration?: number }[];
+  meetingLocation?: string;
+  destination?: string;
+  expectedBags?: string;
 }): Promise<VerificationResult> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -352,6 +358,9 @@ export async function verifyRazorpayPaymentAction(payload: {
         selected_duration_minutes: selectedDurationMinutes,
         base_price: basePrice,
         final_price: totalPrice,
+        meeting_location: payload.meetingLocation || null,
+        destination: payload.destination || null,
+        expected_bags: payload.expectedBags ? parseInt(payload.expectedBags, 10) : 0,
       })
       .select("id")
       .single();
@@ -534,6 +543,9 @@ export async function verifyRazorpayPaymentAction(payload: {
           selected_duration_minutes: details.selectedDuration,
           base_price: basePrice,
           final_price: bookingPrice,
+          meeting_location: payload.meetingLocation || null,
+          destination: payload.destination || null,
+          expected_bags: payload.expectedBags ? parseInt(payload.expectedBags, 10) : 0,
         })
         .select("id")
         .single();

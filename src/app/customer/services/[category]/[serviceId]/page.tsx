@@ -52,18 +52,20 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
     .eq("id", resolvedParams.serviceId)
     .single() as { data: ServiceWithSubcategory | null };
 
-  let pricingOptions: { duration_minutes: number; price: number }[] = [];
+  let pricingOptions: { duration_minutes: number; price: number; original_price?: number }[] = [];
   if (service && service.pricing_model === "hourly") {
     const { data: optionsData } = await supabase
       .from("service_duration_pricing")
-      .select("duration_minutes, price")
+      .select("duration_minutes, price, original_price")
       .eq("service_id", service.id)
+      .eq("is_active", true)
       .order("duration_minutes", { ascending: true });
     
     if (optionsData) {
       pricingOptions = optionsData.map(o => ({
         duration_minutes: o.duration_minutes,
-        price: Number(o.price)
+        price: Number(o.price),
+        original_price: o.original_price ? Number(o.original_price) : undefined
       }));
     }
   }

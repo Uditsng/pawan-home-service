@@ -39,6 +39,31 @@ export default function ScheduleClient({
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [isAddressSelectorExpanded, setIsAddressSelectorExpanded] = useState(false);
 
+  const [meetingLocation, setMeetingLocation] = useState("");
+  const [destination, setDestination] = useState("");
+  const [expectedBags, setExpectedBags] = useState(1);
+  const [meetingLocationError, setMeetingLocationError] = useState("");
+
+  const isCarryBuddy = useMemo(() => {
+    return service?.title?.toLowerCase() === "carrybuddy" || service?.category === "Personal Assistance Services";
+  }, [service]);
+
+  const selectedAddress = useMemo(() => {
+    return addresses.find(a => a.id === selectedAddressId) || null;
+  }, [addresses, selectedAddressId]);
+
+  useEffect(() => {
+    if (selectedAddress) {
+      const parts = [
+        selectedAddress.address_line_1,
+        selectedAddress.address_line_2,
+        selectedAddress.city,
+        selectedAddress.pincode
+      ].filter(Boolean);
+      setMeetingLocation(parts.join(", "));
+    }
+  }, [selectedAddress]);
+
   const fetchFreshAddresses = async () => {
     const supabase = createClient();
     const { data } = await supabase
@@ -57,10 +82,6 @@ export default function ScheduleClient({
       }
     }
   };
-
-  const selectedAddress = useMemo(() => {
-    return addresses.find(a => a.id === selectedAddressId) || null;
-  }, [addresses, selectedAddressId]);
 
   // Redirect if cart is empty and we are in cart mode
   useEffect(() => {
@@ -152,6 +173,11 @@ export default function ScheduleClient({
   const handleContinue = () => {
     if (!effectiveSelectedTime || !selectedAddressId) return;
 
+    if (isCarryBuddy && !meetingLocation.trim()) {
+      setMeetingLocationError("Meeting location is required.");
+      return;
+    }
+
     const year = selectedFullDate.getFullYear();
     const formattedMonth = (selectedFullDate.getMonth() + 1).toString().padStart(2, '0');
     const formattedDate = selectedFullDate.getDate().toString().padStart(2, '0');
@@ -165,6 +191,11 @@ export default function ScheduleClient({
       };
       if (duration) {
         paramsObj.duration = duration.toString();
+      }
+      if (isCarryBuddy) {
+        paramsObj.meetingLocation = meetingLocation.trim();
+        paramsObj.destination = destination.trim();
+        paramsObj.expectedBags = expectedBags.toString();
       }
       const payload = new URLSearchParams(paramsObj);
       router.push(`/customer/checkout/payment?${payload.toString()}`);
@@ -369,6 +400,117 @@ export default function ScheduleClient({
             </div>
           )}
         </section>
+
+        {/* CarryBuddy Details Section */}
+        {isCarryBuddy && (
+          <section className="mb-8 bg-linear-to-br from-white to-surface-container-low/40 border border-outline-variant/20 rounded-3xl p-6 shadow-xs space-y-6 relative overflow-hidden">
+            {/* Ambient background glow */}
+            <div className="absolute -top-12 -right-12 w-24 h-24 bg-secondary/10 rounded-full blur-xl pointer-events-none" />
+
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0 shadow-2xs">
+                <span className="material-symbols-outlined text-[#059669] drop-shadow-sm font-bold">directions_walk</span>
+              </div>
+              <div>
+                <h2 className="font-headline text-base font-bold text-[#002261]">CarryBuddy Assistance Details</h2>
+                <p className="text-[10px] text-on-surface-variant font-medium uppercase tracking-wider mt-0.5">Duration-based personal help</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {/* Meeting Location */}
+              <div className="space-y-2">
+                <label htmlFor="meeting-location-input" className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider flex items-center gap-1">
+                  Meeting Location <span className="text-secondary font-black">*</span>
+                </label>
+                <div className="relative flex items-center">
+                  <span className="material-symbols-outlined absolute left-3.5 text-slate-400 text-lg">location_on</span>
+                  <input
+                    id="meeting-location-input"
+                    type="text"
+                    value={meetingLocation}
+                    onChange={(e) => {
+                      setMeetingLocation(e.target.value);
+                      if (e.target.value.trim()) setMeetingLocationError("");
+                    }}
+                    placeholder="Where should the CarryBuddy meet you?"
+                    className="w-full pl-10 pr-3.5 py-3 text-sm bg-surface border border-outline-variant/25 rounded-2xl focus:outline-hidden focus:ring-4 focus:ring-primary/5 focus:border-primary text-on-surface font-semibold placeholder:text-slate-400 placeholder:font-normal transition-all"
+                  />
+                </div>
+                {meetingLocationError && (
+                  <p className="text-xs text-error font-semibold flex items-center gap-1 mt-1">
+                    <span className="material-symbols-outlined text-[14px]">error</span>
+                    {meetingLocationError}
+                  </p>
+                )}
+                <p className="text-[10px] text-on-surface-variant/80 flex items-start gap-1 leading-relaxed">
+                  <span className="material-symbols-outlined text-[12px] text-secondary shrink-0 mt-0.5">info</span>
+                  <span>Pre-filled from your selected address. Refine with exact details (e.g. Gate No. 2, Mall Entry).</span>
+                </p>
+              </div>
+
+              {/* Destination */}
+              <div className="space-y-2">
+                <label htmlFor="destination-input" className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+                  Drop Point / Destination <span className="text-on-surface-variant/40 font-normal lowercase">(optional)</span>
+                </label>
+                <div className="relative flex items-center">
+                  <span className="material-symbols-outlined absolute left-3.5 text-slate-400 text-lg">pin_drop</span>
+                  <input
+                    id="destination-input"
+                    type="text"
+                    value={destination}
+                    onChange={(e) => setDestination(e.target.value)}
+                    placeholder="e.g. Parking area, Cab pickup point, Metro entrance"
+                    className="w-full pl-10 pr-3.5 py-3 text-sm bg-surface border border-outline-variant/25 rounded-2xl focus:outline-hidden focus:ring-4 focus:ring-primary/5 focus:border-primary text-on-surface font-semibold placeholder:text-slate-400 placeholder:font-normal transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Expected Bags */}
+              <div className="space-y-3 pt-2">
+                <label htmlFor="expected-bags-input" className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+                  Expected Shopping Bags / Items
+                </label>
+                <div className="flex items-center gap-4 bg-surface p-2 rounded-2xl border border-outline-variant/15 w-fit">
+                  <button
+                    type="button"
+                    onClick={() => setExpectedBags(prev => Math.max(1, prev - 1))}
+                    className="w-9 h-9 bg-surface-container-low border border-outline-variant/15 rounded-xl flex items-center justify-center font-bold hover:bg-surface-container transition-all active:scale-90 text-slate-700 cursor-pointer shadow-2xs"
+                  >
+                    <span className="material-symbols-outlined text-base">remove</span>
+                  </button>
+                  
+                  <div className="flex flex-col items-center justify-center px-1">
+                    <input
+                      id="expected-bags-input"
+                      type="number"
+                      min="1"
+                      value={expectedBags}
+                      onChange={(e) => setExpectedBags(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                      className="w-10 text-center text-sm font-extrabold bg-transparent text-primary focus:outline-hidden [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <span className="text-[9px] font-bold text-on-surface-variant/70 uppercase tracking-wider leading-none mt-0.5">
+                      {expectedBags === 1 ? "Bag" : "Bags"}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setExpectedBags(prev => prev + 1)}
+                    className="w-9 h-9 bg-surface-container-low border border-outline-variant/15 rounded-xl flex items-center justify-center font-bold hover:bg-surface-container transition-all active:scale-90 text-slate-700 cursor-pointer shadow-2xs"
+                  >
+                    <span className="material-symbols-outlined text-base">add</span>
+                  </button>
+                </div>
+                <p className="text-[10px] text-on-surface-variant/80 flex items-start gap-1 leading-relaxed">
+                  <span className="material-symbols-outlined text-[12px] text-secondary shrink-0 mt-0.5 font-bold">lock_open</span>
+                  <span>Helps your CarryBuddy prepare. Maximum load capacity is 25kg total weight.</span>
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
       </main>
 
       {/* Sticky Bottom Navigation */}

@@ -5,10 +5,19 @@ import PaymentFormClient from "./PaymentFormClient";
 export default async function CheckoutPaymentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ serviceId?: string; date?: string; time?: string; addressId?: string; duration?: string }>;
+  searchParams: Promise<{
+    serviceId?: string;
+    date?: string;
+    time?: string;
+    addressId?: string;
+    duration?: string;
+    meetingLocation?: string;
+    destination?: string;
+    expectedBags?: string;
+  }>;
 }) {
   const resolvedParams = await searchParams;
-  const { serviceId, date, time, addressId, duration } = resolvedParams;
+  const { serviceId, date, time, addressId, duration, meetingLocation, destination, expectedBags } = resolvedParams;
 
   if (!serviceId || !date || !time || !addressId) {
     redirect("/customer/dashboard");
@@ -92,6 +101,9 @@ export default async function CheckoutPaymentPage({
       referralDiscount={referralDiscount}
       walletBalance={walletBalance}
       duration={parsedDuration}
+      meetingLocation={meetingLocation}
+      destination={destination}
+      expectedBags={expectedBags}
     />
   );
 }

@@ -7,6 +7,7 @@ import AddToCartButton from "@/components/AddToCartButton";
 interface PricingOption {
   duration_minutes: number;
   price: number;
+  original_price?: number;
 }
 
 interface HourlyBookingSectionProps {
@@ -93,7 +94,12 @@ export default function HourlyBookingSection({
                         }`}
                       >
                         {durationLabel(opt.duration_minutes)}
-                        <span className="block text-[10px] font-medium opacity-80 mt-0.5">₹{opt.price}</span>
+                        <div className="flex items-center justify-center gap-1 mt-0.5">
+                          {opt.original_price && Number(opt.original_price) > Number(opt.price) && (
+                            <span className="text-[9px] line-through opacity-60">₹{opt.original_price}</span>
+                          )}
+                          <span className={isSelected ? "text-[10px] text-white" : "text-[10px] text-on-surface"}>₹{opt.price}</span>
+                        </div>
                       </button>
                     );
                   })}
@@ -105,10 +111,21 @@ export default function HourlyBookingSection({
                 <span className="text-[10px] md:text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1">
                   Selected Duration Price
                 </span>
-                <div className="flex items-baseline gap-1.5 mb-2">
-                  <span className="text-3xl font-black text-primary font-headline tracking-tighter">₹{activePrice}</span>
-                  <span className="text-xs text-on-surface-variant font-medium">/ {durationLabel(selectedDuration)}</span>
-                </div>
+                {(() => {
+                  const currentOpt = pricingOptions.find(o => o.duration_minutes === selectedDuration);
+                  const origPrice = currentOpt?.original_price;
+                  return (
+                    <div className="flex flex-col mb-2">
+                      {origPrice && Number(origPrice) > Number(activePrice) && (
+                        <span className="text-xs line-through text-on-surface-variant/60 font-medium">₹{origPrice}</span>
+                      )}
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-3xl font-black text-primary font-headline tracking-tighter">₹{activePrice}</span>
+                        <span className="text-xs text-on-surface-variant font-medium">/ {durationLabel(selectedDuration)}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div className="border-t border-outline-variant/30 pt-2 mt-2">
                   <span className="text-[10px] text-on-surface-variant/80 font-bold uppercase tracking-wider block mb-1">Pricing Model</span>
                   <span className="text-xs text-secondary font-extrabold">Duration-Based Billing</span>

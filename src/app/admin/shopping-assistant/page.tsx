@@ -95,37 +95,42 @@ export default async function AdminShoppingAssistantPage() {
     is_active: Boolean(pkg.is_active),
   }));
 
-  const typedBookings: AdminBooking[] = (bookings || []).map((b) => ({
-    id: b.id,
-    customer_id: b.customer_id,
-    partner_id: b.partner_id,
-    status: b.status,
-    total_amount: Number(b.total_amount),
-    base_price: b.base_price ? Number(b.base_price) : null,
-    final_price: b.final_price ? Number(b.final_price) : null,
-    pricing_model: b.pricing_model,
-    selected_duration_minutes: b.selected_duration_minutes ? Number(b.selected_duration_minutes) : null,
-    meeting_location: b.meeting_location,
-    destination: b.destination,
-    expected_bags: Number(b.expected_bags || 0),
-    scheduled_date: b.scheduled_date,
-    created_at: b.created_at,
-    customer: b.customer
-      ? {
-          id: b.customer.id,
-          full_name: b.customer.full_name,
-          email: b.customer.email,
-          phone: b.customer.phone,
-        }
-      : null,
-    partner: b.partner
-      ? {
-          id: b.partner.id,
-          full_name: b.partner.full_name,
-          phone: b.partner.phone,
-        }
-      : null,
-  }));
+  const typedBookings: AdminBooking[] = (bookings || []).map((b) => {
+    const cust = Array.isArray(b.customer) ? b.customer[0] : b.customer;
+    const part = Array.isArray(b.partner) ? b.partner[0] : b.partner;
+
+    return {
+      id: b.id,
+      customer_id: b.customer_id,
+      partner_id: b.partner_id,
+      status: b.status,
+      total_amount: Number(b.total_amount),
+      base_price: b.base_price ? Number(b.base_price) : null,
+      final_price: b.final_price ? Number(b.final_price) : null,
+      pricing_model: b.pricing_model,
+      selected_duration_minutes: b.selected_duration_minutes ? Number(b.selected_duration_minutes) : null,
+      meeting_location: b.meeting_location,
+      destination: b.destination,
+      expected_bags: Number(b.expected_bags || 0),
+      scheduled_date: b.scheduled_date,
+      created_at: b.created_at,
+      customer: cust
+        ? {
+            id: cust.id,
+            full_name: cust.full_name,
+            email: cust.email,
+            phone: cust.phone,
+          }
+        : null,
+      partner: part
+        ? {
+            id: part.id,
+            full_name: part.full_name,
+            phone: part.phone,
+          }
+        : null,
+    };
+  });
 
   return (
     <AdminShoppingAssistant

@@ -30,6 +30,9 @@ export interface RawBooking {
   scheduled_date: string | null;
   total_amount: number | string | null;
   address: string | null;
+  meeting_location?: string | null;
+  destination?: string | null;
+  expected_bags?: number | null;
   services: RawService | RawService[] | null;
 }
 
@@ -55,6 +58,9 @@ interface JobOffer {
     scheduled_date: string | null;
     total_amount: number;
     address: string | null;
+    meeting_location?: string | null;
+    destination?: string | null;
+    expected_bags?: number | null;
     services: { title: string; category?: string } | null;
   } | null;
 }

@@ -23,7 +23,13 @@ export default function ScheduleClient({
   initialAddresses,
   duration
 }: {
-  service: { id: string; duration_minutes: number; pricing_model?: 'fixed' | 'hourly' } | null;
+  service: { 
+    id: string; 
+    title: string; 
+    category: string; 
+    duration_minutes: number; 
+    pricing_model?: 'fixed' | 'hourly' 
+  } | null;
   initialAddresses: Address[];
   duration?: number;
 }) {

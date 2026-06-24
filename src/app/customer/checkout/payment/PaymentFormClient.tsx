@@ -259,7 +259,7 @@ export default function PaymentFormClient({
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
                   <span className="material-symbols-outlined text-[#059669] text-xl">
-                    {service.category === "Cleaning & Housekeeping" || service.category === "cleaning"
+                    {service.category === "Cleaning & Housekeeping" || service.category === "cleaning" || service.category === "Cleaning" || service.category === "House Keeping" || service.category === "house-keeping"
                       ? "home_work"
                       : service.category === "Personal Assistance Services"
                       ? "shopping_bag"

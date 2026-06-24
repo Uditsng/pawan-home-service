@@ -150,7 +150,7 @@ export default function HeroConversationalCard() {
     if (selectedService === "pest-control") {
       return "/services/pest-control-services";
     } else if (selectedService === "cleaning") {
-      return "/services/cleaning-and-housekeeping";
+      return "/services/cleaning";
     } else if (selectedService === "repairs") {
       return "/services/repairs-and-maintenance";
     }

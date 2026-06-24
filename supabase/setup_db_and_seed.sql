@@ -11,11 +11,13 @@ CREATE TABLE IF NOT EXISTS public.categories (
 
 -- Seed default categories if they don't exist
 INSERT INTO public.categories (id, category_name) VALUES
-  ('06fe8241-df90-42b3-a6c6-612b189ba54c'::uuid, 'Cleaning & Housekeeping'),
+  ('06fe8241-df90-42b3-a6c6-612b189ba54c'::uuid, 'Cleaning'),
   ('aa721151-4604-4c9d-ae07-68960a5f8564'::uuid, 'Pest Control Services'),
   ('4f18fd15-29cd-4aff-b47f-64f68852df4b'::uuid, 'Home Repairs & Maintenance'),
-  ('c38e7aa3-7d2d-4a90-8c65-1e8982551e5e'::uuid, 'Renovation, Logistics & Events')
-ON CONFLICT (category_name) DO UPDATE SET category_name = EXCLUDED.category_name;
+  ('c38e7aa3-7d2d-4a90-8c65-1e8982551e5e'::uuid, 'Renovation, Logistics & Events'),
+  ('79a4de54-30ad-4ef7-8c35-1d096a605f6e'::uuid, 'House Keeping'),
+  ('5ba6c71c-30ad-4ef7-8c35-1d096a605f6e'::uuid, 'Personal Assistance Services')
+ON CONFLICT (id) DO UPDATE SET category_name = EXCLUDED.category_name;
 
 -- 2. RECREATE SUBCATEGORIES TABLE
 CREATE TABLE IF NOT EXISTS public.subcategories (
@@ -28,18 +30,22 @@ CREATE TABLE IF NOT EXISTS public.subcategories (
 
 -- Seed subcategories with precise icons and parent relations
 INSERT INTO public.subcategories (id, subcategory_name, icon_name, category_id) VALUES
-  -- Cleaning & Housekeeping
-  ('fafe1e8f-82c7-4646-b056-587c3eba013f'::uuid, 'Sofa & Upholstery Care', 'chair', '06fe8241-df90-42b3-a6c6-612b189ba54c'::uuid),
-  ('89ae8ba2-9da2-45ac-9467-8c3a594d3830'::uuid, 'Full Home Deep Cleaning', 'cleaning_services', '06fe8241-df90-42b3-a6c6-612b189ba54c'::uuid),
+  -- Cleaning
   ('953e32bc-545f-488c-8494-bc2089135bae'::uuid, 'Kitchen Deep Cleaning', 'skillet', '06fe8241-df90-42b3-a6c6-612b189ba54c'::uuid),
   ('79bb235a-69f9-4a0f-b904-a1986a893bb9'::uuid, 'Bathroom Deep Cleaning', 'bathtub', '06fe8241-df90-42b3-a6c6-612b189ba54c'::uuid),
-  ('7f3a32c4-1a49-4885-a32b-98a9878daac6'::uuid, 'Water Tank Cleaning', 'water_drop', '06fe8241-df90-42b3-a6c6-612b189ba54c'::uuid),
-  ('6aa375c5-4a88-4427-9ee9-815aa2164b40'::uuid, 'Vehicle Wash & Detailing', 'directions_car', '06fe8241-df90-42b3-a6c6-612b189ba54c'::uuid),
-  ('8f9c2dee-9bae-41e0-81f1-6be4409fb218'::uuid, 'Kitchen Cleaning', 'countertops', '06fe8241-df90-42b3-a6c6-612b189ba54c'::uuid),
-  ('8ce74ebb-7406-458c-b4eb-50d36f18b830'::uuid, 'Bathroom Cleaning', 'bathroom', '06fe8241-df90-42b3-a6c6-612b189ba54c'::uuid),
-  ('75d160e8-4791-4f0a-8c88-779647d346e3'::uuid, 'General Cleaning', 'cleaning_services', '06fe8241-df90-42b3-a6c6-612b189ba54c'::uuid),
   ('1b330268-b401-4f56-8360-7a0be7470dae'::uuid, 'Gardening & Plant Care', 'potted_plant', '06fe8241-df90-42b3-a6c6-612b189ba54c'::uuid),
   ('8827db87-3f6e-4c09-9fc0-066042c5b3e0'::uuid, 'Laundry Services', 'local_laundry_service', '06fe8241-df90-42b3-a6c6-612b189ba54c'::uuid),
+  ('8f9c2dee-9bae-41e0-81f1-6be4409fb218'::uuid, 'Kitchen Cleaning', 'countertops', '06fe8241-df90-42b3-a6c6-612b189ba54c'::uuid),
+  ('75d160e8-4791-4f0a-8c88-779647d346e3'::uuid, 'General Cleaning', 'cleaning_services', '06fe8241-df90-42b3-a6c6-612b189ba54c'::uuid),
+  ('6aa375c5-4a88-4427-9ee9-815aa2164b40'::uuid, 'Vehicle Wash & Detailing', 'directions_car', '06fe8241-df90-42b3-a6c6-612b189ba54c'::uuid),
+  -- House Keeping
+  ('fafe1e8f-82c7-4646-b056-587c3eba013f'::uuid, 'Sofa & Upholstery Care', 'chair', '79a4de54-30ad-4ef7-8c35-1d096a605f6e'::uuid),
+  ('89ae8ba2-9da2-45ac-9467-8c3a594d3830'::uuid, 'Full Home Deep Cleaning', 'cleaning_services', '79a4de54-30ad-4ef7-8c35-1d096a605f6e'::uuid),
+  ('7f3a32c4-1a49-4885-a32b-98a9878daac6'::uuid, 'Water Tank Cleaning', 'water_drop', '79a4de54-30ad-4ef7-8c35-1d096a605f6e'::uuid),
+  ('8ce74ebb-7406-458c-b4eb-50d36f18b830'::uuid, 'Bathroom Cleaning', 'bathroom', '79a4de54-30ad-4ef7-8c35-1d096a605f6e'::uuid),
+  ('8f9c2dee-9bae-41e0-81f1-6be4409fb219'::uuid, 'Chimney Cleaning', 'countertops', '79a4de54-30ad-4ef7-8c35-1d096a605f6e'::uuid),
+  ('75d160e8-4791-4f0a-8c88-779647d346e0'::uuid, 'Home & Office Cleaning', 'cleaning_services', '79a4de54-30ad-4ef7-8c35-1d096a605f6e'::uuid),
+  ('6aa375c5-4a88-4427-9ee9-815aa2164b41'::uuid, 'Car Cleaning', 'directions_car', '79a4de54-30ad-4ef7-8c35-1d096a605f6e'::uuid),
   -- Pest Control Services
   ('4e0afde3-bb07-4a5b-bced-0fbac38d91d2'::uuid, 'General Pest Management', 'bug_report', 'aa721151-4604-4c9d-ae07-68960a5f8564'::uuid),
   ('88549b54-7d83-4bfa-8829-5377962e6b8f'::uuid, 'Bed Bug Extermination', 'bed', 'aa721151-4604-4c9d-ae07-68960a5f8564'::uuid),
@@ -56,7 +62,9 @@ INSERT INTO public.subcategories (id, subcategory_name, icon_name, category_id) 
   ('36d1dacf-e15b-4d8a-b6fe-9cc3c0413146'::uuid, 'Packers & Movers', 'local_shipping', 'c38e7aa3-7d2d-4a90-8c65-1e8982551e5e'::uuid),
   ('cc693569-1b3a-4c8b-acc3-8ba25155f254'::uuid, 'Event & Party Decoration', 'celebration', 'c38e7aa3-7d2d-4a90-8c65-1e8982551e5e'::uuid),
   ('c22d9017-4a4d-48c5-b684-bb6d32371351'::uuid, 'Business Marketing/Advertising', 'campaign', 'c38e7aa3-7d2d-4a90-8c65-1e8982551e5e'::uuid),
-  ('a4aac9fd-572f-41a3-ad88-2aa38a40ce09'::uuid, 'Packing & Moving', 'inventory_2', 'c38e7aa3-7d2d-4a90-8c65-1e8982551e5e'::uuid)
+  ('a4aac9fd-572f-41a3-ad88-2aa38a40ce09'::uuid, 'Packing & Moving', 'inventory_2', 'c38e7aa3-7d2d-4a90-8c65-1e8982551e5e'::uuid),
+  ('2cb6a6b5-0c7f-4b95-a204-0987c6543210'::uuid, 'Shopping Assistant Service', 'shopping_bag', '5ba6c71c-30ad-4ef7-8c35-1d096a605f6e'::uuid),
+  ('2cb6a6b5-0c7f-4b95-a204-0987c6543220'::uuid, 'Companionship Services', 'diversity_3', '5ba6c71c-30ad-4ef7-8c35-1d096a605f6e'::uuid)
 ON CONFLICT (id) DO NOTHING;
 
 -- 3. RECREATE SERVICES TABLE WITH FULL SCHEMA
@@ -74,11 +82,35 @@ CREATE TABLE public.services (
   is_active BOOLEAN DEFAULT true,
   category TEXT DEFAULT null,
   image_url TEXT,
+  pricing_model VARCHAR(20) DEFAULT 'fixed' CHECK (pricing_model IN ('fixed', 'hourly')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Recreate service_duration_pricing table
+CREATE TABLE IF NOT EXISTS public.service_duration_pricing (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  service_id UUID REFERENCES public.services(id) ON DELETE CASCADE NOT NULL,
+  duration_minutes INTEGER NOT NULL,
+  price NUMERIC NOT NULL,
+  original_price NUMERIC,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  CONSTRAINT unique_service_duration UNIQUE (service_id, duration_minutes)
 );
 
 -- Enable RLS and setup standard policies
 ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.service_duration_pricing ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read access to service_duration_pricing" ON public.service_duration_pricing;
+CREATE POLICY "Allow public read access to service_duration_pricing" ON public.service_duration_pricing
+  FOR SELECT TO public USING (true);
+
+DROP POLICY IF EXISTS "Admins have full access to service_duration_pricing" ON public.service_duration_pricing;
+CREATE POLICY "Admins have full access to service_duration_pricing" ON public.service_duration_pricing
+  FOR ALL TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'))
+  WITH CHECK (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
 
 CREATE POLICY "Allow public read access to services" ON public.services
   FOR SELECT TO public USING (true);
@@ -186,7 +218,7 @@ INSERT INTO public.services (
     ]
   }'::jsonb,
   true,
-  null
+  'House Keeping'
 ),
 (
   'Sweeping & Mopping',
@@ -930,6 +962,375 @@ INSERT INTO public.services (
   null
 ),
 (
+  'Water Tank Cleaning',
+  '7f3a32c4-1a49-4885-a32b-98a9878daac6'::uuid, -- Water Tank Cleaning
+  399,
+  'Starting at ₹399 per tank',
+  'Keep your water safe and hygienic with our professional water tank cleaning service. We remove sludge, dirt, algae, and contaminants to improve water quality and maintain a healthy environment.',
+  '{
+    "about_text": "Keep your water safe and hygienic with our professional water tank cleaning service. We remove sludge, dirt, algae, and contaminants to improve water quality and maintain a healthy environment.",
+    "included_features": [
+      "Tank inspection",
+      "Sludge and dirt removal",
+      "Internal scrubbing and cleaning",
+      "Water drainage assistance",
+      "Final hygiene check"
+    ],
+    "excluded_features": [
+      "Tank repair work",
+      "Plumbing repairs",
+      "Motor repairs",
+      "Water refilling charges",
+      "Structural modifications"
+    ],
+    "faqs": [
+      { "question": "How often should a water tank be cleaned?", "answer": "Every 6 months is recommended." },
+      { "question": "Is chemical cleaning used?", "answer": "Safe cleaning methods are used based on tank condition." },
+      { "question": "How long does cleaning take?", "answer": "Usually 1–3 hours." },
+      { "question": "Do I need to empty the tank beforehand?", "answer": "Our team will guide you during booking." },
+      { "question": "Is underground tank cleaning included?", "answer": "Yes, depending on accessibility." }
+    ],
+    "why_choose_us": [
+      { "icon": "verified_user", "title": "Verified Professionals", "desc": "Background-checked and certified home experts." },
+      { "icon": "timer", "title": "On-Time Service", "desc": "We respect your schedule and arrive exactly on time." }
+    ],
+    "how_to_book_steps": [
+      { "step": 1, "title": "Inspection", "desc": "Assessing the tank condition and checking water level." },
+      { "step": 2, "title": "Cleaning", "desc": "Removing sludge, scrubbing walls, and disinfecting." }
+    ]
+  }'::jsonb,
+  true,
+  'House Keeping'
+),
+(
+  'Carpet Cleaning',
+  'fafe1e8f-82c7-4646-b056-587c3eba013f'::uuid, -- Sofa & Upholstery Care
+  15,
+  '₹15 per sq. ft.',
+  'Professional carpet cleaning that removes dust, stains, odors, and allergens while restoring freshness and appearance.',
+  '{
+    "about_text": "Professional carpet cleaning that removes dust, stains, odors, and allergens while restoring freshness and appearance.",
+    "included_features": [
+      "Vacuum cleaning",
+      "Stain treatment (basic)",
+      "Deep shampoo cleaning",
+      "Dust and dirt removal",
+      "Odor reduction treatment"
+    ],
+    "excluded_features": [
+      "Permanent stain removal guarantee",
+      "Carpet repair services",
+      "Moving heavy furniture",
+      "Water damage restoration",
+      "Specialized fabric restoration"
+    ],
+    "faqs": [
+      { "question": "How long does drying take?", "answer": "Typically 4–8 hours." },
+      { "question": "Are stains removed completely?", "answer": "Results depend on stain type and age." },
+      { "question": "Is the cleaning safe for children and pets?", "answer": "Yes." },
+      { "question": "How often should carpets be cleaned?", "answer": "Every 6–12 months." },
+      { "question": "Do you clean office carpets?", "answer": "Yes." }
+    ],
+    "why_choose_us": [
+      { "icon": "verified_user", "title": "Verified Professionals", "desc": "Background-checked and certified home experts." },
+      { "icon": "timer", "title": "On-Time Service", "desc": "We respect your schedule and arrive exactly on time." }
+    ],
+    "how_to_book_steps": [
+      { "step": 1, "title": "Vacuuming", "desc": "Removing dry soil and loose particles from carpet fibers." },
+      { "step": 2, "title": "Shampooing", "desc": "Deep shampooing and extracting dirt with specialized machines." }
+    ]
+  }'::jsonb,
+  true,
+  'House Keeping'
+),
+(
+  'Sofa Cleaning',
+  'fafe1e8f-82c7-4646-b056-587c3eba013f'::uuid, -- Sofa & Upholstery Care
+  150,
+  '₹150 per seat',
+  'Deep cleaning service for fabric and upholstered sofas to remove dirt, stains, bacteria, and unpleasant odors.',
+  '{
+    "about_text": "Deep cleaning service for fabric and upholstered sofas to remove dirt, stains, bacteria, and unpleasant odors.",
+    "included_features": [
+      "Vacuum cleaning",
+      "Foam/shampoo treatment",
+      "Stain treatment (basic)",
+      "Dust extraction",
+      "Odor reduction"
+    ],
+    "excluded_features": [
+      "Leather restoration",
+      "Permanent stain guarantee",
+      "Fabric repair",
+      "Cushion replacement",
+      "Color restoration"
+    ],
+    "faqs": [
+      { "question": "How is sofa seating counted?", "answer": "Each seating position is considered one seat." },
+      { "question": "How long does drying take?", "answer": "Usually 4–6 hours." },
+      { "question": "Can old stains be removed?", "answer": "Depends on stain condition." },
+      { "question": "Is cleaning safe for fabric sofas?", "answer": "Yes." },
+      { "question": "How often should sofas be cleaned?", "answer": "Every 6 months is recommended." }
+    ],
+    "why_choose_us": [
+      { "icon": "verified_user", "title": "Verified Professionals", "desc": "Background-checked and certified home experts." },
+      { "icon": "timer", "title": "On-Time Service", "desc": "We respect your schedule and arrive exactly on time." }
+    ],
+    "how_to_book_steps": [
+      { "step": 1, "title": "Vacuuming", "desc": "Extracting loose dust and debris from sofa upholstery." },
+      { "step": 2, "title": "Shampooing", "desc": "Applying active foam shampoo to dissolve dirt and extracting it." }
+    ]
+  }'::jsonb,
+  true,
+  'House Keeping'
+),
+(
+  'Deep Cleaning',
+  '89ae8ba2-9da2-45ac-9467-8c3a594d3830'::uuid, -- Full Home Deep Cleaning
+  4,
+  '₹4 per sq. ft.',
+  'Complete deep cleaning service for homes, apartments, offices, and commercial spaces covering hard-to-reach areas and accumulated dirt.',
+  '{
+    "about_text": "Complete deep cleaning service for homes, apartments, offices, and commercial spaces covering hard-to-reach areas and accumulated dirt.",
+    "included_features": [
+      "Floor deep cleaning",
+      "Dusting of accessible surfaces",
+      "Kitchen cleaning",
+      "Bathroom cleaning",
+      "Cobweb removal"
+    ],
+    "excluded_features": [
+      "Painting work",
+      "Pest control",
+      "Exterior facade cleaning",
+      "Waterproofing services",
+      "Renovation work"
+    ],
+    "faqs": [
+      { "question": "What is included in deep cleaning?", "answer": "A thorough cleaning of major living spaces." },
+      { "question": "How long does it take?", "answer": "Depends on area size." },
+      { "question": "Is kitchen cleaning included?", "answer": "Yes." },
+      { "question": "Do I need to provide cleaning materials?", "answer": "No." },
+      { "question": "Is same-day booking available?", "answer": "Subject to availability." }
+    ],
+    "why_choose_us": [
+      { "icon": "verified_user", "title": "Verified Professionals", "desc": "Background-checked and certified home experts." },
+      { "icon": "timer", "title": "On-Time Service", "desc": "We respect your schedule and arrive exactly on time." }
+    ],
+    "how_to_book_steps": [
+      { "step": 1, "title": "Inspection", "desc": "Assessing client needs and outlining deep cleaning checkpoints." },
+      { "step": 2, "title": "Intense Cleaning", "desc": "Scrubbing floors, detailing kitchen/bathrooms, dusting, and wiping." }
+    ]
+  }'::jsonb,
+  true,
+  'House Keeping'
+),
+(
+  'Chimney Cleaning',
+  '8f9c2dee-9bae-41e0-81f1-6be4409fb219'::uuid, -- Chimney Cleaning
+  499,
+  '₹499 per chimney',
+  'Remove grease, oil deposits, smoke residue, and blockages from your kitchen chimney for better performance and hygiene.',
+  '{
+    "about_text": "Remove grease, oil deposits, smoke residue, and blockages from your kitchen chimney for better performance and hygiene.",
+    "included_features": [
+      "Filter cleaning",
+      "Oil and grease removal",
+      "Exterior cleaning",
+      "Basic suction check",
+      "Internal accessible cleaning"
+    ],
+    "excluded_features": [
+      "Motor replacement",
+      "Electrical repairs",
+      "Spare parts replacement",
+      "PCB repair",
+      "Chimney installation"
+    ],
+    "faqs": [
+      { "question": "How often should a chimney be cleaned?", "answer": "Every 3–6 months." },
+      { "question": "Is filter cleaning included?", "answer": "Yes." },
+      { "question": "Will suction improve after cleaning?", "answer": "In most cases, yes." },
+      { "question": "Do you repair chimneys?", "answer": "Repair services are separate." },
+      { "question": "How long does cleaning take?", "answer": "45–90 minutes." }
+    ],
+    "why_choose_us": [
+      { "icon": "verified_user", "title": "Verified Professionals", "desc": "Background-checked and certified home experts." },
+      { "icon": "timer", "title": "On-Time Service", "desc": "We respect your schedule and arrive exactly on time." }
+    ],
+    "how_to_book_steps": [
+      { "step": 1, "title": "Dismantling", "desc": "Carefully removing chimney filters and parts for washing." },
+      { "step": 2, "title": "Degreasing", "desc": "Scrubbing grease and carbon deposits with professional degreaser." }
+    ]
+  }'::jsonb,
+  true,
+  'House Keeping'
+),
+(
+  'Office Cleaning',
+  '75d160e8-4791-4f0a-8c88-779647d346e0'::uuid, -- Home & Office Cleaning
+  4,
+  '₹4 per sq. ft.',
+  'Comprehensive office cleaning service designed to maintain a clean, healthy, and professional workplace.',
+  '{
+    "about_text": "Comprehensive office cleaning service designed to maintain a clean, healthy, and professional workplace.",
+    "included_features": [
+      "Floor cleaning",
+      "Desk dusting",
+      "Common area cleaning",
+      "Washroom cleaning",
+      "Cobweb removal"
+    ],
+    "excluded_features": [
+      "IT equipment cleaning",
+      "Data center cleaning",
+      "Pest control",
+      "Exterior glass cleaning",
+      "Industrial cleaning"
+    ],
+    "faqs": [
+      { "question": "Can cleaning be done after office hours?", "answer": "Yes." },
+      { "question": "Do you clean large offices?", "answer": "Yes." },
+      { "question": "Are cleaning chemicals provided?", "answer": "Yes." },
+      { "question": "Is restroom cleaning included?", "answer": "Yes." },
+      { "question": "Do you offer recurring contracts?", "answer": "Yes." }
+    ],
+    "why_choose_us": [
+      { "icon": "verified_user", "title": "Verified Professionals", "desc": "Background-checked and certified home experts." },
+      { "icon": "timer", "title": "On-Time Service", "desc": "We respect your schedule and arrive exactly on time." }
+    ],
+    "how_to_book_steps": [
+      { "step": 1, "title": "Tidying", "desc": "Organizing spaces and dusting desks and keyboards." },
+      { "step": 2, "title": "Sanitization", "desc": "Deep cleaning office restrooms and common pantries." }
+    ]
+  }'::jsonb,
+  true,
+  'House Keeping'
+),
+(
+  'Home Cleaning',
+  '75d160e8-4791-4f0a-8c88-779647d346e0'::uuid, -- Home & Office Cleaning
+  4,
+  '₹4 per sq. ft.',
+  'Complete cleaning service for apartments, villas, and independent houses to maintain a spotless and hygienic living space.',
+  '{
+    "about_text": "Complete cleaning service for apartments, villas, and independent houses to maintain a spotless and hygienic living space.",
+    "included_features": [
+      "Floor cleaning",
+      "Dusting",
+      "Kitchen cleaning",
+      "Bathroom cleaning",
+      "Cobweb removal"
+    ],
+    "excluded_features": [
+      "Pest control",
+      "Painting work",
+      "Waterproofing work",
+      "Appliance repair",
+      "Renovation services"
+    ],
+    "faqs": [
+      { "question": "What areas are covered?", "answer": "Living rooms, bedrooms, kitchen, and bathrooms." },
+      { "question": "Are cleaning supplies included?", "answer": "Yes." },
+      { "question": "How long does cleaning take?", "answer": "Depends on property size." },
+      { "question": "Is balcony cleaning included?", "answer": "Yes, if accessible." },
+      { "question": "Do you offer move-in cleaning?", "answer": "Yes." }
+    ],
+    "why_choose_us": [
+      { "icon": "verified_user", "title": "Verified Professionals", "desc": "Background-checked and certified home experts." },
+      { "icon": "timer", "title": "On-Time Service", "desc": "We respect your schedule and arrive exactly on time." }
+    ],
+    "how_to_book_steps": [
+      { "step": 1, "title": "Preparation", "desc": "Initial setup, dusting corners and removing cobwebs." },
+      { "step": 2, "title": "Full Mop & Wash", "desc": "Cleaning kitchens, bathrooms, and mopping floors." }
+    ]
+  }'::jsonb,
+  true,
+  'House Keeping'
+),
+(
+  'Chair Cleaning',
+  'fafe1e8f-82c7-4646-b056-587c3eba013f'::uuid, -- Sofa & Upholstery Care
+  30,
+  '₹30 per chair',
+  'Professional cleaning service for office chairs, dining chairs, and upholstered seating.',
+  '{
+    "about_text": "Professional cleaning service for office chairs, dining chairs, and upholstered seating.",
+    "included_features": [
+      "Dust removal",
+      "Fabric cleaning",
+      "Stain treatment (basic)",
+      "Odor reduction",
+      "Surface sanitization"
+    ],
+    "excluded_features": [
+      "Chair repair",
+      "Cushion replacement",
+      "Leather restoration",
+      "Structural welding work",
+      "Color restoration"
+    ],
+    "faqs": [
+      { "question": "Is office chair cleaning available?", "answer": "Yes." },
+      { "question": "Are fabric chairs supported?", "answer": "Yes." },
+      { "question": "Can stains be removed completely?", "answer": "Depends on stain type." },
+      { "question": "Is drying required?", "answer": "Yes, a few hours may be needed." },
+      { "question": "Do you clean dining chairs?", "answer": "Yes." }
+    ],
+    "why_choose_us": [
+      { "icon": "verified_user", "title": "Verified Professionals", "desc": "Background-checked and certified home experts." },
+      { "icon": "timer", "title": "On-Time Service", "desc": "We respect your schedule and arrive exactly on time." }
+    ],
+    "how_to_book_steps": [
+      { "step": 1, "title": "Pre-treatment", "desc": "Dust removal and basic stain targeting." },
+      { "step": 2, "title": "Fabric Shampooing", "desc": "Applying upholstery shampoo to scrub and extract dirt." }
+    ]
+  }'::jsonb,
+  true,
+  'House Keeping'
+),
+(
+  'Car Cleaning',
+  '6aa375c5-4a88-4427-9ee9-815aa2164b41'::uuid, -- Car Cleaning
+  99,
+  '₹99 per car',
+  'Quick and affordable car cleaning service to keep your vehicle looking clean, fresh, and presentable.',
+  '{
+    "about_text": "Quick and affordable car cleaning service to keep your vehicle looking clean, fresh, and presentable.",
+    "included_features": [
+      "Exterior wash",
+      "Basic interior cleaning",
+      "Dashboard wiping",
+      "Glass cleaning",
+      "Tyre cleaning"
+    ],
+    "excluded_features": [
+      "Car polishing",
+      "Ceramic coating",
+      "Engine cleaning",
+      "Denting and painting",
+      "Interior detailing"
+    ],
+    "faqs": [
+      { "question": "Does the service include vacuum cleaning?", "answer": "Basic interior cleaning is included." },
+      { "question": "Is doorstep service available?", "answer": "Yes, subject to location." },
+      { "question": "How long does cleaning take?", "answer": "Approximately 30–45 minutes." },
+      { "question": "Are cleaning materials included?", "answer": "Yes." },
+      { "question": "Is water required at the location?", "answer": "Depending on the cleaning method selected." }
+    ],
+    "why_choose_us": [
+      { "icon": "verified_user", "title": "Verified Professionals", "desc": "Background-checked and certified home experts." },
+      { "icon": "timer", "title": "On-Time Service", "desc": "We respect your schedule and arrive exactly on time." }
+    ],
+    "how_to_book_steps": [
+      { "step": 1, "title": "Exterior Wash", "desc": "Rinsing and shampooing the car body, cleaning tyres." },
+      { "step": 2, "title": "Interior Wipe", "desc": "Wiping dashboard, consoles, and window glass from inside." }
+    ]
+  }'::jsonb,
+  true,
+  'House Keeping'
+),
+(
   'General Pest Control',
   '4e0afde3-bb07-4a5b-bced-0fbac38d91d2'::uuid, -- General Pest Management
   1,
@@ -1395,6 +1796,221 @@ INSERT INTO public.services (
 )
 );
 
+-- Seed Hourly / Companionship & Shopping Assistant Services
+INSERT INTO public.services (
+  id, 
+  subcategory_id, 
+  title, 
+  description, 
+  base_price, 
+  original_price, 
+  is_active, 
+  category, 
+  pricing_model, 
+  image_url, 
+  page_content
+) VALUES 
+(
+  '7e3a6a9b-6401-4f56-8360-7a0be7470dae'::uuid,
+  '2cb6a6b5-0c7f-4b95-a204-0987c6543210'::uuid,
+  'CarryBuddy',
+  'A trained shopping assistant who accompanies you on your shopping trips. Helps carry shopping bags, navigate crowded markets, and assist until cab, metro, parking, or designated drop point.',
+  499.00,
+  599.00,
+  true,
+  'Personal Assistance Services',
+  'hourly',
+  '/assets/shopping_assistant_service.png',
+  '{
+    "about_text": "CarryBuddy is a dedicated duration-based shopping assistant service. We match you with a verified assistant who handles carrying your shopping bags, navigating busy markets, and walking with you to your parking spot, cab pickup, or metro station.",
+    "included_features": [
+      "Assistance carrying bags and shopping items (up to 25kg total weight)",
+      "Accompaniment and guidance in crowded markets or malls",
+      "Assistance loading bags into taxi, cab trunk, or personal car",
+      "Support walking to cab pickup point, parking garage, or metro station"
+    ],
+    "excluded_features": [
+      "No cash handling, purchasing items, or lending money",
+      "No driving customer vehicles",
+      "No carrying hazardous, illegal, or prohibited materials",
+      "No heavy luggage lifting above 25kg"
+    ],
+    "faqs": [
+      {
+        "question": "What is the weight limit for bags the assistant can carry?",
+        "answer": "Our CarryBuddy assistants can carry up to a total of 25kg of shopping bags/items at any given time for safety and convenience."
+      },
+      {
+        "question": "Can the assistant pay for my items or handle my wallet?",
+        "answer": "No. For safety and compliance reasons, assistants are strictly prohibited from handling cash, cards, wallets, or paying on your behalf."
+      },
+      {
+        "question": "What happens if I need more time than booked?",
+        "answer": "If your shopping trip runs longer, you can easily request a time extension from the assistant through the app. Additional charges are applied on approval."
+      }
+    ],
+    "why_choose_us": [
+      {
+        "icon": "shield",
+        "title": "100% Vetted Assistants",
+        "desc": "All CarryBuddy professionals undergo strict identification and registration checks before onboarding."
+      },
+      {
+        "icon": "work",
+        "title": "Hands-Free Shopping",
+        "desc": "Focus on picking the items you love without worrying about heavy carrying or navigation."
+      },
+      {
+        "icon": "schedule",
+        "title": "Flexible Hours",
+        "desc": "Book for 30 minutes up to 4 hours, and easily extend duration mid-trip as needed."
+      }
+    ]
+  }'::jsonb
+),
+(
+  '5ba6c71c-30ad-4ef7-8c35-1d096a605f7a'::uuid,
+  '2cb6a6b5-0c7f-4b95-a204-0987c6543220'::uuid,
+  'Girlfriend on demand (Companionship Service)',
+  'Need a friendly companion for a social event, shopping trip, family function, café visit, movie outing, travel assistance, or simply engaging conversation? Our verified female companions provide professional, respectful, and non-romantic companionship for various social occasions.',
+  499.00,
+  599.00,
+  true,
+  'Personal Assistance Services',
+  'hourly',
+  '/assets/services/girlfriend_on_demand.png',
+  '{
+    "about_text": "Need a friendly companion for a social event, shopping trip, family function, café visit, movie outing, travel assistance, or simply engaging conversation? Our verified female companions provide professional, respectful, and non-romantic companionship for various social occasions.",
+    "included_features": [
+      "Social event companionship",
+      "Shopping companion",
+      "Café and restaurant visits",
+      "Travel and sightseeing assistance",
+      "Conversation and social support",
+      "Family function attendance"
+    ],
+    "excluded_features": [
+      "Physical intimacy of any kind",
+      "Sexual services",
+      "Overnight stays",
+      "Illegal activities",
+      "Financial borrowing or lending",
+      "Alcohol or substance-related obligations"
+    ],
+    "faqs": [
+      { "question": "Is this a dating service?", "answer": "No. This is a professional companionship service only." },
+      { "question": "Can I choose a companion?", "answer": "Yes, subject to availability." },
+      { "question": "Can companions attend weddings or events?", "answer": "Yes." },
+      { "question": "Is personal information kept confidential?", "answer": "Yes." },
+      { "question": "Are companions verified?", "answer": "Yes, verification is recommended for all companions." },
+      { "question": "Can the service be extended?", "answer": "Yes, additional charges apply." }
+    ],
+    "why_choose_us": [
+      { "icon": "verified_user", "title": "Verified Companions", "desc": "Identity-verified and background-checked companions." },
+      { "icon": "security", "title": "Safe & Respectful", "desc": "Meetings occur in public with strict service rules for safety." }
+    ],
+    "how_to_book_steps": [
+      { "step": 1, "title": "Choose Duration", "desc": "Select the duration you need (minimum 1 hour)." },
+      { "step": 2, "title": "Meet Companion", "desc": "Meet your companion at the designated public location." }
+    ]
+  }'::jsonb
+),
+(
+  '5ba6c71c-30ad-4ef7-8c35-1d096a605f7b'::uuid,
+  '2cb6a6b5-0c7f-4b95-a204-0987c6543220'::uuid,
+  'Boyfriend on demand (Companionship Service)',
+  'Looking for a reliable companion for events, shopping, travel assistance, social gatherings, or casual conversation? Our verified male companions offer professional and respectful companionship tailored to your needs.',
+  499.00,
+  599.00,
+  true,
+  'Personal Assistance Services',
+  'hourly',
+  '/assets/services/boyfriend_on_demand.png',
+  '{
+    "about_text": "Looking for a reliable companion for events, shopping, travel assistance, social gatherings, or casual conversation? Our verified male companions offer professional and respectful companionship tailored to your needs.",
+    "included_features": [
+      "Event companionship",
+      "Shopping assistance",
+      "Travel companion support",
+      "Restaurant and café visits",
+      "Social gathering attendance",
+      "Friendly conversation"
+    ],
+    "excluded_features": [
+      "Physical intimacy of any kind",
+      "Sexual services",
+      "Overnight stays",
+      "Illegal activities",
+      "Financial transactions on behalf of customers",
+      "Personal relationship commitments"
+    ],
+    "faqs": [
+      { "question": "Is this a romantic relationship service?", "answer": "No. It is a professional companionship service." },
+      { "question": "Can the companion attend an event with me?", "answer": "Yes." },
+      { "question": "Can I request a specific companion?", "answer": "Subject to availability." },
+      { "question": "Is the service confidential?", "answer": "Yes." },
+      { "question": "Can I extend the booking duration?", "answer": "Yes, additional charges apply." },
+      { "question": "Are companions background verified?", "answer": "Verification is strongly recommended for platform safety." }
+    ],
+    "why_choose_us": [
+      { "icon": "verified_user", "title": "Verified Companions", "desc": "Identity-verified and background-checked companions." },
+      { "icon": "security", "title": "Safe & Respectful", "desc": "Meetings occur in public with strict service rules for safety." }
+    ],
+    "how_to_book_steps": [
+      { "step": 1, "title": "Choose Duration", "desc": "Select the duration you need (minimum 1 hour)." },
+      { "step": 2, "title": "Meet Companion", "desc": "Meet your companion at the designated public location." }
+    ]
+  }'::jsonb
+)
+ON CONFLICT (id) DO UPDATE SET
+  subcategory_id = EXCLUDED.subcategory_id,
+  title = EXCLUDED.title,
+  description = EXCLUDED.description,
+  base_price = EXCLUDED.base_price,
+  original_price = EXCLUDED.original_price,
+  is_active = EXCLUDED.is_active,
+  category = EXCLUDED.category,
+  pricing_model = EXCLUDED.pricing_model,
+  image_url = EXCLUDED.image_url,
+  page_content = EXCLUDED.page_content;
+
+-- Seed Duration Pricing for CarryBuddy
+INSERT INTO public.service_duration_pricing (service_id, duration_minutes, price, original_price, is_active)
+VALUES 
+  ('7e3a6a9b-6401-4f56-8360-7a0be7470dae'::uuid, 30, 299.00, 399.00, true),
+  ('7e3a6a9b-6401-4f56-8360-7a0be7470dae'::uuid, 60, 499.00, 599.00, true),
+  ('7e3a6a9b-6401-4f56-8360-7a0be7470dae'::uuid, 120, 899.00, 1099.00, true),
+  ('7e3a6a9b-6401-4f56-8360-7a0be7470dae'::uuid, 180, 1299.00, 1599.00, true),
+  ('7e3a6a9b-6401-4f56-8360-7a0be7470dae'::uuid, 240, 1699.00, 2099.00, true)
+ON CONFLICT (service_id, duration_minutes) DO UPDATE SET 
+  price = EXCLUDED.price, 
+  original_price = EXCLUDED.original_price, 
+  is_active = EXCLUDED.is_active;
+
+-- Seed Duration Pricing for Girlfriend on demand
+INSERT INTO public.service_duration_pricing (service_id, duration_minutes, price, original_price, is_active)
+VALUES 
+  ('5ba6c71c-30ad-4ef7-8c35-1d096a605f7a'::uuid, 60, 499.00, 599.00, true),
+  ('5ba6c71c-30ad-4ef7-8c35-1d096a605f7a'::uuid, 120, 899.00, 1099.00, true),
+  ('5ba6c71c-30ad-4ef7-8c35-1d096a605f7a'::uuid, 180, 1299.00, 1599.00, true),
+  ('5ba6c71c-30ad-4ef7-8c35-1d096a605f7a'::uuid, 240, 1699.00, 2099.00, true)
+ON CONFLICT (service_id, duration_minutes) DO UPDATE SET 
+  price = EXCLUDED.price, 
+  original_price = EXCLUDED.original_price, 
+  is_active = EXCLUDED.is_active;
+
+-- Seed Duration Pricing for Boyfriend on demand
+INSERT INTO public.service_duration_pricing (service_id, duration_minutes, price, original_price, is_active)
+VALUES 
+  ('5ba6c71c-30ad-4ef7-8c35-1d096a605f7b'::uuid, 60, 499.00, 599.00, true),
+  ('5ba6c71c-30ad-4ef7-8c35-1d096a605f7b'::uuid, 120, 899.00, 1099.00, true),
+  ('5ba6c71c-30ad-4ef7-8c35-1d096a605f7b'::uuid, 180, 1299.00, 1599.00, true),
+  ('5ba6c71c-30ad-4ef7-8c35-1d096a605f7b'::uuid, 240, 1699.00, 2099.00, true)
+ON CONFLICT (service_id, duration_minutes) DO UPDATE SET 
+  price = EXCLUDED.price, 
+  original_price = EXCLUDED.original_price, 
+  is_active = EXCLUDED.is_active;
+
 -- Update service image URLs
 UPDATE public.services SET image_url = '/assets/services/utensils.png' WHERE title = 'Utensils';
 UPDATE public.services SET image_url = '/assets/services/bathroom_cleaning.png' WHERE title = 'Bathroom Cleaning';
@@ -1415,6 +2031,15 @@ UPDATE public.services SET image_url = '/assets/services/window_cleaning.png' WH
 UPDATE public.services SET image_url = '/assets/services/ironing_folding.png' WHERE title = 'Ironing & Folding';
 UPDATE public.services SET image_url = '/assets/services/after_party_clean.png' WHERE title = 'After-Party Express Clean';
 UPDATE public.services SET image_url = '/assets/services/wardrobe_cleaning.png' WHERE title = 'Complete Wardrobe';
+UPDATE public.services SET image_url = '/assets/services/bathroom_cleaning.png' WHERE title = 'Water Tank Cleaning';
+UPDATE public.services SET image_url = '/assets/services/sweeping_mopping.png' WHERE title = 'Carpet Cleaning';
+UPDATE public.services SET image_url = '/assets/services/dusting_wiping.png' WHERE title = 'Sofa Cleaning';
+UPDATE public.services SET image_url = '/assets/services/sweeping_mopping.png' WHERE title = 'Deep Cleaning';
+UPDATE public.services SET image_url = '/assets/services/kitchen_cleaning.png' WHERE title = 'Chimney Cleaning';
+UPDATE public.services SET image_url = '/assets/services/dusting_wiping.png' WHERE title = 'Office Cleaning';
+UPDATE public.services SET image_url = '/assets/services/sweeping_mopping.png' WHERE title = 'Home Cleaning';
+UPDATE public.services SET image_url = '/assets/services/dusting_wiping.png' WHERE title = 'Chair Cleaning';
+UPDATE public.services SET image_url = '/assets/services/car_cleaning.png' WHERE title = 'Car Cleaning';
 UPDATE public.services SET image_url = '/assets/services/general_pest_control.png' WHERE title = 'General Pest Control';
 UPDATE public.services SET image_url = '/assets/services/termite_treatment.png' WHERE title = 'Termite Treatment' AND category = 'Pest Control Services';
 UPDATE public.services SET image_url = '/assets/services/bed_bug_control.png' WHERE title = 'Bed Bug Control';
@@ -1426,4 +2051,7 @@ UPDATE public.services SET image_url = '/assets/services/fly_control.png' WHERE 
 UPDATE public.services SET image_url = '/assets/services/ant_pest_control.png' WHERE title = 'Ant Pest Control';
 UPDATE public.services SET image_url = '/assets/services/spider_pest_control.png' WHERE title = 'Spider Pest Control';
 UPDATE public.services SET image_url = '/assets/services/lizard_pest_control.png' WHERE title = 'Lizard Pest Control';
+UPDATE public.services SET image_url = '/assets/shopping_assistant_service.png' WHERE id = '7e3a6a9b-6401-4f56-8360-7a0be7470dae'::uuid;
+UPDATE public.services SET image_url = '/assets/services/girlfriend_on_demand.png' WHERE id = '5ba6c71c-30ad-4ef7-8c35-1d096a605f7a'::uuid;
+UPDATE public.services SET image_url = '/assets/services/boyfriend_on_demand.png' WHERE id = '5ba6c71c-30ad-4ef7-8c35-1d096a605f7b'::uuid;
 

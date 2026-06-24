@@ -31,7 +31,7 @@ interface DashboardGridClientProps {
 }
 
 const categoryIcons: Record<string, React.ReactNode> = {
-  // Cleaning & Housekeeping
+  // Cleaning
   "06fe8241-df90-42b3-a6c6-612b189ba54c": (
     <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M8 8V6C8 4.89543 8.89543 4 10 4H14C15.1046 4 16 4.89543 16 6V8" stroke="#002261" strokeWidth="2" strokeLinecap="round" />
@@ -42,6 +42,15 @@ const categoryIcons: Record<string, React.ReactNode> = {
       <path d="M4 14L4.5 15.5L6 16L4.5 16.5L4 18L3.5 16.5L2 16L3.5 15.5L4 14Z" fill="#a6ce37" stroke="#a6ce37" strokeWidth="0.5" />
       <circle cx="20" cy="15" r="1.5" fill="#a6ce37" />
       <circle cx="21" cy="18" r="1" fill="#002261" />
+    </svg>
+  ),
+  // House Keeping
+  "79a4de54-30ad-4ef7-8c35-1d096a605f6e": (
+    <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 9.5L12 3L21 9.5V20C21 21.1046 20.1046 22 19 22H5C3.89543 22 3 21.1046 3 20V9.5Z" fill="#a6ce37" fillOpacity="0.25" stroke="#002261" strokeWidth="2" />
+      <path d="M19 13V19C19 19.5523 18.5523 20 18 20H14V15H10V20H6C5.44772 20 5 19.5523 5 19V13" stroke="#002261" strokeWidth="2" strokeLinecap="round" />
+      <path d="M14 9.5L15.5 11L17 9.5L15.5 8L14 9.5Z" fill="#a6ce37" stroke="#a6ce37" strokeWidth="0.5" />
+      <path d="M7 11.5L8 12.5L9 11.5L8 10.5L7 11.5Z" fill="#a6ce37" stroke="#a6ce37" strokeWidth="0.5" />
     </svg>
   ),
   // Pest Control Services

@@ -58,7 +58,10 @@ export default function ScheduleClient({
     return addresses.find(a => a.id === selectedAddressId) || null;
   }, [addresses, selectedAddressId]);
 
-  useEffect(() => {
+  const [prevSelectedAddress, setPrevSelectedAddress] = useState<Address | null>(selectedAddress);
+
+  if (selectedAddress !== prevSelectedAddress) {
+    setPrevSelectedAddress(selectedAddress);
     if (selectedAddress) {
       const parts = [
         selectedAddress.address_line_1,
@@ -67,8 +70,10 @@ export default function ScheduleClient({
         selectedAddress.pincode
       ].filter(Boolean);
       setMeetingLocation(parts.join(", "));
+    } else {
+      setMeetingLocation("");
     }
-  }, [selectedAddress]);
+  }
 
   const fetchFreshAddresses = async () => {
     const supabase = createClient();
@@ -426,7 +431,7 @@ export default function ScheduleClient({
             <div className="space-y-4">
               {/* Meeting Location */}
               <div className="space-y-2">
-                <label htmlFor="meeting-location-input" className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider flex items-center gap-1">
+                <label htmlFor="meeting-location-input" className="text-xs font-bold text-on-surface-variant uppercase tracking-wider flex items-center gap-1">
                   Meeting Location <span className="text-secondary font-black">*</span>
                 </label>
                 <div className="relative flex items-center">

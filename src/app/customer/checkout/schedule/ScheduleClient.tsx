@@ -21,17 +21,20 @@ interface Address {
 export default function ScheduleClient({
   service,
   initialAddresses,
-  duration
+  duration,
+  selectedPackages
 }: {
   service: { 
     id: string; 
     title: string; 
     category: string; 
     duration_minutes: number; 
-    pricing_model?: 'fixed' | 'hourly' 
+    pricing_model?: 'fixed' | 'hourly';
+    page_content?: any;
   } | null;
   initialAddresses: Address[];
   duration?: number;
+  selectedPackages?: string;
 }) {
   const router = useRouter();
   const { items, itemCount } = useCart();
@@ -202,6 +205,9 @@ export default function ScheduleClient({
       };
       if (duration) {
         paramsObj.duration = duration.toString();
+      }
+      if (selectedPackages) {
+        paramsObj.selectedPackages = selectedPackages;
       }
       if (isCarryBuddy) {
         paramsObj.meetingLocation = meetingLocation.trim();
@@ -531,14 +537,30 @@ export default function ScheduleClient({
             <div>
               {service ? (
                 <>
-                  <p className="text-[9px] font-bold text-on-surface-variant uppercase tracking-widest">
-                    {service.pricing_model === "hourly" ? "Selected Duration" : "Estimated duration"}
-                  </p>
-                  <p className="font-bold text-on-surface text-xs md:text-sm">
-                    {service.pricing_model === "hourly" && duration
-                      ? (duration === 30 ? "30 Minutes" : `${duration / 60} Hour${duration / 60 === 1 ? "" : "s"}`)
-                      : `${service.duration_minutes} Minutes`}
-                  </p>
+                  {selectedPackages ? (
+                    <>
+                      <p className="text-[9px] font-bold text-on-surface-variant uppercase tracking-widest">Selected Services</p>
+                      <p className="font-bold text-on-surface text-[10px] md:text-xs max-w-[200px] truncate">
+                        {(() => {
+                          const ids = selectedPackages.split(",");
+                          const pkgs = service.page_content?.packages || [];
+                          const titles = ids.map(id => pkgs.find((p: any) => p.id === id)?.title || id);
+                          return titles.join(", ");
+                        })()}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-[9px] font-bold text-on-surface-variant uppercase tracking-widest">
+                        {service.pricing_model === "hourly" ? "Selected Duration" : "Estimated duration"}
+                      </p>
+                      <p className="font-bold text-on-surface text-xs md:text-sm">
+                        {service.pricing_model === "hourly" && duration
+                          ? (duration === 30 ? "30 Minutes" : `${duration / 60} Hour${duration / 60 === 1 ? "" : "s"}`)
+                          : `${service.duration_minutes} Minutes`}
+                      </p>
+                    </>
+                  )}
                 </>
               ) : (
                 <>

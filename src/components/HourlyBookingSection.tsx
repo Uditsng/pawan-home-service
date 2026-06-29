@@ -19,6 +19,7 @@ interface HourlyBookingSectionProps {
   basePrice: number;
   pricingModel: "fixed" | "hourly";
   pricingOptions: PricingOption[];
+  packages?: { id: string; title: string; price: number; original_price?: number }[];
 }
 
 export default function HourlyBookingSection({
@@ -30,6 +31,7 @@ export default function HourlyBookingSection({
   basePrice,
   pricingModel,
   pricingOptions = [],
+  packages = [],
 }: HourlyBookingSectionProps) {
   const isHourly = pricingModel === "hourly";
 
@@ -42,11 +44,28 @@ export default function HourlyBookingSection({
 
   const [selectedDuration, setSelectedDuration] = useState<number>(initialDuration);
 
+  // Default to first package selected if packages are present
+  const [selectedPackageIds, setSelectedPackageIds] = useState<string[]>(() => {
+    if (packages && packages.length > 0) {
+      return [packages[0].id];
+    }
+    return [];
+  });
+
   const activePrice = useMemo(() => {
-    if (!isHourly || pricingOptions.length === 0) return basePrice;
-    const option = pricingOptions.find((o) => o.duration_minutes === selectedDuration);
-    return option ? Number(option.price) : basePrice;
-  }, [isHourly, selectedDuration, pricingOptions, basePrice]);
+    if (isHourly && pricingOptions.length > 0) {
+      const option = pricingOptions.find((o) => o.duration_minutes === selectedDuration);
+      return option ? Number(option.price) : basePrice;
+    }
+    if (!isHourly && packages && packages.length > 0) {
+      if (selectedPackageIds.length === 0) return 0;
+      return selectedPackageIds.reduce((sum, id) => {
+        const pkg = packages.find((p) => p.id === id);
+        return sum + (pkg ? Number(pkg.price) : 0);
+      }, 0);
+    }
+    return basePrice;
+  }, [isHourly, selectedDuration, pricingOptions, basePrice, packages, selectedPackageIds]);
 
   const durationLabel = (minutes: number) => {
     if (minutes === 30) return "30 Minutes";
@@ -57,14 +76,80 @@ export default function HourlyBookingSection({
   const scheduleUrl = useMemo(() => {
     const params = new URLSearchParams({
       serviceId,
-      duration: selectedDuration.toString(),
     });
+    if (isHourly) {
+      params.set("duration", selectedDuration.toString());
+    } else if (packages && packages.length > 0 && selectedPackageIds.length > 0) {
+      params.set("selectedPackages", selectedPackageIds.join(","));
+    }
     return `/customer/checkout/schedule?${params.toString()}`;
-  }, [serviceId, selectedDuration]);
+  }, [serviceId, selectedDuration, isHourly, packages, selectedPackageIds]);
+
+  const hasPackages = !isHourly && packages && packages.length > 0;
 
   return (
     <div className="space-y-6">
-      {/* 1. Pricing & Duration Selection Card */}
+      {/* 1. Package Selection Card (for Fixed Services with Packages) */}
+      {hasPackages && (
+        <section className="max-w-3xl mx-auto">
+          <div className="bg-surface-container-low border border-outline-variant/20 rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-xs animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/5 rounded-full blur-2xl pointer-events-none" />
+            <div className="space-y-4 relative z-10">
+              <div className="inline-flex items-center gap-1.5 bg-secondary/10 px-3 py-1 rounded-full text-secondary font-bold text-xs border border-secondary/20">
+                <span className="material-symbols-outlined text-xs font-bold">checklist</span> Service Selection
+              </div>
+              <h3 className="text-xl md:text-2xl font-extrabold text-on-surface font-headline tracking-tighter">
+                Select Your Services
+              </h3>
+              <p className="text-xs md:text-sm text-on-surface-variant max-w-lg leading-relaxed font-medium">
+                Choose one or more items from our menu below. Your final quote will update dynamically.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                {packages.map((pkg) => {
+                  const isChecked = selectedPackageIds.includes(pkg.id);
+                  const toggleCheck = () => {
+                    setSelectedPackageIds((prev) => {
+                      if (prev.includes(pkg.id)) {
+                        if (prev.length === 1) return prev; // Keep at least one selected
+                        return prev.filter((id) => id !== pkg.id);
+                      }
+                      return [...prev, pkg.id];
+                    });
+                  };
+
+                  return (
+                    <div
+                      key={pkg.id}
+                      onClick={toggleCheck}
+                      className={`p-4 rounded-2xl border transition-all flex items-center justify-between cursor-pointer select-none active:scale-[0.99] duration-200 ${
+                        isChecked
+                          ? "bg-primary/5 border-primary text-primary shadow-xs"
+                          : "bg-surface border-outline-variant/15 text-on-surface hover:bg-surface-container-low hover:border-outline-variant/30"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className={`material-symbols-outlined text-xl shrink-0 ${isChecked ? 'text-primary' : 'text-on-surface-variant/40'}`}>
+                          {isChecked ? "check_box" : "check_box_outline_blank"}
+                        </span>
+                        <span className="text-xs md:text-sm font-bold truncate pr-2">{pkg.title}</span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {pkg.original_price && Number(pkg.original_price) > Number(pkg.price) && (
+                          <span className="text-[10px] md:text-xs line-through opacity-50 font-semibold">₹{pkg.original_price}</span>
+                        )}
+                        <span className="text-xs md:text-sm font-black">₹{pkg.price}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* 2. Pricing & Duration Selection Card */}
       {isHourly && pricingOptions.length > 0 && (
         <section className="max-w-3xl mx-auto">
           <div className="bg-surface-container-low border border-outline-variant/20 rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-xs">
@@ -136,7 +221,7 @@ export default function HourlyBookingSection({
         </section>
       )}
 
-      {/* 2. Customer Dispute Warnings / Disclaimer */}
+      {/* 3. Customer Dispute Warnings / Disclaimer */}
       {isHourly && (
         <section className="max-w-3xl mx-auto bg-amber-500/10 border border-amber-500/20 rounded-2xl p-5 shadow-xs">
           <div className="flex gap-3">
@@ -154,7 +239,7 @@ export default function HourlyBookingSection({
         </section>
       )}
 
-      {/* 3. Floating Bottom Bar */}
+      {/* 4. Floating Bottom Bar */}
       <div className="fixed bottom-0 left-0 w-full bg-surface-container-lowest border-t border-outline-variant/30 p-3 md:p-4 z-50 flex items-center justify-between shadow-[0_-10px_20px_rgba(0,0,0,0.05)] pb-safe">
         <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
           <div>
@@ -162,7 +247,11 @@ export default function HourlyBookingSection({
               <span className="text-lg md:text-xl font-extrabold font-headline text-on-surface tracking-tighter">₹{activePrice}</span>
             </div>
             <div className="text-[10px] md:text-xs text-on-surface-variant font-medium">
-              {isHourly ? `Price for ${durationLabel(selectedDuration)}` : "Standard Fixed Rate"}
+              {isHourly
+                ? `Price for ${durationLabel(selectedDuration)}`
+                : hasPackages
+                ? `${selectedPackageIds.length} Selected Package${selectedPackageIds.length === 1 ? "" : "s"}`
+                : "Standard Fixed Rate"}
             </div>
           </div>
           <div className="flex items-center gap-3 min-w-[280px]">
@@ -175,7 +264,8 @@ export default function HourlyBookingSection({
                 subcategoryName,
                 categorySlug,
                 pricingModel,
-                selectedDuration,
+                selectedDuration: isHourly ? selectedDuration : undefined,
+                selectedPackages: hasPackages ? selectedPackageIds.join(",") : undefined,
               }}
             />
             <Link

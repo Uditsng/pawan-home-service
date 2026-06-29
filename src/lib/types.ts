@@ -124,6 +124,7 @@ export interface CartItem {
   categorySlug: string;
   pricingModel?: 'fixed' | 'hourly';
   selectedDuration?: number;
+  selectedPackages?: string;
 }
 
 export interface Order {

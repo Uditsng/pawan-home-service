@@ -88,6 +88,14 @@ const categoryIcons: Record<string, React.ReactNode> = {
       <circle cx="12" cy="7" r="4" fill="#a6ce37" fillOpacity="0.25" stroke="#002261" strokeWidth="2" />
       <path d="M5 19C5 15.6863 8.13401 13 12 13C15.866 13 19 15.6863 19 19V20H5V19Z" fill="#a6ce37" fillOpacity="0.25" stroke="#002261" strokeWidth="2" strokeLinejoin="round" />
     </svg>
+  ),
+  // Grooming & Wellness
+  "8fa6c71c-30ad-4ef7-8c35-1d096a605f6e": (
+    <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="6" cy="18" r="3" fill="#a6ce37" fillOpacity="0.25" stroke="#002261" strokeWidth="2" />
+      <circle cx="18" cy="18" r="3" fill="#a6ce37" fillOpacity="0.25" stroke="#002261" strokeWidth="2" />
+      <path d="M9 15L15 5M15 15L9 5" stroke="#002261" strokeWidth="2" strokeLinecap="round" />
+    </svg>
   )
 };
 

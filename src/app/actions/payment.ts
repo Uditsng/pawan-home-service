@@ -42,6 +42,7 @@ export async function createRazorpayOrderAction(payload: {
   meetingLocation?: string;
   destination?: string;
   expectedBags?: string;
+  selectedPackages?: string;
 }): Promise<RazorpayOrderResult> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -61,7 +62,7 @@ export async function createRazorpayOrderAction(payload: {
   if (payload.serviceId) {
     const { data: service } = await supabase
       .from("services")
-      .select("base_price, pricing_model")
+      .select("base_price, pricing_model, page_content")
       .eq("id", payload.serviceId)
       .single();
     if (!service) throw new Error("Service not found");
@@ -78,6 +79,19 @@ export async function createRazorpayOrderAction(payload: {
         throw new Error(`Pricing not configured for duration ${durationVal} minutes`);
       }
       subtotal = Number(durPricing.price);
+    } else if (payload.selectedPackages) {
+      const pkgIds = payload.selectedPackages.split(",");
+      const pkgs = (service.page_content as any)?.packages || [];
+      let packagesSum = 0;
+      let foundAny = false;
+      for (const id of pkgIds) {
+        const match = pkgs.find((p: any) => p.id === id);
+        if (match) {
+          packagesSum += Number(match.price);
+          foundAny = true;
+        }
+      }
+      subtotal = foundAny ? packagesSum : Number(service.base_price);
     } else {
       subtotal = Number(service.base_price);
     }
@@ -220,6 +234,7 @@ export async function verifyRazorpayPaymentAction(payload: {
   meetingLocation?: string;
   destination?: string;
   expectedBags?: string;
+  selectedPackages?: string;
 }): Promise<VerificationResult> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -314,13 +329,14 @@ export async function verifyRazorpayPaymentAction(payload: {
     // Single service booking
     const { data: service } = await supabase
       .from("services")
-      .select("id, title, base_price, pricing_model")
+      .select("id, title, base_price, pricing_model, page_content")
       .eq("id", payload.serviceId)
       .single();
     if (!service) return { success: false, error: "Service not found." };
 
     let basePrice = Number(service.base_price);
     let selectedDurationMinutes: number | null = null;
+    let formattedNotes: string | null = null;
 
     if (service.pricing_model === "hourly") {
       selectedDurationMinutes = payload.duration || 60;
@@ -334,6 +350,22 @@ export async function verifyRazorpayPaymentAction(payload: {
         return { success: false, error: `Pricing not configured for duration ${selectedDurationMinutes} minutes.` };
       }
       basePrice = Number(durPricing.price);
+    } else if (payload.selectedPackages) {
+      const pkgIds = payload.selectedPackages.split(",");
+      const pkgs = (service.page_content as any)?.packages || [];
+      let packagesSum = 0;
+      const selectedTitles: string[] = [];
+      for (const id of pkgIds) {
+        const match = pkgs.find((p: any) => p.id === id);
+        if (match) {
+          packagesSum += Number(match.price);
+          selectedTitles.push(`${match.title} (₹${match.price})`);
+        }
+      }
+      if (selectedTitles.length > 0) {
+        basePrice = packagesSum;
+        formattedNotes = `Selected Packages: ${selectedTitles.join(", ")}`;
+      }
     }
 
     const gstTax = Math.round(basePrice * (taxRatePercent / 100));
@@ -361,6 +393,7 @@ export async function verifyRazorpayPaymentAction(payload: {
         meeting_location: payload.meetingLocation || null,
         destination: payload.destination || null,
         expected_bags: payload.expectedBags ? parseInt(payload.expectedBags, 10) : 0,
+        notes: formattedNotes,
       })
       .select("id")
       .single();

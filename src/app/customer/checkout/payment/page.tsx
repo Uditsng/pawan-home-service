@@ -2,6 +2,17 @@ import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import PaymentFormClient from "./PaymentFormClient";
 
+interface ServicePackage {
+  id: string;
+  title: string;
+  price: number;
+  original_price?: number;
+}
+
+interface ServicePageContent {
+  packages?: ServicePackage[];
+}
+
 export default async function CheckoutPaymentPage({
   searchParams,
 }: {
@@ -14,10 +25,11 @@ export default async function CheckoutPaymentPage({
     meetingLocation?: string;
     destination?: string;
     expectedBags?: string;
+    selectedPackages?: string;
   }>;
 }) {
   const resolvedParams = await searchParams;
-  const { serviceId, date, time, addressId, duration, meetingLocation, destination, expectedBags } = resolvedParams;
+  const { serviceId, date, time, addressId, duration, meetingLocation, destination, expectedBags, selectedPackages } = resolvedParams;
 
   if (!serviceId || !date || !time || !addressId) {
     redirect("/customer/dashboard");
@@ -30,7 +42,7 @@ export default async function CheckoutPaymentPage({
 
   const [addressResult, serviceResult, settingsResult, profileResult, completedBookingsResult] = await Promise.all([
     supabase.from("user_addresses").select("formatted_address, city, pincode, label").eq("id", addressId).eq("user_id", user.id).single(),
-    supabase.from("services").select("id, title, base_price, category, pricing_model").eq("id", serviceId).single(),
+    supabase.from("services").select("id, title, base_price, category, pricing_model, page_content").eq("id", serviceId).single(),
     supabase.from("platform_settings").select("key, value").in("key", ["tax_rate", "referral_reward_referred"]),
     supabase.from("profiles").select("referred_by, wallet_balance").eq("id", user.id).single(),
     supabase.from("bookings").select("id", { count: "exact" }).eq("customer_id", user.id).eq("status", "completed"),
@@ -83,6 +95,22 @@ export default async function CheckoutPaymentPage({
     if (pricingData) {
       finalBasePrice = Number(pricingData.price);
     }
+  } else if (selectedPackages) {
+    const pkgIds = selectedPackages.split(",");
+    const pageContent = service.page_content as unknown as ServicePageContent | null;
+    const pkgs = pageContent?.packages || [];
+    let packagesSum = 0;
+    let foundAny = false;
+    for (const id of pkgIds) {
+      const match = pkgs.find((p) => p.id === id);
+      if (match) {
+        packagesSum += Number(match.price);
+        foundAny = true;
+      }
+    }
+    if (foundAny) {
+      finalBasePrice = packagesSum;
+    }
   }
 
   const enrichedService = {
@@ -104,6 +132,7 @@ export default async function CheckoutPaymentPage({
       meetingLocation={meetingLocation}
       destination={destination}
       expectedBags={expectedBags}
+      selectedPackages={selectedPackages}
     />
   );
 }

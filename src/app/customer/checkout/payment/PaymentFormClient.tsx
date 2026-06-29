@@ -4,11 +4,23 @@ import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createRazorpayOrderAction, verifyRazorpayPaymentAction } from "@/app/actions/payment";
 
-interface Service {
+interface ServicePackage {
+  id: string;
+  title: string;
+  price?: number;
+  original_price?: number;
+}
+
+interface ServicePageContent {
+  packages?: ServicePackage[];
+}
+
+interface CheckoutPaymentService {
   id: string;
   title: string;
   base_price: number;
   category: string;
+  page_content?: ServicePageContent | null;
 }
 
 interface Address {
@@ -29,7 +41,7 @@ interface CustomWindow {
 }
 
 interface PaymentFormClientProps {
-  service: Service;
+  service: CheckoutPaymentService;
   addressObj: Address;
   addressId: string;
   date: string;
@@ -41,6 +53,7 @@ interface PaymentFormClientProps {
   meetingLocation?: string;
   destination?: string;
   expectedBags?: string;
+  selectedPackages?: string;
 }
 
 export default function PaymentFormClient({
@@ -56,6 +69,7 @@ export default function PaymentFormClient({
   meetingLocation,
   destination,
   expectedBags,
+  selectedPackages,
 }: PaymentFormClientProps) {
   const router = useRouter();
   const [isAgreed, setIsAgreed] = useState(false);
@@ -112,6 +126,7 @@ export default function PaymentFormClient({
           meetingLocation: meetingLocation,
           destination: destination,
           expectedBags: expectedBags,
+          selectedPackages: selectedPackages,
         });
 
         if (rzOrder.freeOrder) {
@@ -127,6 +142,7 @@ export default function PaymentFormClient({
             meetingLocation: meetingLocation,
             destination: destination,
             expectedBags: expectedBags,
+            selectedPackages: selectedPackages,
           });
 
           if (verifyRes.success && verifyRes.bookingId) {
@@ -198,6 +214,7 @@ export default function PaymentFormClient({
                   meetingLocation: meetingLocation,
                   destination: destination,
                   expectedBags: expectedBags,
+                  selectedPackages: selectedPackages,
                 });
 
                 if (verifyRes.success && verifyRes.bookingId) {
@@ -263,17 +280,29 @@ export default function PaymentFormClient({
                       ? "home_work"
                       : service.category === "Personal Assistance Services"
                       ? "shopping_bag"
+                      : service.category === "Grooming & Wellness"
+                      ? "content_cut"
                       : "bug_report"}
                   </span>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Service</p>
                   <p className="font-bold text-sm text-on-surface leading-tight mt-0.5">{service.title}</p>
-                  {duration && (
+                  {selectedPackages ? (
+                    <div className="text-xs font-semibold text-secondary mt-1 leading-relaxed max-w-[300px]">
+                      <span className="font-bold text-on-surface-variant">Selected: </span>
+                      {(() => {
+                        const ids = selectedPackages.split(",");
+                        const pkgs = service.page_content?.packages || [];
+                        const titles = ids.map(id => pkgs.find((p) => p.id === id)?.title || id);
+                        return titles.join(", ");
+                      })()}
+                    </div>
+                  ) : duration ? (
                     <p className="text-xs text-secondary font-bold mt-1">
                       Duration: {duration === 30 ? "30 Minutes" : `${duration / 60} Hour${duration / 60 === 1 ? "" : "s"}`}
                     </p>
-                  )}
+                  ) : null}
                 </div>
               </div>
 

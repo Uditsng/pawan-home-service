@@ -10,6 +10,7 @@ interface ServicePageContent {
   faqs?: { question: string; answer: string }[];
   why_choose_us?: { icon: string; title: string; desc: string }[];
   how_to_book_steps?: { step: number; title: string; desc: string }[];
+  packages?: { id: string; title: string; price: number; original_price?: number }[];
 }
 
 interface ServiceWithSubcategory {
@@ -247,6 +248,7 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
               basePrice={service.base_price}
               pricingModel="fixed"
               pricingOptions={[]}
+              packages={content.packages || []}
             />
           </>
         )}

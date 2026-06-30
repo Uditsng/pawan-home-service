@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ServiceIconComponent } from "@/utils/serviceIcon";
 
 interface ServiceWithSubcategory {
   id: string;
@@ -141,7 +142,7 @@ export default function LandingGridClient({ categories, availableServices }: Lan
         {/* Services Grid (no sticky hovers) */}
         <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
           {servicesForCategory.map((service) => {
-            const iconName = service.subcategories?.icon_name || "handyman";
+            const iconName = service.subcategories?.icon_name || "sparkles";
 
             return (
               <Link
@@ -150,7 +151,7 @@ export default function LandingGridClient({ categories, availableServices }: Lan
                 className="bg-surface-container-low p-3 md:p-5 rounded-xl flex flex-col items-center justify-center text-center border border-outline-variant/10 shadow-sm cursor-pointer active:bg-surface-container-high transition-colors"
               >
                 <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-green-500/10 mb-2 md:mb-3 flex items-center justify-center transition-transform active:scale-105">
-                  <span className="material-symbols-outlined text-[#059669] drop-shadow-sm">{iconName}</span>
+                  <ServiceIconComponent iconName={iconName} className="w-5 h-5 text-emerald-600 drop-shadow-sm" />
                 </div>
                 <span className="font-headline font-bold text-xs md:text-sm text-on-surface line-clamp-2 leading-tight">{service.title}</span>
                 <div className="flex items-center gap-1.5 mt-1 md:mt-1.5">

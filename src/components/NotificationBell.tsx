@@ -59,17 +59,16 @@ export default function NotificationBell() {
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
+  const [userId, setUserId] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  // IMPORTANT: createClient() must be in a ref — NOT called directly in the render body.
-  // Calling it in the render body creates a new object every render, which causes
-  // useCallback([supabase]) to produce a new function every render, which causes
-  // useEffect([fetchUnreadCount]) to fire every render → infinite loop.
+
   const supabaseRef = useRef(createClient());
   const supabase = supabaseRef.current;
 
   // ─── Fetch notifications ────────────────────────────────────
   const fetchNotifications = useCallback(
     async (pageNum: number, append = false) => {
+      if (!userId) return;
       setLoading(true);
       const from = pageNum * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
@@ -77,6 +76,7 @@ export default function NotificationBell() {
       const { data, error } = await supabase
         .from("notifications")
         .select("*")
+        .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .range(from, to);
 
@@ -87,31 +87,103 @@ export default function NotificationBell() {
       }
       setLoading(false);
     },
-    [supabase]
+    [supabase, userId]
   );
 
   // ─── Fetch unread count ─────────────────────────────────────
   const fetchUnreadCount = useCallback(async () => {
+    if (!userId) return;
     const { count, error } = await supabase
       .from("notifications")
       .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
       .eq("is_read", false);
 
     if (!error && count !== null) {
       setUnreadCount(count);
     }
+  }, [supabase, userId]);
+
+  // ─── Handle Auth State Changes ──────────────────────────────
+  useEffect(() => {
+    const getInitialUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+      }
+    };
+    getInitialUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setUserId(session.user.id);
+      } else {
+        setUserId(null);
+        setNotifications([]);
+        setUnreadCount(0);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [supabase]);
 
-  // ─── Initial load & polling ─────────────────────────────────
-  // NOTE: fetchUnreadCount is now stable (empty dep array), so this effect
-  // fires exactly once on mount and cleans up the interval on unmount.
+  // ─── Initial Load & Reload on Auth State Change ─────────────
   useEffect(() => {
-    fetchUnreadCount();
+    if (userId) {
+      fetchUnreadCount();
+      if (isOpen) {
+        setPage(0);
+        fetchNotifications(0);
+      }
+    }
+  }, [userId, isOpen, fetchUnreadCount, fetchNotifications]);
 
-    // Poll for unread count every 30 seconds
-    const interval = setInterval(fetchUnreadCount, 30_000);
-    return () => clearInterval(interval);
-  }, [fetchUnreadCount]);
+  // ─── Realtime Postgres Changes Subscription ────────────────
+  useEffect(() => {
+    if (!userId) return;
+
+    const isDev = process.env.NODE_ENV === "development";
+
+    const channel = supabase
+      .channel(`user-notifications-${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          if (isDev) {
+            console.log(`[Notification Pipeline] [3. REALTIME_EMIT] Event: ${payload.eventType}, User: ${userId}`, payload);
+          }
+
+          if (payload.eventType === "INSERT") {
+            const newNotif = payload.new as AppNotification;
+            setNotifications((prev) => [newNotif, ...prev]);
+            setUnreadCount((c) => c + 1);
+          } else if (payload.eventType === "DELETE") {
+            const oldNotif = payload.old as { id: string };
+            setNotifications((prev) => prev.filter((n) => n.id !== oldNotif.id));
+            fetchUnreadCount();
+          } else if (payload.eventType === "UPDATE") {
+            const updatedNotif = payload.new as AppNotification;
+            setNotifications((prev) =>
+              prev.map((n) => (n.id === updatedNotif.id ? updatedNotif : n))
+            );
+            fetchUnreadCount();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, supabase, fetchUnreadCount]);
 
   // ─── Click outside to close ─────────────────────────────────
   useEffect(() => {
@@ -129,32 +201,57 @@ export default function NotificationBell() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
-  // ─── Actions (One-Time Use Deletes) ──────────────────────────
+  // ─── Actions ────────────────────────────────────────────────
   async function markAsRead(notifId: string) {
-    // Delete notification entirely so it's a true one-time use notification
-    await supabase
+    console.log(`[Notification Pipeline] [8. READ_STATE] NotificationId: ${notifId}, Action: MARK_READ`);
+    
+    const { error } = await supabase
+      .from("notifications")
+      .update({ is_read: true })
+      .eq("id", notifId);
+
+    if (!error) {
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notifId ? { ...n, is_read: true } : n))
+      );
+      setUnreadCount((c) => Math.max(0, c - 1));
+    }
+  }
+
+  async function deleteNotification(e: React.MouseEvent, notifId: string) {
+    e.stopPropagation(); // Avoid triggering navigation/markRead on item button
+    console.log(`[Notification Pipeline] [8. READ_STATE] NotificationId: ${notifId}, Action: DELETE`);
+
+    const { error } = await supabase
       .from("notifications")
       .delete()
       .eq("id", notifId);
 
-    setNotifications((prev) =>
-      prev.filter((n) => n.id !== notifId)
-    );
-    setUnreadCount((c) => Math.max(0, c - 1));
+    if (!error) {
+      const deletedNotif = notifications.find((n) => n.id === notifId);
+      setNotifications((prev) => prev.filter((n) => n.id !== notifId));
+      if (deletedNotif && !deletedNotif.is_read) {
+        setUnreadCount((c) => Math.max(0, c - 1));
+      }
+    }
   }
 
   async function markAllAsRead() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!userId) return;
+    console.log(`[Notification Pipeline] [8. READ_STATE] UserId: ${userId}, Action: MARK_ALL_READ`);
 
-    // Delete all user notifications
-    await supabase
+    const { error } = await supabase
       .from("notifications")
-      .delete()
-      .eq("user_id", user.id);
+      .update({ is_read: true })
+      .eq("user_id", userId)
+      .eq("is_read", false);
 
-    setNotifications([]);
-    setUnreadCount(0);
+    if (!error) {
+      setNotifications((prev) =>
+        prev.map((n) => ({ ...n, is_read: true }))
+      );
+      setUnreadCount(0);
+    }
   }
 
   function loadMore() {
@@ -176,7 +273,7 @@ export default function NotificationBell() {
             fetchNotifications(0);
           }
         }}
-        className="relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-2xl bg-surface-container text-on-surface-variant hover:bg-secondary hover:text-primary transition-all active:scale-95"
+        className="relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-2xl bg-surface-container text-on-surface-variant hover:bg-secondary hover:text-primary transition-all active:scale-95 cursor-pointer"
         aria-label="Notifications"
       >
         <span
@@ -212,14 +309,14 @@ export default function NotificationBell() {
               {unreadCount > 0 && (
                 <button
                   onClick={markAllAsRead}
-                  className="text-[11px] font-bold text-secondary hover:text-primary transition-colors uppercase tracking-wider"
+                  className="text-[11px] font-bold text-secondary hover:text-primary transition-colors uppercase tracking-wider cursor-pointer"
                 >
-                  Clear all
+                  Mark all read
                 </button>
               )}
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1 text-on-surface-variant hover:text-primary transition-colors rounded-lg"
+                className="p-1 text-on-surface-variant hover:text-primary transition-colors rounded-lg cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[18px]">
                   close
@@ -253,27 +350,9 @@ export default function NotificationBell() {
                   typeColors[notif.type] || "bg-gray-500/10 text-gray-600";
 
                 return (
-                  <button
+                  <div
                     key={notif.id}
-                    onClick={async () => {
-                      setIsOpen(false);
-                      // Delete immediately on click (one-time use)
-                      await markAsRead(notif.id);
-
-                      // Navigate based on type & metadata
-                      const bookingId = notif.booking_id || (notif.metadata?.booking_id as string | undefined);
-                      if (bookingId) {
-                        const path = pathname || "";
-                        if (path.startsWith("/partner")) {
-                          router.push("/partner/jobs");
-                        } else if (path.startsWith("/admin")) {
-                          router.push("/admin/bookings");
-                        } else {
-                          router.push(`/customer/bookings/${bookingId}/tracking`);
-                        }
-                      }
-                    }}
-                    className={`w-full flex items-start gap-3 px-5 py-3.5 text-left transition-colors hover:bg-surface-container-low/60 border-b border-outline-variant/10 ${
+                    className={`w-full flex items-start gap-3 px-5 py-3.5 border-b border-outline-variant/10 transition-colors hover:bg-surface-container-low/60 ${
                       !notif.is_read ? "bg-secondary/5" : ""
                     }`}
                   >
@@ -288,19 +367,49 @@ export default function NotificationBell() {
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <p
-                          className={`text-[13px] font-bold truncate ${
-                            !notif.is_read
-                              ? "text-primary"
-                              : "text-on-surface-variant"
-                          }`}
+                      <div className="flex items-center justify-between gap-2 mb-0.5">
+                        <button
+                          onClick={async () => {
+                            setIsOpen(false);
+                            if (!notif.is_read) {
+                              await markAsRead(notif.id);
+                            }
+
+                            // Navigate based on type & metadata
+                            const bookingId = notif.booking_id || (notif.metadata?.booking_id as string | undefined);
+                            
+                            // Log structured pipeline stage 7 (User clicked notification/bell)
+                            console.log(`[Notification Pipeline] [7. TAP_ACTION] Source: Bell, BookingId: ${bookingId}, Type: ${notif.type}`);
+
+                            if (bookingId) {
+                              const path = pathname || "";
+                              if (path.startsWith("/partner")) {
+                                router.push("/partner/jobs");
+                              } else if (path.startsWith("/admin")) {
+                                router.push("/admin/bookings");
+                              } else {
+                                router.push(`/customer/bookings/${bookingId}/tracking`);
+                              }
+                            }
+                          }}
+                          className="text-left font-bold text-[13px] truncate cursor-pointer hover:underline text-primary flex-1"
                         >
                           {notif.title}
-                        </p>
-                        {!notif.is_read && (
-                          <span className="shrink-0 w-2 h-2 rounded-full bg-secondary" />
-                        )}
+                        </button>
+                        <div className="flex items-center gap-1.5">
+                          {!notif.is_read && (
+                            <span className="shrink-0 w-2 h-2 rounded-full bg-secondary" />
+                          )}
+                          <button
+                            onClick={(e) => deleteNotification(e, notif.id)}
+                            className="p-1 text-on-surface-variant/40 hover:text-error hover:bg-error/5 rounded-lg transition-colors cursor-pointer"
+                            title="Delete notification"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">
+                              delete
+                            </span>
+                          </button>
+                        </div>
                       </div>
                       <p className="text-[12px] text-on-surface-variant/70 line-clamp-2 leading-relaxed">
                         {notif.body}
@@ -309,7 +418,7 @@ export default function NotificationBell() {
                         {timeAgo(notif.created_at)}
                       </p>
                     </div>
-                  </button>
+                  </div>
                 );
               })
             )}
@@ -320,7 +429,7 @@ export default function NotificationBell() {
                 <button
                   onClick={loadMore}
                   disabled={loading}
-                  className="w-full py-2.5 text-[12px] font-bold text-secondary uppercase tracking-wider hover:bg-surface-container-low rounded-xl transition-colors disabled:opacity-50"
+                  className="w-full py-2.5 text-[12px] font-bold text-secondary uppercase tracking-wider hover:bg-surface-container-low rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   {loading ? "Loading..." : "Load More"}
                 </button>
@@ -339,3 +448,4 @@ export default function NotificationBell() {
     </div>
   );
 }
+

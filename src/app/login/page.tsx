@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { loginWithPhone } from "@/app/auth.actions";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
@@ -17,6 +18,13 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [clientError, setClientError] = useState("");
+
+  // When server action redirects back to /login?error=..., the component state
+  // is preserved (same-route navigation), so we must explicitly reset loading.
+  useEffect(() => {
+    if (errorParam) setLoading(false);
+  }, [errorParam]);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,11 +41,16 @@ function LoginForm() {
     const fd = new FormData();
     fd.set("phone", phone);
     fd.set("password", password);
-    // loginWithPhone is a server action that redirects — call it via form action
-    // We trigger it by submitting a hidden form
-    await loginWithPhone(fd);
-    // If we reach here, something went wrong (redirect didn't happen)
-    setLoading(false);
+    try {
+      await loginWithPhone(fd);
+    } catch (err) {
+      // Next.js redirect() throws a special redirect error — re-throw it so
+      // the router can handle the navigation (both success and error redirects).
+      if (isRedirectError(err)) throw err;
+      // Any unexpected network / runtime failure: reset state & show message.
+      setClientError("Something went wrong. Please try again.");
+      setLoading(false);
+    }
   };
 
   const displayError = clientError || errorParam;

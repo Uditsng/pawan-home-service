@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import Image from "next/image"
 import LogoutButton from "@/components/LogoutButton";
+import NotificationBell from "@/components/NotificationBell";
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -52,13 +53,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 const isActive = pathname === link.href || (pathname.startsWith(link.href) && link.href !== '/admin');
                 return (
                   <Link
-                    key={link.name}
-                    href={link.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-4 px-5 py-3.5 rounded-2xl transition-all font-bold text-sm ${isActive
-                      ? "bg-primary text-white shadow-xl shadow-primary/20"
-                      : "text-on-surface-variant hover:bg-surface-container-low hover:text-primary"
-                      }`}
+                     key={link.name}
+                     href={link.href}
+                     onClick={() => setMobileMenuOpen(false)}
+                     className={`flex items-center gap-4 px-5 py-3.5 rounded-2xl transition-all font-bold text-sm ${isActive
+                       ? "bg-primary text-white shadow-xl shadow-primary/20"
+                       : "text-on-surface-variant hover:bg-surface-container-low hover:text-primary"
+                       }`}
                   >
                     <span className="material-symbols-outlined text-[20px]" style={isActive ? { fontVariationSettings: "'FILL' 1" } : {}}>
                       {link.icon}
@@ -128,6 +129,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
 
           <div className="flex items-center gap-3 md:gap-5">
+            <NotificationBell />
             <LogoutButton variant="icon" />
           </div>
         </header>

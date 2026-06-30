@@ -13,6 +13,7 @@ const bricolage = Bricolage_Grotesque({
 export const metadata: Metadata = {
   title: "PHS Cleaning Company",
   description: "Premium Home Services at Your Doorstep",
+  manifest: "/manifest.json",
 };
 
 export const viewport: Viewport = {

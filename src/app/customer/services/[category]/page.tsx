@@ -2,6 +2,7 @@ import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/utils/supabase/server";
 import AddToCartButton from "@/components/AddToCartButton";
+import { ServiceIconComponent } from "@/utils/serviceIcon";
 
 interface ServiceWithSubcategory {
   id: string;
@@ -77,7 +78,7 @@ export default async function CategoryServiceListingPage({ params }: { params: P
         {/* Dynamic Service Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           {displayServices.map((service) => {
-            const iconName = service.subcategories?.icon_name || "home_repair_service";
+            const iconName = service.subcategories?.icon_name || "sparkles";
             const subcatName = service.subcategories?.subcategory_name || "Service";
 
             return (
@@ -85,7 +86,7 @@ export default async function CategoryServiceListingPage({ params }: { params: P
                 {/* Icon Section */}
                 <div className="w-full md:w-48 h-32 md:h-auto overflow-hidden bg-surface-container-low flex items-center justify-center p-4 relative">
                   <div className="w-16 h-16 md:w-20 md:h-20 bg-green-500/10 rounded-2xl flex items-center justify-center">
-                    <span className="material-symbols-outlined text-3xl md:text-4xl text-[#059669] drop-shadow-sm">{iconName}</span>
+                    <ServiceIconComponent iconName={iconName} className="w-8 h-8 md:w-10 md:h-10 text-emerald-600 drop-shadow-sm" />
                   </div>
                 </div>
                 {/* Content Section */}

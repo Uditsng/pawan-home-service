@@ -113,6 +113,10 @@ export async function updateSession(request: NextRequest) {
     throw err
   }
 
+  if (!user) {
+    supabaseResponse.cookies.delete('phs-role-cache');
+  }
+
   const pathname = request.nextUrl.pathname
 
   // ─── 1. Public pages: allow everyone through ────────────────
@@ -180,14 +184,40 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    // Fetch profile for role verification
-    const { data: rawProfile } = await supabase
-      .from('profiles')
-      .select('role, status, kyc_status')
-      .eq('id', user.id)
-      .single()
+    // Fetch profile for role verification (cached in cookie for performance and bound to user.id)
+    const cookieName = 'phs-role-cache';
+    const cachedCookie = request.cookies.get(cookieName)?.value;
+    let profile: MiddlewareProfile | null = null;
 
-    const profile = rawProfile as MiddlewareProfile | null
+    if (cachedCookie) {
+      try {
+        const parsed = JSON.parse(cachedCookie);
+        if (parsed && parsed.userId === user.id) {
+          profile = parsed.profile as MiddlewareProfile;
+        }
+      } catch {
+        // ignore JSON errors
+      }
+    }
+
+    if (!profile) {
+      const { data: rawProfile } = await supabase
+        .from('profiles')
+        .select('role, status, kyc_status')
+        .eq('id', user.id)
+        .single();
+      
+      if (rawProfile) {
+        profile = rawProfile as MiddlewareProfile;
+        supabaseResponse.cookies.set(cookieName, JSON.stringify({ userId: user.id, profile }), {
+          maxAge: 600, // 10 minutes cache
+          path: '/',
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+        });
+      }
+    }
 
     // Handle suspended/blocked accounts
     if (profile?.status === 'suspended' || profile?.status === 'blocked') {

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { ServiceIconComponent } from "@/utils/serviceIcon";
 import { deleteService } from "@/app/admin/actions";
 
 interface ServiceItem {
@@ -216,15 +218,15 @@ export function ServiceDataGrid({ services, categories }: { services: ServiceIte
                 </tr>
               ) : (
                 currentServices.map((service) => {
-                  const iconName = service.subcategories?.icon_name || "home_repair_service";
+                  const iconName = service.subcategories?.icon_name || "sparkles";
                   const catName = service.subcategories?.categories?.category_name || service.category || "Uncategorized";
                   const subcatName = service.subcategories?.subcategory_name || "General";
 
                   return (
                     <tr key={service.id} className="hover:bg-surface-container-low/30 transition-colors group">
                       <td className="px-4 py-1.5 whitespace-nowrap">
-                        <div className="w-8 h-8 bg-secondary/10 rounded-lg flex items-center justify-center">
-                          <span className="material-symbols-outlined text-secondary drop-shadow-sm text-[16px]">{iconName}</span>
+                        <div className="w-8 h-8 bg-green-500/10 rounded-lg flex items-center justify-center">
+                          <ServiceIconComponent iconName={iconName} className="w-4 h-4 text-emerald-600 drop-shadow-sm" />
                         </div>
                       </td>
                       <td className="px-4 py-1.5">

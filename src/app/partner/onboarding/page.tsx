@@ -55,7 +55,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
     title: s.title,
     subcategoryName: s.subcategories?.subcategory_name || "General",
     categoryName: s.subcategories?.categories?.category_name || "Other",
-    iconName: s.subcategories?.icon_name || "home_repair_service",
+    iconName: s.subcategories?.icon_name || "sparkles",
   }));
 
   return (

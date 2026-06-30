@@ -2,6 +2,7 @@ import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/utils/supabase/server";
 import SearchInput from "@/components/SearchInput";
 import Link from "next/link";
+import { ServiceIconComponent } from "@/utils/serviceIcon";
 
 
 export default async function SearchPage({
@@ -69,7 +70,7 @@ export default async function SearchPage({
             {results.length > 0 ? (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
                 {results.map((service) => {
-                  const iconName = service.subcategories?.icon_name || "home_repair_service";
+                  const iconName = service.subcategories?.icon_name || "sparkles";
                   const catSlug = (service.subcategories?.categories?.category_name || service.category || "services")
                     .toLowerCase()
                     .replace(/\s+/g, "-")
@@ -82,7 +83,7 @@ export default async function SearchPage({
                       className="bg-surface-container-lowest p-3 md:p-4 rounded-xl md:rounded-2xl border border-outline-variant/20 shadow-sm flex items-center gap-3 md:gap-4 hover:border-primary/30 transition-colors"
                     >
                       <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
-                        <span className="material-symbols-outlined text-[20px] md:text-[24px] text-[#059669] drop-shadow-sm">{iconName}</span>
+                        <ServiceIconComponent iconName={iconName} className="w-5 h-5 md:w-6 md:h-6 text-emerald-600 drop-shadow-sm" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-bold text-on-surface leading-tight text-sm md:text-base truncate">{service.title}</h3>

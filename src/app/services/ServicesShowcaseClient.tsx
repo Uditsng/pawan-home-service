@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
+import { ServiceIconComponent } from "@/utils/serviceIcon";
 
 interface SubcategoryWithServices {
   id: string;
@@ -356,9 +357,7 @@ export default function ServicesShowcaseClient({
                 >
                   <div className="flex items-center gap-3 md:gap-4">
                     <div className="w-10 h-10 md:w-14 md:h-14 bg-green-500/10 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-[#059669] drop-shadow-sm text-xl md:text-3xl">
-                        {cat.subcategories?.[0]?.icon_name || "home_repair_service"}
-                      </span>
+                      <ServiceIconComponent iconName={cat.subcategories?.[0]?.icon_name || "sparkles"} className="w-5 h-5 md:w-7 md:h-7 text-emerald-600 drop-shadow-sm" />
                     </div>
                     <div>
                       <h2 className="text-base sm:text-2xl md:text-3xl font-extrabold text-primary tracking-tight font-headline">
@@ -408,7 +407,7 @@ export default function ServicesShowcaseClient({
                     {/* Services Cards Grid / List */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
                       {catServices.map((service) => {
-                        const iconName = service.subcategories?.icon_name || "home_repair_service";
+                        const iconName = service.subcategories?.icon_name || "sparkles";
                         const subcatName = service.subcategories?.subcategory_name || "";
 
                         return (
@@ -420,9 +419,7 @@ export default function ServicesShowcaseClient({
                             >
                               {/* Left side icon */}
                               <div className="w-11 h-11 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
-                                <span className="material-symbols-outlined text-[#059669] drop-shadow-sm text-lg">
-                                  {iconName}
-                                </span>
+                                <ServiceIconComponent iconName={iconName} className="w-5 h-5 text-emerald-600 drop-shadow-sm" />
                               </div>
 
                               {/* Center details */}
@@ -471,9 +468,7 @@ export default function ServicesShowcaseClient({
                             >
                               <div>
                                 <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform shrink-0">
-                                  <span className="material-symbols-outlined text-[#059669] drop-shadow-sm text-xl">
-                                    {iconName}
-                                  </span>
+                                  <ServiceIconComponent iconName={iconName} className="w-6 h-6 text-emerald-600 drop-shadow-sm" />
                                 </div>
 
                                 <h3 className="font-bold text-on-surface text-base md:text-lg mb-1 font-headline leading-tight group-hover:text-primary transition-colors line-clamp-1">

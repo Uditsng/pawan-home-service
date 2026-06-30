@@ -3,6 +3,7 @@ import Image from "next/image";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import CartClearer from "./CartClearer";
+import { ServiceIconComponent } from "@/utils/serviceIcon";
 
 interface ProfilePartner {
   full_name: string;
@@ -206,7 +207,7 @@ export default async function CheckoutSuccessPage({
               <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-3">Service Details</p>
               {bookingsList.map((booking) => {
                 const service = booking.services;
-                const iconName = service?.subcategories?.icon_name || 'home_repair_service';
+                const iconName = service?.subcategories?.icon_name || 'sparkles';
                 const isConfirmed = booking.status === 'confirmed' && booking.partner;
 
                 return (
@@ -214,7 +215,7 @@ export default async function CheckoutSuccessPage({
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3 min-w-0">
                         <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
-                          <span className="material-symbols-outlined text-[#059669] text-xl">{iconName}</span>
+                          <ServiceIconComponent iconName={iconName} className="w-5 h-5 text-emerald-600" />
                         </div>
                         <div className="min-w-0">
                           <p className="font-bold text-sm text-on-surface leading-tight">{service?.title || "Home Service"}</p>

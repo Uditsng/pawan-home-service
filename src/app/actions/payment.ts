@@ -2,7 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import crypto from "crypto";
-import { notifyCustomer } from "@/lib/notifications";
+import { notifyCustomer, notifyAdmins } from "@/lib/notifications";
 import { triggerDispatchBatch } from "@/app/actions/dispatch";
 
 export interface RazorpayOrderResult {
@@ -456,6 +456,14 @@ export async function verifyRazorpayPaymentAction(payload: {
       { booking_id: booking.id, service_title: service.title }
     );
 
+    // Notify Admins
+    void notifyAdmins(
+      "New Booking Placed",
+      `A new booking for ${service.title} has been placed by ${user.email}.`,
+      "booking_created",
+      { booking_id: booking.id }
+    );
+
     return { success: true, bookingId: booking.id };
   } else if (payload.serviceIds && payload.serviceIds.length > 0) {
     // Multi-service Cart Checkout
@@ -609,6 +617,14 @@ export async function verifyRazorpayPaymentAction(payload: {
         `Your booking for ${service.title} on ${payload.date} at ${payload.time} has been placed. We are matching a professional.`,
         "booking_created",
         { booking_id: booking.id, service_title: service.title }
+      );
+
+      // Notify Admins
+      void notifyAdmins(
+        "New Booking Placed",
+        `A new booking for ${service.title} has been placed by ${user.email}.`,
+        "booking_created",
+        { booking_id: booking.id }
       );
     }
 

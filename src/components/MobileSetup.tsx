@@ -3,7 +3,8 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { PluginListenerHandle } from "@capacitor/core";
-import { registerTokenAction } from "@/app/actions/notification-tokens";
+import { registerTokenAction, deleteTokenAction } from "@/app/actions/notification-tokens";
+import { createClient } from "@/utils/supabase/client";
 
 export default function MobileSetup() {
   const pathname = usePathname();
@@ -86,7 +87,7 @@ export default function MobileSetup() {
         // 2b. Register with FCM/APNs
         await PushNotifications.register();
 
-        // 2c. Create the custom notification channel for Android
+        // 2c. Create the custom notification channels for Android
         if (Capacitor.getPlatform() === "android") {
           try {
             await PushNotifications.createChannel({
@@ -98,20 +99,37 @@ export default function MobileSetup() {
               sound: "service_alert", // Maps to android/app/src/main/res/raw/service_alert.wav
               vibration: true,
             });
-            console.log("[Push] Custom notification channel 'service_assignment' created/verified.");
+            await PushNotifications.createChannel({
+              id: "phs_bookings",
+              name: "Bookings and General",
+              description: "General notifications for bookings and account updates",
+              importance: 4, // Importance.HIGH (4)
+              visibility: 1, // Visibility.PUBLIC (1)
+              vibration: true,
+            });
+            console.log("[Push] Custom notification channels 'service_assignment' & 'phs_bookings' created/verified.");
           } catch (channelErr) {
-            console.error("[Push] Failed to create custom notification channel:", channelErr);
+            console.error("[Push] Failed to create custom notification channels:", channelErr);
           }
         }
 
         // 2d. On successful registration, save token in Supabase
         registrationListener = await PushNotifications.addListener("registration", async (token) => {
           const platform = Capacitor.getPlatform() as "android" | "ios";
-          console.log(`[Push] Device registered. Token: ${token.value.substring(0, 10)}... Platform: ${platform}`);
           
+          // Use localStorage strictly as a performance cache
+          const cachedToken = localStorage.getItem("fcm_token");
+          if (cachedToken === token.value) {
+            console.log("[Push] Token matches cache. Skipping server action write.");
+            return;
+          }
+
+          console.log(`[Push] Device registered. Token: ${token.value.substring(0, 10)}... Platform: ${platform}`);
           try {
             const res = await registerTokenAction(token.value, platform);
-            if (!res.success) {
+            if (res.success) {
+              localStorage.setItem("fcm_token", token.value);
+            } else {
               console.error("[Push] Server failed to register token:", res.error);
             }
           } catch (serverErr) {
@@ -133,6 +151,9 @@ export default function MobileSetup() {
           const isPartnerRoute = currentPath.startsWith("/partner");
           const isPartnerJobAlert = type === "new_job_offer" || (type === "partner_assigned" && isPartnerRoute);
 
+          // Log structured pipeline stage 6 (OS / foreground client receipt)
+          console.log(`[Notification Pipeline] [6. OS_DELIVERY] State: Foreground, Title: "${notification.title}", Type: ${type}`);
+
           // Schedule local notification to display manually in foreground
           try {
             await LocalNotifications.schedule({
@@ -149,15 +170,13 @@ export default function MobileSetup() {
                 }
               ]
             });
-            console.log("[Push] Scheduled local notification for foreground display. Custom sound: " + isPartnerJobAlert);
           } catch (localErr) {
             console.error("[Push] Failed to schedule local notification:", localErr);
           }
         });
 
-        // 2g. Routing Helper for click actions
+        // 2g. Routing Helper for click actions with normal authorization checks
         const handleNotificationClick = (data: Record<string, unknown> | null | undefined) => {
-          console.log("[Push/Local] Routing click action with data:", data);
           if (!data) return;
 
           let bookingId: unknown = data.booking_id;
@@ -174,9 +193,17 @@ export default function MobileSetup() {
             }
           }
 
+          const type = data.type as string | undefined;
+
+          // Log structured pipeline stage 7 (User opened notification / tap)
+          console.log(`[Notification Pipeline] [7. TAP_ACTION] Source: Push, BookingId: ${bookingId}, Type: ${type}`);
+
           if (bookingId) {
             const bookingIdStr = String(bookingId);
             const currentPath = window.location.pathname;
+
+            // Route to correct dashboard. Next.js middleware and target pages
+            // will enforce strict authentication and ownership checks.
             if (currentPath.startsWith("/partner")) {
               router.push("/partner/jobs");
             } else if (currentPath.startsWith("/admin")) {
@@ -215,5 +242,59 @@ export default function MobileSetup() {
     };
   }, [router]);
 
+  // ─── 3. Auth Listener for Dynamic Token Setup & Cleanup ───
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const supabase = createClient();
+
+    const handleAuthChange = async (event: string, session: any) => {
+      const { Capacitor } = await import("@capacitor/core");
+      if (!Capacitor.isNativePlatform()) return;
+
+      const { PushNotifications } = await import("@capacitor/push-notifications");
+
+      if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
+        if (session?.user) {
+          try {
+            console.log(`[Notification Pipeline] [AUTH_CHANGE] SIGNED_IN. Registering push notifications.`);
+            let permStatus = await PushNotifications.checkPermissions();
+            if (permStatus.receive === "prompt") {
+              permStatus = await PushNotifications.requestPermissions();
+            }
+            if (permStatus.receive === "granted") {
+              await PushNotifications.register();
+            }
+          } catch (err) {
+            console.error("Failed to register push token on sign in:", err);
+          }
+        }
+      } else if (event === "SIGNED_OUT") {
+        try {
+          console.log(`[Notification Pipeline] [AUTH_CHANGE] SIGNED_OUT. Cleaning up push token.`);
+          const token = localStorage.getItem("fcm_token");
+          // Capture userId from the session that just ended — Supabase fires SIGNED_OUT
+          // after clearing auth state, so auth.getUser() returns null on the server.
+          // We pass it explicitly so the server action can still delete the DB row.
+          const userId = session?.user?.id ?? undefined;
+          if (token) {
+            await deleteTokenAction(token, userId);
+            localStorage.removeItem("fcm_token");
+          }
+          await PushNotifications.removeAllListeners();
+        } catch (err) {
+          console.error("Failed to clean up push token on sign out:", err);
+        }
+      }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   return null;
 }
+

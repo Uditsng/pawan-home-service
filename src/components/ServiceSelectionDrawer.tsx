@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ServiceIconComponent } from "@/utils/serviceIcon";
 
 interface Service {
   id: string;
@@ -165,9 +166,7 @@ export default function ServiceSelectionDrawer({ services, initialSelectedServic
                     >
                       <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-transform ${isSelected ? "scale-105 bg-white shadow-sm" : "bg-green-500/10"
                         }`}>
-                        <span className="material-symbols-outlined text-[18px] text-[#059669] drop-shadow-sm">
-                          {service.iconName}
-                        </span>
+                        <ServiceIconComponent iconName={service.iconName} className="w-4 h-4 text-emerald-600 drop-shadow-sm" />
                       </div>
                       <span className="font-bold text-xs text-primary leading-tight line-clamp-2">
                         {service.title}

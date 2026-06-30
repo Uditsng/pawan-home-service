@@ -3,7 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import type { BookingStatus } from "@/lib/types";
-import { notifyCustomer, notifyPartner } from "@/lib/notifications";
+import { notifyCustomer, notifyPartner, notifyAdmins } from "@/lib/notifications";
 import crypto from "crypto";
 import { triggerDispatchBatch } from "@/app/actions/dispatch";
 
@@ -107,6 +107,14 @@ export async function rejectJob(
         status: "pending" as BookingStatus,
       })
       .eq("id", bookingId);
+
+    // Notify Admins about failed auto-assignment
+    void notifyAdmins(
+      "Job Assignment Failed",
+      `Booking #${bookingId.substring(0, 8)} has no available professionals after rejection. Manual assignment required.`,
+      "partner_reassigned",
+      { booking_id: bookingId }
+    );
 
     await logBookingEvent(
       supabase,

@@ -3,6 +3,7 @@
 import { useState, useActionState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ImageUploadField } from "@/components/ui/ImageUploadField";
+import { ServiceIconComponent } from "@/utils/serviceIcon";
 
 type Subcategory = {
   id: string;
@@ -72,7 +73,7 @@ export function EditServiceForm({
     });
   };
   
-  const initialIcon = categories.flatMap(c => c.subcategories).find(s => s.id === initialData.subcategory_id)?.icon_name || "home";
+  const initialIcon = categories.flatMap(c => c.subcategories).find(s => s.id === initialData.subcategory_id)?.icon_name || "sparkles";
   const [selectedIcon, setSelectedIcon] = useState<string>(initialIcon);
   
   const pageContent = initialData.page_content || {};
@@ -160,10 +161,8 @@ export function EditServiceForm({
                   </optgroup>
                 ))}
               </select>
-              <div className="rounded-xl bg-green-500/10 p-3 flex items-center justify-center min-w-[56px]">
-                <span className="material-symbols-outlined text-success drop-shadow-sm">
-                  {selectedIcon}
-                </span>
+              <div className="rounded-xl bg-green-500/10 p-3 flex items-center justify-center min-w-[44px] shrink-0">
+                <ServiceIconComponent iconName={selectedIcon} className="w-5 h-5 text-emerald-600 drop-shadow-sm" />
               </div>
             </div>
           </div>

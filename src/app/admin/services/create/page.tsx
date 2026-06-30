@@ -14,6 +14,36 @@ export default async function AdminCreateServicePage() {
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
   if (!profile || profile.role !== 'admin') redirect('/');
 
+  // ── Server action: create a new category ──────────────────────────────────
+  async function addCategoryAction(name: string) {
+    "use server";
+    await requireAdmin();
+    const db = await createClient();
+    const { data, error } = await db
+      .from("categories")
+      .insert({ category_name: name })
+      .select("id, category_name")
+      .single();
+    if (error) return { error: error.message };
+    revalidatePath("/admin/services/create");
+    return { id: data.id, category_name: data.category_name };
+  }
+
+  // ── Server action: create a new subcategory ───────────────────────────────
+  async function addSubcategoryAction(categoryId: string, name: string, iconName: string) {
+    "use server";
+    await requireAdmin();
+    const db = await createClient();
+    const { data, error } = await db
+      .from("subcategories")
+      .insert({ category_id: categoryId, subcategory_name: name, icon_name: iconName })
+      .select("id, subcategory_name, icon_name, category_id")
+      .single();
+    if (error) return { error: error.message };
+    revalidatePath("/admin/services/create");
+    return { id: data.id, subcategory_name: data.subcategory_name, icon_name: data.icon_name, category_id: data.category_id };
+  }
+
   // Fetch categories and subcategories
   const { data: categoriesData } = await supabase
     .from('categories')
@@ -131,7 +161,12 @@ export default async function AdminCreateServicePage() {
         <h1 className="text-3xl font-bold font-headline text-primary">Add New Service</h1>
       </div>
 
-      <CreateServiceForm categories={categoriesData || []} action={createServiceAction} />
+      <CreateServiceForm
+        categories={categoriesData || []}
+        action={createServiceAction}
+        addCategoryAction={addCategoryAction}
+        addSubcategoryAction={addSubcategoryAction}
+      />
     </div>
   );
 }

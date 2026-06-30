@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import Image from "next/image";
 import HourlyBookingSection from "@/components/HourlyBookingSection";
+import { ServiceIconComponent } from "@/utils/serviceIcon";
 
 interface ServicePageContent {
   about_text?: string;
@@ -86,7 +87,7 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
   }
 
   const content = service.page_content || {};
-  const iconName = service.subcategories?.icon_name || "home_repair_service";
+  const iconName = service.subcategories?.icon_name || "sparkles";
 
   const catImageMap: Record<string, string> = {
     'pest_control': '/assets/indian_pest_control_pro_1776155620526.png',
@@ -108,7 +109,7 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
             {/* Icon + Title */}
             <div className="flex items-center gap-4 mb-4">
               <div className="w-14 h-14 md:w-16 md:h-16 bg-green-500/10 rounded-2xl flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-2xl md:text-3xl text-[#059669] drop-shadow-sm">{iconName}</span>
+                <ServiceIconComponent iconName={iconName} className="w-7 h-7 md:w-8 md:h-8 text-emerald-600 drop-shadow-sm" />
               </div>
               <div>
                 <h1 className="text-2xl md:text-4xl lg:text-5xl font-extrabold text-on-surface font-headline tracking-tight">{service.title}</h1>

@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import Image from "next/image";
-import HourlyBookingSection from "@/components/HourlyBookingSection";
+import DynamicServiceConfigurator from "@/components/DynamicServiceConfigurator";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
+import { formatStartingPrice } from "@/utils/pricingEngine";
 
 interface ServicePageContent {
   about_text?: string;
@@ -25,7 +26,8 @@ interface ServiceWithSubcategory {
   page_content: ServicePageContent;
   subcategory_id: string;
   price_breakdown: string | null;
-  pricing_model?: 'fixed' | 'hourly';
+  pricing_model?: "fixed" | "hourly" | "area" | "quantity" | "inspection" | "distance" | "hybrid" | null;
+
   subcategories: {
     subcategory_name: string;
     icon_name: string;
@@ -54,24 +56,6 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
     .eq("id", resolvedParams.serviceId)
     .single() as { data: ServiceWithSubcategory | null };
 
-  let pricingOptions: { duration_minutes: number; price: number; original_price?: number }[] = [];
-  if (service && service.pricing_model === "hourly") {
-    const { data: optionsData } = await supabase
-      .from("service_duration_pricing")
-      .select("duration_minutes, price, original_price")
-      .eq("service_id", service.id)
-      .eq("is_active", true)
-      .order("duration_minutes", { ascending: true });
-    
-    if (optionsData) {
-      pricingOptions = optionsData.map(o => ({
-        duration_minutes: o.duration_minutes,
-        price: Number(o.price),
-        original_price: o.original_price ? Number(o.original_price) : undefined
-      }));
-    }
-  }
-
   if (!service) {
     return (
       <div className="min-h-screen flex items-center justify-center font-body bg-surface text-on-surface">
@@ -85,6 +69,31 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
       </div>
     );
   }
+
+  // Fetch variants, addons, and surcharge rules in parallel
+  const [variantsRes, addonsRes, rulesRes] = await Promise.all([
+    supabase
+      .from("service_variants")
+      .select("*")
+      .eq("service_id", service.id)
+      .eq("is_active", true)
+      .order("price", { ascending: true }),
+    supabase
+      .from("service_addons")
+      .select("*")
+      .eq("service_id", service.id)
+      .eq("is_active", true)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("service_pricing_rules")
+      .select("*")
+      .or(`service_id.eq.${service.id},service_id.is.null`)
+      .eq("is_active", true)
+  ]);
+
+  const variants = (variantsRes.data || []) as any[];
+  const addons = (addonsRes.data || []) as any[];
+  const rules = (rulesRes.data || []) as any[];
 
   const content = service.page_content || {};
   const iconName = service.subcategories?.icon_name || "sparkles";
@@ -131,11 +140,11 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
                 {service.original_price ? (
                   <>
                     <span className="text-on-surface-variant/50 line-through text-xs font-semibold">₹{service.original_price}</span>
-                    <span className="text-primary">₹{service.base_price}</span>
+                    <span className="text-primary">{formatStartingPrice(service.base_price, service.pricing_model ?? undefined)}</span>
                   </>
                 ) : (
                   <>
-                    <span className="material-symbols-outlined text-primary text-xs md:text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>currency_rupee</span> {service.base_price}
+                    <span className="text-primary">{formatStartingPrice(service.base_price, service.pricing_model ?? undefined)}</span>
                   </>
                 )}
               </span>
@@ -194,65 +203,15 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
         </section>
 
         {/* Pricing / Booking Section */}
-        {service.pricing_model === "hourly" ? (
-          <HourlyBookingSection
-            serviceId={service.id}
-            serviceTitle={service.title}
-            iconName={iconName}
-            categorySlug={resolvedParams.category}
-            subcategoryName={service.subcategories?.subcategory_name || "Service"}
-            basePrice={service.base_price}
-            pricingModel="hourly"
-            pricingOptions={pricingOptions}
-          />
-        ) : (
-          <>
-            {service.price_breakdown && (
-              <section className="max-w-3xl mx-auto">
-                <div className="bg-surface-container-low border border-outline-variant/20 rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-xs">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/5 rounded-full blur-2xl pointer-events-none" />
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-                    <div className="space-y-2">
-                      <div className="inline-flex items-center gap-1.5 bg-secondary/10 px-3 py-1 rounded-full text-secondary font-bold text-xs border border-secondary/20">
-                        <span className="material-symbols-outlined text-xs font-bold">payments</span> Pricing Details
-                      </div>
-                      <h3 className="text-xl md:text-2xl font-extrabold text-on-surface font-headline tracking-tighter">
-                        Transparent Pricing & Rates
-                      </h3>
-                      <p className="text-xs md:text-sm text-on-surface-variant leading-relaxed max-w-md">
-                        We charge a standard base rate for our expert service. Additional work, custom parts, or special requirements are billed transparently as per the rate details.
-                      </p>
-                    </div>
-                    <div className="bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant/20 min-w-[220px] shadow-xs flex flex-col justify-center">
-                      <span className="text-[10px] md:text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1">Base Price</span>
-                      <div className="flex items-baseline gap-1.5 mb-2">
-                        {service.original_price && (
-                          <span className="text-sm md:text-base text-on-surface-variant/50 line-through font-semibold">₹{service.original_price}</span>
-                        )}
-                        <span className="text-3xl font-black text-primary font-headline tracking-tighter">₹{service.base_price}</span>
-                      </div>
-                      <div className="border-t border-outline-variant/30 pt-2 mt-2">
-                        <span className="text-[10px] text-on-surface-variant/80 font-bold uppercase tracking-wider block mb-1">Rate Details</span>
-                        <span className="text-xs md:text-sm text-on-surface font-medium leading-tight block">{service.price_breakdown}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </section>
-            )}
-            <HourlyBookingSection
-              serviceId={service.id}
-              serviceTitle={service.title}
-              iconName={iconName}
-              categorySlug={resolvedParams.category}
-              subcategoryName={service.subcategories?.subcategory_name || "Service"}
-              basePrice={service.base_price}
-              pricingModel="fixed"
-              pricingOptions={[]}
-              packages={content.packages || []}
-            />
-          </>
-        )}
+        <DynamicServiceConfigurator
+          service={service as any}
+          variants={variants}
+          addons={addons}
+          surchargeRules={rules}
+          categorySlug={resolvedParams.category}
+          subcategoryName={service.subcategories?.subcategory_name || "Service"}
+          iconName={iconName}
+        />
 
         {/* Why Choose Us */}
         {content.why_choose_us && content.why_choose_us.length > 0 && (

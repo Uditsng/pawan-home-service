@@ -4,6 +4,8 @@ import { createClient } from "@/utils/supabase/server";
 import crypto from "crypto";
 import { notifyCustomer, notifyAdmins } from "@/lib/notifications";
 import { triggerDispatchBatch } from "@/app/actions/dispatch";
+import { calculatePricingBreakdown } from "@/utils/pricingEngine";
+import { PricingModel } from "@/lib/types";
 
 export interface RazorpayOrderResult {
   freeOrder: boolean;
@@ -38,11 +40,17 @@ export async function createRazorpayOrderAction(payload: {
   time: string;
   walletAmountToUse?: number;
   duration?: number;
+  areaSqft?: number;
+  quantity?: number;
+  distanceKm?: number;
+  variantId?: string;
+  addons?: string; // format "addon_id:qty,addon_id:qty"
   cartItems?: { serviceId: string; selectedDuration?: number }[];
   meetingLocation?: string;
   destination?: string;
   expectedBags?: string;
   selectedPackages?: string;
+  couponCode?: string;
 }): Promise<RazorpayOrderResult> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -57,160 +65,191 @@ export async function createRazorpayOrderAction(payload: {
     .single();
   if (!addr) throw new Error("Address not found");
 
-  // Calculate Subtotal
+  // 1. Calculate Prices using Centralized Pricing Engine
   let subtotal = 0;
+
   if (payload.serviceId) {
     const { data: service } = await supabase
       .from("services")
-      .select("base_price, pricing_model, page_content")
+      .select("id, base_price, pricing_model, pricing_config, gst_applicable")
       .eq("id", payload.serviceId)
       .single();
     if (!service) throw new Error("Service not found");
-    
-    if (service.pricing_model === "hourly") {
-      const durationVal = payload.duration || 60;
-      const { data: durPricing } = await supabase
-        .from("service_duration_pricing")
+
+    // Fetch variant price if applicable
+    let variantPrice: number | null = null;
+    if (payload.variantId) {
+      const { data: variant } = await supabase
+        .from("service_variants")
         .select("price")
-        .eq("service_id", payload.serviceId)
-        .eq("duration_minutes", durationVal)
+        .eq("id", payload.variantId)
         .single();
-      if (!durPricing) {
-        throw new Error(`Pricing not configured for duration ${durationVal} minutes`);
-      }
-      subtotal = Number(durPricing.price);
-    } else if (payload.selectedPackages) {
-      const pkgIds = payload.selectedPackages.split(",");
-      const pkgs = (service.page_content as any)?.packages || [];
-      let packagesSum = 0;
-      let foundAny = false;
-      for (const id of pkgIds) {
-        const match = pkgs.find((p: any) => p.id === id);
-        if (match) {
-          packagesSum += Number(match.price);
-          foundAny = true;
+      if (variant) variantPrice = Number(variant.price);
+    }
+
+    // Fetch addons price if applicable
+    const parsedAddons: { id: string; title: string; price: number; quantity: number }[] = [];
+    if (payload.addons) {
+      const pairs = payload.addons.split(",");
+      const addonIds = pairs.map((p) => p.split(":")[0]);
+      const { data: addonsData } = await supabase
+        .from("service_addons")
+        .select("id, title, price")
+        .in("id", addonIds);
+
+      if (addonsData) {
+        for (const pair of pairs) {
+          const [id, qtyStr] = pair.split(":");
+          const qty = parseInt(qtyStr, 10) || 0;
+          const match = addonsData.find((a) => a.id === id);
+          if (match && qty > 0) {
+            parsedAddons.push({
+              id: match.id,
+              title: match.title,
+              price: Number(match.price),
+              quantity: qty,
+            });
+          }
         }
       }
-      subtotal = foundAny ? packagesSum : Number(service.base_price);
-    } else {
-      subtotal = Number(service.base_price);
     }
+
+    // Fetch surcharge rules
+    const { data: rules } = await supabase
+      .from("service_pricing_rules")
+      .select("*")
+      .or(`service_id.eq.${service.id},service_id.is.null`)
+      .eq("is_active", true);
+
+    // Fetch coupon details
+    let couponObj: any = null;
+    if (payload.couponCode) {
+      const { data: couponData } = await supabase
+        .from("coupons")
+        .select("*")
+        .eq("code", payload.couponCode)
+        .eq("is_active", true)
+        .single();
+      if (couponData) {
+        const now = new Date();
+        if (!couponData.expires_at || new Date(couponData.expires_at) > now) {
+          couponObj = couponData;
+        }
+      }
+    }
+
+    // Fetch user membership details
+    let isMember = false;
+    let memberBenefit: any = null;
+    const { data: membership } = await supabase
+      .from("user_memberships")
+      .select("*, membership_plans(*)")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .gt("expires_at", new Date().toISOString())
+      .limit(1)
+      .maybeSingle();
+
+    if (membership && (membership as any).membership_plans) {
+      isMember = true;
+      memberBenefit = (membership as any).membership_plans.benefits || {};
+    }
+
+    // Run pricing engine
+    const breakdown = calculatePricingBreakdown({
+      pricingModel: (service.pricing_model || "fixed") as PricingModel,
+      basePrice: Number(service.base_price || 0),
+      pricingConfig: (service.pricing_config as any) || {},
+      variantPrice,
+      durationMinutes: payload.duration,
+      areaSqft: payload.areaSqft,
+      quantity: payload.quantity,
+      distanceKm: payload.distanceKm,
+      addons: parsedAddons,
+      scheduledDate: payload.date ? new Date(`${payload.date}T${payload.time.split(' ')[0]}:00`) : new Date(),
+      pincode: addr.pincode,
+      surchargeRules: (rules as any[]) || [],
+      coupon: couponObj,
+      isMember,
+      memberBenefit,
+      walletBalanceToUse: payload.walletAmountToUse,
+      gstApplicable: service.gst_applicable,
+    });
+
+    subtotal = breakdown.total_price;
   } else if (payload.serviceIds && payload.serviceIds.length > 0) {
+    // Multi-service cart checkouts (simplified cumulative calculation)
     const { data: services } = await supabase
       .from("services")
-      .select("id, base_price, pricing_model")
+      .select("id, base_price, pricing_model, pricing_config, gst_applicable")
       .in("id", payload.serviceIds);
+
     if (!services || services.length === 0) throw new Error("Services not found");
-    
+
+    let totalPayable = 0;
+
     for (const s of services) {
-      if (s.pricing_model === "hourly") {
-        const itemDuration = payload.cartItems?.find(ci => ci.serviceId === s.id)?.selectedDuration;
-        const durationVal = itemDuration || 60;
-        const { data: durPricing } = await supabase
-          .from("service_duration_pricing")
-          .select("price")
-          .eq("service_id", s.id)
-          .eq("duration_minutes", durationVal)
-          .single();
-        if (!durPricing) {
-          throw new Error(`Pricing not configured for duration ${durationVal} minutes on service ${s.id}`);
-        }
-        subtotal += Number(durPricing.price);
-      } else {
-        subtotal += Number(s.base_price);
-      }
+      const itemDuration = payload.cartItems?.find((ci) => ci.serviceId === s.id)?.selectedDuration;
+      
+      const breakdown = calculatePricingBreakdown({
+        pricingModel: (s.pricing_model || "fixed") as PricingModel,
+        basePrice: Number(s.base_price || 0),
+        pricingConfig: (s.pricing_config as any) || {},
+        durationMinutes: itemDuration,
+        walletBalanceToUse: 0,
+        gstApplicable: s.gst_applicable,
+      });
+      totalPayable += breakdown.total_price;
     }
+
+    // Apply wallet usage globally over order total
+    let finalPayable = totalPayable;
+    if (payload.walletAmountToUse && payload.walletAmountToUse > 0) {
+      finalPayable = Math.max(0, totalPayable - payload.walletAmountToUse);
+    }
+
+    subtotal = finalPayable;
   } else {
     throw new Error("No services specified");
   }
 
-  // Fetch platform settings for taxes & referral rewards
-  const { data: settings } = await supabase
-    .from("platform_settings")
-    .select("key, value")
-    .in("key", ["tax_rate", "referral_reward_referred"]);
-  
-  const settingsMap = (settings || []).reduce<Record<string, string>>((acc, row) => {
-    acc[row.key] = typeof row.value === "string" ? row.value : String(row.value);
-    return acc;
-  }, {});
-
-  let taxRatePercent = 18;
-  const rawTax = settingsMap["tax_rate"]?.replace(/%/g, "").trim();
-  const parsed = parseFloat(rawTax || "18");
-  if (!isNaN(parsed)) taxRatePercent = parsed;
-
-  let referralDiscount = 0;
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("referred_by, wallet_balance")
-    .eq("id", user.id)
-    .single();
-  if (profile?.referred_by) {
-    const { count: completedCount } = await supabase
-      .from("bookings")
-      .select("id", { count: "exact" })
-      .eq("customer_id", user.id)
-      .eq("status", "completed");
-    if ((completedCount ?? 0) === 0) {
-      const rawDiscount = parseFloat(settingsMap["referral_reward_referred"] || "50");
-      if (!isNaN(rawDiscount) && rawDiscount > 0) referralDiscount = rawDiscount;
-    }
-  }
-
-  const gstTax = Math.round(subtotal * (taxRatePercent / 100));
-  const totalPrice = Math.max(0, subtotal + gstTax - referralDiscount);
-
-  // Validate wallet usage
-  let walletAmountToUse = Number(payload.walletAmountToUse || 0);
-  if (walletAmountToUse > 0) {
-    const serverWalletBalance = Number(profile?.wallet_balance || 0);
-    if (walletAmountToUse > serverWalletBalance) {
-      throw new Error("Insufficient wallet balance.");
-    }
-    walletAmountToUse = Math.min(walletAmountToUse, totalPrice);
-  }
-
-  const finalPrice = Math.max(0, totalPrice - walletAmountToUse);
-
-  if (finalPrice <= 0) {
+  if (subtotal <= 0) {
     return { freeOrder: true, amount: 0, currency: "INR" };
   }
 
   const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.trim();
   const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim();
   if (!keyId || !keySecret) {
-    console.error("[Razorpay] Missing API credentials in environment.");
-    throw new Error(`Razorpay API credentials are not configured on the server. (NEXT_PUBLIC_RAZORPAY_KEY_ID configured: ${!!keyId}, RAZORPAY_KEY_SECRET configured: ${!!keySecret})`);
+    throw new Error("Razorpay credentials missing on server.");
   }
 
-  // Create order via Razorpay API
-  const authHeader = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
-  const razorpayResp = await fetch("https://api.razorpay.com/v1/orders", {
+  // Create Razorpay Order via HTTP Post to Razorpay API
+  const authHeader = "Basic " + Buffer.from(keyId + ":" + keySecret).toString("base64");
+  const response = await fetch("https://api.razorpay.com/v1/orders", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Basic ${authHeader}`,
+      Authorization: authHeader,
     },
     body: JSON.stringify({
-      amount: finalPrice * 100, // paise
+      amount: Math.round(subtotal * 100), // in paise
       currency: "INR",
       receipt: `rcpt_${Date.now()}`,
     }),
   });
 
-  if (!razorpayResp.ok) {
-    const errText = await razorpayResp.text();
-    console.error("[Razorpay] Order creation failed:", errText);
-    throw new Error(`Failed to initialize payment gateway order: ${errText}`);
+  if (!response.ok) {
+    const errBody = await response.text();
+    console.error("[Razorpay] API Error:", errBody);
+    throw new Error("Payment gateway order creation failed.");
   }
 
-  const razorpayOrder = await razorpayResp.json();
+  const orderData = await response.json();
   return {
     freeOrder: false,
-    orderId: razorpayOrder.id,
-    amount: razorpayOrder.amount,
-    currency: razorpayOrder.currency,
+    orderId: orderData.id,
+    amount: orderData.amount / 100,
+    currency: orderData.currency,
     keyId: keyId,
   };
 }
@@ -230,11 +269,18 @@ export async function verifyRazorpayPaymentAction(payload: {
   time: string;
   walletAmountToUse?: number;
   duration?: number;
+  areaSqft?: number;
+  quantity?: number;
+  distanceKm?: number;
+  variantId?: string;
+  addons?: string;
   cartItems?: { serviceId: string; selectedDuration?: number }[];
   meetingLocation?: string;
   destination?: string;
   expectedBags?: string;
   selectedPackages?: string;
+  couponCode?: string;
+  formAnswers?: string; // JSON String of dynamic fields
 }): Promise<VerificationResult> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -257,7 +303,7 @@ export async function verifyRazorpayPaymentAction(payload: {
       console.error("[Razorpay] Invalid signature detected. Possible tampering attempt.");
       return {
         success: false,
-        error: `Payment verification failed (signature mismatch). Please check that your API keys are correct.`,
+        error: `Payment verification failed (signature mismatch).`,
       };
     }
   }
@@ -272,56 +318,13 @@ export async function verifyRazorpayPaymentAction(payload: {
   if (!addr) return { success: false, error: "Address not found." };
   const typedAddr = addr as unknown as DBAddress;
 
-  // 3. Fetch settings for price checks
-  const { data: settings } = await supabase
-    .from("platform_settings")
-    .select("key, value")
-    .in("key", ["tax_rate", "referral_reward_referred"]);
-  
-  const settingsMap = (settings || []).reduce<Record<string, string>>((acc, row) => {
-    acc[row.key] = typeof row.value === "string" ? row.value : String(row.value);
-    return acc;
-  }, {});
+  // 3. Parse date and time in IST
+  const [timeStr, modifier] = payload.time.split(" ");
+  let [hours, minutes] = timeStr.split(":").map(Number);
+  if (modifier === "PM" && hours !== 12) hours += 12;
+  if (modifier === "AM" && hours === 12) hours = 0;
 
-  let taxRatePercent = 18;
-  const rawTax = settingsMap["tax_rate"]?.replace(/%/g, "").trim();
-  const parsed = parseFloat(rawTax || "18");
-  if (!isNaN(parsed)) taxRatePercent = parsed;
-
-  let referralDiscount = 0;
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("referred_by, wallet_balance")
-    .eq("id", user.id)
-    .single();
-  if (profile?.referred_by) {
-    const { count: completedCount } = await supabase
-      .from("bookings")
-      .select("id", { count: "exact" })
-      .eq("customer_id", user.id)
-      .eq("status", "completed");
-    if ((completedCount ?? 0) === 0) {
-      const rawDiscount = parseFloat(settingsMap["referral_reward_referred"] || "50");
-      if (!isNaN(rawDiscount) && rawDiscount > 0) referralDiscount = rawDiscount;
-    }
-  }
-
-  // Verify wallet balance on server
-  const walletAmountToUse = Number(payload.walletAmountToUse || 0);
-  if (walletAmountToUse > 0) {
-    const serverWalletBalance = Number(profile?.wallet_balance || 0);
-    if (walletAmountToUse > serverWalletBalance) {
-      return { success: false, error: "Insufficient wallet balance." };
-    }
-  }
-
-  // Parse time and date in IST (UTC+05:30) to prevent server/client timezone discrepancies
-  const [timeStr, modifier] = payload.time.split(' ');
-  let [hours, minutes] = timeStr.split(':').map(Number);
-  if (modifier === 'PM' && hours !== 12) hours += 12;
-  if (modifier === 'AM' && hours === 12) hours = 0;
-
-  const isoStr = `${payload.date}T${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00+05:30`;
+  const isoStr = `${payload.date}T${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:00+05:30`;
   const timestamp = new Date(isoStr);
 
   // 4. Create Database Records
@@ -329,71 +332,136 @@ export async function verifyRazorpayPaymentAction(payload: {
     // Single service booking
     const { data: service } = await supabase
       .from("services")
-      .select("id, title, base_price, pricing_model, page_content")
+      .select("id, title, base_price, pricing_model, pricing_config, gst_applicable")
       .eq("id", payload.serviceId)
       .single();
     if (!service) return { success: false, error: "Service not found." };
 
-    let basePrice = Number(service.base_price);
-    let selectedDurationMinutes: number | null = null;
-    let formattedNotes: string | null = null;
-
-    if (service.pricing_model === "hourly") {
-      selectedDurationMinutes = payload.duration || 60;
-      const { data: durPricing } = await supabase
-        .from("service_duration_pricing")
+    // Fetch variant price
+    let variantPrice: number | null = null;
+    if (payload.variantId) {
+      const { data: variant } = await supabase
+        .from("service_variants")
         .select("price")
-        .eq("service_id", service.id)
-        .eq("duration_minutes", selectedDurationMinutes)
+        .eq("id", payload.variantId)
         .single();
-      if (!durPricing) {
-        return { success: false, error: `Pricing not configured for duration ${selectedDurationMinutes} minutes.` };
-      }
-      basePrice = Number(durPricing.price);
-    } else if (payload.selectedPackages) {
-      const pkgIds = payload.selectedPackages.split(",");
-      const pkgs = (service.page_content as any)?.packages || [];
-      let packagesSum = 0;
-      const selectedTitles: string[] = [];
-      for (const id of pkgIds) {
-        const match = pkgs.find((p: any) => p.id === id);
-        if (match) {
-          packagesSum += Number(match.price);
-          selectedTitles.push(`${match.title} (₹${match.price})`);
+      if (variant) variantPrice = Number(variant.price);
+    }
+
+    // Fetch addons price
+    const parsedAddons: { id: string; title: string; price: number; quantity: number }[] = [];
+    if (payload.addons) {
+      const pairs = payload.addons.split(",");
+      const addonIds = pairs.map((p) => p.split(":")[0]);
+      const { data: addonsData } = await supabase
+        .from("service_addons")
+        .select("id, title, price")
+        .in("id", addonIds);
+
+      if (addonsData) {
+        for (const pair of pairs) {
+          const [id, qtyStr] = pair.split(":");
+          const qty = parseInt(qtyStr, 10) || 0;
+          const match = addonsData.find((a) => a.id === id);
+          if (match && qty > 0) {
+            parsedAddons.push({
+              id: match.id,
+              title: match.title,
+              price: Number(match.price),
+              quantity: qty,
+            });
+          }
         }
-      }
-      if (selectedTitles.length > 0) {
-        basePrice = packagesSum;
-        formattedNotes = `Selected Packages: ${selectedTitles.join(", ")}`;
       }
     }
 
-    const gstTax = Math.round(basePrice * (taxRatePercent / 100));
-    const totalPrice = Math.max(0, basePrice + gstTax - referralDiscount);
+    // Fetch surcharge rules
+    const { data: rules } = await supabase
+      .from("service_pricing_rules")
+      .select("*")
+      .or(`service_id.eq.${service.id},service_id.is.null`)
+      .eq("is_active", true);
 
-    // Create booking (payment_status: paid, status: pending)
+    // Fetch coupon details
+    let couponObj: any = null;
+    if (payload.couponCode) {
+      const { data: couponData } = await supabase
+        .from("coupons")
+        .select("*")
+        .eq("code", payload.couponCode)
+        .eq("is_active", true)
+        .single();
+      if (couponData) {
+        const now = new Date();
+        if (!couponData.expires_at || new Date(couponData.expires_at) > now) {
+          couponObj = couponData;
+        }
+      }
+    }
+
+    // Fetch user membership details
+    let isMember = false;
+    let memberBenefit: any = null;
+    const { data: membership } = await supabase
+      .from("user_memberships")
+      .select("*, membership_plans(*)")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .gt("expires_at", new Date().toISOString())
+      .limit(1)
+      .maybeSingle();
+
+    if (membership && (membership as any).membership_plans) {
+      isMember = true;
+      memberBenefit = (membership as any).membership_plans.benefits || {};
+    }
+
+    // Calculate final pricing breakdown
+    const breakdown = calculatePricingBreakdown({
+      pricingModel: (service.pricing_model || "fixed") as PricingModel,
+      basePrice: Number(service.base_price || 0),
+      pricingConfig: (service.pricing_config as any) || {},
+      variantPrice,
+      durationMinutes: payload.duration,
+      areaSqft: payload.areaSqft,
+      quantity: payload.quantity,
+      distanceKm: payload.distanceKm,
+      addons: parsedAddons,
+      scheduledDate: timestamp,
+      pincode: addr.pincode,
+      surchargeRules: (rules as any[]) || [],
+      coupon: couponObj,
+      isMember,
+      memberBenefit,
+      walletBalanceToUse: payload.walletAmountToUse,
+      gstApplicable: service.gst_applicable,
+    });
+
+    const isInspection = service.pricing_model === "inspection";
+    const bookingStatus = isInspection ? "pending" : "pending"; // Standard startup is pending, but triggers autoassign
+
+    // Create booking
     const { data: booking, error: bookingError } = await supabase
       .from("bookings")
       .insert({
         service_id: service.id,
         customer_id: user.id,
-        status: "pending",
-        total_amount: totalPrice,
+        status: bookingStatus,
+        total_amount: breakdown.total_price,
         city: addr.city,
         area: typedAddr.area ?? null,
         address: addr.formatted_address,
         pincode: addr.pincode,
         scheduled_date: timestamp.toISOString(),
-        wallet_discount_applied: referralDiscount,
+        wallet_discount_applied: breakdown.wallet_discount,
         payment_status: "paid",
         pricing_model: service.pricing_model,
-        selected_duration_minutes: selectedDurationMinutes,
-        base_price: basePrice,
-        final_price: totalPrice,
+        selected_duration_minutes: payload.duration || null,
+        base_price: breakdown.base_price,
+        final_price: breakdown.total_price,
         meeting_location: payload.meetingLocation || null,
         destination: payload.destination || null,
         expected_bags: payload.expectedBags ? parseInt(payload.expectedBags, 10) : 0,
-        notes: formattedNotes,
       })
       .select("id")
       .single();
@@ -403,7 +471,54 @@ export async function verifyRazorpayPaymentAction(payload: {
       return { success: false, error: "Failed to save booking." };
     }
 
+    // Save Pricing Breakdown in public.booking_pricing
+    await supabase.from("booking_pricing").insert({
+      booking_id: booking.id,
+      base_price: breakdown.base_price,
+      hourly_price: breakdown.hourly_price,
+      area_price: breakdown.area_price,
+      quantity_price: breakdown.quantity_price,
+      distance_price: breakdown.distance_price,
+      inspection_fee: breakdown.inspection_fee,
+      travel_fee: breakdown.travel_fee,
+      surcharges: breakdown.surcharges,
+      addons_total: breakdown.addons_total,
+      addons_breakdown: breakdown.addons_breakdown,
+      gst_amount: breakdown.gst_amount,
+      discount_amount: breakdown.discount_amount,
+      coupon_discount: breakdown.coupon_discount,
+      wallet_discount: breakdown.wallet_discount,
+      total_price: breakdown.total_price,
+    });
+
+    // Save Dynamic Form Answers in public.booking_form_answers
+    if (payload.formAnswers) {
+      try {
+        const answers = JSON.parse(payload.formAnswers) as Record<string, string>;
+        const answerRows = Object.entries(answers).map(([name, value]) => ({
+          booking_id: booking.id,
+          field_name: name,
+          field_label: name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()), // fallback label
+          field_value: value,
+        }));
+        if (answerRows.length > 0) {
+          await supabase.from("booking_form_answers").insert(answerRows);
+        }
+      } catch (err) {
+        console.error("Failed to save dynamic form answers:", err);
+      }
+    }
+
+    // Save initial Booking Status History
+    await supabase.from("booking_status_history").insert({
+      booking_id: booking.id,
+      status: bookingStatus,
+      changed_by: user.id,
+      remarks: "Booking created and paid via Razorpay",
+    });
+
     // Deduct from wallet if used
+    const walletAmountToUse = Number(payload.walletAmountToUse || 0);
     if (walletAmountToUse > 0) {
       const { data: walletRes, error: walletError } = await supabase.rpc("use_wallet_balance", {
         p_user_id: user.id,
@@ -413,7 +528,6 @@ export async function verifyRazorpayPaymentAction(payload: {
 
       if (walletError || !walletRes || !walletRes.success) {
         console.error("[payment] Wallet debit failed:", walletError || walletRes?.error);
-        // Clean up booking on failure to avoid unpaid bookings
         await supabase.from("bookings").delete().eq("id", booking.id);
         return { success: false, error: walletRes?.error || "Failed to debit wallet balance." };
       }
@@ -423,7 +537,7 @@ export async function verifyRazorpayPaymentAction(payload: {
     await supabase.from("payments").insert({
       customer_id: user.id,
       booking_id: booking.id,
-      amount: totalPrice,
+      amount: breakdown.total_price,
       payment_status: "completed",
       razorpay_order_id: payload.razorpay_order_id ?? null,
       razorpay_payment_id: payload.razorpay_payment_id ?? null,
@@ -438,7 +552,7 @@ export async function verifyRazorpayPaymentAction(payload: {
       metadata: {
         customer_id: user.id,
         service_id: service.id,
-        amount: totalPrice,
+        amount: breakdown.total_price,
         wallet_amount_used: walletAmountToUse,
         payment_verified: true,
       },
@@ -469,44 +583,35 @@ export async function verifyRazorpayPaymentAction(payload: {
     // Multi-service Cart Checkout
     const { data: dbServices } = await supabase
       .from("services")
-      .select("id, title, base_price, pricing_model")
+      .select("id, title, base_price, pricing_model, pricing_config, gst_applicable")
       .in("id", payload.serviceIds);
 
     if (!dbServices || dbServices.length === 0) {
       return { success: false, error: "Services not found." };
     }
 
-    let subtotal = 0;
-    const serviceDetailsMap: Record<string, { basePrice: number; pricingModel: "fixed" | "hourly"; selectedDuration: number | null }> = {};
+    let totalOrderAmount = 0;
+    const serviceBreakdowns: Record<string, any> = {};
 
     for (const s of dbServices) {
-      let serviceBasePrice = Number(s.base_price);
-      let selectedDuration: number | null = null;
+      const itemDuration = payload.cartItems?.find((ci) => ci.serviceId === s.id)?.selectedDuration;
       
-      if (s.pricing_model === "hourly") {
-        const itemDuration = payload.cartItems?.find(ci => ci.serviceId === s.id)?.selectedDuration;
-        selectedDuration = itemDuration || 60;
-        const { data: durPricing } = await supabase
-          .from("service_duration_pricing")
-          .select("price")
-          .eq("service_id", s.id)
-          .eq("duration_minutes", selectedDuration)
-          .single();
-        if (!durPricing) {
-          return { success: false, error: `Pricing not configured for duration ${selectedDuration} minutes on service ${s.title}` };
-        }
-        serviceBasePrice = Number(durPricing.price);
-      }
-      subtotal += serviceBasePrice;
-      serviceDetailsMap[s.id] = {
-        basePrice: serviceBasePrice,
-        pricingModel: (s.pricing_model || "fixed") as "fixed" | "hourly",
-        selectedDuration,
-      };
+      const breakdown = calculatePricingBreakdown({
+        pricingModel: (s.pricing_model || "fixed") as PricingModel,
+        basePrice: Number(s.base_price || 0),
+        pricingConfig: (s.pricing_config as any) || {},
+        durationMinutes: itemDuration,
+        walletBalanceToUse: 0,
+        gstApplicable: s.gst_applicable,
+      });
+
+      totalOrderAmount += breakdown.total_price;
+      serviceBreakdowns[s.id] = breakdown;
     }
 
-    const totalTax = Math.round(subtotal * (taxRatePercent / 100));
-    const totalOrderAmount = Math.max(0, subtotal + totalTax - referralDiscount);
+    // Apply wallet balance globally
+    const walletAmountToUse = Number(payload.walletAmountToUse || 0);
+    const finalOrderAmount = Math.max(0, totalOrderAmount - walletAmountToUse);
 
     // Create Order
     const { data: order, error: orderError } = await supabase
@@ -514,7 +619,7 @@ export async function verifyRazorpayPaymentAction(payload: {
       .insert({
         customer_id: user.id,
         status: "pending",
-        total_amount: totalOrderAmount,
+        total_amount: finalOrderAmount,
         city: addr.city,
         area: typedAddr.area ?? null,
         address: addr.formatted_address,
@@ -531,7 +636,7 @@ export async function verifyRazorpayPaymentAction(payload: {
       return { success: false, error: "Failed to create order." };
     }
 
-    // Deduct from wallet if used (using order_id as generic UUID reference)
+    // Deduct from wallet if used
     if (walletAmountToUse > 0) {
       const { data: walletRes, error: walletError } = await supabase.rpc("use_wallet_balance", {
         p_user_id: user.id,
@@ -550,20 +655,17 @@ export async function verifyRazorpayPaymentAction(payload: {
     await supabase.from("payments").insert({
       customer_id: user.id,
       order_id: order.id,
-      amount: totalOrderAmount,
+      amount: finalOrderAmount,
       payment_status: "completed",
       razorpay_order_id: payload.razorpay_order_id ?? null,
       razorpay_payment_id: payload.razorpay_payment_id ?? null,
       razorpay_signature: payload.razorpay_signature ?? null,
     });
 
-    const discountPerItem = Math.round((referralDiscount / dbServices.length) * 100) / 100;
-
+    // Create individual bookings per service in cart
     for (const service of dbServices) {
-      const details = serviceDetailsMap[service.id];
-      const basePrice = details.basePrice;
-      const gstTax = Math.round(basePrice * (taxRatePercent / 100));
-      const bookingPrice = Math.max(0, basePrice + gstTax - discountPerItem);
+      const breakdown = serviceBreakdowns[service.id];
+      const itemDuration = payload.cartItems?.find((ci) => ci.serviceId === service.id)?.selectedDuration || null;
 
       const { data: booking, error: bookingError } = await supabase
         .from("bookings")
@@ -572,26 +674,50 @@ export async function verifyRazorpayPaymentAction(payload: {
           customer_id: user.id,
           order_id: order.id,
           status: "pending",
-          total_amount: bookingPrice,
+          total_amount: breakdown.total_price,
           city: addr.city,
           area: typedAddr.area ?? null,
           address: addr.formatted_address,
           pincode: addr.pincode,
           scheduled_date: timestamp.toISOString(),
-          wallet_discount_applied: discountPerItem,
           payment_status: "paid",
-          pricing_model: details.pricingModel,
-          selected_duration_minutes: details.selectedDuration,
-          base_price: basePrice,
-          final_price: bookingPrice,
-          meeting_location: payload.meetingLocation || null,
-          destination: payload.destination || null,
-          expected_bags: payload.expectedBags ? parseInt(payload.expectedBags, 10) : 0,
+          pricing_model: service.pricing_model,
+          selected_duration_minutes: itemDuration,
+          base_price: breakdown.base_price,
+          final_price: breakdown.total_price,
         })
         .select("id")
         .single();
 
       if (bookingError || !booking) continue;
+
+      // Save breakdown
+      await supabase.from("booking_pricing").insert({
+        booking_id: booking.id,
+        base_price: breakdown.base_price,
+        hourly_price: breakdown.hourly_price,
+        area_price: breakdown.area_price,
+        quantity_price: breakdown.quantity_price,
+        distance_price: breakdown.distance_price,
+        inspection_fee: breakdown.inspection_fee,
+        travel_fee: breakdown.travel_fee,
+        surcharges: breakdown.surcharges,
+        addons_total: breakdown.addons_total,
+        addons_breakdown: breakdown.addons_breakdown,
+        gst_amount: breakdown.gst_amount,
+        discount_amount: breakdown.discount_amount,
+        coupon_discount: breakdown.coupon_discount,
+        wallet_discount: breakdown.wallet_discount,
+        total_price: breakdown.total_price,
+      });
+
+      // Save initial Booking Status History
+      await supabase.from("booking_status_history").insert({
+        booking_id: booking.id,
+        status: "pending",
+        changed_by: user.id,
+        remarks: "Booking created in cart checkout",
+      });
 
       // Log event
       await supabase.from("booking_events").insert({
@@ -601,7 +727,7 @@ export async function verifyRazorpayPaymentAction(payload: {
         metadata: {
           customer_id: user.id,
           service_id: service.id,
-          amount: bookingPrice,
+          amount: breakdown.total_price,
           order_id: order.id,
           payment_verified: true,
         },

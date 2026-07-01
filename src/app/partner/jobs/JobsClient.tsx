@@ -13,6 +13,7 @@ import {
 } from "../actions";
 import type { BookingWithDetails, BookingExtension } from "@/lib/types";
 import { requestExtensionAction } from "@/app/actions/extensions";
+import QuotationWorkflow from "@/components/QuotationWorkflow";
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -98,6 +99,10 @@ export default function JobsClient({
   const [extensionJob, setExtensionJob] = useState<BookingWithDetails | null>(null);
   const [pricingOptions, setPricingOptions] = useState<{ duration_minutes: number; price: number }[]>([]);
   const [selectedExtMinutes, setSelectedExtMinutes] = useState<number>(60);
+
+  // Quotes states
+  const [quotesMap, setQuotesMap] = useState<Record<string, any>>({});
+  const [activeQuoteFormId, setActiveQuoteFormId] = useState<string | null>(null);
 
   const getHourlyTimeRemaining = useCallback((job: BookingWithDetails) => {
     if (job.status !== "in_progress" || !job.started_at || !job.selected_duration_minutes) {
@@ -261,6 +266,27 @@ export default function JobsClient({
           }
         }
       }
+
+      // Fetch quotes
+      const allJobIds = [...(assignedRes.data || []), ...(activeRes.data || [])].map((j: any) => j.id);
+      if (allJobIds.length > 0) {
+        const { data: quotes } = await supabase
+          .from("booking_quotes")
+          .select("*, booking_quote_items(*)")
+          .in("booking_id", allJobIds)
+          .order("created_at", { ascending: false });
+        
+        if (quotes) {
+          const qMap: Record<string, any> = {};
+          quotes.forEach((q: any) => {
+            if (!qMap[q.booking_id]) {
+              qMap[q.booking_id] = q;
+            }
+          });
+          setQuotesMap(qMap);
+        }
+      }
+
       if (completedRes.data) setCompleted(completedRes.data as BookingWithDetails[]);
     } catch (err) {
       console.error("Error refreshing jobs:", err);
@@ -529,10 +555,13 @@ export default function JobsClient({
       }
       if (job.status === "in_progress") {
         const isHourly = job.pricing_model === "hourly";
+        const isInspection = job.pricing_model === "inspection";
+        const hasApprovedQuote = quotesMap[job.id]?.status === "approved";
+
         return (
           <div className="flex items-center gap-2">
             <button
-              disabled={isPending}
+              disabled={isPending || (isInspection && !hasApprovedQuote)}
               onClick={() => handleAction(() => requestCompletion(job.id), "Completion OTP requested. Ask the customer for OTP.")}
               className="bg-linear-to-br from-[#00685f] to-[#008378] text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-[0_4px_12px_rgba(0,104,95,0.25)] hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 shrink-0"
             >
@@ -1083,6 +1112,110 @@ export default function JobsClient({
                             </span>
                           );
                         }
+                        return null;
+                      })()}
+                    </div>
+                  )}
+
+                  {/* Inspection Quote Creation & Info Section */}
+                  {job.pricing_model === "inspection" && (
+                    <div className="mt-3 p-3 bg-surface-container-low rounded-xl border border-outline-variant/15 text-[11px] font-semibold text-on-surface-variant font-body">
+                      {(() => {
+                        const quote = quotesMap[job.id];
+                        if (!quote) {
+                          return (
+                            <div className="space-y-3">
+                              <p className="text-xs text-on-surface-variant font-medium">No quotation submitted yet for this inspection job.</p>
+                              {activeQuoteFormId === job.id ? (
+                                <div className="border border-outline-variant/10 rounded-2xl p-4 bg-white">
+                                  <QuotationWorkflow
+                                    bookingId={job.id}
+                                    role="partner"
+                                    onSuccess={() => {
+                                      setActiveQuoteFormId(null);
+                                      void refreshJobs();
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveQuoteFormId(null)}
+                                    className="mt-3 text-xs font-bold text-on-surface-variant hover:underline"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveQuoteFormId(job.id)}
+                                  className="w-full py-2 bg-primary text-white text-xs font-bold rounded-xl hover:opacity-90 transition-opacity"
+                                >
+                                  Create Quotation
+                                </button>
+                              )}
+                            </div>
+                          );
+                        }
+                        
+                        if (quote.status === "pending_customer_approval") {
+                          return (
+                            <div className="space-y-1.5">
+                              <p className="text-xs font-bold text-amber-600 flex items-center gap-1.5">
+                                <span className="material-symbols-outlined text-[14px]">hourglass_empty</span>
+                                Quotation Pending Customer Approval: ₹{quote.total_amount}
+                              </p>
+                              <p className="text-[10px] text-on-surface-variant/65">Work should begin only after the customer approves this quote.</p>
+                            </div>
+                          );
+                        }
+
+                        if (quote.status === "approved") {
+                          return (
+                            <p className="text-xs font-bold text-green-600 flex items-center gap-1.5">
+                              <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                              Customer Approved Quotation: ₹{quote.total_amount} (Work authorized)
+                            </p>
+                          );
+                        }
+
+                        if (quote.status === "declined") {
+                          return (
+                            <div className="space-y-3">
+                              <p className="text-xs font-bold text-red-600 flex items-center gap-1.5">
+                                <span className="material-symbols-outlined text-[14px]">cancel</span>
+                                Customer Declined Quotation: ₹{quote.total_amount}
+                              </p>
+                              {activeQuoteFormId === job.id ? (
+                                <div className="border border-outline-variant/10 rounded-2xl p-4 bg-white">
+                                  <QuotationWorkflow
+                                    bookingId={job.id}
+                                    role="partner"
+                                    onSuccess={() => {
+                                      setActiveQuoteFormId(null);
+                                      void refreshJobs();
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveQuoteFormId(null)}
+                                    className="mt-3 text-xs font-bold text-on-surface-variant hover:underline"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveQuoteFormId(job.id)}
+                                  className="w-full py-2 bg-primary text-white text-xs font-bold rounded-xl hover:opacity-90 transition-opacity"
+                                >
+                                  Submit New Quotation
+                                </button>
+                              )}
+                            </div>
+                          );
+                        }
+
                         return null;
                       })()}
                     </div>

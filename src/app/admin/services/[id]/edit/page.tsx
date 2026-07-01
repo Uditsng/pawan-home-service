@@ -76,6 +76,24 @@ export default async function AdminEditServicePage({ params }: { params: Promise
     const pricing_model = (formData.get("pricing_model") as string) || "fixed";
     const duration_rates_raw = formData.get("duration_rates_json") as string;
 
+    const pricing_config_json = formData.get("pricing_config_json") as string;
+    const form_fields_json = formData.get("form_fields_json") as string;
+    const gst_applicable = formData.get("gst_applicable") === "true";
+
+    let pricing_config = {};
+    try {
+      if (pricing_config_json) pricing_config = JSON.parse(pricing_config_json);
+    } catch (e) {
+      console.error("Failed to parse pricing_config", e);
+    }
+
+    let form_fields = [];
+    try {
+      if (form_fields_json) form_fields = JSON.parse(form_fields_json);
+    } catch (e) {
+      console.error("Failed to parse form_fields", e);
+    }
+
     // Arrays separated by newline
     const includedRaw = formData.get("included_features") as string;
     const excludedRaw = formData.get("excluded_features") as string;
@@ -117,6 +135,9 @@ export default async function AdminEditServicePage({ params }: { params: Promise
       page_content,
       image_url,
       pricing_model,
+      pricing_config,
+      form_fields,
+      gst_applicable,
     }).eq("id", id);
 
     if (error) {

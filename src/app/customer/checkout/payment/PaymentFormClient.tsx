@@ -3,6 +3,7 @@
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createRazorpayOrderAction, verifyRazorpayPaymentAction } from "@/app/actions/payment";
+import { BookingPricing } from "@/lib/types";
 
 interface ServicePackage {
   id: string;
@@ -50,6 +51,14 @@ interface PaymentFormClientProps {
   referralDiscount: number;
   walletBalance?: number;
   duration?: number;
+  areaSqft?: number;
+  quantity?: number;
+  distanceKm?: number;
+  variantId?: string;
+  addons?: string;
+  formAnswers?: string;
+  couponCode?: string;
+  initialBreakdown: Omit<BookingPricing, "id" | "booking_id" | "created_at">;
   meetingLocation?: string;
   destination?: string;
   expectedBags?: string;
@@ -66,6 +75,14 @@ export default function PaymentFormClient({
   referralDiscount,
   walletBalance = 0,
   duration,
+  areaSqft,
+  quantity,
+  distanceKm,
+  variantId,
+  addons,
+  formAnswers,
+  couponCode,
+  initialBreakdown,
   meetingLocation,
   destination,
   expectedBags,
@@ -77,15 +94,13 @@ export default function PaymentFormClient({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [useWallet, setUseWallet] = useState(false);
 
-  // Price Breakdown Calculation
-  const subtotal = service.base_price;
-  const gstTax = Math.round(subtotal * (taxRatePercent / 100));
-  const totalPrice = Math.max(0, subtotal + gstTax - referralDiscount);
+  // Price Breakdown (state so we can modify it if needed, or simply read from initialBreakdown)
+  const breakdown = initialBreakdown;
 
   // Wallet Calculations
   const walletAmount = walletBalance;
-  const walletApplied = useWallet ? Math.min(walletAmount, totalPrice) : 0;
-  const finalPrice = Math.max(0, totalPrice - walletApplied);
+  const walletApplied = useWallet ? Math.min(walletAmount, breakdown.total_price) : 0;
+  const finalPrice = Math.max(0, breakdown.total_price - walletApplied);
 
   // Format Display Date
   const dateObj = new Date(`${date}T12:00:00`);
@@ -115,7 +130,7 @@ export default function PaymentFormClient({
 
     startTransition(async () => {
       try {
-        // 1. Create Razorpay order on server
+        // 1. Create Razorpay order on server passing all dynamic parameters
         const rzOrder = await createRazorpayOrderAction({
           serviceId: service.id,
           addressId: addressId,
@@ -123,6 +138,12 @@ export default function PaymentFormClient({
           time: time,
           walletAmountToUse: walletApplied,
           duration: duration,
+          areaSqft: areaSqft,
+          quantity: quantity,
+          distanceKm: distanceKm,
+          variantId: variantId,
+          addons: addons,
+          couponCode: couponCode,
           meetingLocation: meetingLocation,
           destination: destination,
           expectedBags: expectedBags,
@@ -139,6 +160,13 @@ export default function PaymentFormClient({
             time: time,
             walletAmountToUse: walletApplied,
             duration: duration,
+            areaSqft: areaSqft,
+            quantity: quantity,
+            distanceKm: distanceKm,
+            variantId: variantId,
+            addons: addons,
+            couponCode: couponCode,
+            formAnswers: formAnswers,
             meetingLocation: meetingLocation,
             destination: destination,
             expectedBags: expectedBags,
@@ -211,6 +239,13 @@ export default function PaymentFormClient({
                   time: time,
                   walletAmountToUse: walletApplied,
                   duration: duration,
+                  areaSqft: areaSqft,
+                  quantity: quantity,
+                  distanceKm: distanceKm,
+                  variantId: variantId,
+                  addons: addons,
+                  couponCode: couponCode,
+                  formAnswers: formAnswers,
                   meetingLocation: meetingLocation,
                   destination: destination,
                   expectedBags: expectedBags,
@@ -301,6 +336,18 @@ export default function PaymentFormClient({
                   ) : duration ? (
                     <p className="text-xs text-secondary font-bold mt-1">
                       Duration: {duration === 30 ? "30 Minutes" : `${duration / 60} Hour${duration / 60 === 1 ? "" : "s"}`}
+                    </p>
+                  ) : areaSqft ? (
+                    <p className="text-xs text-secondary font-bold mt-1">
+                      Area: {areaSqft} sqft
+                    </p>
+                  ) : quantity ? (
+                    <p className="text-xs text-secondary font-bold mt-1">
+                      Quantity: {quantity} units
+                    </p>
+                  ) : distanceKm ? (
+                    <p className="text-xs text-secondary font-bold mt-1">
+                      Distance: {distanceKm} KM
                     </p>
                   ) : null}
                 </div>
@@ -416,33 +463,73 @@ export default function PaymentFormClient({
 
             <div className="space-y-2.5">
               <div className="flex justify-between items-center text-sm text-on-surface-variant font-medium">
-                <span>Service Charge</span>
-                <span>₹{subtotal}</span>
+                <span>Base Rate ({service.title})</span>
+                <span className="font-bold text-on-surface">₹{breakdown.base_price}</span>
               </div>
-              <div className="flex justify-between items-center text-sm text-on-surface-variant font-medium">
-                <span>GST ({taxRatePercent}%)</span>
-                <span>₹{gstTax}</span>
-              </div>
-              <div className="flex justify-between items-center text-sm text-on-surface-variant font-medium">
-                <span>Convenience & Platform Fee</span>
-                <span className="text-secondary font-bold">FREE</span>
-              </div>
+              
+              {breakdown.addons_total > 0 && (
+                <div className="flex justify-between items-center text-sm text-on-surface-variant font-medium">
+                  <span>Add-ons Total</span>
+                  <span className="font-bold text-on-surface">₹{breakdown.addons_total}</span>
+                </div>
+              )}
+
+              {breakdown.travel_fee > 0 && (
+                <div className="flex justify-between items-center text-sm text-on-surface-variant font-medium">
+                  <span>Travel / Visit Surcharge</span>
+                  <span className="font-bold text-on-surface">₹{breakdown.travel_fee}</span>
+                </div>
+              )}
+
+              {breakdown.surcharges && breakdown.surcharges.length > 0 && (
+                <div className="space-y-1 pb-1">
+                  {breakdown.surcharges.map((s, idx) => (
+                    <div key={idx} className="flex justify-between items-center text-[13px] font-medium text-secondary">
+                      <span>{s.name}</span>
+                      <span>{s.amount < 0 ? "-" : "+"}₹{Math.abs(s.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {breakdown.gst_amount > 0 && (
+                <div className="flex justify-between items-center text-sm text-on-surface-variant font-medium">
+                  <span>GST ({taxRatePercent}%)</span>
+                  <span className="font-bold text-on-surface">₹{breakdown.gst_amount}</span>
+                </div>
+              )}
+
+              {breakdown.discount_amount > 0 && (
+                <div className="flex justify-between items-center text-sm font-bold text-green-600">
+                  <span>Membership Discount</span>
+                  <span>-₹{breakdown.discount_amount}</span>
+                </div>
+              )}
+
+              {breakdown.coupon_discount > 0 && (
+                <div className="flex justify-between items-center text-sm font-bold text-green-600">
+                  <span>Coupon Discount</span>
+                  <span>-₹{breakdown.coupon_discount}</span>
+                </div>
+              )}
+
               {referralDiscount > 0 && (
-                <div className="flex justify-between items-center text-sm font-bold">
-                  <span className="flex items-center gap-1.5 text-[#059669]">
+                <div className="flex justify-between items-center text-sm font-bold text-green-600">
+                  <span className="flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>card_giftcard</span>
                     Referral Discount
                   </span>
-                  <span className="text-[#059669]">-₹{referralDiscount}</span>
+                  <span>-₹{referralDiscount}</span>
                 </div>
               )}
+
               {useWallet && walletApplied > 0 && (
-                <div className="flex justify-between items-center text-sm font-bold">
-                  <span className="flex items-center gap-1.5 text-[#059669]">
+                <div className="flex justify-between items-center text-sm font-bold text-green-600">
+                  <span className="flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>account_balance_wallet</span>
                     Paid from Wallet
                   </span>
-                  <span className="text-[#059669]">-₹{walletApplied}</span>
+                  <span>-₹{walletApplied}</span>
                 </div>
               )}
 

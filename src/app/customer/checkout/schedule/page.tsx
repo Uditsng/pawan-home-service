@@ -25,7 +25,7 @@ export default async function CheckoutSchedulePage({ searchParams }: { searchPar
   if (serviceId) {
     const { data: serviceData, error } = await supabase
       .from("services")
-      .select("id, title, category, pricing_model, page_content")
+      .select("id, title, category, pricing_model, page_content, form_fields")
       .eq("id", serviceId)
       .single();
 
@@ -47,8 +47,9 @@ export default async function CheckoutSchedulePage({ searchParams }: { searchPar
       title: string;
       category: string;
       duration_minutes?: number;
-      pricing_model?: 'fixed' | 'hourly';
-      page_content?: any;
+      pricing_model?: "fixed" | "hourly" | "area" | "quantity" | "inspection" | "distance" | "hybrid";
+      page_content?: Record<string, unknown>;
+      form_fields?: import("@/components/DynamicBookingForm").FormFieldConfig[];
     }
 
     // Inject duration_minutes manually since it might be missing from the DB

@@ -7,6 +7,7 @@ import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import RatingSection from "@/components/RatingSection";
+import QuotationWorkflow from "@/components/QuotationWorkflow";
 import {
   rejectExtensionAction,
   createRazorpayOrderForExtensionAction,
@@ -48,7 +49,7 @@ interface BookingDetails {
   services: ServiceInfo | null;
   partner: PartnerInfo | null;
   started_at: string | null;
-  pricing_model: "fixed" | "hourly" | null;
+  pricing_model: "fixed" | "hourly" | "area" | "quantity" | "inspection" | "distance" | "hybrid" | null;
   selected_duration_minutes: number | null;
   notified_30m_remaining: boolean | null;
   notified_time_completed: boolean | null;
@@ -140,6 +141,7 @@ export default function TrackingClient({
   const [extensions, setExtensions] = useState<BookingExtension[]>(initialExtensions);
   const [isPending, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [activeQuote, setActiveQuote] = useState<any>(null);
 
   // Time remaining states
   const [timeLeft, setTimeLeft] = useState<number>(0);
@@ -215,6 +217,20 @@ export default function TrackingClient({
 
       if (freshExts) {
         setExtensions(freshExts as BookingExtension[]);
+      }
+
+      const { data: freshQuote } = await supabase
+        .from("booking_quotes")
+        .select("*, booking_quote_items(*)")
+        .eq("booking_id", initialBooking.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (freshQuote) {
+        setActiveQuote(freshQuote);
+      } else {
+        setActiveQuote(null);
       }
     } catch (err) {
       console.error("Error fetching status updates:", err);
@@ -516,6 +532,28 @@ export default function TrackingClient({
 
           {/* Main Column: Status Checklist and Booking Details */}
           <div className="lg:col-span-2 flex flex-col gap-6">
+
+            {/* Quotation Workflow Section */}
+            {activeQuote && (
+              <QuotationWorkflow
+                bookingId={booking.id}
+                role="customer"
+                activeQuote={activeQuote}
+                onSuccess={fetchUpdates}
+              />
+            )}
+
+            {booking.pricing_model === "inspection" && !activeQuote && booking.status !== "completed" && booking.status !== "cancelled" && (
+              <div className="bg-white border border-outline-variant/15 rounded-3xl p-6 shadow-xs text-center space-y-3">
+                <div className="w-12 h-12 bg-primary/5 rounded-xl flex items-center justify-center mx-auto text-primary">
+                  <span className="material-symbols-outlined text-2xl">search_insights</span>
+                </div>
+                <h4 className="font-headline font-bold text-sm text-on-surface">Inspection in Progress</h4>
+                <p className="text-xs text-on-surface-variant max-w-sm mx-auto leading-relaxed font-medium">
+                  Your professional will arrive, inspect the issue, and create a custom labor and material quotation. You will review and approve it here before work begins.
+                </p>
+              </div>
+            )}
 
             {/* Service Timeline Progress */}
             <div className="glass-panel rounded-3xl p-6 md:p-8">

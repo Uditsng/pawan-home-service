@@ -1,6 +1,8 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import PaymentFormClient from "./PaymentFormClient";
+import { calculatePricingBreakdown } from "@/utils/pricingEngine";
+import { PricingModel } from "@/lib/types";
 
 interface ServicePackage {
   id: string;
@@ -26,10 +28,34 @@ export default async function CheckoutPaymentPage({
     destination?: string;
     expectedBags?: string;
     selectedPackages?: string;
+    areaSqft?: string;
+    quantity?: string;
+    distanceKm?: string;
+    variantId?: string;
+    addons?: string;
+    formAnswers?: string;
+    couponCode?: string;
   }>;
 }) {
   const resolvedParams = await searchParams;
-  const { serviceId, date, time, addressId, duration, meetingLocation, destination, expectedBags, selectedPackages } = resolvedParams;
+  const {
+    serviceId,
+    date,
+    time,
+    addressId,
+    duration,
+    meetingLocation,
+    destination,
+    expectedBags,
+    selectedPackages,
+    areaSqft,
+    quantity,
+    distanceKm,
+    variantId,
+    addons,
+    formAnswers,
+    couponCode,
+  } = resolvedParams;
 
   if (!serviceId || !date || !time || !addressId) {
     redirect("/customer/dashboard");
@@ -42,7 +68,7 @@ export default async function CheckoutPaymentPage({
 
   const [addressResult, serviceResult, settingsResult, profileResult, completedBookingsResult] = await Promise.all([
     supabase.from("user_addresses").select("formatted_address, city, pincode, label").eq("id", addressId).eq("user_id", user.id).single(),
-    supabase.from("services").select("id, title, base_price, category, pricing_model, page_content").eq("id", serviceId).single(),
+    supabase.from("services").select("id, title, base_price, category, pricing_model, page_content, pricing_config, gst_applicable").eq("id", serviceId).single(),
     supabase.from("platform_settings").select("key, value").in("key", ["tax_rate", "referral_reward_referred"]),
     supabase.from("profiles").select("referred_by, wallet_balance").eq("id", user.id).single(),
     supabase.from("bookings").select("id", { count: "exact" }).eq("customer_id", user.id).eq("status", "completed"),
@@ -80,47 +106,107 @@ export default async function CheckoutPaymentPage({
 
   const walletBalance = Number(profileResult.data?.wallet_balance || 0);
 
-  let finalBasePrice = Number(service.base_price);
-  let parsedDuration: number | undefined = undefined;
+  // Fetch variants, addons, and surcharge rules in parallel
+  const [variantsRes, addonsRes, rulesRes] = await Promise.all([
+    supabase.from("service_variants").select("*").eq("service_id", service.id).eq("is_active", true),
+    supabase.from("service_addons").select("*").eq("service_id", service.id).eq("is_active", true),
+    supabase.from("service_pricing_rules").select("*").or(`service_id.eq.${service.id},service_id.is.null`).eq("is_active", true)
+  ]);
 
-  if (service.pricing_model === "hourly") {
-    parsedDuration = duration ? parseInt(duration, 10) : 60;
-    const { data: pricingData } = await supabase
-      .from("service_duration_pricing")
-      .select("price")
-      .eq("service_id", service.id)
-      .eq("duration_minutes", parsedDuration)
-      .single();
+  const variants = variantsRes.data || [];
+  const addonsList = addonsRes.data || [];
+  const rules = rulesRes.data || [];
 
-    if (pricingData) {
-      finalBasePrice = Number(pricingData.price);
-    }
-  } else if (selectedPackages) {
-    const pkgIds = selectedPackages.split(",");
-    const pageContent = service.page_content as unknown as ServicePageContent | null;
-    const pkgs = pageContent?.packages || [];
-    let packagesSum = 0;
-    let foundAny = false;
-    for (const id of pkgIds) {
-      const match = pkgs.find((p) => p.id === id);
-      if (match) {
-        packagesSum += Number(match.price);
-        foundAny = true;
+  // Parse variant price
+  let variantPrice: number | null = null;
+  let selectedVariant = null;
+  if (variantId) {
+    selectedVariant = variants.find(v => v.id === variantId);
+    if (selectedVariant) variantPrice = Number(selectedVariant.price);
+  }
+
+  // Parse selected addons
+  const parsedAddons: { id: string; title: string; price: number; quantity: number }[] = [];
+  if (addons) {
+    const pairs = addons.split(",");
+    for (const pair of pairs) {
+      const [id, qtyStr] = pair.split(":");
+      const qty = parseInt(qtyStr, 10) || 0;
+      const match = addonsList.find(a => a.id === id);
+      if (match && qty > 0) {
+        parsedAddons.push({
+          id: match.id,
+          title: match.title,
+          price: Number(match.price),
+          quantity: qty
+        });
       }
-    }
-    if (foundAny) {
-      finalBasePrice = packagesSum;
     }
   }
 
-  const enrichedService = {
-    ...service,
-    base_price: finalBasePrice,
-  };
+  // Fetch active coupon code
+  let couponObj: any = null;
+  if (couponCode) {
+    const { data: couponData } = await supabase
+      .from("coupons")
+      .select("*")
+      .eq("code", couponCode)
+      .eq("is_active", true)
+      .single();
+    if (couponData) {
+      const now = new Date();
+      if (!couponData.expires_at || new Date(couponData.expires_at) > now) {
+        couponObj = couponData;
+      }
+    }
+  }
+
+  // Fetch active membership benefits
+  let isMember = false;
+  let memberBenefit: any = null;
+  const { data: membership } = await supabase
+    .from("user_memberships")
+    .select("*, membership_plans(*)")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .gt("expires_at", new Date().toISOString())
+    .limit(1)
+    .maybeSingle();
+
+  if (membership && (membership as any).membership_plans) {
+    isMember = true;
+    memberBenefit = (membership as any).membership_plans.benefits || {};
+  }
+
+  // Calculate pricing breakdown
+  const durationVal = duration ? parseInt(duration, 10) : undefined;
+  const parsedAreaSqft = areaSqft ? parseInt(areaSqft, 10) : undefined;
+  const parsedQuantity = quantity ? parseInt(quantity, 10) : undefined;
+  const parsedDistanceKm = distanceKm ? parseInt(distanceKm, 10) : undefined;
+
+  const breakdown = calculatePricingBreakdown({
+    pricingModel: (service.pricing_model || "fixed") as PricingModel,
+    basePrice: Number(service.base_price || 0),
+    pricingConfig: (service.pricing_config as any) || {},
+    variantPrice,
+    durationMinutes: durationVal,
+    areaSqft: parsedAreaSqft,
+    quantity: parsedQuantity,
+    distanceKm: parsedDistanceKm,
+    addons: parsedAddons,
+    scheduledDate: new Date(),
+    pincode: addressObj.pincode,
+    surchargeRules: rules as any[],
+    coupon: couponObj,
+    isMember,
+    memberBenefit,
+    walletBalanceToUse: 0, // calculated dynamically in form client
+    gstApplicable: service.gst_applicable,
+  });
 
   return (
     <PaymentFormClient
-      service={enrichedService}
+      service={service as any}
       addressObj={addressObj}
       addressId={addressId}
       date={date}
@@ -128,7 +214,15 @@ export default async function CheckoutPaymentPage({
       taxRatePercent={taxRatePercent}
       referralDiscount={referralDiscount}
       walletBalance={walletBalance}
-      duration={parsedDuration}
+      duration={durationVal}
+      areaSqft={parsedAreaSqft}
+      quantity={parsedQuantity}
+      distanceKm={parsedDistanceKm}
+      variantId={variantId}
+      addons={addons}
+      formAnswers={formAnswers}
+      couponCode={couponCode}
+      initialBreakdown={breakdown}
       meetingLocation={meetingLocation}
       destination={destination}
       expectedBags={expectedBags}

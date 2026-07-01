@@ -149,7 +149,12 @@ export default function MobileSetup() {
           const type = notification.data?.type;
           const currentPath = window.location.pathname;
           const isPartnerRoute = currentPath.startsWith("/partner");
-          const isPartnerJobAlert = type === "new_job_offer" || (type === "partner_assigned" && isPartnerRoute);
+          // A partner receives new_job_offer and partner_assigned regardless of
+          // what screen they are on. extension_requested is also a high-alert type.
+          const isPartnerJobAlert =
+            type === "new_job_offer" ||
+            type === "partner_assigned" ||
+            (type === "extension_requested" && isPartnerRoute);
 
           // Log structured pipeline stage 6 (OS / foreground client receipt)
           console.log(`[Notification Pipeline] [6. OS_DELIVERY] State: Foreground, Title: "${notification.title}", Type: ${type}`);

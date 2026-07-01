@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
+import { formatStartingPrice } from "@/utils/pricingEngine";
 
 interface SubcategoryWithServices {
   id: string;
@@ -26,6 +27,7 @@ interface ServiceRow {
   is_active: boolean;
   subcategory_id: string;
   duration_minutes?: number;
+  pricing_model?: string | null;
   subcategories: {
     subcategory_name: string;
     icon_name: string;
@@ -449,7 +451,7 @@ export default function ServicesShowcaseClient({
                                   {service.original_price && (
                                     <span className="text-[10px] text-on-surface-variant/50 line-through">₹{service.original_price}</span>
                                   )}
-                                  <span className="text-xs font-extrabold text-primary">₹{service.base_price}</span>
+                                  <span className="text-xs font-extrabold text-primary">{formatStartingPrice(service.base_price, service.pricing_model ?? undefined)}</span>
                                 </div>
                               </div>
 
@@ -496,7 +498,7 @@ export default function ServicesShowcaseClient({
                                       <span className="text-xs text-on-surface-variant/50 line-through">₹{service.original_price}</span>
                                     )}
                                     <span className="text-lg font-extrabold text-primary">
-                                      ₹{service.base_price}
+                                      {formatStartingPrice(service.base_price, service.pricing_model ?? undefined)}
                                     </span>
                                   </div>
                                 </div>

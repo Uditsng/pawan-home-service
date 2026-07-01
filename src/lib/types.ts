@@ -63,6 +63,8 @@ export interface PartnerProfile extends Profile {
   is_available: boolean;
 }
 
+export type PricingModel = 'fixed' | 'hourly' | 'area' | 'quantity' | 'inspection' | 'distance' | 'hybrid';
+
 export interface Service {
   id: string;
   category: string;
@@ -72,8 +74,28 @@ export interface Service {
   original_price?: number | null;
   is_active: boolean;
   created_at: string;
-  page_content: string | null;
-  pricing_model?: 'fixed' | 'hourly';
+  page_content: any;
+  pricing_model?: PricingModel;
+  slug?: string;
+  long_description?: string | null;
+  banner_url?: string | null;
+  seo_metadata?: any;
+  is_featured?: boolean;
+  priority?: number;
+  estimated_duration?: number | null;
+  gst_applicable?: boolean;
+  tags?: string[];
+  keywords?: string[];
+  preparation_instructions?: string | null;
+  warranty?: string | null;
+  revisit_policy?: string | null;
+  cancellation_policy?: string | null;
+  pricing_config?: any;
+  form_fields?: any;
+  scheduling_config?: any;
+  availability_config?: any;
+  policy_config?: any;
+  requirements_config?: any;
 }
 
 export interface Booking {
@@ -102,7 +124,7 @@ export interface Booking {
   arrival_otp_expires_at?: string | null;
   completion_otp_verified?: boolean | null;
   completion_otp_expires_at?: string | null;
-  pricing_model?: 'fixed' | 'hourly';
+  pricing_model?: PricingModel;
   selected_duration_minutes?: number | null;
   base_price?: number | null;
   final_price?: number | null;
@@ -122,7 +144,7 @@ export interface CartItem {
   basePrice: number;
   subcategoryName: string;
   categorySlug: string;
-  pricingModel?: 'fixed' | 'hourly';
+  pricingModel?: PricingModel;
   selectedDuration?: number;
   selectedPackages?: string;
 }
@@ -148,7 +170,7 @@ export interface OrderWithBookings extends Order {
 // ─── Joined / Enriched Models ────────────────────────────────
 
 export interface BookingWithDetails extends Booking {
-  services: { title: string; category?: string; pricing_model?: 'fixed' | 'hourly' } | null;
+  services: { title: string; category?: string; pricing_model?: PricingModel } | null;
   customer: { full_name: string } | null;
   partner: { full_name: string; avatar_url: string | null; phone: string | null } | null;
 }
@@ -282,5 +304,153 @@ export interface NotificationToken {
   fcm_token: string;
   platform: 'web' | 'android' | 'ios';
   last_seen: string;
+  created_at: string;
+}
+
+// ─── Service Engine Dynamic Modules Typings ──────────────────
+
+export interface ServiceVariant {
+  id: string;
+  service_id: string;
+  title: string;
+  description: string | null;
+  price: number;
+  original_price: number | null;
+  duration_minutes: number | null;
+  image_url: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface ServiceAddon {
+  id: string;
+  service_id: string;
+  title: string;
+  description: string | null;
+  price: number;
+  image_url: string | null;
+  is_required: boolean;
+  max_quantity: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface ServicePricingRule {
+  id: string;
+  service_id: string | null;
+  name: string;
+  rule_type: 'surcharge' | 'discount';
+  amount_type: 'fixed' | 'percentage';
+  amount_value: number;
+  conditions: any;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface ServicePackage {
+  id: string;
+  title: string;
+  description: string | null;
+  discount_percentage: number;
+  services: { service_id: string; variant_id?: string }[];
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface BookingPricing {
+  id: string;
+  booking_id: string;
+  base_price: number;
+  hourly_price: number;
+  area_price: number;
+  quantity_price: number;
+  distance_price: number;
+  inspection_fee: number;
+  travel_fee: number;
+  surcharges: { name: string; amount: number }[];
+  addons_total: number;
+  addons_breakdown: { addon_id: string; title: string; price: number; quantity: number }[];
+  gst_amount: number;
+  discount_amount: number;
+  coupon_discount: number;
+  wallet_discount: number;
+  total_price: number;
+  created_at: string;
+}
+
+export interface BookingFormAnswer {
+  id: string;
+  booking_id: string;
+  field_name: string;
+  field_label: string;
+  field_value: string | null;
+  created_at: string;
+}
+
+export interface BookingQuote {
+  id: string;
+  booking_id: string;
+  professional_id: string | null;
+  customer_id: string;
+  status: 'pending_customer_approval' | 'approved' | 'declined' | 'expired';
+  tax_rate: number;
+  discount: number;
+  total_amount: number;
+  expiry_time: string | null;
+  notes: string | null;
+  created_at: string;
+  quote_items?: BookingQuoteItem[];
+}
+
+export interface BookingQuoteItem {
+  id: string;
+  quote_id: string;
+  item_type: 'material' | 'labour';
+  name: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  created_at: string;
+}
+
+export interface BookingStatusHistory {
+  id: string;
+  booking_id: string;
+  status: string;
+  changed_by: string | null;
+  remarks: string | null;
+  created_at: string;
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  discount_type: 'fixed' | 'percentage';
+  discount_value: number;
+  min_booking_amount: number;
+  max_discount: number | null;
+  limit_per_user: number;
+  total_limit: number | null;
+  is_active: boolean;
+  expires_at: string | null;
+  created_at: string;
+}
+
+export interface MembershipPlan {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  duration_days: number;
+  benefits: { discount_percent?: number; free_cancellation?: boolean; priority_booking?: boolean };
+  created_at: string;
+}
+
+export interface UserMembership {
+  id: string;
+  user_id: string;
+  plan_id: string;
+  expires_at: string;
+  status: 'active' | 'expired' | 'cancelled';
   created_at: string;
 }

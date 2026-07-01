@@ -5,28 +5,64 @@ import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import type { AppNotification } from "@/lib/types";
 
-// ─── Icon Map ────────────────────────────────────────────────
+// ─── Icon Map ────────────────────────────────────────────
 const typeIcons: Record<string, string> = {
-  booking_created: "receipt_long",
-  booking_confirmed: "check_circle",
-  partner_assigned: "person_add",
-  partner_reassigned: "swap_horiz",
-  service_started: "play_circle",
-  service_completed: "task_alt",
-  booking_cancelled: "cancel",
-  general: "info",
+  new_job_offer:    "campaign",
+  booking_created:  "receipt_long",
+  booking_confirmed:"check_circle",
+  partner_assigned: "work",
+  partner_reassigned:"swap_horiz",
+  service_started:  "play_circle",
+  service_completed:"task_alt",
+  booking_cancelled:"cancel",
+  extension_requested: "timer",
+  general:          "info",
 };
 
 const typeColors: Record<string, string> = {
-  booking_created: "bg-blue-500/10 text-blue-600",
-  booking_confirmed: "bg-green-500/10 text-green-600",
+  new_job_offer:    "bg-secondary/15 text-primary",
+  booking_created:  "bg-blue-500/10 text-blue-600",
+  booking_confirmed:"bg-green-500/10 text-green-600",
   partner_assigned: "bg-indigo-500/10 text-indigo-600",
-  partner_reassigned: "bg-amber-500/10 text-amber-600",
-  service_started: "bg-cyan-500/10 text-cyan-600",
-  service_completed: "bg-emerald-500/10 text-emerald-600",
-  booking_cancelled: "bg-red-500/10 text-red-600",
-  general: "bg-gray-500/10 text-gray-600",
+  partner_reassigned:"bg-amber-500/10 text-amber-600",
+  service_started:  "bg-cyan-500/10 text-cyan-600",
+  service_completed:"bg-emerald-500/10 text-emerald-600",
+  booking_cancelled:"bg-red-500/10 text-red-600",
+  extension_requested: "bg-orange-500/10 text-orange-600",
+  general:          "bg-gray-500/10 text-gray-600",
 };
+
+// High-priority types that trigger in-app alert sound for partners
+const HIGH_PRIORITY_TYPES = new Set(["new_job_offer", "partner_assigned", "extension_requested"]);
+
+// Play an alert tone using Web Audio API (no external file needed)
+function playAlertTone() {
+  try {
+    const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    // Bell-like tone: 880Hz then 660Hz, short envelope
+    const frequencies = [880, 660, 880];
+    let startTime = ctx.currentTime;
+    frequencies.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(0.4, startTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.25);
+      osc.start(startTime);
+      osc.stop(startTime + 0.25);
+      startTime += i === 0 ? 0.3 : 0.28;
+    });
+    // Auto-close the audio context after tones finish
+    setTimeout(() => ctx.close(), 1200);
+  } catch {
+    // Ignore — Web Audio may not be available in all environments
+  }
+}
+
 
 // ─── Time Ago ────────────────────────────────────────────────
 function timeAgo(dateStr: string): string {
@@ -165,6 +201,20 @@ export default function NotificationBell() {
             const newNotif = payload.new as AppNotification;
             setNotifications((prev) => [newNotif, ...prev]);
             setUnreadCount((c) => c + 1);
+
+            // ── In-app alert for high-priority partner notifications ──────────
+            // When a new job offer or assignment arrives while the partner is
+            // actively using the app (foreground), FCM suppresses the system
+            // tray notification. We compensate with a Web Audio alert tone
+            // and a brief visual flash on the bell button so they never miss a job.
+            if (HIGH_PRIORITY_TYPES.has(newNotif.type)) {
+              playAlertTone();
+              const bellBtn = document.getElementById("notification-bell-trigger");
+              if (bellBtn) {
+                bellBtn.classList.add("ring-2", "ring-secondary", "ring-offset-1");
+                setTimeout(() => bellBtn.classList.remove("ring-2", "ring-secondary", "ring-offset-1"), 2000);
+              }
+            }
           } else if (payload.eventType === "DELETE") {
             const oldNotif = payload.old as { id: string };
             setNotifications((prev) => prev.filter((n) => n.id !== oldNotif.id));
@@ -184,6 +234,7 @@ export default function NotificationBell() {
       supabase.removeChannel(channel);
     };
   }, [userId, supabase, fetchUnreadCount]);
+
 
   // ─── Click outside to close ─────────────────────────────────
   useEffect(() => {
@@ -358,9 +409,10 @@ export default function NotificationBell() {
                   >
                     {/* Icon */}
                     <div
-                      className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center mt-0.5 ${colorClass}`}
+                      className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center mt-0.5 ${colorClass} ${HIGH_PRIORITY_TYPES.has(notif.type) && !notif.is_read ? "ring-1 ring-secondary/40" : ""}`}
                     >
-                      <span className="material-symbols-outlined text-[18px]">
+                      <span className={`material-symbols-outlined text-[18px] ${HIGH_PRIORITY_TYPES.has(notif.type) && !notif.is_read ? "animate-pulse" : ""}`}
+                        style={HIGH_PRIORITY_TYPES.has(notif.type) ? { fontVariationSettings: "'FILL' 1" } : undefined}>
                         {iconName}
                       </span>
                     </div>

@@ -3,6 +3,7 @@ import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/utils/supabase/server";
 import AddToCartButton from "@/components/AddToCartButton";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
+import { formatStartingPrice } from "@/utils/pricingEngine";
 
 interface ServiceWithSubcategory {
   id: string;
@@ -13,6 +14,7 @@ interface ServiceWithSubcategory {
   is_active: boolean;
   subcategory_id: string;
   category?: string;
+  pricing_model?: string | null;
   subcategories: {
     subcategory_name: string;
     icon_name: string;
@@ -98,7 +100,7 @@ export default async function CategoryServiceListingPage({ params }: { params: P
                         {service.original_price && (
                           <span className="text-on-surface-variant/50 line-through text-xs md:text-sm font-semibold">₹{service.original_price}</span>
                         )}
-                        <span className="text-secondary font-bold text-lg md:text-xl">₹{service.base_price}</span>
+                        <span className="text-secondary font-bold text-lg md:text-xl">{formatStartingPrice(service.base_price, service.pricing_model ?? undefined)}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 text-on-surface-variant text-xs md:text-sm mb-3 md:mb-4">

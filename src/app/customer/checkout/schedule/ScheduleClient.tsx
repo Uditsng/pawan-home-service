@@ -1,10 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useMemo, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
 import AddAddressModal from "@/components/AddAddressModal";
 import { useCart } from "@/lib/cart/CartContext";
+import DynamicBookingForm, { type FormFieldConfig } from "@/components/DynamicBookingForm";
 
 interface Address {
   id: string;
@@ -24,20 +25,37 @@ export default function ScheduleClient({
   duration,
   selectedPackages
 }: {
-  service: { 
-    id: string; 
-    title: string; 
-    category: string; 
-    duration_minutes: number; 
-    pricing_model?: 'fixed' | 'hourly';
-    page_content?: any;
+  service: {
+    id: string;
+    title: string;
+    category: string;
+    duration_minutes: number;
+    pricing_model?: "fixed" | "hourly" | "area" | "quantity" | "inspection" | "distance" | "hybrid";
+    page_content?: Record<string, unknown>;
+    form_fields?: FormFieldConfig[];
   } | null;
   initialAddresses: Address[];
   duration?: number;
   selectedPackages?: string;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { items, itemCount } = useCart();
+
+  const [formAnswers, setFormAnswers] = useState<Record<string, string>>({});
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  // Derive dynamic form fields — check top-level form_fields first,
+  // then fall back to page_content.form_fields (legacy placement).
+  // The JSONB data from the DB matches FormFieldConfig shape (set by admin at service creation).
+  // We cast via unknown to satisfy TypeScript since JSONB arrives untyped from Supabase.
+  const fields: FormFieldConfig[] = (() => {
+    if (Array.isArray(service?.form_fields)) return service.form_fields as FormFieldConfig[];
+    const fromContent = (service?.page_content as Record<string, unknown> | undefined)?.form_fields;
+    if (Array.isArray(fromContent)) return fromContent as unknown as FormFieldConfig[];
+    return [];
+  })();
+
 
   const [addresses, setAddresses] = useState<Address[]>(initialAddresses);
   const [selectedAddressId, setSelectedAddressId] = useState<string>(() => {
@@ -192,6 +210,21 @@ export default function ScheduleClient({
       return;
     }
 
+    // Validate dynamic form fields
+    const newErrors: Record<string, string> = {};
+    fields.forEach((f: any) => {
+      if (f.required && !formAnswers[f.name]) {
+        newErrors[f.name] = `${f.label} is required.`;
+      }
+    });
+
+    if (Object.keys(newErrors).length > 0) {
+      setFormErrors(newErrors);
+      return;
+    }
+
+    setFormErrors({});
+
     const year = selectedFullDate.getFullYear();
     const formattedMonth = (selectedFullDate.getMonth() + 1).toString().padStart(2, '0');
     const formattedDate = selectedFullDate.getDate().toString().padStart(2, '0');
@@ -203,12 +236,18 @@ export default function ScheduleClient({
         time: effectiveSelectedTime,
         addressId: selectedAddressId,
       };
-      if (duration) {
-        paramsObj.duration = duration.toString();
+
+      // Copy all existing configurator query parameters to preserve configuration
+      searchParams.forEach((value, key) => {
+        if (key !== "date" && key !== "time" && key !== "addressId") {
+          paramsObj[key] = value;
+        }
+      });
+
+      if (Object.keys(formAnswers).length > 0) {
+        paramsObj.formAnswers = JSON.stringify(formAnswers);
       }
-      if (selectedPackages) {
-        paramsObj.selectedPackages = selectedPackages;
-      }
+
       if (isCarryBuddy) {
         paramsObj.meetingLocation = meetingLocation.trim();
         paramsObj.destination = destination.trim();
@@ -528,6 +567,17 @@ export default function ScheduleClient({
             </div>
           </section>
         )}
+
+        {/* Dynamic Booking Specifications Form */}
+        {service && fields && fields.length > 0 && (
+          <section className="mt-6 mb-8">
+            <DynamicBookingForm
+              fields={fields}
+              onChange={setFormAnswers}
+              errors={formErrors}
+            />
+          </section>
+        )}
       </main>
 
       {/* Sticky Bottom Navigation */}
@@ -543,8 +593,9 @@ export default function ScheduleClient({
                       <p className="font-bold text-on-surface text-[10px] md:text-xs max-w-[200px] truncate">
                         {(() => {
                           const ids = selectedPackages.split(",");
-                          const pkgs = service.page_content?.packages || [];
-                          const titles = ids.map(id => pkgs.find((p: any) => p.id === id)?.title || id);
+                          const rawPkgs = (service.page_content as Record<string, unknown> | undefined)?.packages;
+                          const pkgs = Array.isArray(rawPkgs) ? rawPkgs as { id: string; title: string }[] : [];
+                          const titles = ids.map(id => pkgs.find(p => p.id === id)?.title || id);
                           return titles.join(", ");
                         })()}
                       </p>

@@ -2,7 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import PaymentFormClient from "./PaymentFormClient";
 import { calculatePricingBreakdown } from "@/utils/pricingEngine";
-import { PricingModel } from "@/lib/types";
+import { PricingModel, Service, ServiceVariant, ServiceAddon, ServicePricingRule, Coupon, UserMembership, MembershipPlan } from "@/lib/types";
 
 interface ServicePackage {
   id: string;
@@ -113,9 +113,9 @@ export default async function CheckoutPaymentPage({
     supabase.from("service_pricing_rules").select("*").or(`service_id.eq.${service.id},service_id.is.null`).eq("is_active", true)
   ]);
 
-  const variants = variantsRes.data || [];
-  const addonsList = addonsRes.data || [];
-  const rules = rulesRes.data || [];
+  const variants = (variantsRes.data || []) as ServiceVariant[];
+  const addonsList = (addonsRes.data || []) as ServiceAddon[];
+  const rules = (rulesRes.data || []) as ServicePricingRule[];
 
   // Parse variant price
   let variantPrice: number | null = null;
@@ -145,7 +145,7 @@ export default async function CheckoutPaymentPage({
   }
 
   // Fetch active coupon code
-  let couponObj: any = null;
+  let couponObj: Coupon | null = null;
   if (couponCode) {
     const { data: couponData } = await supabase
       .from("coupons")
@@ -156,15 +156,15 @@ export default async function CheckoutPaymentPage({
     if (couponData) {
       const now = new Date();
       if (!couponData.expires_at || new Date(couponData.expires_at) > now) {
-        couponObj = couponData;
+        couponObj = couponData as unknown as Coupon;
       }
     }
   }
 
   // Fetch active membership benefits
   let isMember = false;
-  let memberBenefit: any = null;
-  const { data: membership } = await supabase
+  let memberBenefit: MembershipPlan['benefits'] | null = null;
+  const { data: membershipData } = await supabase
     .from("user_memberships")
     .select("*, membership_plans(*)")
     .eq("user_id", user.id)
@@ -173,9 +173,15 @@ export default async function CheckoutPaymentPage({
     .limit(1)
     .maybeSingle();
 
-  if (membership && (membership as any).membership_plans) {
+  interface UserMembershipWithPlan extends UserMembership {
+    membership_plans: MembershipPlan | null;
+  }
+
+  const membership = membershipData as unknown as UserMembershipWithPlan | null;
+
+  if (membership && membership.membership_plans) {
     isMember = true;
-    memberBenefit = (membership as any).membership_plans.benefits || {};
+    memberBenefit = membership.membership_plans.benefits || {};
   }
 
   // Calculate pricing breakdown
@@ -196,7 +202,7 @@ export default async function CheckoutPaymentPage({
     addons: parsedAddons,
     scheduledDate: new Date(),
     pincode: addressObj.pincode,
-    surchargeRules: rules as any[],
+    surchargeRules: rules,
     coupon: couponObj,
     isMember,
     memberBenefit,
@@ -206,7 +212,7 @@ export default async function CheckoutPaymentPage({
 
   return (
     <PaymentFormClient
-      service={service as any}
+      service={service as unknown as Service}
       addressObj={addressObj}
       addressId={addressId}
       date={date}

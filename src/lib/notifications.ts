@@ -258,6 +258,7 @@ async function sendFcmPush(
           channelId: channelId,
           icon: "ic_notification",
           color: "#002261",
+          sound: isPartnerJobAlert ? "service_alert" : "default",
         },
       },
       // iOS-specific config

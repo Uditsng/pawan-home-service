@@ -4,6 +4,7 @@ import Image from "next/image";
 import DynamicServiceConfigurator from "@/components/DynamicServiceConfigurator";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
 import { formatStartingPrice } from "@/utils/pricingEngine";
+import { Service, ServiceVariant, ServiceAddon, ServicePricingRule } from "@/lib/types";
 
 interface ServicePageContent {
   about_text?: string;
@@ -91,9 +92,9 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
       .eq("is_active", true)
   ]);
 
-  const variants = (variantsRes.data || []) as any[];
-  const addons = (addonsRes.data || []) as any[];
-  const rules = (rulesRes.data || []) as any[];
+  const variants = (variantsRes.data || []) as ServiceVariant[];
+  const addons = (addonsRes.data || []) as ServiceAddon[];
+  const rules = (rulesRes.data || []) as ServicePricingRule[];
 
   const content = service.page_content || {};
   const iconName = service.subcategories?.icon_name || "sparkles";
@@ -204,7 +205,8 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
 
         {/* Pricing / Booking Section */}
         <DynamicServiceConfigurator
-          service={service as any}
+          key={service.id}
+          service={service as unknown as Service}
           variants={variants}
           addons={addons}
           surchargeRules={rules}

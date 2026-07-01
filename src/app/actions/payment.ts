@@ -5,7 +5,7 @@ import crypto from "crypto";
 import { notifyCustomer, notifyAdmins } from "@/lib/notifications";
 import { triggerDispatchBatch } from "@/app/actions/dispatch";
 import { calculatePricingBreakdown } from "@/utils/pricingEngine";
-import { PricingModel } from "@/lib/types";
+import { PricingModel, ServicePricingRule } from "@/lib/types";
 
 export interface RazorpayOrderResult {
   freeOrder: boolean;
@@ -168,7 +168,7 @@ export async function createRazorpayOrderAction(payload: {
       addons: parsedAddons,
       scheduledDate: payload.date ? new Date(`${payload.date}T${payload.time.split(' ')[0]}:00`) : new Date(),
       pincode: addr.pincode,
-      surchargeRules: (rules as any[]) || [],
+      surchargeRules: (rules as unknown as ServicePricingRule[]) || [],
       coupon: couponObj,
       isMember,
       memberBenefit,
@@ -429,7 +429,7 @@ export async function verifyRazorpayPaymentAction(payload: {
       addons: parsedAddons,
       scheduledDate: timestamp,
       pincode: addr.pincode,
-      surchargeRules: (rules as any[]) || [],
+      surchargeRules: (rules as unknown as ServicePricingRule[]) || [],
       coupon: couponObj,
       isMember,
       memberBenefit,

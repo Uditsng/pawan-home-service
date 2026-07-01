@@ -9,6 +9,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
 
 // ─── Register / Upsert Token ────────────────────────────────
 
@@ -44,17 +45,19 @@ export async function registerTokenAction(
     return { success: false, error: "Not authenticated." };
   }
 
+  const supabaseAdmin = createAdminClient();
+
   // ── Step 1: Evict this token from any OTHER user account ─────────────────
   // FCM tokens are device-scoped. If another account previously logged in on
   // this device, the same token may exist under a different user_id. Remove it
   // from the old owner first to prevent duplicate pushes across accounts.
-  await supabase
+  await supabaseAdmin
     .from("notification_tokens")
     .delete()
     .eq("fcm_token", fcmToken.trim())
     .neq("user_id", user.id);
 
-  await supabase
+  await supabaseAdmin
     .from("device_tokens")
     .delete()
     .eq("device_token", fcmToken.trim())
@@ -64,14 +67,14 @@ export async function registerTokenAction(
   // A user may have accumulated multiple tokens on the same device (e.g. from
   // app reinstalls or account switches). Enforce exactly 1 active token per
   // user per platform to guarantee they never receive duplicate notifications.
-  await supabase
+  await supabaseAdmin
     .from("notification_tokens")
     .delete()
     .eq("user_id", user.id)
     .eq("platform", platform)
     .neq("fcm_token", fcmToken.trim());
 
-  await supabase
+  await supabaseAdmin
     .from("device_tokens")
     .delete()
     .eq("user_id", user.id)
@@ -81,7 +84,7 @@ export async function registerTokenAction(
   console.log(`[notification-tokens] Token hygiene complete for user ${user.id}. Registering ${fcmToken.substring(0, 10)}...`);
 
   // ── Step 3: Upsert the current token ─────────────────────────────────────
-  const { error } = await supabase.from("notification_tokens").upsert(
+  const { error } = await supabaseAdmin.from("notification_tokens").upsert(
     {
       user_id: user.id,
       fcm_token: fcmToken.trim(),
@@ -98,7 +101,7 @@ export async function registerTokenAction(
     return { success: false, error: "Failed to register token." };
   }
 
-  await supabase.from("device_tokens").upsert(
+  await supabaseAdmin.from("device_tokens").upsert(
     {
       user_id: user.id,
       device_token: fcmToken.trim(),
@@ -145,7 +148,9 @@ export async function deleteTokenAction(
     return { success: false, error: "Not authenticated." };
   }
 
-  const { error } = await supabase
+  const supabaseAdmin = createAdminClient();
+
+  const { error } = await supabaseAdmin
     .from("notification_tokens")
     .delete()
     .eq("user_id", userId)
@@ -157,7 +162,7 @@ export async function deleteTokenAction(
   }
 
   // Keep device_tokens in sync
-  await supabase
+  await supabaseAdmin
     .from("device_tokens")
     .delete()
     .eq("user_id", userId)

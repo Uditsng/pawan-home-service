@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
-import { Service, ServiceVariant, ServiceAddon, PricingModel } from "@/lib/types";
+import { Service, ServiceVariant, ServiceAddon, PricingModel, ServicePricingRule } from "@/lib/types";
 import { calculatePricingBreakdown } from "@/utils/pricingEngine";
 import AddToCartButton from "@/components/AddToCartButton";
 
@@ -10,7 +10,7 @@ interface DynamicServiceConfiguratorProps {
   service: Service;
   variants: ServiceVariant[];
   addons: ServiceAddon[];
-  surchargeRules: any[];
+  surchargeRules: ServicePricingRule[];
   categorySlug: string;
   subcategoryName: string;
   iconName: string;
@@ -49,12 +49,7 @@ export default function DynamicServiceConfigurator({
 
   const [selectedAddonIds, setSelectedAddonIds] = useState<Record<string, number>>({});
 
-  // Reset/sync state on config changes
-  useEffect(() => {
-    if (variants[0]) {
-      setSelectedVariantId(variants[0].id);
-    }
-  }, [variants]);
+
 
   // Derived selected objects
   const selectedVariant = useMemo(() => {
@@ -135,11 +130,11 @@ export default function DynamicServiceConfigurator({
       params.set("quantity", quantity.toString());
       params.set("distanceKm", distanceKm.toString());
     }
-    
+
     if (selectedVariantId) {
       params.set("variantId", selectedVariantId);
     }
-    
+
     const chosenAddons = Object.entries(selectedAddonIds)
       .map(([id, qty]) => `${id}:${qty}`)
       .join(",");
@@ -181,11 +176,10 @@ export default function DynamicServiceConfigurator({
                   <div
                     key={v.id}
                     onClick={() => setSelectedVariantId(v.id)}
-                    className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between select-none active:scale-[0.99] duration-200 ${
-                      isSelected
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between select-none active:scale-[0.99] duration-200 ${isSelected
                         ? "bg-primary/5 border-primary text-primary shadow-xs"
                         : "bg-surface border-outline-variant/15 text-on-surface hover:bg-surface-container-low"
-                    }`}
+                      }`}
                   >
                     <div>
                       <h4 className="text-sm font-bold tracking-tight mb-1">{v.title}</h4>
@@ -251,11 +245,10 @@ export default function DynamicServiceConfigurator({
                       key={mins}
                       type="button"
                       onClick={() => setDurationMinutes(mins)}
-                      className={`px-4 py-2.5 rounded-xl border font-bold text-xs transition-all cursor-pointer ${
-                        isSelected
+                      className={`px-4 py-2.5 rounded-xl border font-bold text-xs transition-all cursor-pointer ${isSelected
                           ? "bg-primary text-white border-primary shadow-md shadow-primary/20"
                           : "bg-surface border-outline-variant/20 hover:bg-surface-container-low text-on-surface-variant"
-                      }`}
+                        }`}
                     >
                       {hrs} Hour{hrs > 1 ? "s" : ""}
                     </button>
@@ -436,11 +429,10 @@ export default function DynamicServiceConfigurator({
                 return (
                   <div
                     key={a.id}
-                    className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-4 ${
-                      isSelected
+                    className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-4 ${isSelected
                         ? "bg-primary/5 border-primary shadow-xs"
                         : "bg-surface border-outline-variant/10 hover:bg-surface-container-low"
-                    }`}
+                      }`}
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1">
@@ -488,7 +480,7 @@ export default function DynamicServiceConfigurator({
       <div className="lg:col-span-1 space-y-6">
         <section className="bg-surface-container-low border border-outline-variant/20 rounded-3xl p-5 md:p-6 shadow-xs sticky top-6">
           <div className="absolute top-0 right-0 w-24 h-24 bg-secondary/5 rounded-full blur-xl pointer-events-none" />
-          
+
           <h3 className="text-base font-bold text-primary font-headline mb-4 flex items-center gap-2 relative z-10">
             <span className="material-symbols-outlined text-emerald-600">receipt_long</span> Booking Summary
           </h3>

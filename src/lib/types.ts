@@ -335,6 +335,13 @@ export interface ServiceAddon {
   created_at: string;
 }
 
+export interface ServicePricingRuleConditions {
+  days_of_week?: number[];
+  hours_range?: [string, string];
+  dates?: string[];
+  pincodes?: string[];
+}
+
 export interface ServicePricingRule {
   id: string;
   service_id: string | null;
@@ -342,7 +349,7 @@ export interface ServicePricingRule {
   rule_type: 'surcharge' | 'discount';
   amount_type: 'fixed' | 'percentage';
   amount_value: number;
-  conditions: any;
+  conditions: ServicePricingRuleConditions | null;
   is_active: boolean;
   created_at: string;
 }

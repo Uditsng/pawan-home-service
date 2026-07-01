@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import type { PluginListenerHandle } from "@capacitor/core";
 import { registerTokenAction, deleteTokenAction } from "@/app/actions/notification-tokens";
 import { createClient } from "@/utils/supabase/client";
+import type { Session } from "@supabase/supabase-js";
 
 export default function MobileSetup() {
   const pathname = usePathname();
@@ -117,13 +118,6 @@ export default function MobileSetup() {
         registrationListener = await PushNotifications.addListener("registration", async (token) => {
           const platform = Capacitor.getPlatform() as "android" | "ios";
           
-          // Use localStorage strictly as a performance cache
-          const cachedToken = localStorage.getItem("fcm_token");
-          if (cachedToken === token.value) {
-            console.log("[Push] Token matches cache. Skipping server action write.");
-            return;
-          }
-
           console.log(`[Push] Device registered. Token: ${token.value.substring(0, 10)}... Platform: ${platform}`);
           try {
             const res = await registerTokenAction(token.value, platform);
@@ -170,7 +164,7 @@ export default function MobileSetup() {
                   schedule: { at: new Date(Date.now() + 50) },
                   extra: notification.data,
                   // Play custom sound and vibrate only for partner job alerts in the partner portal
-                  sound: isPartnerJobAlert ? "service_alert.wav" : undefined,
+                  sound: isPartnerJobAlert ? (Capacitor.getPlatform() === "android" ? "service_alert" : "service_alert.wav") : undefined,
                   channelId: isPartnerJobAlert ? "service_assignment" : "phs_bookings",
                 }
               ]
@@ -253,7 +247,7 @@ export default function MobileSetup() {
 
     const supabase = createClient();
 
-    const handleAuthChange = async (event: string, session: any) => {
+    const handleAuthChange = async (event: string, session: Session | null) => {
       const { Capacitor } = await import("@capacitor/core");
       if (!Capacitor.isNativePlatform()) return;
 
@@ -286,7 +280,6 @@ export default function MobileSetup() {
             await deleteTokenAction(token, userId);
             localStorage.removeItem("fcm_token");
           }
-          await PushNotifications.removeAllListeners();
         } catch (err) {
           console.error("Failed to clean up push token on sign out:", err);
         }

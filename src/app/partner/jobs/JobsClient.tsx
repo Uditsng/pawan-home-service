@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect, useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
+import { useRefreshableData } from "@/lib/refresh/RefreshContext";
 import {
   rejectJob,
   startRoute,
@@ -11,7 +12,7 @@ import {
   verifyCompletionOtp,
   claimJobOffer,
 } from "../actions";
-import type { BookingWithDetails, BookingExtension } from "@/lib/types";
+import type { BookingWithDetails, BookingExtension, BookingQuote } from "@/lib/types";
 import { requestExtensionAction } from "@/app/actions/extensions";
 import QuotationWorkflow from "@/components/QuotationWorkflow";
 
@@ -71,6 +72,7 @@ interface JobsClientProps {
   activeJobs: BookingWithDetails[];
   completedJobs: BookingWithDetails[];
   offeredJobs: JobOffer[];
+  partnerId: string;
 }
 
 type TabKey = "offers" | "assigned" | "active" | "completed";
@@ -80,6 +82,7 @@ export default function JobsClient({
   activeJobs,
   completedJobs,
   offeredJobs: initialOfferedJobs,
+  partnerId,
 }: JobsClientProps) {
   const [activeTab, setActiveTab]     = useState<TabKey>("offers");
   const [isPending, startTransition]  = useTransition();
@@ -88,20 +91,13 @@ export default function JobsClient({
   const [enteredOtps, setEnteredOtps]   = useState<Record<string, string>>({});
   const [currentTime, setCurrentTime]   = useState<Date>(new Date());
 
-  // Job states for polling/realtime updates
-  const [assigned, setAssigned] = useState<BookingWithDetails[]>(assignedJobs);
-  const [active, setActive] = useState<BookingWithDetails[]>(activeJobs);
-  const [completed, setCompleted] = useState<BookingWithDetails[]>(completedJobs);
-
   // Time Extension states
-  const [extensionsMap, setExtensionsMap] = useState<Record<string, BookingExtension[]>>({});
   const [extensionModalOpen, setExtensionModalOpen] = useState(false);
   const [extensionJob, setExtensionJob] = useState<BookingWithDetails | null>(null);
   const [pricingOptions, setPricingOptions] = useState<{ duration_minutes: number; price: number }[]>([]);
   const [selectedExtMinutes, setSelectedExtMinutes] = useState<number>(60);
 
   // Quotes states
-  const [quotesMap, setQuotesMap] = useState<Record<string, any>>({});
   const [activeQuoteFormId, setActiveQuoteFormId] = useState<string | null>(null);
 
   const getHourlyTimeRemaining = useCallback((job: BookingWithDetails) => {
@@ -130,9 +126,6 @@ export default function JobsClient({
     return () => clearInterval(timer);
   }, []);
 
-  // Live job offers (updated via Realtime)
-  const [offeredJobs, setOfferedJobs] = useState<JobOffer[]>(initialOfferedJobs);
-
   // Reject modal state
   const [rejectModalOpen, setRejectModalOpen]   = useState(false);
   const [rejectBookingId, setRejectBookingId]   = useState<string | null>(null);
@@ -142,6 +135,8 @@ export default function JobsClient({
   const [claimingId, setClaimingId] = useState<string | null>(null);
 
   // ─── Supabase Realtime: subscribe to my job offers ──────────
+  const [offeredJobs, setOfferedJobs] = useState<JobOffer[]>(initialOfferedJobs);
+
   const refreshOffers = useCallback(async () => {
     const supabase = createClient();
     const { data } = await supabase
@@ -216,82 +211,126 @@ export default function JobsClient({
     };
   }, [refreshOffers]);
 
-  // Polling for active jobs & extensions
-  const refreshJobs = useCallback(async () => {
-    try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+  // Polling for active jobs, extensions, quotes
+  const fetchJobsData = useCallback(async () => {
+    const supabase = createClient();
+    
+    const [assignedRes, activeRes, completedRes] = await Promise.all([
+      supabase
+        .from("bookings")
+        .select("*, services:service_id(title, category), customer:customer_id(full_name)")
+        .eq("partner_id", partnerId)
+        .in("status", ["assigned", "confirmed"])
+        .order("scheduled_date", { ascending: true }),
+      supabase
+        .from("bookings")
+        .select("*, services:service_id(title, category), customer:customer_id(full_name)")
+        .eq("partner_id", partnerId)
+        .in("status", ["accepted", "professional_en_route", "professional_arrived", "otp_pending", "in_progress"])
+        .order("scheduled_date", { ascending: true }),
+      supabase
+        .from("bookings")
+        .select("*, services:service_id(title, category), customer:customer_id(full_name)")
+        .eq("partner_id", partnerId)
+        .eq("status", "completed")
+        .order("completed_at", { ascending: false })
+        .limit(20)
+    ]);
 
-      const [assignedRes, activeRes, completedRes] = await Promise.all([
-        supabase
-          .from("bookings")
-          .select("*, services:service_id(title, category), customer:customer_id(full_name)")
-          .eq("partner_id", user.id)
-          .in("status", ["assigned", "confirmed"])
-          .order("scheduled_date", { ascending: true }),
-        supabase
-          .from("bookings")
-          .select("*, services:service_id(title, category), customer:customer_id(full_name)")
-          .eq("partner_id", user.id)
-          .in("status", ["accepted", "professional_en_route", "professional_arrived", "otp_pending", "in_progress"])
-          .order("scheduled_date", { ascending: true }),
-        supabase
-          .from("bookings")
-          .select("*, services:service_id(title, category), customer:customer_id(full_name)")
-          .eq("partner_id", user.id)
-          .eq("status", "completed")
-          .order("completed_at", { ascending: false })
-          .limit(20)
-      ]);
+    const activeList = (activeRes.data || []) as BookingWithDetails[];
+    const assignedList = (assignedRes.data || []) as BookingWithDetails[];
+    const completedList = (completedRes.data || []) as BookingWithDetails[];
 
-      if (assignedRes.data) setAssigned(assignedRes.data as BookingWithDetails[]);
-      if (activeRes.data) {
-        const jobs = activeRes.data as BookingWithDetails[];
-        setActive(jobs);
-        
-        if (jobs.length > 0) {
-          const { data: exts } = await supabase
-            .from("booking_extensions")
-            .select("*")
-            .in("booking_id", jobs.map(j => j.id))
-            .order("created_at", { ascending: false });
-          if (exts) {
-            const grouped = exts.reduce((acc, row) => {
-              if (!acc[row.booking_id]) acc[row.booking_id] = [];
-              acc[row.booking_id].push(row);
-              return acc;
-            }, {} as Record<string, BookingExtension[]>);
-            setExtensionsMap(grouped);
-          }
-        }
+    // Fetch extensions
+    let groupedExtensions: Record<string, BookingExtension[]> = {};
+    if (activeList.length > 0) {
+      const { data: exts } = await supabase
+        .from("booking_extensions")
+        .select("*")
+        .in("booking_id", activeList.map(j => j.id))
+        .order("created_at", { ascending: false });
+      if (exts) {
+        groupedExtensions = exts.reduce((acc, row) => {
+          if (!acc[row.booking_id]) acc[row.booking_id] = [];
+          acc[row.booking_id].push(row);
+          return acc;
+        }, {} as Record<string, BookingExtension[]>);
       }
-
-      // Fetch quotes
-      const allJobIds = [...(assignedRes.data || []), ...(activeRes.data || [])].map((j: any) => j.id);
-      if (allJobIds.length > 0) {
-        const { data: quotes } = await supabase
-          .from("booking_quotes")
-          .select("*, booking_quote_items(*)")
-          .in("booking_id", allJobIds)
-          .order("created_at", { ascending: false });
-        
-        if (quotes) {
-          const qMap: Record<string, any> = {};
-          quotes.forEach((q: any) => {
-            if (!qMap[q.booking_id]) {
-              qMap[q.booking_id] = q;
-            }
-          });
-          setQuotesMap(qMap);
-        }
-      }
-
-      if (completedRes.data) setCompleted(completedRes.data as BookingWithDetails[]);
-    } catch (err) {
-      console.error("Error refreshing jobs:", err);
     }
-  }, []);
+
+    // Fetch quotes
+    const quoteMap: Record<string, BookingQuote> = {};
+    const allJobIds = [...assignedList, ...activeList].map((j) => j.id);
+    if (allJobIds.length > 0) {
+      const { data: quotes } = await supabase
+        .from("booking_quotes")
+        .select("*, booking_quote_items(*)")
+        .in("booking_id", allJobIds)
+        .order("created_at", { ascending: false });
+      
+      if (quotes) {
+        quotes.forEach((q) => {
+          if (!quoteMap[q.booking_id]) {
+            quoteMap[q.booking_id] = q;
+          }
+        });
+      }
+    }
+
+    return {
+      assigned: assignedList,
+      active: activeList,
+      completed: completedList,
+      extensionsMap: groupedExtensions,
+      quotesMap: quoteMap,
+    };
+  }, [partnerId]);
+
+  const { data: jobsPayload, refresh: forceRefreshJobs } = useRefreshableData(
+    `partner_jobs_${partnerId}`,
+    fetchJobsData,
+    {
+      initialData: {
+        assigned: assignedJobs,
+        active: activeJobs,
+        completed: completedJobs,
+        extensionsMap: {} as Record<string, BookingExtension[]>,
+        quotesMap: {} as Record<string, BookingQuote>,
+      },
+      cachePolicy: "none",
+      pollingInterval: 15000, // 15s smart polling fallback
+    }
+  );
+
+  const assigned = jobsPayload?.assigned || assignedJobs;
+  const active = jobsPayload?.active || activeJobs;
+  const completed = jobsPayload?.completed || completedJobs;
+  const extensionsMap = jobsPayload?.extensionsMap || {};
+  const quotesMap = jobsPayload?.quotesMap || {};
+
+  // Realtime subscription for changes on partner's bookings
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`partner-bookings-${partnerId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "bookings",
+          filter: `partner_id=eq.${partnerId}`,
+        },
+        () => {
+          void forceRefreshJobs();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [partnerId, forceRefreshJobs]);
 
   const fetchPricingOptionsForJob = async (serviceId: string) => {
     try {
@@ -329,18 +368,12 @@ export default function JobsClient({
       const res = await requestExtensionAction(extensionJob.id, selectedExtMinutes);
       if (res.success) {
         setActionSuccess("Time extension requested successfully!");
-        void refreshJobs();
+        void forceRefreshJobs();
       } else {
         setActionError(res.error || "Failed to request extension.");
       }
     });
   };
-
-  useEffect(() => {
-    void refreshJobs();
-    const interval = setInterval(refreshJobs, 6000);
-    return () => clearInterval(interval);
-  }, [refreshJobs]);
 
   // ─── Tabs ─────────────────────────────────────────────────────
   const tabs: { key: TabKey; label: string; count: number; dot?: boolean }[] = [
@@ -1133,7 +1166,7 @@ export default function JobsClient({
                                     role="partner"
                                     onSuccess={() => {
                                       setActiveQuoteFormId(null);
-                                      void refreshJobs();
+                                      void forceRefreshJobs();
                                     }}
                                   />
                                   <button
@@ -1192,7 +1225,7 @@ export default function JobsClient({
                                     role="partner"
                                     onSuccess={() => {
                                       setActiveQuoteFormId(null);
-                                      void refreshJobs();
+                                      void forceRefreshJobs();
                                     }}
                                   />
                                   <button

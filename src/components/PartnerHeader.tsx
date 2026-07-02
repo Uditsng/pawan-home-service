@@ -71,7 +71,7 @@ export default function PartnerHeader({ initialStatus = "offline" }: PartnerHead
             <Image
               src="/PHS.png"
               alt="PHS Cleaning Company Logo"
-              className="h-12 md:h-14 w-auto rounded-lg shadow-sm"
+              className="h-12 md:h-14 w-auto"
               width={40}
               height={40}
             />

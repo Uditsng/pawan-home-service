@@ -28,7 +28,7 @@ export default async function BookingsPage() {
           <p className="text-on-surface-variant font-medium mt-1 text-sm md:text-base">Manage your professional services</p>
         </section>
 
-        <BookingsClient bookings={bookings || []} />
+        <BookingsClient bookings={bookings || []} userId={user.id} />
       </main>
 
       <BottomNav />

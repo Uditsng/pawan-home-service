@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRefreshableData } from "@/lib/refresh/RefreshContext";
+import PullToRefresh from "@/components/PullToRefresh";
+import { createClient } from "@/utils/supabase/client";
 
 type Booking = {
   id: string;
@@ -82,10 +85,43 @@ const getStatusLabel = (status: string) => {
   }
 };
 
-export default function BookingsClient({ bookings }: { bookings: Booking[] }) {
+export default function BookingsClient({
+  bookings: initialBookings,
+  userId,
+}: {
+  bookings: Booking[];
+  userId: string;
+}) {
   const [activeTab, setActiveTab] = useState("Upcoming");
 
   const tabs = ["Upcoming", "Ongoing", "Completed", "Cancelled"];
+
+  const fetchBookings = useCallback(async () => {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("bookings")
+      .select("*, services(title, category), partner:partner_id(full_name, avatar_url), reviews:reviews(id, rating, comment)")
+      .eq("customer_id", userId)
+      .order("scheduled_date", { ascending: false });
+
+    if (error) throw error;
+    return (data || []) as Booking[];
+  }, [userId]);
+
+  const { data: liveBookings, refresh } = useRefreshableData<Booking[]>(
+    "bookings",
+    fetchBookings,
+    {
+      initialData: initialBookings,
+      cachePolicy: "none",
+      realtimeConfig: {
+        table: "bookings",
+        filter: `customer_id=eq.${userId}`,
+      },
+    }
+  );
+
+  const bookings = liveBookings || initialBookings;
 
   const filteredBookings = bookings.filter((booking) => {
     switch (activeTab) {
@@ -118,7 +154,7 @@ export default function BookingsClient({ bookings }: { bookings: Booking[] }) {
   });
 
   return (
-    <>
+    <PullToRefresh onRefresh={refresh}>
       {/* Segmented Tabs Control */}
       <div className="flex gap-2 mb-6 md:mb-8 overflow-x-auto no-scrollbar py-1 px-4 md:px-6 after:content-[''] after:shrink-0 after:w-2">
         {tabs.map((tab) => (
@@ -153,7 +189,7 @@ export default function BookingsClient({ bookings }: { bookings: Booking[] }) {
                   <div className="flex gap-2">
                     <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl bg-green-500/10 flex items-center justify-center text-primary-container shrink-0">
                       <span className="material-symbols-outlined text-[#059669] drop-shadow-sm">
-                        {booking.services?.category === 'cleaning' ? 'cleaning_services' : 'home_repair_service'}
+                        {booking.services?.category === "cleaning" ? "cleaning_services" : "home_repair_service"}
                       </span>
                     </div>
                     <div>
@@ -176,7 +212,7 @@ export default function BookingsClient({ bookings }: { bookings: Booking[] }) {
                   </span>
                 </div>
 
-                {/* Professional UI (Placeholder for now) */}
+                {/* Professional UI */}
                 {(activeTab === "Upcoming" || activeTab === "Ongoing") && (
                   <div className="bg-surface-container-low rounded-xl p-3 md:p-4 mb-4 md:mb-6 flex items-center justify-between">
                     <div className="flex items-center gap-2 md:gap-3">
@@ -203,7 +239,7 @@ export default function BookingsClient({ bookings }: { bookings: Booking[] }) {
                   </div>
                 )}
 
-                {(booking.status === 'pending' || booking.status === 'reassigned') && !booking.partner && (
+                {(booking.status === "pending" || booking.status === "reassigned") && !booking.partner && (
                   <div className="flex items-center gap-2 p-3 md:p-4 rounded-xl bg-surface-container-low/50 border border-outline-variant/10 mb-4 md:mb-6">
                     <span className="material-symbols-outlined text-on-surface-variant text-xs md:text-sm">info</span>
                     <p className="text-[10px] md:text-xs text-on-surface-variant font-medium">We are finding the best Professional for you. You will be notified shortly.</p>
@@ -211,13 +247,13 @@ export default function BookingsClient({ bookings }: { bookings: Booking[] }) {
                 )}
 
                 <div className="flex flex-col sm:flex-row gap-2 md:gap-3">
-                  <Link href={booking.status === 'completed' ? `/customer/bookings/${booking.id}/invoice` : `/customer/bookings/${booking.id}/tracking`} className="flex-1 py-2.5 md:py-3 px-3 md:px-4 rounded-xl bg-primary text-on-primary font-bold font-headline text-xs md:text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-95">
-                    {booking.status === 'completed' ? (
+                  <Link href={booking.status === "completed" ? `/customer/bookings/${booking.id}/invoice` : `/customer/bookings/${booking.id}/tracking`} className="flex-1 py-2.5 md:py-3 px-3 md:px-4 rounded-xl bg-primary text-on-primary font-bold font-headline text-xs md:text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-95">
+                    {booking.status === "completed" ? (
                       <>
                         <span className="material-symbols-outlined text-base md:text-lg">receipt_long</span>
                         View Receipt
                       </>
-                    ) : ['cancelled', 'expired', 'refunded'].includes(booking.status) ? (
+                    ) : ["cancelled", "expired", "refunded"].includes(booking.status) ? (
                       <>
                         <span className="material-symbols-outlined text-base md:text-lg">info</span>
                         Details
@@ -229,13 +265,13 @@ export default function BookingsClient({ bookings }: { bookings: Booking[] }) {
                       </>
                     )}
                   </Link>
-                  {booking.status === 'completed' && (!booking.reviews || booking.reviews.length === 0) && (
+                  {booking.status === "completed" && (!booking.reviews || booking.reviews.length === 0) && (
                     <Link href={`/customer/bookings/${booking.id}/tracking`} className="px-4 md:px-6 py-2.5 md:py-3 rounded-xl bg-secondary text-on-secondary font-bold font-headline text-xs md:text-sm transition-all hover:brightness-110 active:scale-95 flex items-center justify-center gap-1.5 shadow-sm">
                       <span className="material-symbols-outlined text-base md:text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                       Rate & Review
                     </Link>
                   )}
-                  {booking.status === 'completed' && booking.reviews && booking.reviews.length > 0 && (
+                  {booking.status === "completed" && booking.reviews && booking.reviews.length > 0 && (
                     <div className="px-4 md:px-6 py-2.5 md:py-3 rounded-xl bg-surface-container-high text-on-surface-variant font-bold font-headline text-xs md:text-sm flex items-center justify-center gap-1.5 border border-outline-variant/10">
                       <span className="material-symbols-outlined text-base md:text-lg text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                       <span>{booking.reviews[0].rating} ★ Rated</span>
@@ -263,6 +299,6 @@ export default function BookingsClient({ bookings }: { bookings: Booking[] }) {
           <span className="material-symbols-outlined absolute top-5 md:top-6 right-5 md:right-6 text-4xl md:text-5xl opacity-20">verified_user</span>
         </div>
       </div>
-    </>
+    </PullToRefresh>
   );
 }

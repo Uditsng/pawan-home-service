@@ -102,12 +102,12 @@ export default async function PartnerJobsPage() {
           </div>
         </div>
 
-        {/* Tab Bar is rendered by JobsClient */}
         <JobsClient
           assignedJobs={assignedJobs}
           activeJobs={activeJobs}
           completedJobs={completedJobs}
           offeredJobs={offeredJobs}
+          partnerId={user.id}
         />
       </main>
     </div>

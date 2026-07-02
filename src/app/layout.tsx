@@ -3,6 +3,8 @@ import { Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
 import MobileSetup from "@/components/MobileSetup";
 import SplashLoader from "@/components/SplashLoader";
+import { RefreshProvider } from "@/lib/refresh/RefreshContext";
+import VersionAlert from "@/components/VersionAlert";
 
 const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
@@ -32,9 +34,12 @@ export default function RootLayout({
   return (
      <html lang="en" className={`${bricolage.variable}`} suppressHydrationWarning>
       <body className="bg-background font-body text-on-surface antialiased" suppressHydrationWarning>
-        <MobileSetup />
-        <SplashLoader />
-        {children}
+        <RefreshProvider>
+          <MobileSetup />
+          <SplashLoader />
+          <VersionAlert />
+          {children}
+        </RefreshProvider>
       </body>
     </html>
   );

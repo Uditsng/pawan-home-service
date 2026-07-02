@@ -4,8 +4,8 @@ import { createClient } from "@/utils/supabase/server";
 import crypto from "crypto";
 import { notifyCustomer, notifyAdmins } from "@/lib/notifications";
 import { triggerDispatchBatch } from "@/app/actions/dispatch";
-import { calculatePricingBreakdown } from "@/utils/pricingEngine";
-import { PricingModel, ServicePricingRule } from "@/lib/types";
+import { calculatePricingBreakdown, PricingInput } from "@/utils/pricingEngine";
+import { PricingModel, ServicePricingRule, Coupon, MembershipPlan, UserMembership } from "@/lib/types";
 
 export interface RazorpayOrderResult {
   freeOrder: boolean;
@@ -122,7 +122,7 @@ export async function createRazorpayOrderAction(payload: {
       .eq("is_active", true);
 
     // Fetch coupon details
-    let couponObj: any = null;
+    let couponObj: Coupon | null = null;
     if (payload.couponCode) {
       const { data: couponData } = await supabase
         .from("coupons")
@@ -140,7 +140,7 @@ export async function createRazorpayOrderAction(payload: {
 
     // Fetch user membership details
     let isMember = false;
-    let memberBenefit: any = null;
+    let memberBenefit: MembershipPlan["benefits"] | null = null;
     const { data: membership } = await supabase
       .from("user_memberships")
       .select("*, membership_plans(*)")
@@ -150,16 +150,36 @@ export async function createRazorpayOrderAction(payload: {
       .limit(1)
       .maybeSingle();
 
-    if (membership && (membership as any).membership_plans) {
+    const typedMembership = membership as unknown as (UserMembership & { membership_plans: MembershipPlan | null }) | null;
+
+    if (typedMembership && typedMembership.membership_plans) {
       isMember = true;
-      memberBenefit = (membership as any).membership_plans.benefits || {};
+      memberBenefit = typedMembership.membership_plans.benefits || {};
     }
+
+    // Map rules to align with PricingInput['surchargeRules'] shape
+    const mappedRules = (rules || []).map((r) => {
+      const cond = (r.conditions || {}) as Record<string, unknown>;
+      return {
+        name: r.name,
+        rule_type: r.rule_type as "surcharge" | "discount",
+        amount_type: r.amount_type as "fixed" | "percentage",
+        amount_value: Number(r.amount_value),
+        is_active: r.is_active,
+        conditions: {
+          days_of_week: Array.isArray(cond.days_of_week) ? (cond.days_of_week as number[]) : undefined,
+          hours_range: Array.isArray(cond.hours_range) && cond.hours_range.length === 2 ? (cond.hours_range as [string, string]) : undefined,
+          dates: Array.isArray(cond.dates) ? (cond.dates as string[]) : undefined,
+          pincodes: Array.isArray(cond.pincodes) ? (cond.pincodes as string[]) : undefined,
+        },
+      };
+    });
 
     // Run pricing engine
     const breakdown = calculatePricingBreakdown({
       pricingModel: (service.pricing_model || "fixed") as PricingModel,
       basePrice: Number(service.base_price || 0),
-      pricingConfig: (service.pricing_config as any) || {},
+      pricingConfig: (service.pricing_config as unknown as PricingInput["pricingConfig"]) || {},
       variantPrice,
       durationMinutes: payload.duration,
       areaSqft: payload.areaSqft,
@@ -168,7 +188,7 @@ export async function createRazorpayOrderAction(payload: {
       addons: parsedAddons,
       scheduledDate: payload.date ? new Date(`${payload.date}T${payload.time.split(' ')[0]}:00`) : new Date(),
       pincode: addr.pincode,
-      surchargeRules: (rules as unknown as ServicePricingRule[]) || [],
+      surchargeRules: mappedRules,
       coupon: couponObj,
       isMember,
       memberBenefit,
@@ -194,7 +214,7 @@ export async function createRazorpayOrderAction(payload: {
       const breakdown = calculatePricingBreakdown({
         pricingModel: (s.pricing_model || "fixed") as PricingModel,
         basePrice: Number(s.base_price || 0),
-        pricingConfig: (s.pricing_config as any) || {},
+        pricingConfig: (s.pricing_config as unknown as PricingInput["pricingConfig"]) || {},
         durationMinutes: itemDuration,
         walletBalanceToUse: 0,
         gstApplicable: s.gst_applicable,
@@ -320,7 +340,8 @@ export async function verifyRazorpayPaymentAction(payload: {
 
   // 3. Parse date and time in IST
   const [timeStr, modifier] = payload.time.split(" ");
-  let [hours, minutes] = timeStr.split(":").map(Number);
+  const [rawHours, minutes] = timeStr.split(":").map(Number);
+  let hours = rawHours;
   if (modifier === "PM" && hours !== 12) hours += 12;
   if (modifier === "AM" && hours === 12) hours = 0;
 
@@ -383,7 +404,7 @@ export async function verifyRazorpayPaymentAction(payload: {
       .eq("is_active", true);
 
     // Fetch coupon details
-    let couponObj: any = null;
+    let couponObj: Coupon | null = null;
     if (payload.couponCode) {
       const { data: couponData } = await supabase
         .from("coupons")
@@ -401,7 +422,7 @@ export async function verifyRazorpayPaymentAction(payload: {
 
     // Fetch user membership details
     let isMember = false;
-    let memberBenefit: any = null;
+    let memberBenefit: MembershipPlan["benefits"] | null = null;
     const { data: membership } = await supabase
       .from("user_memberships")
       .select("*, membership_plans(*)")
@@ -411,16 +432,18 @@ export async function verifyRazorpayPaymentAction(payload: {
       .limit(1)
       .maybeSingle();
 
-    if (membership && (membership as any).membership_plans) {
+    const typedMembership = membership as unknown as (UserMembership & { membership_plans: MembershipPlan | null }) | null;
+
+    if (typedMembership && typedMembership.membership_plans) {
       isMember = true;
-      memberBenefit = (membership as any).membership_plans.benefits || {};
+      memberBenefit = typedMembership.membership_plans.benefits || {};
     }
 
     // Calculate final pricing breakdown
     const breakdown = calculatePricingBreakdown({
       pricingModel: (service.pricing_model || "fixed") as PricingModel,
       basePrice: Number(service.base_price || 0),
-      pricingConfig: (service.pricing_config as any) || {},
+      pricingConfig: (service.pricing_config as unknown as PricingInput["pricingConfig"]) || {},
       variantPrice,
       durationMinutes: payload.duration,
       areaSqft: payload.areaSqft,
@@ -591,7 +614,7 @@ export async function verifyRazorpayPaymentAction(payload: {
     }
 
     let totalOrderAmount = 0;
-    const serviceBreakdowns: Record<string, any> = {};
+    const serviceBreakdowns: Record<string, ReturnType<typeof calculatePricingBreakdown>> = {};
 
     for (const s of dbServices) {
       const itemDuration = payload.cartItems?.find((ci) => ci.serviceId === s.id)?.selectedDuration;
@@ -599,7 +622,7 @@ export async function verifyRazorpayPaymentAction(payload: {
       const breakdown = calculatePricingBreakdown({
         pricingModel: (s.pricing_model || "fixed") as PricingModel,
         basePrice: Number(s.base_price || 0),
-        pricingConfig: (s.pricing_config as any) || {},
+        pricingConfig: (s.pricing_config as unknown as PricingInput["pricingConfig"]) || {},
         durationMinutes: itemDuration,
         walletBalanceToUse: 0,
         gstApplicable: s.gst_applicable,

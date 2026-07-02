@@ -1,4 +1,4 @@
-import { BookingPricing, PricingModel } from "@/lib/types";
+import { BookingPricing, PricingModel, MembershipPlan } from "@/lib/types";
 
 export interface PricingInput {
   pricingModel: PricingModel;
@@ -63,27 +63,24 @@ export interface PricingInput {
     amount_type: "fixed" | "percentage";
     amount_value: number;
     is_active?: boolean;
-    conditions: {
+    conditions?: {
       days_of_week?: number[]; // 0=Sunday, 6=Saturday
       hours_range?: [string, string]; // ["20:00", "06:00"]
       dates?: string[]; // ["2026-12-25"]
       pincodes?: string[];
-    };
+    } | null;
   }[];
 
   coupon?: {
     code: string;
     discount_type: "fixed" | "percentage";
     discount_value: number;
-    min_booking_amount?: number;
-    max_discount?: number;
+    min_booking_amount?: number | null;
+    max_discount?: number | null;
   } | null;
 
   isMember?: boolean;
-  memberBenefit?: {
-    discount_percent?: number;
-    free_cancellation?: boolean;
-  };
+  memberBenefit?: MembershipPlan["benefits"] | null;
 
   walletBalanceToUse?: number;
   gstRate?: number; // default 18
@@ -104,7 +101,7 @@ export function calculatePricingBreakdown(input: PricingInput): Omit<BookingPric
   let quantityPrice = 0;
   let distancePrice = 0;
   let inspectionFee = 0;
-  let travelFee = Number(config.travel_fee || 0);
+  const travelFee = Number(config.travel_fee || 0);
   const platformFee = Number(config.platform_fee || 0);
 
   // If a variant is selected, its price overrides the main base price

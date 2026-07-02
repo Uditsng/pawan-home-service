@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition, useMemo } from "react";
+import { useState, useEffect, useTransition, useMemo, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/utils/supabase/client";
@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import RatingSection from "@/components/RatingSection";
 import QuotationWorkflow from "@/components/QuotationWorkflow";
+import { useRefreshableData } from "@/lib/refresh/RefreshContext";
 import {
   rejectExtensionAction,
   createRazorpayOrderForExtensionAction,
@@ -137,36 +138,11 @@ export default function TrackingClient({
   existingReview: { rating: number; comment: string | null } | null;
 }) {
   const router = useRouter();
-  const [booking, setBooking] = useState<BookingDetails>(initialBooking);
-  const [extensions, setExtensions] = useState<BookingExtension[]>(initialExtensions);
-  const [isPending, startTransition] = useTransition();
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [activeQuote, setActiveQuote] = useState<any>(null);
 
-  // Time remaining states
-  const [timeLeft, setTimeLeft] = useState<number>(0);
-  const [notified30m, setNotified30m] = useState(booking.notified_30m_remaining || false);
-  const [notifiedExpired, setNotifiedExpired] = useState(booking.notified_time_completed || false);
-
-  // Load Razorpay Script dynamically
-  useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.async = true;
-    document.body.appendChild(script);
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
-    };
-  }, []);
-
-  // Fetch real-time updates from database (polling)
-  const fetchUpdates = async () => {
-    try {
-      const supabase = createClient();
-      
-      const { data: freshBooking } = await supabase
+  const fetchBookingDetail = useCallback(async () => {
+    const supabase = createClient();
+    const [bookingRes, extRes, quoteRes] = await Promise.all([
+      supabase
         .from("bookings")
         .select(`
           id,
@@ -202,51 +178,145 @@ export default function TrackingClient({
           )
         `)
         .eq("id", initialBooking.id)
-        .single();
+        .single(),
 
-      if (freshBooking) {
-        const enriched = freshBooking as unknown as BookingDetails;
-        setBooking(enriched);
-      }
-
-      const { data: freshExts } = await supabase
+      supabase
         .from("booking_extensions")
         .select("*")
         .eq("booking_id", initialBooking.id)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }),
 
-      if (freshExts) {
-        setExtensions(freshExts as BookingExtension[]);
-      }
-
-      const { data: freshQuote } = await supabase
+      supabase
         .from("booking_quotes")
         .select("*, booking_quote_items(*)")
         .eq("booking_id", initialBooking.id)
         .order("created_at", { ascending: false })
         .limit(1)
-        .maybeSingle();
+        .maybeSingle()
+    ]);
 
-      if (freshQuote) {
-        setActiveQuote(freshQuote);
-      } else {
-        setActiveQuote(null);
-      }
-    } catch (err) {
-      console.error("Error fetching status updates:", err);
+    return {
+      booking: (bookingRes.data || initialBooking) as BookingDetails,
+      extensions: (extRes.data || []) as BookingExtension[],
+      activeQuote: quoteRes.data || null,
+    };
+  }, [initialBooking, initialBooking.id]);
+
+  const { data, refresh } = useRefreshableData(
+    `booking_detail_${initialBooking.id}`,
+    fetchBookingDetail,
+    {
+      initialData: { booking: initialBooking, extensions: initialExtensions, activeQuote: null },
+      cachePolicy: "none",
+      pollingInterval: 15000, // 15s smart polling fallback
     }
+  );
+
+  const booking = data?.booking || initialBooking;
+  const extensions = data?.extensions || initialExtensions;
+  const activeQuote = data?.activeQuote || null;
+
+  const [isPending, startTransition] = useTransition();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Helper to calculate seconds left
+  const getTimerSecondsLeft = () => {
+    if (booking.pricing_model !== "hourly" || booking.status !== "in_progress" || !booking.started_at) {
+      return 0;
+    }
+    const startedAtMs = new Date(booking.started_at).getTime();
+    const durationMs = (booking.selected_duration_minutes || 0) * 60 * 1000;
+    const expireTimeMs = startedAtMs + durationMs;
+    const diff = expireTimeMs - Date.now();
+    return Math.max(0, Math.floor(diff / 1000));
   };
 
-  // Poll for status updates every 6 seconds
+  // Time remaining states
+  const [timeLeft, setTimeLeft] = useState<number>(getTimerSecondsLeft);
+
+  const [notified30m, setNotified30m] = useState(booking.notified_30m_remaining || false);
+  const [notifiedExpired, setNotifiedExpired] = useState(booking.notified_time_completed || false);
+
+  // Sync state during render when booking properties that affect the timer change
+  const [prevBookingState, setPrevBookingState] = useState({
+    id: booking.id,
+    status: booking.status,
+    started_at: booking.started_at,
+    selected_duration_minutes: booking.selected_duration_minutes,
+    pricing_model: booking.pricing_model,
+    notified_30m_remaining: booking.notified_30m_remaining,
+    notified_time_completed: booking.notified_time_completed,
+  });
+
+  if (
+    booking.id !== prevBookingState.id ||
+    booking.status !== prevBookingState.status ||
+    booking.started_at !== prevBookingState.started_at ||
+    booking.selected_duration_minutes !== prevBookingState.selected_duration_minutes ||
+    booking.pricing_model !== prevBookingState.pricing_model ||
+    booking.notified_30m_remaining !== prevBookingState.notified_30m_remaining ||
+    booking.notified_time_completed !== prevBookingState.notified_time_completed
+  ) {
+    setPrevBookingState({
+      id: booking.id,
+      status: booking.status,
+      started_at: booking.started_at,
+      selected_duration_minutes: booking.selected_duration_minutes,
+      pricing_model: booking.pricing_model,
+      notified_30m_remaining: booking.notified_30m_remaining,
+      notified_time_completed: booking.notified_time_completed,
+    });
+    setTimeLeft(getTimerSecondsLeft());
+    setNotified30m(booking.notified_30m_remaining || false);
+    setNotifiedExpired(booking.notified_time_completed || false);
+  }
+
+  // Load Razorpay Script dynamically
   useEffect(() => {
-    const interval = setInterval(fetchUpdates, 6000);
-    return () => clearInterval(interval);
-  }, [initialBooking.id]);
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    document.body.appendChild(script);
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
+  }, []);
+
+  // Listen to realtime updates on bookings, extensions and quotes for this booking ID
+  useEffect(() => {
+    const supabase = createClient();
+    const bookingId = initialBooking.id;
+
+    const bookingChannel = supabase.channel(`rt-bk-${bookingId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "bookings", filter: `id=eq.${bookingId}` }, () => {
+        void refresh();
+      })
+      .subscribe();
+
+    const extChannel = supabase.channel(`rt-ext-${bookingId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "booking_extensions", filter: `booking_id=eq.${bookingId}` }, () => {
+        void refresh();
+      })
+      .subscribe();
+
+    const quoteChannel = supabase.channel(`rt-quote-${bookingId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "booking_quotes", filter: `booking_id=eq.${bookingId}` }, () => {
+        void refresh();
+      })
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(bookingChannel);
+      void supabase.removeChannel(extChannel);
+      void supabase.removeChannel(quoteChannel);
+    };
+  }, [initialBooking.id, refresh]);
 
   // Live Timer Countdown Effect
   useEffect(() => {
     if (booking.pricing_model !== "hourly" || booking.status !== "in_progress" || !booking.started_at) {
-      setTimeLeft(0);
       return;
     }
 
@@ -271,10 +341,9 @@ export default function TrackingClient({
       }
     };
 
-    updateTimer();
     const timerInterval = setInterval(updateTimer, 1000);
     return () => clearInterval(timerInterval);
-  }, [booking.status, booking.started_at, booking.selected_duration_minutes, notified30m, notifiedExpired]);
+  }, [booking.id, booking.status, booking.started_at, booking.selected_duration_minutes, booking.pricing_model, notified30m, notifiedExpired]);
 
   // Derive duration display string
   const formatTimeLeft = (seconds: number) => {
@@ -321,7 +390,7 @@ export default function TrackingClient({
                   // Re-enable threshold notifications since the duration has been extended
                   setNotified30m(false);
                   setNotifiedExpired(false);
-                  fetchUpdates();
+                  void refresh();
                 } else {
                   setErrorMessage(verifyRes.error || "Extension payment verification failed.");
                 }
@@ -353,7 +422,7 @@ export default function TrackingClient({
       try {
         const res = await rejectExtensionAction(ext.id);
         if (res.success) {
-          fetchUpdates();
+          void refresh();
         } else {
           setErrorMessage(res.error || "Failed to reject extension.");
         }
@@ -365,7 +434,7 @@ export default function TrackingClient({
   };
 
   const bookingRef = `BK-${booking.id.substring(0, 6).toUpperCase()}`;
-  const scheduledDate = booking.scheduled_date ? new Date(booking.scheduled_date) : new Date();
+  const scheduledDate = booking.scheduled_date ? new Date(booking.scheduled_date) : new Date(0);
   const displayDate = scheduledDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Kolkata" });
   const displayTime = scheduledDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 
@@ -425,7 +494,7 @@ export default function TrackingClient({
             </p>
           </div>
           <button
-            onClick={fetchUpdates}
+            onClick={() => { void refresh(); }}
             disabled={isPending}
             className="self-start sm:self-center px-4 py-2 border border-outline-variant/30 rounded-xl text-xs font-bold bg-white text-primary hover:bg-surface-container-low transition-all flex items-center gap-2"
           >
@@ -539,7 +608,7 @@ export default function TrackingClient({
                 bookingId={booking.id}
                 role="customer"
                 activeQuote={activeQuote}
-                onSuccess={fetchUpdates}
+                onSuccess={() => { void refresh(); }}
               />
             )}
 

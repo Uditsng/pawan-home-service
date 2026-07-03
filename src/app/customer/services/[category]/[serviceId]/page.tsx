@@ -166,14 +166,14 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
       </div>
 
       {/* Main Content Body */}
-      <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-10 space-y-16 md:space-y-24">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-10 space-y-8 md:space-y-16">
 
         {/* What Does Our Expert Do? */}
         <section>
           <h2 className="text-2xl md:text-3xl font-extrabold text-center mb-1 font-headline tracking-tighter">What Does Our Expert Do?</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl mx-auto">
             {/* Included */}
-            <div className="px-0 py-6 md:py-8">
+            <div className="px-0 py-2 md:py-4">
               <h3 className="text-on-surface font-headline tracking-tight font-bold flex items-center gap-2 mb-4 md:mb-6 text-sm md:text-base">
                 <span className="material-symbols-outlined rounded-full bg-primary/20 text-primary p-1 text-[18px] md:text-[24px]">check</span> What&apos;s Included
               </h3>

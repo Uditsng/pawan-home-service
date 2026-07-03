@@ -95,7 +95,7 @@ export default function VersionAlert() {
 
   // 2. Recommend Update Alert (Top Banner Card)
   return (
-    <div className="fixed top-4 left-4 right-4 z-[9999] max-w-md mx-auto animate-in slide-in-from-top-6 duration-300 pointer-events-auto">
+    <div className="fixed top-4 left-4 right-4 z-9999 max-w-md mx-auto animate-in slide-in-from-top-6 duration-300 pointer-events-auto">
       <div className="glass-panel bg-surface-container-lowest/90 backdrop-blur-xl border border-outline-variant/15 p-4 rounded-2xl shadow-xl flex gap-3 items-start relative">
         <div className="w-10 h-10 rounded-xl bg-secondary/15 flex items-center justify-center text-primary shrink-0">
           <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>

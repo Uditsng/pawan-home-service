@@ -113,13 +113,9 @@ export function calculatePricingBreakdown(input: PricingInput): Omit<BookingPric
   switch (input.pricingModel) {
     case "hourly": {
       const minutes = input.durationMinutes || 60;
-      const hours = Math.ceil(minutes / 60);
-      const minHours = config.min_hours || 1;
-      const maxHours = config.max_hours || 24;
-      const clampedHours = Math.max(minHours, Math.min(maxHours, hours));
-      
-      const pricePerHour = config.price_per_hour || basePrice || 0;
-      hourlyPrice = clampedHours * pricePerHour;
+      const blocks = minutes / 30;
+      const rate30Min = basePrice || 0;
+      hourlyPrice = blocks * rate30Min;
       basePrice = hourlyPrice; // base becomes the hourly total
       break;
     }

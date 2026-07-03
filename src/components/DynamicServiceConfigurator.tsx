@@ -159,400 +159,359 @@ export default function DynamicServiceConfigurator({
     };
   }, [service, iconName, breakdown.total_price, subcategoryName, categorySlug, model, durationMinutes]);
 
+  const priceWithoutGst = useMemo(() => {
+    return breakdown.total_price - breakdown.gst_amount;
+  }, [breakdown.total_price, breakdown.gst_amount]);
+
   return (
-    <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+    <div className="max-w-3xl mx-auto space-y-6 relative">
       {/* Configuration Controls */}
-      <div className="lg:col-span-2 space-y-6">
-        {/* 1. Variants Selection (if any) */}
-        {variants.length > 0 && (
-          <section className="bg-surface-container-low border border-outline-variant/20 rounded-3xl p-5 md:p-6 shadow-xs">
-            <h3 className="text-base font-bold text-primary font-headline mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined text-emerald-600">category</span> Select Option / Variant
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {variants.map((v) => {
-                const isSelected = selectedVariantId === v.id;
-                return (
-                  <div
-                    key={v.id}
-                    onClick={() => setSelectedVariantId(v.id)}
-                    className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between select-none active:scale-[0.99] duration-200 ${isSelected
-                        ? "bg-primary/5 border-primary text-primary shadow-xs"
-                        : "bg-surface border-outline-variant/15 text-on-surface hover:bg-surface-container-low"
-                      }`}
-                  >
-                    <div>
-                      <h4 className="text-sm font-bold tracking-tight mb-1">{v.title}</h4>
-                      <p className="text-xs text-on-surface-variant line-clamp-2 leading-relaxed font-medium">
-                        {v.description || "Tailored option specifically for you."}
-                      </p>
-                    </div>
-                    <div className="flex justify-between items-baseline mt-4 border-t border-outline-variant/10 pt-2">
-                      <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Starting from</span>
-                      <span className="text-sm font-black">₹{v.price}</span>
-                    </div>
+      {/* 1. Variants Selection (if any) */}
+      {variants.length > 0 && (
+        <section className="bg-surface-container-low border border-outline-variant/20 rounded-3xl p-5 md:p-6 shadow-xs">
+          <h3 className="text-base font-bold text-primary font-headline mb-4 flex items-center gap-2">
+            <span className="material-symbols-outlined text-emerald-600">category</span> Select Option / Variant
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {variants.map((v) => {
+              const isSelected = selectedVariantId === v.id;
+              return (
+                <div
+                  key={v.id}
+                  onClick={() => setSelectedVariantId(v.id)}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between select-none active:scale-[0.99] duration-200 ${
+                    isSelected
+                      ? "bg-primary/5 border-primary text-primary shadow-xs"
+                      : "bg-surface border-outline-variant/15 text-on-surface hover:bg-surface-container-low"
+                  }`}
+                >
+                  <div>
+                    <h4 className="text-sm font-bold tracking-tight mb-1">{v.title}</h4>
+                    <p className="text-xs text-on-surface-variant line-clamp-2 leading-relaxed font-medium">
+                      {v.description || "Tailored option specifically for you."}
+                    </p>
                   </div>
+                  <div className="flex justify-between items-baseline mt-4 border-t border-outline-variant/10 pt-2">
+                    <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Starting from</span>
+                    <span className="text-sm font-black">₹{v.price}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* 2. Pricing Model Configurator Inputs */}
+      <section className="bg-surface-container-low border border-outline-variant/20 rounded-3xl p-5 md:p-6 shadow-xs">
+        <h3 className="text-base font-bold text-primary font-headline mb-4 flex items-center gap-2">
+          <span className="material-symbols-outlined text-emerald-600">
+            {model === "hourly" ? "schedule" : "tune"}
+          </span>{" "}
+          {model === "hourly" ? "Select service duration" : "Service Parameters"}
+        </h3>
+
+        {/* Fixed Price (No Inputs) */}
+        {model === "fixed" && (
+          <p className="text-xs text-on-surface-variant font-medium leading-relaxed">
+            This service has a standard flat fee. Simply select any required add-ons and proceed to check out.
+          </p>
+        )}
+
+        {/* Inspection Fee */}
+        {model === "inspection" && (
+          <div className="space-y-2">
+            <p className="text-xs text-on-surface-variant font-medium leading-relaxed">
+              This is an <strong>Inspection & Quotation-based service</strong>.
+            </p>
+            <ul className="text-xs text-on-surface-variant space-y-1.5 list-disc list-inside bg-surface p-3.5 rounded-xl border border-outline-variant/10 font-medium">
+              <li>You pay a minimal base inspection fee of <strong>₹{breakdown.base_price}</strong> now.</li>
+              <li>The professional visits and examines the work.</li>
+              <li>They submit a detailed quotation (labor + materials) in the app.</li>
+              <li>Work starts only after you review and approve the quotation!</li>
+            </ul>
+          </div>
+        )}
+
+        {/* Hourly Inputs */}
+        {model === "hourly" && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2.5">
+              {[30, 60, 90, 120, 180].map((mins) => {
+                const hrs = mins / 60;
+                const isSelected = durationMinutes === mins;
+                const minH = config.min_hours || 0.5;
+                const maxH = config.max_hours || 24;
+                if (hrs < minH || hrs > maxH) return null;
+
+                let label = "";
+                if (mins === 30) label = "30mins";
+                else if (mins === 60) label = "60mins";
+                else if (mins === 90) label = "90mins";
+                else if (mins === 120) label = "2hours";
+                else if (mins === 180) label = "3 hours";
+
+                return (
+                  <button
+                    key={mins}
+                    type="button"
+                    onClick={() => setDurationMinutes(mins)}
+                    className={`px-5 py-3 rounded-2xl border font-bold text-xs transition-all duration-200 cursor-pointer flex-1 min-w-[90px] text-center justify-center items-center active:scale-95 ${
+                      isSelected
+                        ? "bg-primary text-white border-primary shadow-md shadow-primary/20"
+                        : "bg-surface border-outline-variant/20 hover:bg-surface-container-low hover:border-outline-variant text-on-surface-variant"
+                    }`}
+                  >
+                    {label}
+                  </button>
                 );
               })}
             </div>
-          </section>
+          </div>
         )}
 
-        {/* 2. Pricing Model Configurator Inputs */}
-        <section className="bg-surface-container-low border border-outline-variant/20 rounded-3xl p-5 md:p-6 shadow-xs">
-          <h3 className="text-base font-bold text-primary font-headline mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-emerald-600">tune</span> Service Parameters
-          </h3>
-
-          {/* Fixed Price (No Inputs) */}
-          {model === "fixed" && (
-            <p className="text-xs text-on-surface-variant font-medium leading-relaxed">
-              This service has a standard flat fee. Simply select any required add-ons and proceed to check out.
-            </p>
-          )}
-
-          {/* Inspection Fee */}
-          {model === "inspection" && (
-            <div className="space-y-2">
-              <p className="text-xs text-on-surface-variant font-medium leading-relaxed">
-                This is an <strong>Inspection & Quotation-based service</strong>.
-              </p>
-              <ul className="text-xs text-on-surface-variant space-y-1.5 list-disc list-inside bg-surface p-3.5 rounded-xl border border-outline-variant/10 font-medium">
-                <li>You pay a minimal base inspection fee of <strong>₹{breakdown.base_price}</strong> now.</li>
-                <li>The professional visits and examines the work.</li>
-                <li>They submit a detailed quotation (labor + materials) in the app.</li>
-                <li>Work starts only after you review and approve the quotation!</li>
-              </ul>
-            </div>
-          )}
-
-          {/* Hourly Inputs */}
-          {model === "hourly" && (
-            <div className="space-y-4">
+        {/* Area Input */}
+        {model === "area" && (
+          <div className="space-y-4">
+            <div className="flex justify-between items-baseline">
               <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider">
-                Select Service Duration
+                Service Area Size (Sqft)
               </label>
-              <div className="flex flex-wrap gap-2">
-                {[60, 120, 180, 240, 300, 360, 480].map((mins) => {
-                  const hrs = mins / 60;
-                  const isSelected = durationMinutes === mins;
-                  const minH = config.min_hours || 1;
-                  const maxH = config.max_hours || 24;
-                  if (hrs < minH || hrs > maxH) return null;
-
-                  return (
-                    <button
-                      key={mins}
-                      type="button"
-                      onClick={() => setDurationMinutes(mins)}
-                      className={`px-4 py-2.5 rounded-xl border font-bold text-xs transition-all cursor-pointer ${isSelected
-                          ? "bg-primary text-white border-primary shadow-md shadow-primary/20"
-                          : "bg-surface border-outline-variant/20 hover:bg-surface-container-low text-on-surface-variant"
-                        }`}
-                    >
-                      {hrs} Hour{hrs > 1 ? "s" : ""}
-                    </button>
-                  );
-                })}
+              <div className="bg-primary/10 px-3 py-1 rounded-md text-primary font-black text-xs">
+                {areaSqft} Sqft
               </div>
             </div>
-          )}
-
-          {/* Area Input */}
-          {model === "area" && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-baseline">
-                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider">
-                  Service Area Size (Sqft)
-                </label>
-                <div className="bg-primary/10 px-3 py-1 rounded-md text-primary font-black text-xs">
-                  {areaSqft} Sqft
-                </div>
+            <input
+              type="range"
+              min={config.min_area || 200}
+              max={config.max_area || 5000}
+              step={50}
+              value={areaSqft}
+              onChange={(e) => setAreaSqft(parseInt(e.target.value, 10))}
+              className="w-full accent-primary h-2 bg-outline-variant/20 rounded-lg appearance-none cursor-pointer"
+            />
+            <div className="flex justify-between text-[10px] text-on-surface-variant/50 font-bold uppercase">
+              <span>Min: {config.min_area || 200} Sqft</span>
+              <span>Max: {config.max_area || 5000} Sqft</span>
+            </div>
+            <div className="grid grid-cols-2 gap-4 mt-2">
+              <div>
+                <span className="text-[10px] text-on-surface-variant font-bold uppercase block mb-1">Manual Input</span>
+                <input
+                  type="number"
+                  value={areaSqft}
+                  onChange={(e) => setAreaSqft(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                  className="w-full border border-outline-variant/20 rounded-lg p-2.5 bg-surface focus:ring-2 focus:ring-primary/20 outline-none transition-all text-xs font-bold"
+                />
               </div>
+              {config.area_slabs && config.area_slabs.length > 0 && (
+                <div>
+                  <span className="text-[10px] text-on-surface-variant font-bold uppercase block mb-1">Slab Rates</span>
+                  <div className="bg-surface p-2 rounded-lg border border-outline-variant/15 text-[10px] text-on-surface-variant/80 font-medium space-y-0.5">
+                    {config.area_slabs.map((s: { min: number; max?: number; rate: number }, idx: number) => (
+                      <div key={idx} className="flex justify-between">
+                        <span>{s.min}{s.max ? `-${s.max}` : "+"} sqft</span>
+                        <span className="font-black text-primary">₹{s.rate}/sqft</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Quantity Input */}
+        {model === "quantity" && (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+                  Quantity ({config.unit_name || "units"})
+                </label>
+                <p className="text-[10px] text-on-surface-variant/60 font-medium mt-0.5">
+                  Price: ₹{config.price_per_unit || service.base_price} per {config.unit_name || "unit"}
+                </p>
+              </div>
+              <div className="flex items-center gap-3 bg-surface p-1 rounded-xl border border-outline-variant/25 shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => Math.max(config.min_qty || 1, q - 1))}
+                  disabled={quantity <= (config.min_qty || 1)}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center border border-outline-variant/10 text-on-surface hover:bg-surface-container disabled:opacity-40 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm font-black">remove</span>
+                </button>
+                <span className="w-8 text-center text-sm font-headline font-black text-primary">{quantity}</span>
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => Math.min(config.max_qty || 100, q + 1))}
+                  disabled={quantity >= (config.max_qty || 100)}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center border border-outline-variant/10 text-on-surface hover:bg-surface-container disabled:opacity-40 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm font-black">add</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Distance Input */}
+        {model === "distance" && (
+          <div className="space-y-4">
+            <div className="flex justify-between items-baseline">
+              <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+                Estimated Travel Distance (KM)
+              </label>
+              <div className="bg-primary/10 px-3 py-1 rounded-md text-primary font-black text-xs">
+                {distanceKm} KM
+              </div>
+            </div>
+            <input
+              type="range"
+              min={1}
+              max={150}
+              value={distanceKm}
+              onChange={(e) => setDistanceKm(parseInt(e.target.value, 10))}
+              className="w-full accent-primary h-2 bg-outline-variant/20 rounded-lg appearance-none cursor-pointer"
+            />
+            <div className="flex justify-between text-[10px] text-on-surface-variant/50 font-bold uppercase">
+              <span>1 KM</span>
+              <span>150 KM</span>
+            </div>
+            <div className="bg-surface p-3.5 rounded-xl border border-outline-variant/10 text-xs text-on-surface-variant font-medium leading-relaxed">
+              Base Fee: <strong>₹{config.base_distance_fee || service.base_price}</strong> (includes first {config.free_km || 0} KM).
+              <br />
+              Additional distance is billed at <strong>₹{config.price_per_km || 0}/KM</strong>.
+            </div>
+          </div>
+        )}
+
+        {/* Hybrid Inputs */}
+        {model === "hybrid" && (
+          <div className="space-y-4 divide-y divide-outline-variant/15">
+            <div className="pt-2">
+              <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Duration (Hours)</label>
               <input
                 type="range"
-                min={config.min_area || 200}
-                max={config.max_area || 5000}
+                min={60}
+                max={480}
+                step={60}
+                value={durationMinutes}
+                onChange={(e) => setDurationMinutes(parseInt(e.target.value, 10))}
+                className="w-full accent-primary h-1.5 bg-outline-variant/15 rounded-lg appearance-none cursor-pointer"
+              />
+              <div className="flex justify-between text-[10px] font-bold text-primary mt-1">
+                <span>1 Hour</span>
+                <span>{durationMinutes / 60} Hours</span>
+                <span>8 Hours</span>
+              </div>
+            </div>
+            <div className="pt-4">
+              <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Area Size (Sqft)</label>
+              <input
+                type="range"
+                min={100}
+                max={2000}
                 step={50}
                 value={areaSqft}
                 onChange={(e) => setAreaSqft(parseInt(e.target.value, 10))}
-                className="w-full accent-primary h-2 bg-outline-variant/20 rounded-lg appearance-none cursor-pointer"
+                className="w-full accent-primary h-1.5 bg-outline-variant/15 rounded-lg appearance-none cursor-pointer"
               />
-              <div className="flex justify-between text-[10px] text-on-surface-variant/50 font-bold uppercase">
-                <span>Min: {config.min_area || 200} Sqft</span>
-                <span>Max: {config.max_area || 5000} Sqft</span>
+              <div className="flex justify-between text-[10px] font-bold text-primary mt-1">
+                <span>100 sqft</span>
+                <span>{areaSqft} sqft</span>
+                <span>2000 sqft</span>
               </div>
-              <div className="grid grid-cols-2 gap-4 mt-2">
-                <div>
-                  <span className="text-[10px] text-on-surface-variant font-bold uppercase block mb-1">Manual Input</span>
-                  <input
-                    type="number"
-                    value={areaSqft}
-                    onChange={(e) => setAreaSqft(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                    className="w-full border border-outline-variant/20 rounded-lg p-2.5 bg-surface focus:ring-2 focus:ring-primary/20 outline-none transition-all text-xs font-bold"
-                  />
-                </div>
-                {config.area_slabs && config.area_slabs.length > 0 && (
-                  <div>
-                    <span className="text-[10px] text-on-surface-variant font-bold uppercase block mb-1">Slab Rates</span>
-                    <div className="bg-surface p-2 rounded-lg border border-outline-variant/15 text-[10px] text-on-surface-variant/80 font-medium space-y-0.5">
-                      {config.area_slabs.map((s: { min: number; max?: number; rate: number }, idx: number) => (
-                        <div key={idx} className="flex justify-between">
-                          <span>{s.min}{s.max ? `-${s.max}` : "+"} sqft</span>
-                          <span className="font-black text-primary">₹{s.rate}/sqft</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Quantity Input */}
-          {model === "quantity" && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider">
-                    Quantity ({config.unit_name || "units"})
-                  </label>
-                  <p className="text-[10px] text-on-surface-variant/60 font-medium mt-0.5">
-                    Price: ₹{config.price_per_unit || service.base_price} per {config.unit_name || "unit"}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 bg-surface p-1 rounded-xl border border-outline-variant/25 shadow-xs">
-                  <button
-                    type="button"
-                    onClick={() => setQuantity((q) => Math.max(config.min_qty || 1, q - 1))}
-                    disabled={quantity <= (config.min_qty || 1)}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center border border-outline-variant/10 text-on-surface hover:bg-surface-container disabled:opacity-40 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-sm font-black">remove</span>
-                  </button>
-                  <span className="w-8 text-center text-sm font-headline font-black text-primary">{quantity}</span>
-                  <button
-                    type="button"
-                    onClick={() => setQuantity((q) => Math.min(config.max_qty || 100, q + 1))}
-                    disabled={quantity >= (config.max_qty || 100)}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center border border-outline-variant/10 text-on-surface hover:bg-surface-container disabled:opacity-40 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-sm font-black">add</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Distance Input */}
-          {model === "distance" && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-baseline">
-                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider">
-                  Estimated Travel Distance (KM)
-                </label>
-                <div className="bg-primary/10 px-3 py-1 rounded-md text-primary font-black text-xs">
-                  {distanceKm} KM
-                </div>
-              </div>
-              <input
-                type="range"
-                min={1}
-                max={150}
-                value={distanceKm}
-                onChange={(e) => setDistanceKm(parseInt(e.target.value, 10))}
-                className="w-full accent-primary h-2 bg-outline-variant/20 rounded-lg appearance-none cursor-pointer"
-              />
-              <div className="flex justify-between text-[10px] text-on-surface-variant/50 font-bold uppercase">
-                <span>1 KM</span>
-                <span>150 KM</span>
-              </div>
-              <div className="bg-surface p-3.5 rounded-xl border border-outline-variant/10 text-xs text-on-surface-variant font-medium leading-relaxed">
-                Base Fee: <strong>₹{config.base_distance_fee || service.base_price}</strong> (includes first {config.free_km || 0} KM).
-                <br />
-                Additional distance is billed at <strong>₹{config.price_per_km || 0}/KM</strong>.
-              </div>
-            </div>
-          )}
-
-          {/* Hybrid Inputs */}
-          {model === "hybrid" && (
-            <div className="space-y-4 divide-y divide-outline-variant/15">
-              <div className="pt-2">
-                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Duration (Hours)</label>
-                <input
-                  type="range"
-                  min={60}
-                  max={480}
-                  step={60}
-                  value={durationMinutes}
-                  onChange={(e) => setDurationMinutes(parseInt(e.target.value, 10))}
-                  className="w-full accent-primary h-1.5 bg-outline-variant/15 rounded-lg appearance-none cursor-pointer"
-                />
-                <div className="flex justify-between text-[10px] font-bold text-primary mt-1">
-                  <span>1 Hour</span>
-                  <span>{durationMinutes / 60} Hours</span>
-                  <span>8 Hours</span>
-                </div>
-              </div>
-              <div className="pt-4">
-                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Area Size (Sqft)</label>
-                <input
-                  type="range"
-                  min={100}
-                  max={2000}
-                  step={50}
-                  value={areaSqft}
-                  onChange={(e) => setAreaSqft(parseInt(e.target.value, 10))}
-                  className="w-full accent-primary h-1.5 bg-outline-variant/15 rounded-lg appearance-none cursor-pointer"
-                />
-                <div className="flex justify-between text-[10px] font-bold text-primary mt-1">
-                  <span>100 sqft</span>
-                  <span>{areaSqft} sqft</span>
-                  <span>2000 sqft</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </section>
-
-        {/* 3. Add-ons Selection */}
-        {addons.length > 0 && (
-          <section className="bg-surface-container-low border border-outline-variant/20 rounded-3xl p-5 md:p-6 shadow-xs">
-            <h3 className="text-base font-bold text-primary font-headline mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined text-emerald-600">library_add</span> Available Add-ons
-            </h3>
-            <div className="space-y-3">
-              {addons.map((a) => {
-                const currentQty = selectedAddonIds[a.id] || 0;
-                const isSelected = currentQty > 0;
-                return (
-                  <div
-                    key={a.id}
-                    className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-4 ${isSelected
-                        ? "bg-primary/5 border-primary shadow-xs"
-                        : "bg-surface border-outline-variant/10 hover:bg-surface-container-low"
-                      }`}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs md:text-sm font-bold text-on-surface truncate">{a.title}</span>
-                        {a.is_required && (
-                          <span className="bg-red-500/10 text-red-600 font-bold text-[8px] px-1.5 py-0.5 rounded-full border border-red-500/25 tracking-widest uppercase">Required</span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-on-surface-variant font-medium leading-relaxed line-clamp-1">{a.description}</p>
-                    </div>
-
-                    <div className="flex items-center gap-4 shrink-0">
-                      <span className="text-xs font-black text-primary font-headline">₹{a.price}</span>
-
-                      {/* Addon Selector Counter */}
-                      <div className="flex items-center gap-2.5 bg-surface-container p-0.5 rounded-lg border border-outline-variant/15">
-                        <button
-                          type="button"
-                          onClick={() => handleAddonChange(a.id, currentQty - 1, a.max_quantity)}
-                          className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 cursor-pointer text-xs"
-                          disabled={currentQty === 0}
-                        >
-                          <span className="material-symbols-outlined text-xs font-black">remove</span>
-                        </button>
-                        <span className="w-5 text-center text-xs font-headline font-black text-primary">{currentQty}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleAddonChange(a.id, currentQty + 1, a.max_quantity)}
-                          className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 cursor-pointer text-xs"
-                          disabled={currentQty >= a.max_quantity}
-                        >
-                          <span className="material-symbols-outlined text-xs font-black">add</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
-      </div>
-
-      {/* Pricing Summary & Checkout Panel */}
-      <div className="lg:col-span-1 space-y-6">
-        <section className="bg-surface-container-low border border-outline-variant/20 rounded-3xl p-5 md:p-6 shadow-xs sticky top-6">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-secondary/5 rounded-full blur-xl pointer-events-none" />
-
-          <h3 className="text-base font-bold text-primary font-headline mb-4 flex items-center gap-2 relative z-10">
-            <span className="material-symbols-outlined text-emerald-600">receipt_long</span> Booking Summary
-          </h3>
-
-          <div className="space-y-3 relative z-10 text-xs font-medium text-on-surface-variant">
-            {/* Base Price Component */}
-            <div className="flex justify-between border-b border-outline-variant/10 pb-2">
-              <span>Base Rate ({model})</span>
-              <span className="font-bold text-on-surface">₹{breakdown.base_price}</span>
-            </div>
-
-            {/* Addons Total */}
-            {breakdown.addons_total > 0 && (
-              <div className="flex justify-between border-b border-outline-variant/10 pb-2">
-                <span>Add-ons Total</span>
-                <span className="font-bold text-on-surface">₹{breakdown.addons_total}</span>
-              </div>
-            )}
-
-            {/* Travel Fee / General Fees */}
-            {breakdown.travel_fee > 0 && (
-              <div className="flex justify-between border-b border-outline-variant/10 pb-2">
-                <span>Travel / Visit Surcharge</span>
-                <span className="font-bold text-on-surface">₹{breakdown.travel_fee}</span>
-              </div>
-            )}
-
-            {/* Surcharges breakdown */}
-            {breakdown.surcharges && breakdown.surcharges.length > 0 && (
-              <div className="space-y-1.5 border-b border-outline-variant/10 pb-2">
-                {breakdown.surcharges.map((s, idx) => (
-                  <div key={idx} className="flex justify-between text-[11px]">
-                    <span className="text-secondary font-semibold">{s.name}</span>
-                    <span className={`font-bold ${s.amount < 0 ? 'text-green-600' : 'text-on-surface'}`}>
-                      {s.amount < 0 ? "-" : "+"}₹{Math.abs(s.amount)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* GST (18%) */}
-            {breakdown.gst_amount > 0 && (
-              <div className="flex justify-between border-b border-outline-variant/10 pb-2">
-                <span>GST (18%)</span>
-                <span className="font-bold text-on-surface">₹{breakdown.gst_amount}</span>
-              </div>
-            )}
-
-            {/* Final Payable amount */}
-            <div className="flex justify-between items-baseline pt-2">
-              <span className="text-sm font-bold text-on-surface font-headline">Total Cost</span>
-              <span className="text-2xl font-black text-primary font-headline tracking-tighter">
-                ₹{breakdown.total_price}
-              </span>
             </div>
           </div>
+        )}
+      </section>
 
-          {/* Action CTAs */}
-          <div className="mt-6 flex flex-col gap-2">
+      {/* 3. Add-ons Selection */}
+      {addons.length > 0 && (
+        <section className="bg-surface-container-low border border-outline-variant/20 rounded-3xl p-5 md:p-6 shadow-xs">
+          <h3 className="text-base font-bold text-primary font-headline mb-4 flex items-center gap-2">
+            <span className="material-symbols-outlined text-emerald-600">library_add</span> Available Add-ons
+          </h3>
+          <div className="space-y-3">
+            {addons.map((a) => {
+              const currentQty = selectedAddonIds[a.id] || 0;
+              const isSelected = currentQty > 0;
+              return (
+                <div
+                  key={a.id}
+                  className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-4 ${
+                    isSelected
+                      ? "bg-primary/5 border-primary shadow-xs"
+                      : "bg-surface border-outline-variant/10 hover:bg-surface-container-low"
+                  }`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs md:text-sm font-bold text-on-surface truncate">{a.title}</span>
+                      {a.is_required && (
+                        <span className="bg-red-500/10 text-red-600 font-bold text-[8px] px-1.5 py-0.5 rounded-full border border-red-500/25 tracking-widest uppercase">Required</span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-on-surface-variant font-medium leading-relaxed line-clamp-1">{a.description}</p>
+                  </div>
+
+                  <div className="flex items-center gap-4 shrink-0">
+                    <span className="text-xs font-black text-primary font-headline">₹{a.price}</span>
+
+                    {/* Addon Selector Counter */}
+                    <div className="flex items-center gap-2.5 bg-surface-container p-0.5 rounded-lg border border-outline-variant/15">
+                      <button
+                        type="button"
+                        onClick={() => handleAddonChange(a.id, currentQty - 1, a.max_quantity)}
+                        className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 cursor-pointer text-xs"
+                        disabled={currentQty === 0}
+                      >
+                        <span className="material-symbols-outlined text-xs font-black">remove</span>
+                      </button>
+                      <span className="w-5 text-center text-xs font-headline font-black text-primary">{currentQty}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleAddonChange(a.id, currentQty + 1, a.max_quantity)}
+                        className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 cursor-pointer text-xs"
+                        disabled={currentQty >= a.max_quantity}
+                      >
+                        <span className="material-symbols-outlined text-xs font-black">add</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Sticky Bottom Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-surface-container-lowest/80 backdrop-blur-xl border-t border-outline-variant/15 py-4 px-4 md:px-6 shadow-[0_-8px_30px_rgb(0,0,0,0.06)] animate-fade-in">
+        <div className="max-w-3xl mx-auto flex items-center justify-between gap-4">
+          <div className="flex flex-col">
+            <span className="text-xl md:text-2xl font-black text-primary font-headline tracking-tighter">
+              ₹{priceWithoutGst}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 md:gap-3 shrink-0">
+            {model !== "inspection" && (
+              <AddToCartButton
+                item={cartItem}
+                className="flex-none! w-auto! rounded-xl! px-4 md:px-6 h-10 md:h-12 text-xs md:text-sm font-bold transition-all duration-200 active:scale-95"
+              />
+            )}
             <Link
               href={scheduleUrl}
-              className="w-full py-3.5 bg-primary text-white rounded-xl font-bold text-xs uppercase tracking-widest text-center shadow-lg shadow-primary/20 hover:scale-[1.01] hover:shadow-xl active:scale-[0.99] transition-all cursor-pointer block"
+              className="h-10 md:h-12 px-6 md:px-8 py-2.5 md:py-3 bg-primary text-white rounded-xl font-bold text-xs md:text-sm uppercase tracking-widest text-center shadow-lg shadow-primary/20 hover:scale-[1.02] hover:shadow-xl active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center"
             >
-              Book Professional Now
+              Book Now
             </Link>
-
-            {model !== "inspection" && (
-              <AddToCartButton item={cartItem} />
-            )}
           </div>
-        </section>
+        </div>
       </div>
     </div>
   );

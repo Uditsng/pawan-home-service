@@ -7,11 +7,13 @@ interface AddToCartButtonProps {
   item: CartItem;
   /** If true, renders a compact icon-only style suitable for service cards */
   compact?: boolean;
+  className?: string;
 }
 
 export default function AddToCartButton({
   item,
   compact = false,
+  className = "",
 }: AddToCartButtonProps) {
   const { addItem, removeItem, isInCart, openDrawer } = useCart();
   const inCart = isInCart(item.serviceId);
@@ -34,7 +36,7 @@ export default function AddToCartButton({
           inCart
             ? "bg-primary text-white shadow-md shadow-primary/20"
             : "bg-surface-container-low border border-outline-variant/20 text-on-surface-variant hover:bg-surface-container hover:text-primary hover:border-primary/30"
-        }`}
+        } ${className}`}
       >
         <span className="material-symbols-outlined text-lg">
           {inCart ? "shopping_cart_checkout" : "add_shopping_cart"}
@@ -52,7 +54,7 @@ export default function AddToCartButton({
         inCart
           ? "bg-primary/10 text-primary border border-primary/30 font-bold"
           : "bg-surface-container-low text-on-surface-variant border border-outline-variant/20 hover:bg-surface-container hover:text-primary hover:border-primary/30"
-      }`}
+      } ${className}`}
     >
       <span className="material-symbols-outlined text-sm">
         {inCart ? "shopping_cart_checkout" : "add_shopping_cart"}

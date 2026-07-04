@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect } from "react";
 import { useCart } from "@/lib/cart/CartContext";
 import { useRouter } from "next/navigation";
 import { createRazorpayOrderAction, verifyRazorpayPaymentAction } from "@/app/actions/payment";
+import { formatDuration } from "@/utils/pricingEngine";
 
 interface Address {
   formatted_address: string;
@@ -280,7 +281,7 @@ export default function CartPaymentClient({
                           <p className="text-[10px] text-on-surface-variant font-medium mt-0.5">{item.subcategoryName}</p>
                           {item.pricingModel === "hourly" && item.selectedDuration && (
                             <p className="text-[10px] text-secondary font-bold mt-0.5">
-                              Duration: {item.selectedDuration === 30 ? "30 Mins" : `${item.selectedDuration / 60} Hr${item.selectedDuration / 60 === 1 ? "" : "s"}`}
+                              Duration: {formatDuration(item.selectedDuration)}
                             </p>
                           )}
                         </div>

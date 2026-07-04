@@ -6,6 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import AddAddressModal from "@/components/AddAddressModal";
 import { useCart } from "@/lib/cart/CartContext";
 import DynamicBookingForm, { type FormFieldConfig } from "@/components/DynamicBookingForm";
+import { formatDuration } from "@/utils/pricingEngine";
 
 interface Address {
   id: string;
@@ -607,7 +608,7 @@ export default function ScheduleClient({
                       </p>
                       <p className="font-bold text-on-surface text-xs md:text-sm">
                         {service.pricing_model === "hourly" && duration
-                          ? (duration === 30 ? "30 Minutes" : `${duration / 60} Hour${duration / 60 === 1 ? "" : "s"}`)
+                          ? formatDuration(duration)
                           : `${service.duration_minutes} Minutes`}
                       </p>
                     </>

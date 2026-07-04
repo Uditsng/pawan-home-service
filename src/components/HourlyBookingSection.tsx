@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import AddToCartButton from "@/components/AddToCartButton";
+import { formatDuration } from "@/utils/pricingEngine";
 
 interface PricingOption {
   duration_minutes: number;
@@ -68,9 +69,7 @@ export default function HourlyBookingSection({
   }, [isHourly, selectedDuration, pricingOptions, basePrice, packages, selectedPackageIds]);
 
   const durationLabel = (minutes: number) => {
-    if (minutes === 30) return "30 Minutes";
-    const hours = minutes / 60;
-    return `${hours} Hour${hours === 1 ? "" : "s"}`;
+    return formatDuration(minutes);
   };
 
   const scheduleUrl = useMemo(() => {

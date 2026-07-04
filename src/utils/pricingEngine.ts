@@ -379,3 +379,19 @@ export function formatStartingPrice(basePrice: number, pricingModel?: string): s
   if (model === "hybrid") return `₹${basePrice} base`;
   return `₹${basePrice}`;
 }
+
+export function formatDuration(minutes: number): string {
+  if (minutes === 30) return "30min";
+  if (minutes === 60) return "60min";
+  if (minutes === 90) return "90mins";
+  if (minutes === 120) return "2hours";
+  if (minutes === 180) return "3 hours";
+  
+  if (minutes < 60) return `${minutes}min`;
+  const hours = minutes / 60;
+  if (hours % 1 === 0) {
+    return `${hours}hour${hours === 1 ? "" : "s"}`;
+  }
+  return `${hours} hours`;
+}
+

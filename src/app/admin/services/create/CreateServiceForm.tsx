@@ -239,7 +239,7 @@ export function CreateServiceForm({ categories: initialCategories, action, addCa
   const [includedItems, setIncludedItems] = useState<string[]>([""]);
   const [excludedItems, setExcludedItems] = useState<string[]>([""]);
   const [faqs, setFaqs] = useState<{ question: string, answer: string }[]>([{ question: "", answer: "" }]);
-  const [pricingModel, setPricingModel] = useState<"fixed" | "hourly">("fixed");
+  const [pricingModel, setPricingModel] = useState<string>("fixed");
   const [durationRates, setDurationRates] = useState<{ duration: number; price: number }[]>([{ duration: 60, price: 199 }]);
 
   // ── Duration rate helpers ──
@@ -391,11 +391,16 @@ export function CreateServiceForm({ categories: initialCategories, action, addCa
               <select
                 name="pricing_model"
                 value={pricingModel}
-                onChange={(e) => setPricingModel(e.target.value as "fixed" | "hourly")}
+                onChange={(e) => setPricingModel(e.target.value)}
                 className="w-full border border-outline-variant/20 rounded-lg p-3 bg-surface-container focus:ring-2 focus:ring-primary/20 outline-none transition-all"
               >
                 <option value="fixed">Fixed Pricing (Outcome-Based)</option>
                 <option value="hourly">Hourly Pricing (Duration-Based)</option>
+                <option value="area">Area Pricing (Sqft-Based)</option>
+                <option value="quantity">Quantity Pricing (Unit-Based)</option>
+                <option value="distance">Distance Pricing (KM-Based)</option>
+                <option value="inspection">Inspection Pricing (Quotation-Based)</option>
+                <option value="hybrid">Hybrid Pricing (Combined Components)</option>
               </select>
             </div>
           </div>
@@ -435,13 +440,11 @@ export function CreateServiceForm({ categories: initialCategories, action, addCa
                         onChange={(e) => updateDurationRate(i, "duration", parseInt(e.target.value))}
                         className="w-full border border-outline-variant/20 rounded-lg p-2.5 bg-surface-container focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all"
                       >
-                        <option value={30}>30 Minutes</option>
-                        <option value={60}>1 Hour</option>
-                        <option value={120}>2 Hours</option>
-                        <option value={180}>3 Hours</option>
-                        <option value={240}>4 Hours</option>
-                        <option value={360}>6 Hours</option>
-                        <option value={480}>8 Hours</option>
+                        <option value={30}>30min</option>
+                        <option value={60}>60min</option>
+                        <option value={90}>90mins</option>
+                        <option value={120}>2hours</option>
+                        <option value={180}>3 hours</option>
                       </select>
                     </div>
                     <div className="flex-1">
@@ -517,6 +520,55 @@ export function CreateServiceForm({ categories: initialCategories, action, addCa
                 <input type="hidden" name="excluded_features" value={excludedItems.filter(Boolean).join('\n')} />
                 <Button type="button" variant="ghost" onClick={() => addItem(setExcludedItems)} className="w-full mt-2 text-sm text-secondary">+ Add Item</Button>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Dynamic Service Configuration Blocks */}
+        <div className="bg-surface-container-low p-5 sm:p-6 rounded-xl border border-outline-variant/10 space-y-4">
+          <h3 className="font-bold text-primary text-sm border-b border-outline-variant/10 pb-2">Service Engine Settings</h3>
+          
+          <div className="flex items-center gap-3 py-1">
+            <label className="relative inline-flex items-center cursor-pointer select-none">
+              <input
+                type="checkbox"
+                name="gst_applicable"
+                value="true"
+                defaultChecked={true}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-outline-variant/30 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary"></div>
+            </label>
+            <span className="text-xs font-bold text-on-surface-variant">GST (18%) Applicable to this service</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider">Pricing Parameters (JSON)</label>
+              <textarea
+                name="pricing_config_json"
+                rows={8}
+                defaultValue="{}"
+                className="w-full border border-outline-variant/20 rounded-xl p-3 bg-white focus:ring-2 focus:ring-primary/20 outline-none transition-all font-mono text-xs"
+                placeholder={`{\n  "min_hours": 2,\n  "max_hours": 8,\n  "price_per_hour": 150\n}`}
+              />
+              <p className="text-[10px] text-on-surface-variant/70 leading-normal">
+                Configure parameters such as slabs, minimum/maximum limits, unit rates, distance multipliers, etc.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider">Booking Form Fields (JSON)</label>
+              <textarea
+                name="form_fields_json"
+                rows={8}
+                defaultValue="[]"
+                className="w-full border border-outline-variant/20 rounded-xl p-3 bg-white focus:ring-2 focus:ring-primary/20 outline-none transition-all font-mono text-xs"
+                placeholder={`[\n  {\n    "name": "ac_type",\n    "label": "AC Unit Type",\n    "type": "dropdown",\n    "required": true,\n    "options": ["Split AC", "Window AC", "Cassette AC"]\n  }\n]`}
+              />
+              <p className="text-[10px] text-on-surface-variant/70 leading-normal">
+                Define input questions shown to customer during checkout schedule. Supported types: text, dropdown, radio, number, checkbox.
+              </p>
             </div>
           </div>
         </div>

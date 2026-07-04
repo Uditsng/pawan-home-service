@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createRazorpayOrderAction, verifyRazorpayPaymentAction } from "@/app/actions/payment";
 import { BookingPricing } from "@/lib/types";
+import { formatDuration } from "@/utils/pricingEngine";
 
 interface ServicePackage {
   id: string;
@@ -334,8 +335,8 @@ export default function PaymentFormClient({
                       })()}
                     </div>
                   ) : duration ? (
-                    <p className="text-xs text-secondary font-bold mt-1">
-                      Duration: {duration === 30 ? "30 Minutes" : `${duration / 60} Hour${duration / 60 === 1 ? "" : "s"}`}
+                    <p className="text-xs text-secondary font-bold mt-1 flex items-center gap-1.5">
+                      Duration: {formatDuration(duration)}
                     </p>
                   ) : areaSqft ? (
                     <p className="text-xs text-secondary font-bold mt-1">

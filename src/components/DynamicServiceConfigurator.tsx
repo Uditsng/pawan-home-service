@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { Service, ServiceVariant, ServiceAddon, PricingModel, ServicePricingRule } from "@/lib/types";
-import { calculatePricingBreakdown } from "@/utils/pricingEngine";
+import { calculatePricingBreakdown, formatDuration } from "@/utils/pricingEngine";
 import AddToCartButton from "@/components/AddToCartButton";
 
 interface DynamicServiceConfiguratorProps {
@@ -244,12 +244,7 @@ export default function DynamicServiceConfigurator({
                 const maxH = config.max_hours || 24;
                 if (hrs < minH || hrs > maxH) return null;
 
-                let label = "";
-                if (mins === 30) label = "30mins";
-                else if (mins === 60) label = "60mins";
-                else if (mins === 90) label = "90mins";
-                else if (mins === 120) label = "2hours";
-                else if (mins === 180) label = "3 hours";
+                const label = formatDuration(mins);
 
                 return (
                   <button

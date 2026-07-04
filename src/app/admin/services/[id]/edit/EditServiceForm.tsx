@@ -233,13 +233,11 @@ export function EditServiceForm({
                       onChange={(e) => updateDurationRate(i, "duration", parseInt(e.target.value))}
                       className="w-full border border-outline-variant/20 rounded-lg p-2.5 bg-surface-container focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all"
                     >
-                      <option value={30}>30 Minutes</option>
-                      <option value={60}>1 Hour</option>
-                      <option value={120}>2 Hours</option>
-                      <option value={180}>3 Hours</option>
-                      <option value={240}>4 Hours</option>
-                      <option value={360}>6 Hours</option>
-                      <option value={480}>8 Hours</option>
+                      <option value={30}>30min</option>
+                      <option value={60}>60min</option>
+                      <option value={90}>90mins</option>
+                      <option value={120}>2hours</option>
+                      <option value={180}>3 hours</option>
                     </select>
                   </div>
                   <div className="flex-1">

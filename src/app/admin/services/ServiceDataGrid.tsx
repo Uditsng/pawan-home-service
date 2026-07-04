@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
-import { deleteService } from "@/app/admin/actions";
+import { deleteService, duplicateService } from "@/app/admin/actions";
 
 interface ServiceItem {
   id: string;
@@ -79,6 +79,19 @@ export function ServiceDataGrid({ services, categories }: { services: ServiceIte
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<string | null>(null);
+  const [isDuplicating, setIsDuplicating] = useState<string | null>(null);
+
+  const handleDuplicate = async (serviceId: string) => {
+    try {
+      setIsDuplicating(serviceId);
+      setErrorMsg(null);
+      await duplicateService(serviceId);
+    } catch (err: unknown) {
+      setErrorMsg("Failed to duplicate service: " + ((err as Error).message || ""));
+    } finally {
+      setIsDuplicating(null);
+    }
+  };
 
   const handleDeleteConfirm = async () => {
     if (!deleteCandidate) return;
@@ -253,6 +266,16 @@ export function ServiceDataGrid({ services, categories }: { services: ServiceIte
                       </td>
                       <td className="px-4 py-1.5 whitespace-nowrap text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleDuplicate(service.id)}
+                            disabled={isDeleting === service.id || !!isDuplicating}
+                            className="p-1 text-on-surface-variant hover:text-secondary hover:bg-secondary/15 rounded-lg transition-colors disabled:opacity-50"
+                            title="Duplicate Service"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">
+                              {isDuplicating === service.id ? 'hourglass_empty' : 'content_copy'}
+                            </span>
+                          </button>
                           <Link
                             href={`/admin/services/${service.id}/edit`}
                             className="p-1 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-lg transition-colors"
@@ -262,7 +285,7 @@ export function ServiceDataGrid({ services, categories }: { services: ServiceIte
                           </Link>
                           <button
                             onClick={() => setDeleteCandidate(service.id)}
-                            disabled={isDeleting === service.id}
+                            disabled={isDeleting === service.id || !!isDuplicating}
                             className="p-1 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-lg transition-colors disabled:opacity-50"
                             title="Delete Service"
                           >

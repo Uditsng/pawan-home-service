@@ -5,8 +5,12 @@ import { useState, useMemo, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
 import AddAddressModal from "@/components/AddAddressModal";
 import { useCart } from "@/lib/cart/CartContext";
-import DynamicBookingForm, { type FormFieldConfig } from "@/components/DynamicBookingForm";
+import DynamicBookingForm from "@/components/DynamicBookingForm";
 import { formatDuration } from "@/utils/pricingEngine";
+import { Service, PricingModel } from "@/lib/types";
+import { validateBooking, BookingState, FormFieldConfig } from "@/utils/bookingValidation";
+import DateSelector from "@/components/booking/DateSelector";
+import TimeSelector from "@/components/booking/TimeSelector";
 
 interface Address {
   id: string;
@@ -48,15 +52,12 @@ export default function ScheduleClient({
 
   // Derive dynamic form fields — check top-level form_fields first,
   // then fall back to page_content.form_fields (legacy placement).
-  // The JSONB data from the DB matches FormFieldConfig shape (set by admin at service creation).
-  // We cast via unknown to satisfy TypeScript since JSONB arrives untyped from Supabase.
   const fields: FormFieldConfig[] = (() => {
     if (Array.isArray(service?.form_fields)) return service.form_fields as FormFieldConfig[];
     const fromContent = (service?.page_content as Record<string, unknown> | undefined)?.form_fields;
     if (Array.isArray(fromContent)) return fromContent as unknown as FormFieldConfig[];
     return [];
   })();
-
 
   const [addresses, setAddresses] = useState<Address[]>(initialAddresses);
   const [selectedAddressId, setSelectedAddressId] = useState<string>(() => {
@@ -129,15 +130,6 @@ export default function ScheduleClient({
   const monthShort = selectedFullDate.toLocaleString('default', { month: 'short' });
   const selectedDateNum = selectedFullDate.getDate();
 
-  const next4Days = useMemo(() => {
-    const baseDate = new Date();
-    return Array.from({ length: 4 }).map((_, i) => {
-      const d = new Date(baseDate);
-      d.setDate(d.getDate() + i);
-      return d;
-    });
-  }, []);
-
   // Pre-determined time slots (7:00 AM to 9:00 PM, 30-min intervals)
   const availableMorningSlots = [
     '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM'
@@ -155,8 +147,8 @@ export default function ScheduleClient({
 
   // Helper to parse slot e.g. "7:30 AM" to minutes since midnight
   const getMinutesFromSlot = (slot: string) => {
-    const [time, modifier] = slot.split(' ');
-    const [h, m] = time.split(':');
+    const [timeVal, modifier] = slot.split(' ');
+    const [h, m] = timeVal.split(':');
     let hours = parseInt(h, 10);
     const minutes = parseInt(m, 10);
 
@@ -211,13 +203,37 @@ export default function ScheduleClient({
       return;
     }
 
-    // Validate dynamic form fields
-    const newErrors: Record<string, string> = {};
-    fields.forEach((f: any) => {
-      if (f.required && !formAnswers[f.name]) {
-        newErrors[f.name] = `${f.label} is required.`;
-      }
-    });
+    const year = selectedFullDate.getFullYear();
+    const formattedMonth = (selectedFullDate.getMonth() + 1).toString().padStart(2, '0');
+    const formattedDate = selectedFullDate.getDate().toString().padStart(2, '0');
+    const dateStr = `${year}-${formattedMonth}-${formattedDate}`;
+
+    // Compile booking state for centralized validation
+    const bookingState: BookingState = {
+      serviceId: service?.id || "",
+      pricingModel: (service?.pricing_model || "fixed") as PricingModel,
+      selectedVariantId: searchParams.get("variantId") || null,
+      selectedAddons: {},
+      areaSqft: searchParams.get("areaSqft") ? parseInt(searchParams.get("areaSqft")!, 10) : null,
+      quantity: searchParams.get("quantity") ? parseInt(searchParams.get("quantity")!, 10) : null,
+      durationMinutes: duration || null,
+      distanceKm: searchParams.get("distanceKm") ? parseInt(searchParams.get("distanceKm")!, 10) : null,
+      date: dateStr,
+      time: effectiveSelectedTime,
+      addressId: selectedAddressId,
+      formAnswers,
+    };
+
+    let newErrors: Record<string, string> = {};
+
+    if (service) {
+      newErrors = validateBooking(bookingState, service as unknown as Service);
+    } else {
+      // Cart checkout basic validation
+      if (!bookingState.date) newErrors.date = "Please select a service date.";
+      if (!bookingState.time) newErrors.time = "Please select a time slot.";
+      if (!bookingState.addressId) newErrors.addressId = "Please select a service address.";
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setFormErrors(newErrors);
@@ -226,14 +242,10 @@ export default function ScheduleClient({
 
     setFormErrors({});
 
-    const year = selectedFullDate.getFullYear();
-    const formattedMonth = (selectedFullDate.getMonth() + 1).toString().padStart(2, '0');
-    const formattedDate = selectedFullDate.getDate().toString().padStart(2, '0');
-
     if (service) {
       const paramsObj: Record<string, string> = {
         serviceId: service.id,
-        date: `${year}-${formattedMonth}-${formattedDate}`,
+        date: dateStr,
         time: effectiveSelectedTime,
         addressId: selectedAddressId,
       };
@@ -258,7 +270,7 @@ export default function ScheduleClient({
       router.push(`/customer/checkout/payment?${payload.toString()}`);
     } else {
       const payload = new URLSearchParams({
-        date: `${year}-${formattedMonth}-${formattedDate}`,
+        date: dateStr,
         time: effectiveSelectedTime,
         addressId: selectedAddressId,
       });
@@ -400,30 +412,16 @@ export default function ScheduleClient({
             <h2 className="font-headline text-sm font-bold">Select Date</h2>
           </div>
 
-          <div className="flex gap-2 pb-0.5 snap-x overflow-x-auto scrollbar-hide">
-            {next4Days.map((dateObj) => {
-              const isSelected = selectedFullDate.toDateString() === dateObj.toDateString();
-              const dayName = dateObj.toLocaleString('default', { weekday: 'short' });
-              const dayNum = dateObj.getDate();
-              const isTodayItem = dateObj.toDateString() === today.toDateString();
-
-              return (
-                <button
-                  key={dateObj.toISOString()}
-                  onClick={() => setSelectedFullDate(dateObj)}
-                  className={`snap-center shrink-0 flex-1 min-w-[65px] py-2 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all border-2 active:scale-95 duration-200
-                    ${isSelected 
-                      ? 'bg-primary border-primary text-white shadow-sm' 
-                      : 'bg-surface border-outline-variant/10 text-on-surface hover:bg-surface-container-low hover:border-outline-variant/30'}`}
-                >
-                  <span className={`text-[9px] font-bold uppercase tracking-wider ${isSelected ? 'text-white/80' : 'text-on-surface-variant'}`}>
-                    {isTodayItem ? 'Today' : dayName}
-                  </span>
-                  <span className="text-lg font-black">{dayNum}</span>
-                </button>
-              );
-            })}
-          </div>
+          <DateSelector
+            selectedDate={selectedFullDate}
+            onChange={setSelectedFullDate}
+          />
+          {formErrors.date && (
+            <p className="text-xs text-error font-semibold flex items-center gap-1 mt-1.5">
+              <span className="material-symbols-outlined text-[14px]">error</span>
+              {formErrors.date}
+            </p>
+          )}
         </section>
 
         {/* Time Slots Selection Section */}
@@ -433,35 +431,23 @@ export default function ScheduleClient({
             <h2 className="font-headline text-sm font-bold">Select Time Slot</h2>
           </div>
 
-          {allSlots.length > 0 ? (
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-1.5">
-              {allSlots.map(time => {
-                const isSelected = effectiveSelectedTime === time;
-                return (
-                  <button
-                    key={time}
-                    onClick={() => setSelectedTime(time)}
-                    className={`py-1.5 px-0.5 rounded-lg transition-all border text-xs font-bold flex items-center justify-center active:scale-[0.97] duration-200
-                      ${isSelected 
-                        ? 'bg-primary border-primary text-white shadow-xs' 
-                        : 'bg-surface border-outline-variant/10 text-on-surface hover:bg-surface-container-low hover:border-outline-variant/30'}`}
-                  >
-                    {time}
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="p-4 text-center bg-surface rounded-xl border border-outline-variant/10 text-on-surface-variant text-xs font-medium">
-              No available slots for this date. Please select another date.
-            </div>
+          <TimeSelector
+            selectedTime={effectiveSelectedTime}
+            morningSlots={filteredMorningSlots}
+            afternoonSlots={filteredAfternoonSlots}
+            onChange={setSelectedTime}
+          />
+          {formErrors.time && (
+            <p className="text-xs text-error font-semibold flex items-center gap-1 mt-1.5">
+              <span className="material-symbols-outlined text-[14px]">error</span>
+              {formErrors.time}
+            </p>
           )}
         </section>
 
         {/* CarryBuddy Details Section */}
         {isCarryBuddy && (
           <section className="mb-8 bg-linear-to-br from-white to-surface-container-low/40 border border-outline-variant/20 rounded-3xl p-6 shadow-xs space-y-6 relative overflow-hidden">
-            {/* Ambient background glow */}
             <div className="absolute -top-12 -right-12 w-24 h-24 bg-secondary/10 rounded-full blur-xl pointer-events-none" />
 
             <div className="flex items-center gap-3">

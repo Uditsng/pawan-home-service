@@ -4,6 +4,7 @@ import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { EditServiceForm } from "./EditServiceForm";
 import { requireAdmin } from "@/utils/supabase/auth-checks";
+import { ServiceVariant, ServiceAddon } from "@/lib/types";
 
 export default async function AdminEditServicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -15,20 +16,24 @@ export default async function AdminEditServicePage({ params }: { params: Promise
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
   if (!profile || profile.role !== 'admin') redirect('/');
 
-  // Fetch initial service data
-  const { data: serviceData } = await supabase
-    .from('services')
-    .select('*')
-    .eq('id', id)
-    .single();
+  // Fetch initial service data, variants, and addons in parallel
+  const [serviceRes, variantsRes, addonsRes] = await Promise.all([
+    supabase.from('services').select('*').eq('id', id).single(),
+    supabase.from("service_variants").select("*").eq("service_id", id).order("price", { ascending: true }),
+    supabase.from("service_addons").select("*").eq("service_id", id).order("created_at", { ascending: true }),
+  ]);
 
+  const serviceData = serviceRes.data;
   if (!serviceData) {
     redirect('/admin/services');
   }
 
+  const initialVariants = (variantsRes.data || []) as ServiceVariant[];
+  const initialAddons = (addonsRes.data || []) as ServiceAddon[];
+
   // Fetch duration rates if it's an hourly service
   let durationRates: { duration: number; price: number }[] = [];
-  if (serviceData && serviceData.pricing_model === "hourly") {
+  if (serviceData.pricing_model === "hourly") {
     const { data: ratesData } = await supabase
       .from("service_duration_pricing")
       .select("duration_minutes, price")
@@ -94,9 +99,8 @@ export default async function AdminEditServicePage({ params }: { params: Promise
       console.error("Failed to parse form_fields", e);
     }
 
-    // Arrays separated by newline
-    const includedRaw = formData.get("included_features") as string;
-    const excludedRaw = formData.get("excluded_features") as string;
+    const includedRaw = (formData.get("included_features") as string) || "";
+    const excludedRaw = (formData.get("excluded_features") as string) || "";
     const included_features = includedRaw.split('\n').map(s => s.trim()).filter(s => s.length > 0);
     const excluded_features = excludedRaw.split('\n').map(s => s.trim()).filter(s => s.length > 0);
 
@@ -110,15 +114,15 @@ export default async function AdminEditServicePage({ params }: { params: Promise
     }
 
     const page_content = {
-      about_text: description, // we can use description or separate field if needed
+      about_text: description,
       included_features,
       excluded_features,
       faqs,
-      why_choose_us: serviceData?.page_content?.why_choose_us || [
+      why_choose_us: serviceData.page_content?.why_choose_us || [
         { icon: "verified_user", title: "Verified Professionals", desc: "Background-checked and certified experts." },
         { icon: "timer", title: "On-Time Service", desc: "We respect your schedule." }
       ],
-      how_to_book_steps: serviceData?.page_content?.how_to_book_steps || [
+      how_to_book_steps: serviceData.page_content?.how_to_book_steps || [
         { step: 1, title: "Choose Service", desc: "Select and confirm your location" },
         { step: 2, title: "Pick Schedule", desc: "Select a date and time" },
         { step: 3, title: "Service Done", desc: "Professional arrives to complete the job" }
@@ -146,10 +150,8 @@ export default async function AdminEditServicePage({ params }: { params: Promise
     }
 
     // Update duration rates
-    // A. Delete existing duration rates first
     await db.from("service_duration_pricing").delete().eq("service_id", id);
 
-    // B. Re-insert rates if hourly
     if (pricing_model === "hourly" && duration_rates_raw) {
       try {
         const rates = JSON.parse(duration_rates_raw) as { duration: number; price: number }[];
@@ -169,6 +171,52 @@ export default async function AdminEditServicePage({ params }: { params: Promise
       }
     }
 
+    // Update variants
+    await db.from("service_variants").delete().eq("service_id", id);
+    const variants_raw = formData.get("variants_json") as string;
+    if (variants_raw) {
+      try {
+        const variantsData = JSON.parse(variants_raw) as { title: string; description: string; price: number; original_price: number | null; duration_minutes: number | null }[];
+        const variantRows = variantsData.map(v => ({
+          service_id: id,
+          title: v.title,
+          description: v.description || null,
+          price: Number(v.price),
+          original_price: v.original_price ? Number(v.original_price) : null,
+          duration_minutes: v.duration_minutes ? Number(v.duration_minutes) : null,
+          is_active: true
+        }));
+        if (variantRows.length > 0) {
+          await db.from("service_variants").insert(variantRows);
+        }
+      } catch (e) {
+        console.error("Failed to insert variants:", e);
+      }
+    }
+
+    // Update addons
+    await db.from("service_addons").delete().eq("service_id", id);
+    const addons_raw = formData.get("addons_json") as string;
+    if (addons_raw) {
+      try {
+        const addonsData = JSON.parse(addons_raw) as { title: string; description: string; price: number; is_required: boolean; max_quantity: number }[];
+        const addonRows = addonsData.map(a => ({
+          service_id: id,
+          title: a.title,
+          description: a.description || null,
+          price: Number(a.price),
+          is_required: a.is_required === true,
+          max_quantity: Number(a.max_quantity) || 1,
+          is_active: true
+        }));
+        if (addonRows.length > 0) {
+          await db.from("service_addons").insert(addonRows);
+        }
+      } catch (e) {
+        console.error("Failed to insert addons:", e);
+      }
+    }
+
     revalidatePath('/admin/services');
     revalidatePath('/');
     redirect('/admin/services');
@@ -183,7 +231,14 @@ export default async function AdminEditServicePage({ params }: { params: Promise
         <h1 className="text-3xl font-bold font-headline text-primary">Edit Service</h1>
       </div>
 
-      <EditServiceForm categories={categoriesData || []} initialData={serviceData} initialDurationRates={durationRates} action={editServiceAction} />
+      <EditServiceForm
+        categories={categoriesData || []}
+        initialData={serviceData}
+        initialDurationRates={durationRates}
+        initialVariants={initialVariants}
+        initialAddons={initialAddons}
+        action={editServiceAction}
+      />
     </div>
   );
 }

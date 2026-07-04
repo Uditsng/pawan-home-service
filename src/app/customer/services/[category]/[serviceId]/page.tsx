@@ -4,17 +4,7 @@ import Image from "next/image";
 import DynamicServiceConfigurator from "@/components/DynamicServiceConfigurator";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
 import { formatStartingPrice } from "@/utils/pricingEngine";
-import { Service, ServiceVariant, ServiceAddon, ServicePricingRule } from "@/lib/types";
-
-interface ServicePageContent {
-  about_text?: string;
-  included_features?: string[];
-  excluded_features?: string[];
-  faqs?: { question: string; answer: string }[];
-  why_choose_us?: { icon: string; title: string; desc: string }[];
-  how_to_book_steps?: { step: number; title: string; desc: string }[];
-  packages?: { id: string; title: string; price: number; original_price?: number }[];
-}
+import { Service, ServiceVariant, ServiceAddon, ServicePricingRule, ServicePageContent } from "@/lib/types";
 
 interface ServiceWithSubcategory {
   id: string;

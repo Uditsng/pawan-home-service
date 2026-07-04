@@ -5,6 +5,13 @@ import Link from "next/link";
 import { Service, ServiceVariant, ServiceAddon, PricingModel, ServicePricingRule } from "@/lib/types";
 import { calculatePricingBreakdown, formatDuration } from "@/utils/pricingEngine";
 import AddToCartButton from "@/components/AddToCartButton";
+import { BookingState } from "@/utils/bookingValidation";
+import VariantSelector from "./booking/VariantSelector";
+import AreaSelector from "./booking/AreaSelector";
+import QuantitySelector from "./booking/QuantitySelector";
+import DistanceSelector from "./booking/DistanceSelector";
+import AddonSelector from "./booking/AddonSelector";
+import PriceSummary from "./booking/PriceSummary";
 
 interface DynamicServiceConfiguratorProps {
   service: Service;
@@ -26,116 +33,132 @@ export default function DynamicServiceConfigurator({
   iconName,
 }: DynamicServiceConfiguratorProps) {
   const model = (service.pricing_model || "fixed") as PricingModel;
-  const config = service.pricing_config || {};
+  const config = (service.pricing_config || {}) as Record<string, unknown>;
 
-  // Form selections state
-  const [selectedVariantId, setSelectedVariantId] = useState<string>(() => {
-    return variants[0]?.id || "";
+  // Initialize booking state dynamically based on the pricing model
+  const [bookingState, setBookingState] = useState<BookingState>(() => {
+    const minHours = Number(config.min_hours ?? 1);
+    const minArea = Number(config.min_area ?? 500);
+    const minQty = Number(config.min_qty ?? 1);
+
+    return {
+      serviceId: service.id,
+      pricingModel: model,
+      selectedVariantId: variants[0]?.id || null,
+      selectedAddons: {},
+      areaSqft: model === "area" || model === "hybrid" ? minArea : null,
+      quantity: model === "quantity" || model === "hybrid" ? minQty : null,
+      durationMinutes: model === "hourly" || model === "hybrid" ? minHours * 60 : null,
+      distanceKm: model === "distance" || model === "hybrid" ? 1 : null,
+      date: null,
+      time: null,
+      addressId: null,
+      formAnswers: {},
+    };
   });
 
-  const [durationMinutes, setDurationMinutes] = useState<number>(() => {
-    return config.min_hours ? config.min_hours * 60 : 60;
-  });
+  // Handlers for state updates
+  const handleVariantSelect = (variantId: string) => {
+    setBookingState((prev) => ({ ...prev, selectedVariantId: variantId }));
+  };
 
-  const [areaSqft, setAreaSqft] = useState<number>(() => {
-    return config.min_area || 500;
-  });
+  const handleAreaChange = (area: number) => {
+    setBookingState((prev) => ({ ...prev, areaSqft: area }));
+  };
 
-  const [quantity, setQuantity] = useState<number>(() => {
-    return config.min_qty || 1;
-  });
+  const handleQuantityChange = (qty: number) => {
+    setBookingState((prev) => ({ ...prev, quantity: qty }));
+  };
 
-  const [distanceKm, setDistanceKm] = useState<number>(1);
+  const handleDistanceChange = (km: number) => {
+    setBookingState((prev) => ({ ...prev, distanceKm: km }));
+  };
 
-  const [selectedAddonIds, setSelectedAddonIds] = useState<Record<string, number>>({});
+  const handleAddonChange = (addonId: string, qty: number, maxQty: number) => {
+    setBookingState((prev) => {
+      const nextAddons = { ...prev.selectedAddons };
+      const newQty = Math.max(0, Math.min(maxQty, qty));
+      if (newQty === 0) {
+        delete nextAddons[addonId];
+      } else {
+        nextAddons[addonId] = newQty;
+      }
+      return { ...prev, selectedAddons: nextAddons };
+    });
+  };
 
-
-
-  // Derived selected objects
+  // Derived selected variant
   const selectedVariant = useMemo(() => {
-    return variants.find((v) => v.id === selectedVariantId) || null;
-  }, [variants, selectedVariantId]);
+    return variants.find((v) => v.id === bookingState.selectedVariantId) || null;
+  }, [variants, bookingState.selectedVariantId]);
 
+  // Derived active addons list
   const activeAddons = useMemo(() => {
     return addons
-      .filter((a) => selectedAddonIds[a.id] > 0)
+      .filter((a) => (bookingState.selectedAddons[a.id] || 0) > 0)
       .map((a) => ({
         id: a.id,
         title: a.title,
         price: a.price,
-        quantity: selectedAddonIds[a.id],
+        quantity: bookingState.selectedAddons[a.id],
       }));
-  }, [addons, selectedAddonIds]);
+  }, [addons, bookingState.selectedAddons]);
 
-  // Compute breakdown dynamically
+  // Compute breakdown dynamically via Centralized Pricing Engine
   const breakdown = useMemo(() => {
     const variantPrice = selectedVariant ? Number(selectedVariant.price) : null;
     return calculatePricingBreakdown({
       pricingModel: model,
       basePrice: Number(service.base_price || 0),
-      pricingConfig: config,
+      pricingConfig: service.pricing_config || {},
       variantPrice,
-      durationMinutes,
-      areaSqft,
-      quantity,
-      distanceKm,
+      durationMinutes: bookingState.durationMinutes || undefined,
+      areaSqft: bookingState.areaSqft || undefined,
+      quantity: bookingState.quantity || undefined,
+      distanceKm: bookingState.distanceKm || undefined,
       addons: activeAddons,
-      scheduledDate: new Date(), // use current time for client preview
+      scheduledDate: new Date(),
       surchargeRules,
-      isMember: false, // can check session or user profile in next steps
+      isMember: false,
     });
   }, [
     model,
     service,
-    config,
     selectedVariant,
-    durationMinutes,
-    areaSqft,
-    quantity,
-    distanceKm,
+    bookingState.durationMinutes,
+    bookingState.areaSqft,
+    bookingState.quantity,
+    bookingState.distanceKm,
     activeAddons,
     surchargeRules,
   ]);
-
-  // Handle addon quantity modification
-  const handleAddonChange = (addonId: string, qty: number, maxQty: number) => {
-    setSelectedAddonIds((prev) => {
-      const next = { ...prev };
-      const newQty = Math.max(0, Math.min(maxQty, qty));
-      if (newQty === 0) {
-        delete next[addonId];
-      } else {
-        next[addonId] = newQty;
-      }
-      return next;
-    });
-  };
 
   // Compile schedule/booking URL params
   const scheduleUrl = useMemo(() => {
     const params = new URLSearchParams({
       serviceId: service.id,
     });
-    if (model === "hourly") {
-      params.set("duration", durationMinutes.toString());
-    } else if (model === "area") {
-      params.set("areaSqft", areaSqft.toString());
-    } else if (model === "quantity") {
-      params.set("quantity", quantity.toString());
-    } else if (model === "distance") {
-      params.set("distanceKm", distanceKm.toString());
+
+    if (model === "hourly" && bookingState.durationMinutes) {
+      params.set("duration", bookingState.durationMinutes.toString());
+    } else if (model === "area" && bookingState.areaSqft) {
+      params.set("areaSqft", bookingState.areaSqft.toString());
+    } else if (model === "quantity" && bookingState.quantity) {
+      params.set("quantity", bookingState.quantity.toString());
+    } else if (model === "distance" && bookingState.distanceKm) {
+      params.set("distanceKm", bookingState.distanceKm.toString());
     } else if (model === "hybrid") {
-      params.set("duration", durationMinutes.toString());
-      params.set("areaSqft", areaSqft.toString());
-      params.set("quantity", quantity.toString());
-      params.set("distanceKm", distanceKm.toString());
+      if (bookingState.durationMinutes) params.set("duration", bookingState.durationMinutes.toString());
+      if (bookingState.areaSqft) params.set("areaSqft", bookingState.areaSqft.toString());
+      if (bookingState.quantity) params.set("quantity", bookingState.quantity.toString());
+      if (bookingState.distanceKm) params.set("distanceKm", bookingState.distanceKm.toString());
     }
 
-    if (selectedVariantId) {
-      params.set("variantId", selectedVariantId);
+    if (bookingState.selectedVariantId) {
+      params.set("variantId", bookingState.selectedVariantId);
     }
 
-    const chosenAddons = Object.entries(selectedAddonIds)
+    const chosenAddons = Object.entries(bookingState.selectedAddons)
       .map(([id, qty]) => `${id}:${qty}`)
       .join(",");
     if (chosenAddons) {
@@ -143,7 +166,7 @@ export default function DynamicServiceConfigurator({
     }
 
     return `/customer/checkout/schedule?${params.toString()}`;
-  }, [service.id, model, durationMinutes, areaSqft, quantity, distanceKm, selectedVariantId, selectedAddonIds]);
+  }, [service.id, model, bookingState,]);
 
   // Cart item compile
   const cartItem = useMemo(() => {
@@ -155,57 +178,23 @@ export default function DynamicServiceConfigurator({
       subcategoryName,
       categorySlug,
       pricingModel: model,
-      selectedDuration: model === "hourly" ? durationMinutes : undefined,
+      selectedDuration: model === "hourly" ? (bookingState.durationMinutes || undefined) : undefined,
     };
-  }, [service, iconName, breakdown.total_price, subcategoryName, categorySlug, model, durationMinutes]);
-
-  const priceWithoutGst = useMemo(() => {
-    return breakdown.total_price - breakdown.gst_amount;
-  }, [breakdown.total_price, breakdown.gst_amount]);
+  }, [service, iconName, breakdown.total_price, subcategoryName, categorySlug, model, bookingState.durationMinutes]);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 relative">
-      {/* Configuration Controls */}
       {/* 1. Variants Selection (if any) */}
-      {variants.length > 0 && (
-        <section className="bg-surface-container-low border border-outline-variant/20 rounded-3xl p-5 md:p-6 shadow-xs">
-          <h3 className="text-base font-bold text-primary font-headline mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-emerald-600">category</span> Select Option / Variant
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {variants.map((v) => {
-              const isSelected = selectedVariantId === v.id;
-              return (
-                <div
-                  key={v.id}
-                  onClick={() => setSelectedVariantId(v.id)}
-                  className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between select-none active:scale-[0.99] duration-200 ${
-                    isSelected
-                      ? "bg-primary/5 border-primary text-primary shadow-xs"
-                      : "bg-surface border-outline-variant/15 text-on-surface hover:bg-surface-container-low"
-                  }`}
-                >
-                  <div>
-                    <h4 className="text-sm font-bold tracking-tight mb-1">{v.title}</h4>
-                    <p className="text-xs text-on-surface-variant line-clamp-2 leading-relaxed font-medium">
-                      {v.description || "Tailored option specifically for you."}
-                    </p>
-                  </div>
-                  <div className="flex justify-between items-baseline mt-4 border-t border-outline-variant/10 pt-2">
-                    <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Starting from</span>
-                    <span className="text-sm font-black">₹{v.price}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
+      <VariantSelector
+        variants={variants}
+        selectedVariantId={bookingState.selectedVariantId}
+        onSelect={handleVariantSelect}
+      />
 
       {/* 2. Pricing Model Configurator Inputs */}
       <section className="bg-surface-container-low border border-outline-variant/20 rounded-3xl p-5 md:p-6 shadow-xs">
         <h3 className="text-base font-bold text-primary font-headline mb-4 flex items-center gap-2">
-          <span className="material-symbols-outlined text-emerald-600">
+          <span className="material-symbols-outlined text-secondary">
             {model === "hourly" ? "schedule" : "tune"}
           </span>{" "}
           {model === "hourly" ? "Select service duration" : "Service Parameters"}
@@ -239,9 +228,9 @@ export default function DynamicServiceConfigurator({
             <div className="flex flex-wrap gap-2.5">
               {[30, 60, 90, 120, 180].map((mins) => {
                 const hrs = mins / 60;
-                const isSelected = durationMinutes === mins;
-                const minH = config.min_hours || 0.5;
-                const maxH = config.max_hours || 24;
+                const isSelected = bookingState.durationMinutes === mins;
+                const minH = Number(config.min_hours || 0.5);
+                const maxH = Number(config.max_hours || 24);
                 if (hrs < minH || hrs > maxH) return null;
 
                 const label = formatDuration(mins);
@@ -250,7 +239,7 @@ export default function DynamicServiceConfigurator({
                   <button
                     key={mins}
                     type="button"
-                    onClick={() => setDurationMinutes(mins)}
+                    onClick={() => setBookingState((prev) => ({ ...prev, durationMinutes: mins }))}
                     className={`px-5 py-3 rounded-2xl border font-bold text-xs transition-all duration-200 cursor-pointer flex-1 min-w-[90px] text-center justify-center items-center active:scale-95 ${
                       isSelected
                         ? "bg-primary text-white border-primary shadow-md shadow-primary/20"
@@ -267,119 +256,36 @@ export default function DynamicServiceConfigurator({
 
         {/* Area Input */}
         {model === "area" && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-baseline">
-              <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider">
-                Service Area Size (Sqft)
-              </label>
-              <div className="bg-primary/10 px-3 py-1 rounded-md text-primary font-black text-xs">
-                {areaSqft} Sqft
-              </div>
-            </div>
-            <input
-              type="range"
-              min={config.min_area || 200}
-              max={config.max_area || 5000}
-              step={50}
-              value={areaSqft}
-              onChange={(e) => setAreaSqft(parseInt(e.target.value, 10))}
-              className="w-full accent-primary h-2 bg-outline-variant/20 rounded-lg appearance-none cursor-pointer"
-            />
-            <div className="flex justify-between text-[10px] text-on-surface-variant/50 font-bold uppercase">
-              <span>Min: {config.min_area || 200} Sqft</span>
-              <span>Max: {config.max_area || 5000} Sqft</span>
-            </div>
-            <div className="grid grid-cols-2 gap-4 mt-2">
-              <div>
-                <span className="text-[10px] text-on-surface-variant font-bold uppercase block mb-1">Manual Input</span>
-                <input
-                  type="number"
-                  value={areaSqft}
-                  onChange={(e) => setAreaSqft(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                  className="w-full border border-outline-variant/20 rounded-lg p-2.5 bg-surface focus:ring-2 focus:ring-primary/20 outline-none transition-all text-xs font-bold"
-                />
-              </div>
-              {config.area_slabs && config.area_slabs.length > 0 && (
-                <div>
-                  <span className="text-[10px] text-on-surface-variant font-bold uppercase block mb-1">Slab Rates</span>
-                  <div className="bg-surface p-2 rounded-lg border border-outline-variant/15 text-[10px] text-on-surface-variant/80 font-medium space-y-0.5">
-                    {config.area_slabs.map((s: { min: number; max?: number; rate: number }, idx: number) => (
-                      <div key={idx} className="flex justify-between">
-                        <span>{s.min}{s.max ? `-${s.max}` : "+"} sqft</span>
-                        <span className="font-black text-primary">₹{s.rate}/sqft</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+          <AreaSelector
+            areaSqft={bookingState.areaSqft || 500}
+            minArea={Number(config.min_area || 200)}
+            maxArea={Number(config.max_area || 5000)}
+            areaSlabs={config.area_slabs as { min: number; max?: number; rate: number }[] | undefined}
+            onChange={handleAreaChange}
+          />
         )}
 
         {/* Quantity Input */}
         {model === "quantity" && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider">
-                  Quantity ({config.unit_name || "units"})
-                </label>
-                <p className="text-[10px] text-on-surface-variant/60 font-medium mt-0.5">
-                  Price: ₹{config.price_per_unit || service.base_price} per {config.unit_name || "unit"}
-                </p>
-              </div>
-              <div className="flex items-center gap-3 bg-surface p-1 rounded-xl border border-outline-variant/25 shadow-xs">
-                <button
-                  type="button"
-                  onClick={() => setQuantity((q) => Math.max(config.min_qty || 1, q - 1))}
-                  disabled={quantity <= (config.min_qty || 1)}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center border border-outline-variant/10 text-on-surface hover:bg-surface-container disabled:opacity-40 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-sm font-black">remove</span>
-                </button>
-                <span className="w-8 text-center text-sm font-headline font-black text-primary">{quantity}</span>
-                <button
-                  type="button"
-                  onClick={() => setQuantity((q) => Math.min(config.max_qty || 100, q + 1))}
-                  disabled={quantity >= (config.max_qty || 100)}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center border border-outline-variant/10 text-on-surface hover:bg-surface-container disabled:opacity-40 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-sm font-black">add</span>
-                </button>
-              </div>
-            </div>
-          </div>
+          <QuantitySelector
+            quantity={bookingState.quantity || 1}
+            minQty={Number(config.min_qty || 1)}
+            maxQty={Number(config.max_qty || 100)}
+            unitName={String(config.unit_name || "units")}
+            pricePerUnit={Number(config.price_per_unit || service.base_price)}
+            onChange={handleQuantityChange}
+          />
         )}
 
         {/* Distance Input */}
         {model === "distance" && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-baseline">
-              <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider">
-                Estimated Travel Distance (KM)
-              </label>
-              <div className="bg-primary/10 px-3 py-1 rounded-md text-primary font-black text-xs">
-                {distanceKm} KM
-              </div>
-            </div>
-            <input
-              type="range"
-              min={1}
-              max={150}
-              value={distanceKm}
-              onChange={(e) => setDistanceKm(parseInt(e.target.value, 10))}
-              className="w-full accent-primary h-2 bg-outline-variant/20 rounded-lg appearance-none cursor-pointer"
-            />
-            <div className="flex justify-between text-[10px] text-on-surface-variant/50 font-bold uppercase">
-              <span>1 KM</span>
-              <span>150 KM</span>
-            </div>
-            <div className="bg-surface p-3.5 rounded-xl border border-outline-variant/10 text-xs text-on-surface-variant font-medium leading-relaxed">
-              Base Fee: <strong>₹{config.base_distance_fee || service.base_price}</strong> (includes first {config.free_km || 0} KM).
-              <br />
-              Additional distance is billed at <strong>₹{config.price_per_km || 0}/KM</strong>.
-            </div>
-          </div>
+          <DistanceSelector
+            distanceKm={bookingState.distanceKm || 1}
+            baseDistanceFee={Number(config.base_distance_fee || service.base_price)}
+            freeKm={Number(config.free_km || 0)}
+            pricePerKm={Number(config.price_per_km || 0)}
+            onChange={handleDistanceChange}
+          />
         )}
 
         {/* Hybrid Inputs */}
@@ -392,13 +298,13 @@ export default function DynamicServiceConfigurator({
                 min={60}
                 max={480}
                 step={60}
-                value={durationMinutes}
-                onChange={(e) => setDurationMinutes(parseInt(e.target.value, 10))}
+                value={bookingState.durationMinutes || 60}
+                onChange={(e) => setBookingState((prev) => ({ ...prev, durationMinutes: parseInt(e.target.value, 10) }))}
                 className="w-full accent-primary h-1.5 bg-outline-variant/15 rounded-lg appearance-none cursor-pointer"
               />
               <div className="flex justify-between text-[10px] font-bold text-primary mt-1">
                 <span>1 Hour</span>
-                <span>{durationMinutes / 60} Hours</span>
+                <span>{(bookingState.durationMinutes || 60) / 60} Hours</span>
                 <span>8 Hours</span>
               </div>
             </div>
@@ -409,13 +315,13 @@ export default function DynamicServiceConfigurator({
                 min={100}
                 max={2000}
                 step={50}
-                value={areaSqft}
-                onChange={(e) => setAreaSqft(parseInt(e.target.value, 10))}
+                value={bookingState.areaSqft || 500}
+                onChange={(e) => setBookingState((prev) => ({ ...prev, areaSqft: parseInt(e.target.value, 10) }))}
                 className="w-full accent-primary h-1.5 bg-outline-variant/15 rounded-lg appearance-none cursor-pointer"
               />
               <div className="flex justify-between text-[10px] font-bold text-primary mt-1">
                 <span>100 sqft</span>
-                <span>{areaSqft} sqft</span>
+                <span>{bookingState.areaSqft} sqft</span>
                 <span>2000 sqft</span>
               </div>
             </div>
@@ -424,90 +330,34 @@ export default function DynamicServiceConfigurator({
       </section>
 
       {/* 3. Add-ons Selection */}
-      {addons.length > 0 && (
-        <section className="bg-surface-container-low border border-outline-variant/20 rounded-3xl p-5 md:p-6 shadow-xs">
-          <h3 className="text-base font-bold text-primary font-headline mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-emerald-600">library_add</span> Available Add-ons
-          </h3>
-          <div className="space-y-3">
-            {addons.map((a) => {
-              const currentQty = selectedAddonIds[a.id] || 0;
-              const isSelected = currentQty > 0;
-              return (
-                <div
-                  key={a.id}
-                  className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-4 ${
-                    isSelected
-                      ? "bg-primary/5 border-primary shadow-xs"
-                      : "bg-surface border-outline-variant/10 hover:bg-surface-container-low"
-                  }`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs md:text-sm font-bold text-on-surface truncate">{a.title}</span>
-                      {a.is_required && (
-                        <span className="bg-red-500/10 text-red-600 font-bold text-[8px] px-1.5 py-0.5 rounded-full border border-red-500/25 tracking-widest uppercase">Required</span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-on-surface-variant font-medium leading-relaxed line-clamp-1">{a.description}</p>
-                  </div>
+      <AddonSelector
+        addons={addons}
+        selectedAddonIds={bookingState.selectedAddons}
+        onChange={handleAddonChange}
+      />
 
-                  <div className="flex items-center gap-4 shrink-0">
-                    <span className="text-xs font-black text-primary font-headline">₹{a.price}</span>
-
-                    {/* Addon Selector Counter */}
-                    <div className="flex items-center gap-2.5 bg-surface-container p-0.5 rounded-lg border border-outline-variant/15">
-                      <button
-                        type="button"
-                        onClick={() => handleAddonChange(a.id, currentQty - 1, a.max_quantity)}
-                        className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 cursor-pointer text-xs"
-                        disabled={currentQty === 0}
-                      >
-                        <span className="material-symbols-outlined text-xs font-black">remove</span>
-                      </button>
-                      <span className="w-5 text-center text-xs font-headline font-black text-primary">{currentQty}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleAddonChange(a.id, currentQty + 1, a.max_quantity)}
-                        className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 cursor-pointer text-xs"
-                        disabled={currentQty >= a.max_quantity}
-                      >
-                        <span className="material-symbols-outlined text-xs font-black">add</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* Sticky Bottom Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-surface-container-lowest/80 backdrop-blur-xl border-t border-outline-variant/15 py-4 px-4 md:px-6 shadow-[0_-8px_30px_rgb(0,0,0,0.06)] animate-fade-in">
-        <div className="max-w-3xl mx-auto flex items-center justify-between gap-4">
-          <div className="flex flex-col">
-            <span className="text-xl md:text-2xl font-black text-primary font-headline tracking-tighter">
-              ₹{priceWithoutGst}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 md:gap-3 shrink-0">
-            {model !== "inspection" && (
-              <AddToCartButton
-                item={cartItem}
-                className="flex-none! w-auto! rounded-xl! px-4 md:px-6 h-10 md:h-12 text-xs md:text-sm font-bold transition-all duration-200 active:scale-95"
-              />
-            )}
-            <Link
-              href={scheduleUrl}
-              className="h-10 md:h-12 px-6 md:px-8 py-2.5 md:py-3 bg-primary text-white rounded-xl font-bold text-xs md:text-sm uppercase tracking-widest text-center shadow-lg shadow-primary/20 hover:scale-[1.02] hover:shadow-xl active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center"
-            >
-              Book Now
-            </Link>
-          </div>
-        </div>
-      </div>
+      {/* 4. Price Summary Bottom Sticky Bar */}
+      <PriceSummary
+        breakdown={breakdown}
+        pricingModel={model}
+        variant="sticky"
+        cartButton={
+          model !== "inspection" && (
+            <AddToCartButton
+              item={cartItem}
+              className="flex-none! w-auto! rounded-xl! px-4 md:px-6 h-10 md:h-12 text-xs md:text-sm font-bold transition-all duration-200 active:scale-95"
+            />
+          )
+        }
+        bookButton={
+          <Link
+            href={scheduleUrl}
+            className="h-10 md:h-12 px-6 md:px-8 py-2.5 md:py-3 bg-primary text-white rounded-xl font-bold text-xs md:text-sm uppercase tracking-widest text-center shadow-lg shadow-primary/20 hover:scale-[1.02] hover:shadow-xl active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center font-headline"
+          >
+            Book Now
+          </Link>
+        }
+      />
     </div>
   );
 }

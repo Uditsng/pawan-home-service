@@ -97,9 +97,8 @@ export default async function AdminCreateServicePage() {
       console.error("Failed to parse form_fields", e);
     }
 
-    // Arrays separated by newline
-    const includedRaw = formData.get("included_features") as string;
-    const excludedRaw = formData.get("excluded_features") as string;
+    const includedRaw = (formData.get("included_features") as string) || "";
+    const excludedRaw = (formData.get("excluded_features") as string) || "";
     const included_features = includedRaw.split('\n').map(s => s.trim()).filter(s => s.length > 0);
     const excluded_features = excludedRaw.split('\n').map(s => s.trim()).filter(s => s.length > 0);
 
@@ -113,7 +112,7 @@ export default async function AdminCreateServicePage() {
     }
 
     const page_content = {
-      about_text: description, // we can use description or separate field if needed
+      about_text: description,
       included_features,
       excluded_features,
       faqs,
@@ -165,6 +164,50 @@ export default async function AdminCreateServicePage() {
         }
       } catch (e) {
         console.error("Failed to parse duration rates:", e);
+      }
+    }
+
+    // Insert variants
+    const variants_raw = formData.get("variants_json") as string;
+    if (variants_raw && newService?.id) {
+      try {
+        const variantsData = JSON.parse(variants_raw) as { title: string; description: string; price: number; original_price: number | null; duration_minutes: number | null }[];
+        const variantRows = variantsData.map(v => ({
+          service_id: newService.id,
+          title: v.title,
+          description: v.description || null,
+          price: Number(v.price),
+          original_price: v.original_price ? Number(v.original_price) : null,
+          duration_minutes: v.duration_minutes ? Number(v.duration_minutes) : null,
+          is_active: true
+        }));
+        if (variantRows.length > 0) {
+          await db.from("service_variants").insert(variantRows);
+        }
+      } catch (e) {
+        console.error("Failed to insert variants:", e);
+      }
+    }
+
+    // Insert addons
+    const addons_raw = formData.get("addons_json") as string;
+    if (addons_raw && newService?.id) {
+      try {
+        const addonsData = JSON.parse(addons_raw) as { title: string; description: string; price: number; is_required: boolean; max_quantity: number }[];
+        const addonRows = addonsData.map(a => ({
+          service_id: newService.id,
+          title: a.title,
+          description: a.description || null,
+          price: Number(a.price),
+          is_required: a.is_required === true,
+          max_quantity: Number(a.max_quantity) || 1,
+          is_active: true
+        }));
+        if (addonRows.length > 0) {
+          await db.from("service_addons").insert(addonRows);
+        }
+      } catch (e) {
+        console.error("Failed to insert addons:", e);
       }
     }
 

@@ -65,6 +65,17 @@ export interface PartnerProfile extends Profile {
 
 export type PricingModel = 'fixed' | 'hourly' | 'area' | 'quantity' | 'inspection' | 'distance' | 'hybrid';
 
+export interface ServicePageContent {
+  about_text?: string;
+  included_features?: string[];
+  excluded_features?: string[];
+  faqs?: { question: string; answer: string }[];
+  why_choose_us?: { icon: string; title: string; desc: string }[];
+  how_to_book_steps?: { step: number; title: string; desc: string }[];
+  packages?: { id: string; title: string; price: number; original_price?: number }[];
+  form_fields?: Record<string, unknown>[];
+}
+
 export interface Service {
   id: string;
   category: string;
@@ -74,12 +85,12 @@ export interface Service {
   original_price?: number | null;
   is_active: boolean;
   created_at: string;
-  page_content: any;
+  page_content: ServicePageContent | null;
   pricing_model?: PricingModel;
   slug?: string;
   long_description?: string | null;
   banner_url?: string | null;
-  seo_metadata?: any;
+  seo_metadata?: Record<string, unknown> | null;
   is_featured?: boolean;
   priority?: number;
   estimated_duration?: number | null;
@@ -90,12 +101,12 @@ export interface Service {
   warranty?: string | null;
   revisit_policy?: string | null;
   cancellation_policy?: string | null;
-  pricing_config?: any;
-  form_fields?: any;
-  scheduling_config?: any;
-  availability_config?: any;
-  policy_config?: any;
-  requirements_config?: any;
+  pricing_config?: Record<string, unknown> | null;
+  form_fields?: Record<string, unknown>[] | null;
+  scheduling_config?: Record<string, unknown> | null;
+  availability_config?: Record<string, unknown> | null;
+  policy_config?: Record<string, unknown> | null;
+  requirements_config?: Record<string, unknown> | null;
 }
 
 export interface Booking {

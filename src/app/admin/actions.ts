@@ -119,3 +119,145 @@ export async function ensureServicesBucketAction() {
   return { success: true };
 }
 
+/**
+ * Duplicate Service (Clone Catalog Item and all relations)
+ */
+export async function duplicateService(serviceId: string) {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  // 1. Fetch original service details
+  const { data: service, error: fetchErr } = await supabase
+    .from("services")
+    .select("*")
+    .eq("id", serviceId)
+    .single();
+
+  if (fetchErr || !service) {
+    throw new Error("Service not found: " + (fetchErr?.message || ""));
+  }
+
+  // 2. Generate unique title and slug
+  const timestamp = Date.now().toString().slice(-4);
+  const newTitle = `${service.title} (Copy ${timestamp})`;
+  const newSlug = `${service.slug}-copy-${timestamp}`;
+
+  // 3. Create duplicate service row
+  const { data: newService, error: insertErr } = await supabase
+    .from("services")
+    .insert({
+      category: service.category,
+      subcategory_id: service.subcategory_id,
+      title: newTitle,
+      slug: newSlug,
+      description: service.description,
+      long_description: service.long_description,
+      banner_url: service.banner_url,
+      base_price: service.base_price,
+      original_price: service.original_price,
+      price_breakdown: service.price_breakdown,
+      is_active: false, // Start as draft/inactive
+      is_featured: service.is_featured,
+      priority: service.priority,
+      estimated_duration: service.estimated_duration,
+      gst_applicable: service.gst_applicable,
+      tags: service.tags,
+      keywords: service.keywords,
+      preparation_instructions: service.preparation_instructions,
+      warranty: service.warranty,
+      revisit_policy: service.revisit_policy,
+      cancellation_policy: service.cancellation_policy,
+      pricing_model: service.pricing_model,
+      pricing_config: service.pricing_config,
+      form_fields: service.form_fields,
+      scheduling_config: service.scheduling_config,
+      availability_config: service.availability_config,
+      policy_config: service.policy_config,
+      requirements_config: service.requirements_config,
+      page_content: service.page_content,
+      image_url: service.image_url,
+    })
+    .select("id")
+    .single();
+
+  if (insertErr || !newService) {
+    throw new Error("Failed to insert duplicated service: " + (insertErr?.message || ""));
+  }
+
+  // 4. Duplicate linked service duration pricing (if any)
+  const { data: durationRates } = await supabase
+    .from("service_duration_pricing")
+    .select("*")
+    .eq("service_id", serviceId);
+
+  if (durationRates && durationRates.length > 0) {
+    const rateRows = durationRates.map((r) => ({
+      service_id: newService.id,
+      duration_minutes: r.duration_minutes,
+      price: r.price,
+    }));
+    await supabase.from("service_duration_pricing").insert(rateRows);
+  }
+
+  // 5. Duplicate service variants (if any)
+  const { data: variants } = await supabase
+    .from("service_variants")
+    .select("*")
+    .eq("service_id", serviceId);
+
+  if (variants && variants.length > 0) {
+    const variantRows = variants.map((v) => ({
+      service_id: newService.id,
+      title: v.title,
+      description: v.description,
+      price: v.price,
+      original_price: v.original_price,
+      duration_minutes: v.duration_minutes,
+      image_url: v.image_url,
+      is_active: v.is_active,
+    }));
+    await supabase.from("service_variants").insert(variantRows);
+  }
+
+  // 6. Duplicate service addons (if any)
+  const { data: addons } = await supabase
+    .from("service_addons")
+    .select("*")
+    .eq("service_id", serviceId);
+
+  if (addons && addons.length > 0) {
+    const addonRows = addons.map((a) => ({
+      service_id: newService.id,
+      title: a.title,
+      description: a.description,
+      price: a.price,
+      image_url: a.image_url,
+      is_required: a.is_required,
+      max_quantity: a.max_quantity,
+      is_active: a.is_active,
+    }));
+    await supabase.from("service_addons").insert(addonRows);
+  }
+
+  // 7. Duplicate service pricing rules (if any)
+  const { data: rules } = await supabase
+    .from("service_pricing_rules")
+    .select("*")
+    .eq("service_id", serviceId);
+
+  if (rules && rules.length > 0) {
+    const ruleRows = rules.map((r) => ({
+      service_id: newService.id,
+      name: r.name,
+      rule_type: r.rule_type,
+      amount_type: r.amount_type,
+      amount_value: r.amount_value,
+      conditions: r.conditions,
+      is_active: r.is_active,
+    }));
+    await supabase.from("service_pricing_rules").insert(ruleRows);
+  }
+
+  revalidatePath("/admin/services");
+}
+

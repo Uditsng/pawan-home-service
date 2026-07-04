@@ -158,6 +158,21 @@ export default function MobileSetup() {
           // Log structured pipeline stage 6 (OS / foreground client receipt)
           console.log(`[Notification Pipeline] [6. OS_DELIVERY] State: Foreground, Title: "${notification.title}", Type: ${type}`);
 
+          // Invalidate cache immediately on receiving a notification in the foreground
+          // to fix caching/outdated UI issue
+          try {
+            const { storageService } = await import("@/lib/storage/StorageService");
+            // Clear specific key prefixes to force re-fetch
+            const keysToInvalidate = ["notifications", "booking_active", "current_job", "wallet"];
+            for (const key of keysToInvalidate) {
+              await storageService.remove(`phs_cache_${key}`);
+            }
+            // Dispatch a custom event to notify mounted components or hook listeners
+            window.dispatchEvent(new CustomEvent("phs-cache-invalidated"));
+          } catch (cacheErr) {
+            console.error("[Push] Failed to invalidate cache on foreground notification:", cacheErr);
+          }
+
           // Schedule local notification to display manually in foreground
           try {
             await LocalNotifications.schedule({
@@ -180,7 +195,7 @@ export default function MobileSetup() {
         });
 
         // 2g. Routing Helper for click actions with normal authorization checks
-        const handleNotificationClick = (data: Record<string, unknown> | null | undefined) => {
+        const handleNotificationClick = async (data: Record<string, unknown> | null | undefined) => {
           if (!data) return;
 
           let bookingId: unknown = data.booking_id;
@@ -201,6 +216,18 @@ export default function MobileSetup() {
 
           // Log structured pipeline stage 7 (User opened notification / tap)
           console.log(`[Notification Pipeline] [7. TAP_ACTION] Source: Push, BookingId: ${bookingId}, Type: ${type}`);
+
+          // Invalidate cache on click/action to make sure the target screens show fresh data
+          try {
+            const { storageService } = await import("@/lib/storage/StorageService");
+            const keysToInvalidate = ["notifications", "booking_active", "current_job", "wallet"];
+            for (const key of keysToInvalidate) {
+              await storageService.remove(`phs_cache_${key}`);
+            }
+            window.dispatchEvent(new CustomEvent("phs-cache-invalidated"));
+          } catch (cacheErr) {
+            console.error("[Push] Failed to invalidate cache on notification click:", cacheErr);
+          }
 
           if (bookingId) {
             const bookingIdStr = String(bookingId);
@@ -244,7 +271,6 @@ export default function MobileSetup() {
       actionListener?.remove();
       localActionListener?.remove();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run once on mount only — router is captured in stable closure via handleNotificationClick
 
 

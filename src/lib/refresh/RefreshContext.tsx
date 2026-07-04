@@ -456,8 +456,16 @@ export function useRefreshableData<T>(
 
     // Subscribe to Cache notified updates (changes made by other pages/realtime)
     const unsubscribe = subscribe(key, handleCacheUpdate);
+
+    // Listen to custom cache-invalidation event from push notification events
+    const handleInvalidationEvent = () => {
+      void doFetch(true);
+    };
+    window.addEventListener("phs-cache-invalidated", handleInvalidationEvent);
+
     return () => {
       unsubscribe();
+      window.removeEventListener("phs-cache-invalidated", handleInvalidationEvent);
     };
   }, [key, subscribe, getCacheValue, doFetch]);
 

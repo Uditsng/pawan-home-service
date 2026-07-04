@@ -105,9 +105,14 @@ export async function sendNotification(params: SendNotificationParams): Promise<
 
     const version = (metadata?.event_version as number) || 1;
 
+    // Dedup key uses a 5-minute time bucket to allow legitimate re-sends
+    // (e.g. partner rejection then reassignment of same booking) while still
+    // preventing pure duplicates triggered by accidental double-calls.
+    const timeBucket = Math.floor(Date.now() / (5 * 60 * 1000)); // 5-min window
+
     // 1. Batch insert in-app notification records (Idempotent using dedup_key)
     const notificationRows = targets.map((userId) => {
-      const dedupKey = `${bookingId || "global"}:${userId}:${type}:${version}`;
+      const dedupKey = `${bookingId || "global"}:${userId}:${type}:${version}:${timeBucket}`;
       return {
         user_id: userId,
         title,
@@ -133,14 +138,14 @@ export async function sendNotification(params: SendNotificationParams): Promise<
       // Fallback: continue trying FCM anyway with all targets
     }
 
-    const successfulUserIds = inserted ? inserted.map((row: any) => row.user_id as string) : targets;
-    const notificationIds = inserted ? inserted.map((row: any) => row.id as string) : [];
+    const successfulUserIds = inserted ? inserted.map((row: { user_id: string }) => row.user_id) : targets;
+    const notificationIds = inserted ? inserted.map((row: { id: string }) => row.id) : [];
 
     if (inserted && successfulUserIds.length === 0) {
       if (isDev) {
-        console.log(`[Notification Pipeline] [2. DB_INSERT] [IDEMPOTENCY] Aborted duplicate send for booking ${bookingId}`);
+        console.log(`[Notification Pipeline] [2. DB_INSERT] [IDEMPOTENCY] Duplicate within 5-min window for booking ${bookingId} — FCM skipped.`);
       }
-      return; // Skip duplicate FCM notifications completely
+      return; // Skip duplicate FCM notifications within the same time window
     }
 
     if (isDev) {

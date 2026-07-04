@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { PluginListenerHandle } from "@capacitor/core";
 import { registerTokenAction, deleteTokenAction } from "@/app/actions/notification-tokens";
@@ -10,6 +10,9 @@ import type { Session } from "@supabase/supabase-js";
 export default function MobileSetup() {
   const pathname = usePathname();
   const router = useRouter();
+  // Stable ref so the push notification effect (dep=[]) always has a current router
+  const routerRef = useRef(router);
+  useEffect(() => { routerRef.current = router; }, [router]);
 
   // ─── 1. Handle Back Button Listener (Depends on path changes) ───
   useEffect(() => {
@@ -85,10 +88,9 @@ export default function MobileSetup() {
           return;
         }
 
-        // 2b. Register with FCM/APNs
-        await PushNotifications.register();
-
-        // 2c. Create the custom notification channels for Android
+        // 2b. Create the custom notification channels for Android FIRST
+        // Channels must exist before register() is called so any notification
+        // delivered immediately after registration uses the correct channel + sound.
         if (Capacitor.getPlatform() === "android") {
           try {
             await PushNotifications.createChannel({
@@ -113,6 +115,9 @@ export default function MobileSetup() {
             console.error("[Push] Failed to create custom notification channels:", channelErr);
           }
         }
+
+        // 2b2. Register with FCM/APNs (after channels are created)
+        await PushNotifications.register();
 
         // 2d. On successful registration, save token in Supabase
         registrationListener = await PushNotifications.addListener("registration", async (token) => {
@@ -204,11 +209,11 @@ export default function MobileSetup() {
             // Route to correct dashboard. Next.js middleware and target pages
             // will enforce strict authentication and ownership checks.
             if (currentPath.startsWith("/partner")) {
-              router.push("/partner/jobs");
+              routerRef.current.push("/partner/jobs");
             } else if (currentPath.startsWith("/admin")) {
-              router.push("/admin/bookings");
+              routerRef.current.push("/admin/bookings");
             } else {
-              router.push(`/customer/bookings/${bookingIdStr}/tracking`);
+              routerRef.current.push(`/customer/bookings/${bookingIdStr}/tracking`);
             }
           }
         };
@@ -239,7 +244,9 @@ export default function MobileSetup() {
       actionListener?.remove();
       localActionListener?.remove();
     };
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount only — router is captured in stable closure via handleNotificationClick
+
 
   // ─── 3. Auth Listener for Dynamic Token Setup & Cleanup ───
   useEffect(() => {

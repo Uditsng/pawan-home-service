@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.phsindia.app" />
+                  <option name="mobileSdkAppId" value="1:741307760558:android:2454df38ef22b350a0123f" />
+                  <option name="projectId" value="pawanservicesapp" />
+                  <option name="projectNumber" value="741307760558" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

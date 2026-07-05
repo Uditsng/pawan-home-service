@@ -7,11 +7,18 @@ import { registerTokenAction, deleteTokenAction } from "@/app/actions/notificati
 import { createClient } from "@/utils/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 
+function maskFcmToken(token: string | null | undefined) {
+  if (!token || token.length === 0) return "<empty>";
+  if (token.length <= 16) return token;
+  return `${token.slice(0, 8)}...${token.slice(-8)}`;
+}
+
 export default function MobileSetup() {
   const pathname = usePathname();
   const router = useRouter();
   // Stable ref so the push notification effect (dep=[]) always has a current router
   const routerRef = useRef(router);
+  const currentSignedInUserIdRef = useRef<string | null>(null);
   useEffect(() => { routerRef.current = router; }, [router]);
 
   // ─── 1. Handle Back Button Listener (Depends on path changes) ───
@@ -67,13 +74,24 @@ export default function MobileSetup() {
     const initPushNotifications = async () => {
       try {
         const { Capacitor } = await import("@capacitor/core");
-        if (!Capacitor.isNativePlatform()) return;
+        console.log("[Push] initPushNotifications starting");
+        if (!Capacitor.isNativePlatform()) {
+          console.log("[Push] Not a native platform, skipping push initialization.");
+          return;
+        }
+
+        const cachedToken = localStorage.getItem("fcm_token");
+        console.log("[Push] Existing cached FCM token:", maskFcmToken(cachedToken));
+
+        const platform = Capacitor.getPlatform();
+        console.log("[Push] Native platform detected:", platform);
 
         const { PushNotifications } = await import("@capacitor/push-notifications");
         const { LocalNotifications } = await import("@capacitor/local-notifications");
 
         // 2a. Request permissions
         let permStatus = await PushNotifications.checkPermissions();
+        console.log("[Push] Push permission status before request:", permStatus);
         if (permStatus.receive === "prompt") {
           permStatus = await PushNotifications.requestPermissions();
         }
@@ -84,7 +102,7 @@ export default function MobileSetup() {
         }
 
         if (permStatus.receive !== "granted") {
-          console.warn("[Push] Push notification permissions denied by user.");
+          console.warn("[Push] Push notification permissions denied by user.", permStatus);
           return;
         }
 
@@ -116,14 +134,11 @@ export default function MobileSetup() {
           }
         }
 
-        // 2b2. Register with FCM/APNs (after channels are created)
-        await PushNotifications.register();
-
-        // 2d. On successful registration, save token in Supabase
+        // 2b2. Attach registration listeners first so we never miss the registration event.
         registrationListener = await PushNotifications.addListener("registration", async (token) => {
           const platform = Capacitor.getPlatform() as "android" | "ios";
-          
-          console.log(`[Push] Device registered. Token: ${token.value.substring(0, 10)}... Platform: ${platform}`);
+          console.log("[Push] registration listener fired");
+          console.log("[Push] Received registration token:", maskFcmToken(token.value), "platform:", platform);
           try {
             const res = await registerTokenAction(token.value, platform);
             if (res.success) {
@@ -138,8 +153,18 @@ export default function MobileSetup() {
 
         // 2e. On registration error
         errorListener = await PushNotifications.addListener("registrationError", (err) => {
-          console.error("[Push] Registration error:", err.error);
+          console.error("[Push] registrationError listener fired", err);
         });
+
+        console.log("[Push] registration/error listeners attached. Awaiting authenticated registration.");
+
+        // 2e2. Register on mount if user is already logged in (race-free check)
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          console.log("[Push] User session detected on mount, registering push notifications.");
+          await PushNotifications.register();
+        }
 
         // 2f. Handle foreground notifications (app is active)
         receiveListener = await PushNotifications.addListener("pushNotificationReceived", async (notification) => {
@@ -281,15 +306,20 @@ export default function MobileSetup() {
     const supabase = createClient();
 
     const handleAuthChange = async (event: string, session: Session | null) => {
+      console.log("[Push] onAuthStateChange event:", event, "session:", session?.user ? { id: session.user.id, email: session.user.email } : null);
       const { Capacitor } = await import("@capacitor/core");
       if (!Capacitor.isNativePlatform()) return;
 
       const { PushNotifications } = await import("@capacitor/push-notifications");
 
-      if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
+      if (session?.user) {
+        currentSignedInUserIdRef.current = session.user.id;
+      }
+
+      if (event === "SIGNED_IN") {
         if (session?.user) {
           try {
-            console.log(`[Notification Pipeline] [AUTH_CHANGE] SIGNED_IN. Registering push notifications.`);
+            console.log(`[Notification Pipeline] [AUTH_CHANGE] ${event}. Registering push notifications.`);
             let permStatus = await PushNotifications.checkPermissions();
             if (permStatus.receive === "prompt") {
               permStatus = await PushNotifications.requestPermissions();
@@ -303,15 +333,15 @@ export default function MobileSetup() {
         }
       } else if (event === "SIGNED_OUT") {
         try {
-          console.log(`[Notification Pipeline] [AUTH_CHANGE] SIGNED_OUT. Cleaning up push token.`);
           const token = localStorage.getItem("fcm_token");
-          // Capture userId from the session that just ended — Supabase fires SIGNED_OUT
-          // after clearing auth state, so auth.getUser() returns null on the server.
-          // We pass it explicitly so the server action can still delete the DB row.
-          const userId = session?.user?.id ?? undefined;
-          if (token) {
+          const userId = session?.user?.id ?? currentSignedInUserIdRef.current ?? undefined;
+          console.log(`[Notification Pipeline] [AUTH_CHANGE] SIGNED_OUT. Cleaning up push token. token=${maskFcmToken(token)} userId=${userId}`);
+          if (token && userId) {
             await deleteTokenAction(token, userId);
             localStorage.removeItem("fcm_token");
+            currentSignedInUserIdRef.current = null;
+          } else {
+            console.warn("[Push] SIGNED_OUT cleanup skipped because no cached fcm_token or no userId is available.");
           }
         } catch (err) {
           console.error("Failed to clean up push token on sign out:", err);

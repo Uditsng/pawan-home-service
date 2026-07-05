@@ -18,16 +18,26 @@ import { createAdminClient } from "@/utils/supabase/admin";
  * Uses upsert with the unique(user_id, fcm_token) constraint
  * to prevent duplicate registrations.
  */
+function maskFcmToken(token: string | null | undefined) {
+  if (!token || token.length === 0) return "<empty>";
+  if (token.length <= 16) return token;
+  return `${token.slice(0, 8)}...${token.slice(-8)}`;
+}
+
 export async function registerTokenAction(
   fcmToken: string,
   platform: "web" | "android" | "ios" = "web"
 ): Promise<{ success: boolean; error?: string }> {
+  console.log(`[notification-tokens] registerTokenAction called token=${maskFcmToken(fcmToken)} platform=${platform}`);
+
   if (!fcmToken || typeof fcmToken !== "string" || fcmToken.trim().length === 0) {
+    console.warn("[notification-tokens] Invalid FCM token detected in registerTokenAction.");
     return { success: false, error: "Invalid FCM token." };
   }
 
   // Enforce reasonable length to prevent abuse
   if (fcmToken.length > 512) {
+    console.warn("[notification-tokens] FCM token exceeds maximum length.");
     return { success: false, error: "Token exceeds maximum length." };
   }
 
@@ -39,13 +49,44 @@ export async function registerTokenAction(
   const supabase = await createClient();
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
 
+  console.log("[notification-tokens] auth.getUser result", {
+    user: user ? { id: user.id, email: user.email } : null,
+    authError: authError?.message,
+  });
+
   if (!user) {
+    console.warn("[notification-tokens] registerTokenAction failed because auth.getUser returned no user.");
     return { success: false, error: "Not authenticated." };
   }
 
   const supabaseAdmin = createAdminClient();
+
+  const { data: existingTokens, error: existingTokensError } = await supabaseAdmin
+    .from("notification_tokens")
+    .select("fcm_token, platform, last_seen")
+    .eq("user_id", user.id)
+    .eq("platform", platform);
+
+  if (existingTokensError) {
+    console.error("[notification-tokens] Failed to read existing notification_tokens:", existingTokensError.message);
+  } else {
+    console.log("[notification-tokens] Existing notification_tokens for user", user.id, existingTokens);
+  }
+
+  const { data: existingDeviceTokens, error: existingDeviceTokensError } = await supabaseAdmin
+    .from("device_tokens")
+    .select("device_token, platform, last_seen_at")
+    .eq("user_id", user.id)
+    .eq("platform", platform);
+
+  if (existingDeviceTokensError) {
+    console.error("[notification-tokens] Failed to read existing device_tokens:", existingDeviceTokensError.message);
+  } else {
+    console.log("[notification-tokens] Existing device_tokens for user", user.id, existingDeviceTokens);
+  }
 
   // ── Step 1: Evict this token from any OTHER user account ─────────────────
   // FCM tokens are device-scoped. If another account previously logged in on
@@ -81,7 +122,7 @@ export async function registerTokenAction(
     .eq("platform", platform)
     .neq("device_token", fcmToken.trim());
 
-  console.log(`[notification-tokens] Token hygiene complete for user ${user.id}. Registering ${fcmToken.substring(0, 10)}...`);
+  console.log(`[notification-tokens] Token hygiene complete for user ${user.id}. Registering ${maskFcmToken(fcmToken)}...`);
 
   // ── Step 3: Upsert the current token ─────────────────────────────────────
   const { error } = await supabaseAdmin.from("notification_tokens").upsert(
@@ -101,7 +142,7 @@ export async function registerTokenAction(
     return { success: false, error: "Failed to register token." };
   }
 
-  await supabaseAdmin.from("device_tokens").upsert(
+  const { error: deviceError } = await supabaseAdmin.from("device_tokens").upsert(
     {
       user_id: user.id,
       device_token: fcmToken.trim(),
@@ -112,6 +153,11 @@ export async function registerTokenAction(
       onConflict: "user_id,device_token",
     }
   );
+
+  if (deviceError) {
+    console.error("[notification-tokens] Device token upsert failed:", deviceError.message);
+    return { success: false, error: "Failed to register device token." };
+  }
 
   return { success: true };
 }

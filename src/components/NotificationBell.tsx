@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import type { AppNotification } from "@/lib/types";
@@ -98,8 +98,7 @@ export default function NotificationBell() {
   const [userId, setUserId] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const supabaseRef = useRef(createClient());
-  const supabase = supabaseRef.current;
+  const supabase = useMemo(() => createClient(), []);
 
   // ─── Fetch notifications ────────────────────────────────────
   const fetchNotifications = useCallback(
@@ -142,10 +141,23 @@ export default function NotificationBell() {
 
   // ─── Handle Auth State Changes ──────────────────────────────
   useEffect(() => {
+    const fetchUnread = async (uid: string) => {
+      const { count, error } = await supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", uid)
+        .eq("is_read", false);
+
+      if (!error && count !== null) {
+        setUnreadCount(count);
+      }
+    };
+
     const getInitialUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserId(user.id);
+        fetchUnread(user.id);
       }
     };
     getInitialUser();
@@ -153,6 +165,7 @@ export default function NotificationBell() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         setUserId(session.user.id);
+        fetchUnread(session.user.id);
       } else {
         setUserId(null);
         setNotifications([]);
@@ -164,17 +177,6 @@ export default function NotificationBell() {
       subscription.unsubscribe();
     };
   }, [supabase]);
-
-  // ─── Initial Load & Reload on Auth State Change ─────────────
-  useEffect(() => {
-    if (userId) {
-      fetchUnreadCount();
-      if (isOpen) {
-        setPage(0);
-        fetchNotifications(0);
-      }
-    }
-  }, [userId, isOpen, fetchUnreadCount, fetchNotifications]);
 
   // ─── Realtime Postgres Changes Subscription ────────────────
   useEffect(() => {
@@ -190,7 +192,6 @@ export default function NotificationBell() {
           event: "*",
           schema: "public",
           table: "notifications",
-          filter: `user_id=eq.${userId}`,
         },
         (payload) => {
           if (isDev) {
@@ -228,12 +229,35 @@ export default function NotificationBell() {
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (isDev) {
+          console.log(`[Notification Realtime] Subscription status: ${status}`, err || "");
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, [userId, supabase, fetchUnreadCount]);
+
+  // ─── Cache Invalidation Event Listener ──────────────────────
+  useEffect(() => {
+    if (!userId) return;
+
+    const handleInvalidation = () => {
+      console.log("[Notification Bell] phs-cache-invalidated event received. Refreshing unread count.");
+      void fetchUnreadCount();
+      if (isOpen) {
+        setPage(0);
+        void fetchNotifications(0);
+      }
+    };
+
+    window.addEventListener("phs-cache-invalidated", handleInvalidation);
+    return () => {
+      window.removeEventListener("phs-cache-invalidated", handleInvalidation);
+    };
+  }, [userId, isOpen, fetchUnreadCount, fetchNotifications]);
 
 
   // ─── Click outside to close ─────────────────────────────────

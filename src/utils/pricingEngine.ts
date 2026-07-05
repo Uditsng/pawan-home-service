@@ -112,7 +112,7 @@ export function calculatePricingBreakdown(input: PricingInput): Omit<BookingPric
   // 1. Calculate Core Price Component based on pricing model
   switch (input.pricingModel) {
     case "hourly": {
-      const minutes = input.durationMinutes || 60;
+      const minutes = input.durationMinutes ?? 60;
       const blocks = minutes / 30;
       const rate30Min = basePrice || 0;
       hourlyPrice = blocks * rate30Min;

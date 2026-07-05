@@ -15,7 +15,7 @@ export default function AddToCartButton({
   compact = false,
   className = "",
 }: AddToCartButtonProps) {
-  const { addItem, removeItem, isInCart, openDrawer } = useCart();
+  const { addItem, isInCart, openDrawer } = useCart();
   const inCart = isInCart(item.serviceId);
 
   const handleClick = () => {

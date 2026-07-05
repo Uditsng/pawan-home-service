@@ -4,6 +4,7 @@ import { BookingPricing } from "@/lib/types";
 interface PriceSummaryProps {
   breakdown: Omit<BookingPricing, "id" | "booking_id" | "created_at">;
   pricingModel?: string;
+  durationMinutes?: number | null;
   variant?: "sticky" | "detailed";
   bookButton?: React.ReactNode;
   cartButton?: React.ReactNode;
@@ -12,9 +13,24 @@ interface PriceSummaryProps {
   onToggleWallet?: () => void;
 }
 
+const formatSummaryDuration = (minutes: number) => {
+  if (minutes === 30) return "30min";
+  if (minutes === 60) return "60min";
+  if (minutes === 90) return "90min";
+  if (minutes === 120) return "2 hr";
+  if (minutes === 180) return "3 hr";
+  if (minutes < 60) return `${minutes} min`;
+  const hours = minutes / 60;
+  if (hours % 1 === 0) {
+    return `${hours} hr${hours === 1 ? "" : "s"}`;
+  }
+  return `${hours} hr`;
+};
+
 export default function PriceSummary({
   breakdown,
   pricingModel,
+  durationMinutes,
   variant = "sticky",
   bookButton,
   cartButton,
@@ -32,7 +48,11 @@ export default function PriceSummary({
             <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Estimated Total</span>
             <span className="text-xl md:text-2xl font-black text-primary font-headline tracking-tighter">
               ₹{priceWithoutGst}
-              {pricingModel === "hourly" && <span className="text-xs font-semibold text-on-surface-variant">/hr</span>}
+              {pricingModel === "hourly" && (
+                <span className="text-xs font-semibold text-on-surface-variant">
+                  {durationMinutes ? ` / ${formatSummaryDuration(durationMinutes)}` : " / hr"}
+                </span>
+              )}
             </span>
           </div>
 

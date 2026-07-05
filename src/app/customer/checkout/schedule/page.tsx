@@ -52,18 +52,17 @@ export default async function CheckoutSchedulePage({ searchParams }: { searchPar
       form_fields?: import("@/components/DynamicBookingForm").FormFieldConfig[];
     }
 
-    // Inject duration_minutes manually since it might be missing from the DB
     service = {
       ...serviceData,
-      duration_minutes: (serviceData as Service).duration_minutes || 60
+      duration_minutes: (serviceData as Service).duration_minutes ?? 30
     };
   }
 
   const durationVal = durationParam ? parseInt(durationParam, 10) : undefined;
 
   return (
-    <ScheduleClient 
-      service={service} 
+    <ScheduleClient
+      service={service}
       initialAddresses={savedAddresses || []}
       duration={durationVal}
       selectedPackages={selectedPackages}

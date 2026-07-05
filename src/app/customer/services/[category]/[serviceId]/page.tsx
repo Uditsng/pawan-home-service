@@ -131,7 +131,7 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
                 {service.original_price ? (
                   <>
                     <span className="text-on-surface-variant/50 line-through text-xs font-semibold">₹{service.original_price}</span>
-                    <span className="text-primary">{formatStartingPrice(service.base_price, service.pricing_model ?? undefined)}</span>
+                    <span className="text-primary">{formatStartingPrice(service.base_price)}</span>
                   </>
                 ) : (
                   <>

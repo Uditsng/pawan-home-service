@@ -37,7 +37,7 @@ export default function DynamicServiceConfigurator({
 
   // Initialize booking state dynamically based on the pricing model
   const [bookingState, setBookingState] = useState<BookingState>(() => {
-    const minHours = Number(config.min_hours ?? 1);
+    const minHours = Number(config.min_hours ?? 1/2);
     const minArea = Number(config.min_area ?? 500);
     const minQty = Number(config.min_qty ?? 1);
 
@@ -240,7 +240,7 @@ export default function DynamicServiceConfigurator({
                     key={mins}
                     type="button"
                     onClick={() => setBookingState((prev) => ({ ...prev, durationMinutes: mins }))}
-                    className={`px-5 py-3 rounded-2xl border font-bold text-xs transition-all duration-200 cursor-pointer flex-1 min-w-[90px] text-center justify-center items-center active:scale-95 ${
+                    className={`px-5 py-3 rounded-2xl border font-bold text-xs transition-all duration-200 cursor-pointer flex-1 min-w-22 text-center justify-center items-center active:scale-95 ${
                       isSelected
                         ? "bg-primary text-white border-primary shadow-md shadow-primary/20"
                         : "bg-surface border-outline-variant/20 hover:bg-surface-container-low hover:border-outline-variant text-on-surface-variant"
@@ -340,6 +340,7 @@ export default function DynamicServiceConfigurator({
       <PriceSummary
         breakdown={breakdown}
         pricingModel={model}
+        durationMinutes={bookingState.durationMinutes}
         variant="sticky"
         cartButton={
           model !== "inspection" && (

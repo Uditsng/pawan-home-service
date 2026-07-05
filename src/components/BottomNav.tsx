@@ -23,7 +23,7 @@ export default function BottomNav() {
           <Link
             key={item.href}
             href={item.href}
-            className={`flex flex-col items-center justify-center min-h-[48px] px-3 py-1.5 transition-colors duration-300 hover:text-emerald-600 ${isActive
+            className={`flex flex-col items-center justify-center min-h-12 px-3 py-1.5 transition-colors duration-300 hover:text-emerald-600 ${isActive
               ? "text-emerald-600 bg-emerald-500/10 rounded-2xl px-4 py-1.5"
               : "text-on-surface-variant/70"
               }`}

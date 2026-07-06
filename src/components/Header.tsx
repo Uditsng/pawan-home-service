@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image"
 import { createClient } from "@/utils/supabase/client";
 import LogoutButton from "./LogoutButton";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 
 // Centralized role → dashboard mapping (must match proxy.ts)
 const ROLE_DASHBOARDS: Record<string, string> = {
@@ -47,20 +48,19 @@ export default function Header() {
     loadUserAndRole();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      async (_event: AuthChangeEvent, session: Session | null) => {
         if (session?.user) {
           setUser(session.user);
           // Re-fetch role on auth state change
-          supabase
+          const response = await supabase
             .from('profiles')
             .select('role')
             .eq('id', session.user.id)
-            .single()
-            .then(({ data: profile }) => {
-              if (active && profile?.role) {
-                setUserRole(profile.role);
-              }
-            });
+            .single();
+          const profile = response.data as { role: string } | null;
+          if (active && profile?.role) {
+            setUserRole(profile.role);
+          }
         } else {
           setUser(null);
           setUserRole('customer');

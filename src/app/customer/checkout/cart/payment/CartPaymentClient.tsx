@@ -5,6 +5,7 @@ import { useCart } from "@/lib/cart/CartContext";
 import { useRouter } from "next/navigation";
 import { createRazorpayOrderAction, verifyRazorpayPaymentAction } from "@/app/actions/payment";
 import { formatDuration } from "@/utils/pricingEngine";
+import { Card } from "@/components/ui/Card";
 
 interface Address {
   formatted_address: string;
@@ -48,6 +49,9 @@ export default function CartPaymentClient({
   const [isPending, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [useWallet, setUseWallet] = useState(false);
+  const [bookAsBusiness, setBookAsBusiness] = useState(false);
+  const [businessName, setBusinessName] = useState("");
+  const [businessGstin, setBusinessGstin] = useState("");
 
   // Redirect if cart is empty
   useEffect(() => {
@@ -119,6 +123,8 @@ export default function CartPaymentClient({
             time: time,
             walletAmountToUse: walletApplied,
             cartItems: mappedCartItems,
+            businessName: bookAsBusiness ? businessName : undefined,
+            businessGstin: bookAsBusiness ? businessGstin : undefined,
           });
 
           if (verifyRes.success && verifyRes.orderId) {
@@ -188,6 +194,8 @@ export default function CartPaymentClient({
                   time: time,
                   walletAmountToUse: walletApplied,
                   cartItems: mappedCartItems,
+                  businessName: bookAsBusiness ? businessName : undefined,
+                  businessGstin: bookAsBusiness ? businessGstin : undefined,
                 });
 
                 if (verifyRes.success && verifyRes.orderId) {
@@ -410,6 +418,49 @@ export default function CartPaymentClient({
                 <span className="font-headline font-black text-primary text-xl md:text-2xl">₹{finalPrice}</span>
               </div>
             </div>
+
+            {/* Business Billing Fields */}
+            <Card variant="solid" className="p-4 border border-outline-variant/10 space-y-4">
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={bookAsBusiness}
+                  onChange={(e) => setBookAsBusiness(e.target.checked)}
+                  className="w-4 h-4 rounded text-secondary border-outline-variant focus:ring-secondary/50"
+                />
+                <span className="text-xs font-black uppercase tracking-wider text-primary">
+                  Book as Business (GST Invoice)
+                </span>
+              </label>
+
+              {bookAsBusiness && (
+                <div className="space-y-3 pt-2 border-t border-dashed border-outline-variant/30 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60">Registered Business Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={businessName}
+                      onChange={(e) => setBusinessName(e.target.value)}
+                      placeholder="e.g. Acme Corp Private Limited"
+                      className="w-full p-3 rounded-xl bg-surface border border-outline-variant/20 text-xs font-bold text-primary outline-none focus:ring-2 focus:ring-secondary/50"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60">GSTIN Number</label>
+                    <input
+                      type="text"
+                      required
+                      value={businessGstin}
+                      onChange={(e) => setBusinessGstin(e.target.value.toUpperCase())}
+                      placeholder="e.g. 05AAACP9876M1ZX"
+                      maxLength={15}
+                      className="w-full p-3 rounded-xl bg-surface border border-outline-variant/20 text-xs font-bold text-primary outline-none focus:ring-2 focus:ring-secondary/50"
+                    />
+                  </div>
+                </div>
+              )}
+            </Card>
           </div>
 
           {/* 4. TERMS & CONFIRMATION CHECKBOX */}

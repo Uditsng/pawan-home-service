@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { updateSettingsAction } from "./actions";
@@ -95,7 +96,7 @@ export function SettingsConsole({
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Tax & Currency */}
         <Card variant="solid" className="space-y-6 flex flex-col justify-between">
           <div className="space-y-6">
@@ -203,6 +204,27 @@ export function SettingsConsole({
               + Add City
             </button>
           </form>
+        </Card>
+
+        {/* Invoice Settings Card */}
+        <Card variant="solid" className="space-y-6 flex flex-col justify-between border-secondary/20 bg-secondary/5">
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-secondary/20 flex items-center justify-center text-secondary">
+                <span className="material-symbols-outlined font-bold">receipt_long</span>
+              </div>
+              <h3 className="text-lg font-bold tracking-tight text-primary font-headline">Invoice Profile</h3>
+            </div>
+            <p className="text-xs text-on-surface-variant font-medium leading-relaxed">
+              Configure company registry profiles, logos, support phone/email, office address, and billing parameters.
+            </p>
+          </div>
+          <Link
+            href="/admin/settings/invoice"
+            className="w-full text-center py-3.5 bg-primary text-white font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-primary/95 transition-all shadow-md mt-4"
+          >
+            Manage Invoices
+          </Link>
         </Card>
       </div>
 

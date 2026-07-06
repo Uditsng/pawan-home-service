@@ -4,32 +4,33 @@ import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import type { AppNotification } from "@/lib/types";
+import type { RealtimePostgresChangesPayload, AuthChangeEvent, Session } from "@supabase/supabase-js";
 
 // ─── Icon Map ────────────────────────────────────────────
 const typeIcons: Record<string, string> = {
-  new_job_offer:    "campaign",
-  booking_created:  "receipt_long",
-  booking_confirmed:"check_circle",
+  new_job_offer: "campaign",
+  booking_created: "receipt_long",
+  booking_confirmed: "check_circle",
   partner_assigned: "work",
-  partner_reassigned:"swap_horiz",
-  service_started:  "play_circle",
-  service_completed:"task_alt",
-  booking_cancelled:"cancel",
+  partner_reassigned: "swap_horiz",
+  service_started: "play_circle",
+  service_completed: "task_alt",
+  booking_cancelled: "cancel",
   extension_requested: "timer",
-  general:          "info",
+  general: "info",
 };
 
 const typeColors: Record<string, string> = {
-  new_job_offer:    "bg-secondary/15 text-primary",
-  booking_created:  "bg-blue-500/10 text-blue-600",
-  booking_confirmed:"bg-green-500/10 text-green-600",
+  new_job_offer: "bg-secondary/15 text-primary",
+  booking_created: "bg-blue-500/10 text-blue-600",
+  booking_confirmed: "bg-green-500/10 text-green-600",
   partner_assigned: "bg-indigo-500/10 text-indigo-600",
-  partner_reassigned:"bg-amber-500/10 text-amber-600",
-  service_started:  "bg-cyan-500/10 text-cyan-600",
-  service_completed:"bg-emerald-500/10 text-emerald-600",
-  booking_cancelled:"bg-red-500/10 text-red-600",
+  partner_reassigned: "bg-amber-500/10 text-amber-600",
+  service_started: "bg-cyan-500/10 text-cyan-600",
+  service_completed: "bg-emerald-500/10 text-emerald-600",
+  booking_cancelled: "bg-red-500/10 text-red-600",
   extension_requested: "bg-orange-500/10 text-orange-600",
-  general:          "bg-gray-500/10 text-gray-600",
+  general: "bg-gray-500/10 text-gray-600",
 };
 
 // High-priority types that trigger in-app alert sound for partners
@@ -162,7 +163,7 @@ export default function NotificationBell() {
     };
     getInitialUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
       if (session?.user) {
         setUserId(session.user.id);
         fetchUnread(session.user.id);
@@ -193,7 +194,7 @@ export default function NotificationBell() {
           schema: "public",
           table: "notifications",
         },
-        (payload) => {
+        (payload: RealtimePostgresChangesPayload<AppNotification>) => {
           if (isDev) {
             console.log(`[Notification Pipeline] [3. REALTIME_EMIT] Event: ${payload.eventType}, User: ${userId}`, payload);
           }
@@ -229,7 +230,7 @@ export default function NotificationBell() {
           }
         }
       )
-      .subscribe((status, err) => {
+      .subscribe((status: string, err?: Error) => {
         if (isDev) {
           console.log(`[Notification Realtime] Subscription status: ${status}`, err || "");
         }
@@ -279,7 +280,7 @@ export default function NotificationBell() {
   // ─── Actions ────────────────────────────────────────────────
   async function markAsRead(notifId: string) {
     console.log(`[Notification Pipeline] [8. READ_STATE] NotificationId: ${notifId}, Action: MARK_READ`);
-    
+
     const { error } = await supabase
       .from("notifications")
       .update({ is_read: true })
@@ -427,9 +428,8 @@ export default function NotificationBell() {
                 return (
                   <div
                     key={notif.id}
-                    className={`w-full flex items-start gap-3 px-5 py-3.5 border-b border-outline-variant/10 transition-colors hover:bg-surface-container-low/60 ${
-                      !notif.is_read ? "bg-secondary/5" : ""
-                    }`}
+                    className={`w-full flex items-start gap-3 px-5 py-3.5 border-b border-outline-variant/10 transition-colors hover:bg-surface-container-low/60 ${!notif.is_read ? "bg-secondary/5" : ""
+                      }`}
                   >
                     {/* Icon */}
                     <div
@@ -453,7 +453,7 @@ export default function NotificationBell() {
 
                             // Navigate based on type & metadata
                             const bookingId = notif.booking_id || (notif.metadata?.booking_id as string | undefined);
-                            
+
                             // Log structured pipeline stage 7 (User clicked notification/bell)
                             console.log(`[Notification Pipeline] [7. TAP_ACTION] Source: Bell, BookingId: ${bookingId}, Type: ${notif.type}`);
 
@@ -477,7 +477,7 @@ export default function NotificationBell() {
                             <span className="shrink-0 w-2 h-2 rounded-full bg-secondary" />
                           )}
                           <button
-                            onClick={(e) => deleteNotification(e, notif.id)}
+                            onClick={(e: React.MouseEvent) => deleteNotification(e, notif.id)}
                             className="p-1 text-on-surface-variant/40 hover:text-error hover:bg-error/5 rounded-lg transition-colors cursor-pointer"
                             title="Delete notification"
                           >

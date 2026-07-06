@@ -1,22 +1,18 @@
-import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/utils/supabase/server";
-import { redirect } from "next/navigation";
-import BottomNav from "@/components/BottomNav";
-import type { Metadata } from "next";
-import InvoiceClientActions from "./InvoiceClientActions";
 import { calculateInvoice } from "@/lib/invoice/calculateInvoice";
-import { generateAndSaveInvoice } from "@/lib/invoice/invoiceGenerator";
-import { generateQrSvg } from "@/lib/invoice/qrGenerator";
-import { headers } from "next/headers";
-import { SupabaseClient } from "@supabase/supabase-js";
+import type { Metadata } from "next";
 import { InvoiceSnapshot } from "@/lib/invoice/invoiceTypes";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "Tax Invoice | PHS Cleaning Company",
-    description: "View and download your PHS Cleaning Company tax invoice.",
+    title: "Verify Tax Invoice | PHS Cleaning Company",
+    description: "Verify authentic PHS Cleaning Company tax invoices.",
   };
+}
+
+interface InvoiceVerificationPageProps {
+  params: Promise<{ invoiceNumber: string }>;
 }
 
 interface InvoiceDetails {
@@ -34,15 +30,12 @@ interface InvoiceDetails {
   created_at: string;
   booking: {
     id: string;
-    status: string;
-    scheduled_date: string;
+    scheduled_date: string | null;
     created_at: string;
     address: string | null;
     city: string | null;
     pincode: string | null;
     pricing_model: string | null;
-    selected_duration_minutes: number | null;
-    base_price: number | null;
     meeting_location: string | null;
     destination: string | null;
     expected_bags: number | null;
@@ -69,91 +62,25 @@ interface InvoiceDetails {
   snapshot: InvoiceSnapshot | null;
 }
 
-// Auto-recovery: If booking is completed but no invoice row exists, generate it.
-async function ensureInvoiceExists(bookingId: string, supabase: SupabaseClient, userId: string, isAdmin: boolean, isPartner: boolean): Promise<InvoiceDetails | null> {
-  // Query booking details first
-  let query = supabase
-    .from("bookings")
-    .select("customer_id, partner_id, status")
-    .eq("id", bookingId);
-
-  if (!isAdmin) {
-    if (isPartner) {
-      query = query.eq("partner_id", userId);
-    } else {
-      query = query.eq("customer_id", userId);
-    }
-  }
-
-  const { data: booking } = await query.single();
-  if (!booking || booking.status !== "completed") return null;
-
-  try {
-    await generateAndSaveInvoice(supabase, bookingId);
-
-    // Let's check if invoice already exists
-    const { data: existing } = await supabase
-      .from("invoices")
-      .select(`
-        *,
-        booking:booking_id (
-          id, status, scheduled_date, created_at, address, city, pincode, pricing_model, selected_duration_minutes, base_price, meeting_location, destination, expected_bags, business_name, business_gstin, total_amount, wallet_discount_applied, service_id,
-          services:service_id (title, category)
-        ),
-        customer:customer_id (id, full_name, phone, email),
-        partner:partner_id (id, full_name)
-      `)
-      .eq("booking_id", bookingId)
-      .maybeSingle();
-
-    return existing as unknown as InvoiceDetails;
-  } catch (err) {
-    console.error("Auto-recovery: Failed to create invoice on access:", err);
-    return null;
-  }
-}
-
-interface InvoicePageProps {
-  params: Promise<{ id: string }>;
-}
-
-export default async function InvoicePage({ params }: InvoicePageProps) {
+export default async function InvoiceVerificationPage({ params }: InvoiceVerificationPageProps) {
   const resolvedParams = await params;
-  const bookingId = resolvedParams.id;
+  const invoiceNumber = resolvedParams.invoiceNumber;
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/login");
-  }
-
-  // Resolve user role
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  const isAdmin = profile?.role === "admin";
-  const isPartner = profile?.role === "partner";
-
-  // Fetch the invoice
-  let { data: invoice } = await supabase
+  // Fetch invoice by invoice_number (public query, no login required)
+  const { data: invoice } = await supabase
     .from("invoices")
     .select(`
       *,
       booking:booking_id (
         id,
-        status,
         scheduled_date,
         created_at,
         address,
         city,
         pincode,
         pricing_model,
-        selected_duration_minutes,
-        base_price,
         meeting_location,
         destination,
         expected_bags,
@@ -178,53 +105,25 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
         full_name
       )
     `)
-    .eq("booking_id", bookingId)
+    .eq("invoice_number", invoiceNumber)
     .maybeSingle();
 
-  // If no invoice but booking completed, attempt auto-recovery
+  // If invoice is invalid or does not exist, show professional 404 page
   if (!invoice) {
-    const recovered = await ensureInvoiceExists(bookingId, supabase, user.id, isAdmin, isPartner);
-    if (recovered) {
-      invoice = recovered;
-    }
-  }
-
-  // If invoice still doesn't exist, check booking status to see if it's pending completion
-  if (!invoice) {
-    let bookingQuery = supabase
-      .from("bookings")
-      .select("status")
-      .eq("id", bookingId);
-
-    if (!isAdmin) {
-      if (isPartner) {
-        bookingQuery = bookingQuery.eq("partner_id", user.id);
-      } else {
-        bookingQuery = bookingQuery.eq("customer_id", user.id);
-      }
-    }
-
-    const { data: booking } = await bookingQuery.maybeSingle();
-    const isCompleted = booking?.status === "completed";
-
     return (
-      <div className="bg-surface text-on-surface min-h-screen pb-20 font-body flex flex-col justify-between">
-        <main className="max-w-3xl mx-auto px-4 py-16 text-center">
-          <div className="w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <span className="material-symbols-outlined text-amber-600 text-3xl font-bold">hourglass_empty</span>
+      <div className="bg-slate-50 text-slate-800 min-h-screen font-sans flex flex-col items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white p-8 rounded-3xl border border-slate-100 shadow-sm text-center">
+          <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <span className="material-symbols-outlined text-red-600 text-3xl font-bold">cancel</span>
           </div>
-          <h1 className="font-headline text-2xl font-bold text-primary mb-2">Invoice Not Available</h1>
-          <p className="text-on-surface-variant text-sm max-w-md mx-auto leading-relaxed mb-8">
-            {isCompleted 
-              ? "We are currently generating your invoice. Please refresh the page in a few moments."
-              : "Invoices are generated automatically once your service is fully completed and verified by OTP."}
+          <h1 className="text-xl font-extrabold text-slate-900 mb-2">Invalid Invoice</h1>
+          <p className="text-slate-500 text-xs font-medium leading-relaxed mb-6">
+            The invoice number <span className="font-bold text-slate-800 font-mono">{invoiceNumber}</span> was not found in our records. This document cannot be verified as an authentic PHS invoice.
           </p>
-          <Link href="/customer/bookings" className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary font-bold font-headline rounded-xl text-sm transition-opacity hover:opacity-90">
-            <span className="material-symbols-outlined text-base">arrow_back</span>
-            Back to Bookings
-          </Link>
-        </main>
-        <BottomNav />
+          <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
+            PHS Verification Service
+          </div>
+        </div>
       </div>
     );
   }
@@ -245,7 +144,7 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
   const { data: extensionsData } = await supabase
     .from("booking_extensions")
     .select("*")
-    .eq("booking_id", bookingId)
+    .eq("booking_id", typedInvoice.booking_id)
     .in("status", ["paid", "active", "completed"]);
   const extensionRows = extensionsData || [];
 
@@ -300,69 +199,26 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
   const displayInvoiceDate = invoiceDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Kolkata" });
   const displayPaymentDate = paymentDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 
+  // Mask database UUID reference
   const bookingRef = booking?.id ? `BK-${booking.id.substring(0, 6).toUpperCase()}` : "BK-PHS";
 
-  // Generate QR code Verification URL
-  const reqHeaders = await headers();
-  const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
-  const verificationUrl = `${protocol}://${reqHeaders.get("host") || "phs.com"}/invoice/${typedInvoice.invoice_number}`;
-  const qrSvg = generateQrSvg(verificationUrl, 3, 2);
-
   return (
-    <div className="bg-surface text-on-surface antialiased min-h-screen pb-24 font-body selection:bg-secondary/30">
-      <main className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8">
+    <div className="bg-slate-50 text-slate-800 antialiased min-h-screen py-8 font-sans">
+      <main className="max-w-4xl mx-auto px-4 md:px-6">
         
-        {/* Navigation & Controls (hidden in print) */}
-        <section className="no-print mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <Link 
-              href="/customer/bookings" 
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-on-surface-variant hover:text-primary transition-colors mb-2"
-            >
-              <span className="material-symbols-outlined text-sm">arrow_back</span>
-              Back to Bookings
-            </Link>
-            <h1 className="font-headline text-2xl font-bold tracking-tight text-primary">
-              View Invoice
-            </h1>
-          </div>
-          
-          <InvoiceClientActions invoiceNumber={typedInvoice.invoice_number} />
+        {/* Verification Success Banner */}
+        <section className="mb-6 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl p-4 flex items-center gap-3">
+          <span className="material-symbols-outlined text-emerald-600 font-bold">check_circle</span>
+          <span className="text-xs font-bold uppercase tracking-wider">
+            ✅ This is a verified PHS Tax Invoice.
+          </span>
         </section>
 
         {/* Invoice Container (styled for paper/A4) */}
-        <div className="bg-white text-slate-800 p-6 md:p-12 rounded-3xl border border-slate-100 shadow-sm font-sans print-card relative overflow-hidden">
+        <div className="bg-white text-slate-800 p-6 md:p-12 rounded-3xl border border-slate-100 shadow-sm print-card relative overflow-hidden">
           
-          {/* Print Styles Sheet (Self-contained) */}
-          <style dangerouslySetInnerHTML={{__html: `
-            @media print {
-              body {
-                background: white !important;
-                color: #1e293b !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-              }
-              .no-print {
-                display: none !important;
-              }
-              .print-card {
-                border: none !important;
-                box-shadow: none !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                background: transparent !important;
-                width: 100% !important;
-                max-width: 100% !important;
-              }
-              @page {
-                size: A4;
-                margin: 1.5cm;
-              }
-            }
-          `}} />
-
-          {/* Top Decorative Border (Design system flare - hidden in print) */}
-          <div className="absolute top-0 left-0 right-0 h-1.5 bg-primary no-print"></div>
+          {/* Top Decorative Border */}
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-[#002261]"></div>
 
           {/* 1. Header Section */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-8 border-b border-slate-100">
@@ -440,10 +296,6 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
                   <p className="text-slate-500 font-medium">Technician Name:</p>
                   <p className="font-bold text-slate-800 text-sm mt-0.5">{partner.full_name}</p>
                 </div>
-                <div>
-                  <p className="text-slate-500 font-medium">Professional ID:</p>
-                  <p className="font-mono font-bold text-slate-800 text-sm mt-0.5">PRO-{partner.id?.substring(0, 8).toUpperCase() || "PHSPRO"}</p>
-                </div>
               </div>
             </div>
           )}
@@ -513,7 +365,7 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
           {/* 5. Breakdown & Grand Totals */}
           <div className="flex flex-col md:flex-row justify-between items-start gap-8 pt-6 border-t border-slate-100 text-xs">
             {/* Payment Method / Audit details */}
-            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 w-full md:max-w-xs print:bg-slate-50">
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 w-full md:max-w-xs">
               <h4 className="font-bold text-slate-600 uppercase tracking-wider text-[9px] mb-2.5">Payment Details</h4>
               <div className="space-y-1.5 font-medium text-slate-600">
                 <p className="flex justify-between">
@@ -522,7 +374,7 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
                 </p>
                 <p className="flex justify-between">
                   <span>Transaction ID:</span>
-                  <span className="font-mono text-slate-800 select-all font-bold">{payment.transaction_id || "—"}</span>
+                  <span className="font-mono text-slate-800 font-bold">{payment.transaction_id || "—"}</span>
                 </p>
                 <p className="flex justify-between">
                   <span>Payment Date:</span>
@@ -530,19 +382,10 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
                 </p>
                 <div className="pt-2 border-t border-slate-200 mt-2 flex items-center justify-between">
                   <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Payment Status</span>
-                  <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full print:bg-emerald-100">
+                  <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">
                     {payment.status || "Paid"}
                   </span>
                 </div>
-              </div>
-              
-              {/* QR Verification Code */}
-              <div className="mt-4 pt-4 border-t border-slate-200/60 flex flex-col items-center gap-1.5 text-center">
-                <div 
-                  className="w-24 h-24 bg-white p-1 rounded-xl border border-slate-200/50 shadow-sm"
-                  dangerouslySetInnerHTML={{ __html: qrSvg }}
-                />
-                <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Scan to Verify Invoice</span>
               </div>
             </div>
 
@@ -595,7 +438,7 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
           <div className="mt-12 pt-6 border-t border-slate-100 text-center text-[10px] text-slate-400 font-medium leading-relaxed">
             <p>{seller.footer_text || "Thank you for choosing PHS Cleaning Company. We value your business!"}</p>
             <p className="mt-1">For support, call {seller.support_phone} or email {seller.support_email}.</p>
-            <div className="mt-4 bg-slate-50 border border-slate-100 rounded-xl p-3 inline-block text-left text-[9px] text-slate-400/80 max-w-lg print:bg-slate-50">
+            <div className="mt-4 bg-slate-50 border border-slate-100 rounded-xl p-3 inline-block text-left text-[9px] text-slate-400/80 max-w-lg">
               <p className="font-bold uppercase tracking-wider text-[8px] text-slate-400 mb-1">Terms & Conditions:</p>
               <ul className="list-disc pl-3.5 space-y-0.5">
                 <li>This is a computer-generated tax invoice and requires no physical signature.</li>
@@ -608,10 +451,6 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
         </div>
 
       </main>
-
-      <div className="no-print">
-        <BottomNav />
-      </div>
     </div>
   );
 }

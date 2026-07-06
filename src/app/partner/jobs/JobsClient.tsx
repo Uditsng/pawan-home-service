@@ -250,11 +250,12 @@ export default function JobsClient({
         .in("booking_id", activeList.map(j => j.id))
         .order("created_at", { ascending: false });
       if (exts) {
-        groupedExtensions = exts.reduce((acc, row) => {
+        const typedExts = exts as BookingExtension[];
+        groupedExtensions = typedExts.reduce<Record<string, BookingExtension[]>>((acc, row) => {
           if (!acc[row.booking_id]) acc[row.booking_id] = [];
           acc[row.booking_id].push(row);
           return acc;
-        }, {} as Record<string, BookingExtension[]>);
+        }, {});
       }
     }
 
@@ -269,7 +270,8 @@ export default function JobsClient({
         .order("created_at", { ascending: false });
       
       if (quotes) {
-        quotes.forEach((q) => {
+        const typedQuotes = quotes as unknown as BookingQuote[];
+        typedQuotes.forEach((q) => {
           if (!quoteMap[q.booking_id]) {
             quoteMap[q.booking_id] = q;
           }

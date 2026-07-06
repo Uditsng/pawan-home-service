@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import InvoicesConsole from "./InvoicesConsole";
+import { InvoiceSnapshot } from "@/lib/invoice/invoiceTypes";
 
 export interface AdminInvoice {
   id: string;
@@ -30,6 +31,52 @@ export interface AdminInvoice {
   partner: {
     id: string;
     full_name: string;
+  } | null;
+}
+
+interface DBInvoiceRow {
+  id: string;
+  invoice_number: string;
+  subtotal: number | null;
+  tax_rate: number | null;
+  tax_amount: number | null;
+  discount_amount: number | null;
+  grand_total: number | null;
+  payment_method: string | null;
+  transaction_id: string | null;
+  created_at: string;
+  snapshot: Record<string, unknown> | null;
+  booking: {
+    id: string;
+    status: string;
+    scheduled_date: string | null;
+    services: {
+      title: string;
+    } | null;
+  } | null;
+  customer: {
+    id: string;
+    full_name: string;
+    phone: string | null;
+    email: string | null;
+  } | null;
+  partner: {
+    id: string;
+    full_name: string;
+  } | null;
+}
+
+interface DBMissingInvoiceBooking {
+  id: string;
+  status: string;
+  total_amount: number | null;
+  scheduled_date: string | null;
+  services: {
+    title: string;
+  } | null;
+  customer: {
+    full_name: string;
+    phone: string | null;
   } | null;
 }
 
@@ -67,6 +114,7 @@ export default async function AdminInvoicesPage() {
         payment_method,
         transaction_id,
         created_at,
+        snapshot,
         booking:booking_id (
           id,
           status,
@@ -105,42 +153,61 @@ export default async function AdminInvoicesPage() {
     console.error("Failed to fetch invoices for admin console:", error);
   }
 
-  const invoices: AdminInvoice[] = (invoicesRaw || []).map((inv: any) => ({
-    id: inv.id,
-    invoice_number: inv.invoice_number,
-    subtotal: Number(inv.subtotal || 0),
-    tax_rate: Number(inv.tax_rate || 18.00),
-    tax_amount: Number(inv.tax_amount || 0),
-    discount_amount: Number(inv.discount_amount || 0),
-    grand_total: Number(inv.grand_total || 0),
-    payment_method: inv.payment_method || "Card",
-    transaction_id: inv.transaction_id || "",
-    created_at: inv.created_at,
-    booking: inv.booking ? {
-      id: inv.booking.id,
-      status: inv.booking.status,
-      scheduled_date: inv.booking.scheduled_date,
-      services: inv.booking.services ? {
-        title: inv.booking.services.title
+  const invoices: AdminInvoice[] = ((invoicesRaw as unknown as DBInvoiceRow[]) || []).map((inv) => {
+    const snapshot = inv.snapshot as unknown as InvoiceSnapshot | null;
+
+    return {
+      id: inv.id,
+      invoice_number: inv.invoice_number,
+      subtotal: Number(snapshot?.financials?.subtotal ?? inv.subtotal ?? 0),
+      tax_rate: Number(snapshot?.financials?.tax_rate ?? inv.tax_rate ?? 18.00),
+      tax_amount: Number(snapshot?.financials?.tax_amount ?? inv.tax_amount ?? 0),
+      discount_amount: Number(snapshot?.financials?.discount_amount ?? inv.discount_amount ?? 0),
+      grand_total: Number(snapshot?.financials?.grand_total ?? inv.grand_total ?? 0),
+      payment_method: snapshot?.payment?.method ?? inv.payment_method ?? "Card",
+      transaction_id: snapshot?.payment?.transaction_id ?? inv.transaction_id ?? "",
+      created_at: inv.created_at,
+      booking: snapshot?.booking ? {
+        id: snapshot.booking.id,
+        status: inv.booking?.status || "completed",
+        scheduled_date: snapshot.booking.scheduled_date,
+        services: {
+          title: snapshot.booking.service_title || "Home Service"
+        }
+      } : inv.booking ? {
+        id: inv.booking.id,
+        status: inv.booking.status,
+        scheduled_date: inv.booking.scheduled_date,
+        services: inv.booking.services ? {
+          title: inv.booking.services.title
+        } : null
+      } : null,
+      customer: snapshot?.customer ? {
+        id: snapshot.customer.id,
+        full_name: snapshot.customer.full_name,
+        phone: snapshot.customer.phone || null,
+        email: snapshot.customer.email || null
+      } : inv.customer ? {
+        id: inv.customer.id,
+        full_name: inv.customer.full_name,
+        phone: inv.customer.phone,
+        email: inv.customer.email
+      } : null,
+      partner: snapshot?.partner ? {
+        id: snapshot.partner.id,
+        full_name: snapshot.partner.full_name
+      } : inv.partner ? {
+        id: inv.partner.id,
+        full_name: inv.partner.full_name
       } : null
-    } : null,
-    customer: inv.customer ? {
-      id: inv.customer.id,
-      full_name: inv.customer.full_name,
-      phone: inv.customer.phone,
-      email: inv.customer.email
-    } : null,
-    partner: inv.partner ? {
-      id: inv.partner.id,
-      full_name: inv.partner.full_name
-    } : null
-  }));
+    };
+  });
 
   // Filter in JS to find bookings that do NOT have a corresponding invoice in the fetched list
   const existingBookingIds = new Set(invoices.map(i => i.booking?.id).filter(Boolean));
-  const completedWithoutInvoice = (missingInvoicesBookings || [])
-    .filter((b: any) => !existingBookingIds.has(b.id))
-    .map((b: any) => ({
+  const completedWithoutInvoice = ((missingInvoicesBookings as unknown as DBMissingInvoiceBooking[]) || [])
+    .filter((b) => !existingBookingIds.has(b.id))
+    .map((b) => ({
       id: b.id,
       total_amount: Number(b.total_amount || 0),
       scheduled_date: b.scheduled_date,

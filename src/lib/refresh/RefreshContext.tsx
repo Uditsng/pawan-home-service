@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useRef, useCallb
 import { storageService } from "../storage/StorageService";
 import { processOfflineQueue, getOfflineQueue } from "../offline/offlineQueue";
 import { createClient } from "@/utils/supabase/client";
+import { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 
 // Cache Envelope Structure
 export interface CacheEnvelope<T> {
@@ -470,11 +471,15 @@ export function useRefreshableData<T>(
   }, [key, subscribe, getCacheValue, doFetch]);
 
   // Supabase Realtime integration
+  const rtConfig = options?.realtimeConfig;
+  const rtTable = rtConfig?.table;
+  const rtFilter = rtConfig?.filter;
+  const rtEvent = rtConfig?.event;
+
   useEffect(() => {
-    if (!options?.realtimeConfig) return;
+    if (!rtTable) return;
 
     const supabase = createClient();
-    const config = options.realtimeConfig;
     const channelName = `rt-${key}-${Math.random().toString(36).substring(2, 7)}`;
 
     const channel = supabase
@@ -482,14 +487,14 @@ export function useRefreshableData<T>(
       .on(
         "postgres_changes",
         {
-          event: config.event || "*",
+          event: rtEvent || "*",
           schema: "public",
-          table: config.table,
-          filter: config.filter,
+          table: rtTable,
+          filter: rtFilter,
         },
-        (payload) => {
+        (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
           if (process.env.NODE_ENV === "development") {
-            console.log(`[Realtime Trigger] Table "${config.table}" changed. Refreshing key "${key}"`, payload);
+            console.log(`[Realtime Trigger] Table "${rtTable}" changed. Refreshing key "${key}"`, payload);
           }
           void refresh(key);
         }
@@ -499,7 +504,7 @@ export function useRefreshableData<T>(
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [key, options?.realtimeConfig, refresh]);
+  }, [key, rtTable, rtFilter, rtEvent, refresh]);
 
   // Polling Integration
   useEffect(() => {

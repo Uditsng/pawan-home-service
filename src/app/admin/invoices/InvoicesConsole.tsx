@@ -26,14 +26,15 @@ export default function InvoicesConsole({
   initialInvoices,
   completedWithoutInvoice: initialCompletedWithoutInvoice,
 }: InvoicesConsoleProps) {
-  const [invoices, setInvoices] = useState<AdminInvoice[]>(initialInvoices);
-  const [pendingBookings, setPendingBookings] = useState<CompletedWithoutInvoice[]>(
-    initialCompletedWithoutInvoice
-  );
+  const invoices = initialInvoices;
+  const pendingBookings = initialCompletedWithoutInvoice;
 
   const [searchTerm, setSearchTerm] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [paymentFilter, setPaymentFilter] = useState("");
+  const [minTotal, setMinTotal] = useState("");
+  const [maxTotal, setMaxTotal] = useState("");
 
   const [isProcessingId, setIsProcessingId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
@@ -68,7 +69,17 @@ export default function InvoicesConsole({
       }
     }
 
-    return matchesText && matchesDate;
+    // Payment method filter
+    const matchesPayment = 
+      !paymentFilter || 
+      inv.payment_method.toLowerCase() === paymentFilter.toLowerCase();
+
+    // Grand total range filter
+    let matchesTotal = true;
+    if (minTotal && inv.grand_total < Number(minTotal)) matchesTotal = false;
+    if (maxTotal && inv.grand_total > Number(maxTotal)) matchesTotal = false;
+
+    return matchesText && matchesDate && matchesPayment && matchesTotal;
   });
 
   // Export CSV Utility
@@ -138,8 +149,9 @@ export default function InvoicesConsole({
         // Reload invoices and clear from pending bookings
         window.location.reload();
       }
-    } catch (err: any) {
-      setMessage({ text: err.message || "Failed to generate invoice.", type: "error" });
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      setMessage({ text: errMsg || "Failed to generate invoice.", type: "error" });
     } finally {
       setIsProcessingId(null);
     }
@@ -222,6 +234,17 @@ export default function InvoicesConsole({
               </div>
 
               <div className="flex gap-2 shrink-0">
+                <select
+                  value={paymentFilter}
+                  onChange={(e) => setPaymentFilter(e.target.value)}
+                  className="px-3 py-2 rounded-xl bg-surface border border-outline-variant/20 text-xs font-bold text-primary outline-none focus:ring-2 focus:ring-secondary/40"
+                >
+                  <option value="">All Payment Modes</option>
+                  <option value="razorpay">Razorpay</option>
+                  <option value="card">Card</option>
+                  <option value="cash">Cash</option>
+                </select>
+
                 <Button
                   variant="outline"
                   onClick={handleExportCSV}
@@ -233,7 +256,7 @@ export default function InvoicesConsole({
               </div>
             </div>
 
-            {/* Date Filters */}
+            {/* Filters */}
             <div className="flex flex-wrap gap-4 items-center border-t border-outline-variant/10 pt-4 text-xs font-bold text-on-surface-variant/60">
               <div className="flex items-center gap-2">
                 <span>Start Date:</span>
@@ -253,12 +276,35 @@ export default function InvoicesConsole({
                   className="px-3 py-1.5 rounded-lg bg-surface border border-outline-variant/20 text-xs text-primary focus:outline-none focus:ring-1 focus:ring-secondary/30"
                 />
               </div>
-              {(startDate || endDate || searchTerm) && (
+              <div className="flex items-center gap-2 border-l border-outline-variant/20 pl-4">
+                <span>Min Amount:</span>
+                <input
+                  type="number"
+                  placeholder="Min"
+                  value={minTotal}
+                  onChange={(e) => setMinTotal(e.target.value)}
+                  className="w-20 px-3 py-1.5 rounded-lg bg-surface border border-outline-variant/20 text-xs text-primary focus:outline-none focus:ring-1 focus:ring-secondary/30"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span>Max Amount:</span>
+                <input
+                  type="number"
+                  placeholder="Max"
+                  value={maxTotal}
+                  onChange={(e) => setMaxTotal(e.target.value)}
+                  className="w-20 px-3 py-1.5 rounded-lg bg-surface border border-outline-variant/20 text-xs text-primary focus:outline-none focus:ring-1 focus:ring-secondary/30"
+                />
+              </div>
+              {(startDate || endDate || searchTerm || paymentFilter || minTotal || maxTotal) && (
                 <button
                   onClick={() => {
                     setSearchTerm("");
                     setStartDate("");
                     setEndDate("");
+                    setPaymentFilter("");
+                    setMinTotal("");
+                    setMaxTotal("");
                   }}
                   className="text-secondary text-[10px] font-black uppercase tracking-widest hover:underline ml-auto"
                 >
@@ -312,11 +358,14 @@ export default function InvoicesConsole({
                             {inv.partner?.full_name || "Unassigned"}
                           </p>
                         </td>
-                        <td className="px-4 py-4 text-right">
+                        <td className="px-4 py-4 text-right font-sans">
                           <p className="text-sm font-black text-primary tracking-tighter">₹{inv.grand_total.toFixed(2)}</p>
-                          <p className="text-[9px] text-on-surface-variant/40 mt-1">
+                          <p className="text-[9px] text-on-surface-variant/40 mt-1 font-medium">
                             Subtotal: ₹{inv.subtotal.toFixed(0)} &middot; GST: ₹{inv.tax_amount.toFixed(0)}
                           </p>
+                          <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200/50 text-[8px] font-black uppercase text-slate-500 tracking-wider">
+                            {inv.payment_method}
+                          </span>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-center gap-2">
@@ -327,6 +376,15 @@ export default function InvoicesConsole({
                             >
                               <span className="material-symbols-outlined text-sm">visibility</span>
                               View
+                            </Link>
+
+                            <Link
+                              href={`/customer/bookings/${inv.booking?.id}/invoice?download=true`}
+                              target="_blank"
+                              className="px-3 py-1.5 bg-primary hover:bg-primary/95 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center gap-1 shadow-sm border-none cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
+                              PDF
                             </Link>
 
                             <Button

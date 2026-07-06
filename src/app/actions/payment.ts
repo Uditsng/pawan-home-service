@@ -301,6 +301,8 @@ export async function verifyRazorpayPaymentAction(payload: {
   selectedPackages?: string;
   couponCode?: string;
   formAnswers?: string; // JSON String of dynamic fields
+  businessName?: string;
+  businessGstin?: string;
 }): Promise<VerificationResult> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -485,6 +487,8 @@ export async function verifyRazorpayPaymentAction(payload: {
         meeting_location: payload.meetingLocation || null,
         destination: payload.destination || null,
         expected_bags: payload.expectedBags ? parseInt(payload.expectedBags, 10) : 0,
+        business_name: payload.businessName || null,
+        business_gstin: payload.businessGstin || null,
       })
       .select("id")
       .single();
@@ -708,6 +712,8 @@ export async function verifyRazorpayPaymentAction(payload: {
           selected_duration_minutes: itemDuration,
           base_price: breakdown.base_price,
           final_price: breakdown.total_price,
+          business_name: payload.businessName || null,
+          business_gstin: payload.businessGstin || null,
         })
         .select("id")
         .single();

@@ -211,7 +211,7 @@ export default function TestSyncPage() {
     };
 
     void runTests();
-  }, [getData, invalidate]);
+  }, [getData, invalidate, tests]);
 
   return (
     <div className="min-h-screen bg-[#EFF3F6] p-8 font-body flex flex-col justify-center items-center">

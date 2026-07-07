@@ -1,199 +1,173 @@
 /**
  * ServiceIcon — Central resolver for subcategory icons.
- * icon_name values stored in DB map to Lucide React SVG components.
- * No CDN, no internet required — all icons are bundled.
- *
- * Supports both:
- * - New names (used by the admin picker, e.g. "bug", "sparkles", "wrench")
- * - Legacy Material Symbol names (already in DB, e.g. "bug_report", "cleaning_services")
+ * Loads optimized SVG files locally from /public/icons.
+ * No CDN, no internet required.
  */
 
-import {
-  // Cleaning
-  Sparkles, Shirt, Wind, Droplets, Brush, WashingMachine, Bath, ShowerHead,
-  // Pest Control
-  Bug, Shield, Zap, FlaskConical, Siren, Rat,
-  // Repairs & Electrical
-  Wrench, Hammer, Plug, Lightbulb, Settings, Cpu, Wifi, Bolt,
-  // Plumbing
-  Waves, Pipette, Droplet,
-  // Home & Furniture
-  Sofa, BedDouble, Lamp, DoorOpen, PaintRoller, Home, Frame, Armchair,
-  // Garden & Outdoor
-  Leaf, TreePine, Flower2, Sun, Shovel, Sprout,
-  // Appliances
-  Tv, Refrigerator, AirVent, Microwave, Thermometer,
-  // Moving & Logistics
-  Package, Truck, MoveHorizontal, LayoutGrid,
-  // Misc
-  Star, Heart, Clock, MapPin, Phone, Camera, Car, Scissors,
-  // Fallback
-  CircleHelp,
-  type LucideProps,
-} from "lucide-react";
-import type { FC } from "react";
+import Image from "next/image";
+import type { ComponentType, HTMLAttributes } from "react";
 
-// Maps icon_name (stored in DB) → Lucide component
-// Includes BOTH new picker names AND legacy Material Symbol names for backward compatibility
-const ICON_MAP: Record<string, FC<LucideProps>> = {
-  // ── NEW PICKER NAMES ──────────────────────────────────────────────────────
+// Normalize database icon_name to clean local SVG filename
+function normalizeIconName(name: string): string {
+  if (!name) return "cleaning_services";
+  
+  const clean = name.toLowerCase().trim();
+  
+  const map: Record<string, string> = {
+    // Database / Legacy / Material Symbols
+    water_drop: "water_drop",
+    local_shipping: "local_shipping",
+    celebration: "celebration",
+    bed: "bed",
+    pest_control: "pest_control",
+    potted_plant: "potted_plant",
+    directions_car: "directions_car",
+    countertops: "countertops",
+    ac_unit: "ac_unit",
+    bathroom: "bathroom",
+    format_paint: "format_paint",
+    pest_control_rodent: "pest_control_rodent",
+    plumbing: "plumbing",
+    electrical_services: "electrical_services",
+    cleaning_services: "cleaning_services",
+    construction: "construction",
+    water_damage: "water_damage",
+    local_laundry_service: "local_laundry_service",
+    bug_report: "bug_report",
+    campaign: "campaign",
+    shopping_bag: "shopping_bag",
+    chair: "chair",
+    diversity_3: "save_water",
+    content_cut: "carpenter",
+    leaf: "leaf",
+    grid_on: "grid_on",
+    videocam: "tv",
+    kitchen: "kitchen",
+    layers: "window",
+    grid_view: "window",
+    tv: "tv",
+    power: "power",
+    mode_fan: "fan",
+    battery_charging_full: "power",
+    electric_car: "directions_car",
+    wallpaper: "window",
+    meeting_room: "door",
+    child_care: "save_water",
+    blinds: "window",
+    window: "window",
+    wc: "wc",
+    shower: "shower",
+    texture: "texture",
+    
+    // Picker options / Lucide names
+    sparkles: "cleaning_services",
+    shirt: "local_laundry_service",
+    wind: "ac_unit",
+    droplets: "water_drop",
+    brush: "cleaning_services",
+    washing_machine: "local_laundry_service",
+    bath: "bathroom",
+    bug: "pest_control",
+    shield: "pest_control",
+    zap: "power",
+    flask: "pest_control",
+    siren: "campaign",
+    rat: "pest_control_rodent",
+    wrench: "plumbing",
+    hammer: "construction",
+    plug: "power",
+    lightbulb: "lightbulb",
+    settings: "construction",
+    cpu: "electrical_services",
+    wifi: "electrical_services",
+    bolt: "power",
+    waves: "water_drop",
+    pipette: "plumbing",
+    droplet: "water_drop",
+    sofa: "sofa",
+    lamp: "lightbulb",
+    door: "door",
+    paint: "format_paint",
+    home: "door",
+    frame: "window",
+    armchair: "chair",
+    tree: "potted_plant",
+    flower: "potted_plant",
+    sun: "campaign",
+    shovel: "construction",
+    sprout: "potted_plant",
+    air_vent: "ac_unit",
+    refrigerator: "refrigerator",
+    microwave: "kitchen",
+    thermometer: "ac_unit",
+    package: "local_shipping",
+    truck: "local_shipping",
+    move: "local_shipping",
+    grid: "window"
+  };
 
-  // Cleaning
-  sparkles: Sparkles,
-  shirt: Shirt,
-  wind: Wind,
-  droplets: Droplets,
-  brush: Brush,
-  washing_machine: WashingMachine,
-  bath: Bath,
-  shower: ShowerHead,
-  // Pest Control
-  bug: Bug,
-  shield: Shield,
-  zap: Zap,
-  flask: FlaskConical,
-  siren: Siren,
-  rat: Rat,
-  // Repairs
-  wrench: Wrench,
-  hammer: Hammer,
-  plug: Plug,
-  lightbulb: Lightbulb,
-  settings: Settings,
-  cpu: Cpu,
-  wifi: Wifi,
-  bolt: Bolt,
-  // Plumbing
-  waves: Waves,
-  pipette: Pipette,
-  droplet: Droplet,
-  // Home & Furniture
-  sofa: Sofa,
-  bed: BedDouble,
-  lamp: Lamp,
-  door: DoorOpen,
-  paint: PaintRoller,
-  home: Home,
-  frame: Frame,
-  armchair: Armchair,
-  // Garden
-  leaf: Leaf,
-  tree: TreePine,
-  flower: Flower2,
-  sun: Sun,
-  shovel: Shovel,
-  sprout: Sprout,
-  // Appliances
-  tv: Tv,
-  refrigerator: Refrigerator,
-  air_vent: AirVent,
-  microwave: Microwave,
-  thermometer: Thermometer,
-  // Moving & Logistics
-  package: Package,
-  truck: Truck,
-  move: MoveHorizontal,
-  grid: LayoutGrid,
+  const resolved = map[clean] || clean;
+  
+  // Valid SVG files present in public/icons
+  const validFiles = new Set([
+    "ac_unit", "air_vent", "armchair", "bath", "bathroom", "bathtub", "battery_charging_full",
+    "bed", "bell", "blinds", "bug", "bug_report", "bulb", "campaign", "car", "carpenter",
+    "carpet", "celebration", "chair", "chimney", "cleaning_services", "construction",
+    "cooler", "cooling_fan", "countertops", "curtains", "cutlery", "directions_car",
+    "door", "electric_car", "electrical_services", "electrician", "fan", "flower",
+    "grid_on", "kitchen", "leaf", "lightbulb", "lizard", "local_laundry_service",
+    "meeting_room", "microwave", "mode_fan", "mop", "mosquito", "party", "pest_control",
+    "pest_control_rodent", "pipe", "plant-a-tree", "plumber", "plumbing", "potted_plant",
+    "power", "rat", "refrigerator", "save_water", "shirt", "shopping_bag", "shower",
+    "sofa", "sparkles", "spider", "sprout", "switch", "tap", "television", "texture",
+    "toilet", "tree", "tv", "vacuum-cleaner", "videocam", "wallpaper", "washbasin",
+    "washing_machine", "water_damage", "water_drop", "wc", "window"
+  ]);
+  
+  if (validFiles.has(resolved)) {
+    return resolved;
+  }
+  return "cleaning_services";
+}
 
-  // ── LEGACY MATERIAL SYMBOLS ALIASES (backward compatibility with DB) ──────
-
-  // Pest / Insects
-  bug_report: Bug,
-  pest_control: Bug,
-  pest_control_rodent: Rat,
-  rodent_control: Rat,
-  // Cleaning
-  cleaning_services: Sparkles,
-  dry_cleaning: Shirt,
-  local_laundry_service: WashingMachine,
-  laundry: WashingMachine,
-  mop: Brush,
-  soap: Droplets,
-  water_drop: Droplet,
-  shower_head: ShowerHead,
-  bathtub: Bath,
-  // Home Repair / Handyman
-  home_repair_service: Wrench,
-  handyman: Wrench,
-  build: Hammer,
-  construction: Hammer,
-  carpenter: Hammer,
-  hardware: Wrench,
-  plumbing: Pipette,
-  water_damage: Droplet,
-  // Electrical
-  electrical_services: Plug,
-  power: Plug,
-  bolt_lightning: Bolt,
-  // Furniture & Interior
-  chair: Armchair,
-  weekend: Sofa,
-  bed_room: BedDouble,
-  bedroom_parent: BedDouble,
-  king_bed: BedDouble,
-  single_bed: BedDouble,
-  door_back: DoorOpen,
-  window: Frame,
-  format_paint: PaintRoller,
-  brush_alt: Brush,
-  palette: PaintRoller,
-  // Appliances
-  kitchen: Microwave,
-  microwave_gen: Microwave,
-  kitchen_appliances: Microwave,
-  ac_unit: AirVent,
-  hvac: AirVent,
-  air_purifier: AirVent,
-  device_thermostat: Thermometer,
-  tv_gen: Tv,
-  monitor: Tv,
-  refrigerator_gen: Refrigerator,
-  // Garden / Outdoor
-  yard: Leaf,
-  eco: Leaf,
-  park: TreePine,
-  nature: TreePine,
-  grass: Leaf,
-  forest: TreePine,
-  local_florist: Flower2,
-  // Moving / Logistics
-  local_shipping: Truck,
-  moving: Package,
-  inventory: Package,
-  // General / Other
-  house: Home,
-  roofing: Home,
-  house_siding: Home,
-  cottage: Home,
-  villa: Home,
-  star: Star,
-  favorite: Heart,
-  schedule: Clock,
-  alarm: Clock,
-  location_on: MapPin,
-  phone: Phone,
-  photo_camera: Camera,
-  directions_car: Car,
-  content_cut: Scissors,
-};
-
-interface ServiceIconProps extends LucideProps {
+interface ServiceIconProps extends HTMLAttributes<HTMLImageElement> {
   iconName: string;
+  width?: number;
+  height?: number;
 }
 
 /**
- * Renders the Lucide icon corresponding to the given icon_name.
+ * Renders local SVG icon corresponding to the given iconName.
  * Handles both new picker names and legacy Material Symbol names.
- * Falls back to CircleHelp if the icon_name is not recognized.
  */
-export function ServiceIconComponent({ iconName, ...props }: ServiceIconProps) {
-  const Icon = ICON_MAP[iconName] ?? CircleHelp;
-  return <Icon {...props} />;
+export function ServiceIconComponent({
+  iconName,
+  className,
+  width = 48,
+  height = 48,
+  ...props
+}: ServiceIconProps) {
+  const normalizedName = normalizeIconName(iconName);
+  
+  return (
+    <Image
+      src={`/icons/${normalizedName}.svg`}
+      alt={iconName}
+      width={width}
+      height={height}
+      className={`${className || ""} object-contain`}
+      loading="lazy"
+      decoding="async"
+      draggable={false}
+    />
+  );
 }
 
-/** Returns the Lucide component for a given icon_name. */
-export function getServiceIcon(iconName: string): FC<LucideProps> {
-  return ICON_MAP[iconName] ?? CircleHelp;
+/** Returns a wrapper component for backward compatibility. */
+export function getServiceIcon(iconName: string): ComponentType<{ className?: string }> {
+  return function DummyIcon({ className }: { className?: string }) {
+    return <ServiceIconComponent iconName={iconName} className={className} />;
+  };
 }
 
 /** All available icon entries for the admin picker (new names only). */

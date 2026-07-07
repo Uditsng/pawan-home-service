@@ -103,8 +103,14 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
   return (
     <div className="bg-surface font-body text-on-surface antialiased min-h-screen pb-28 md:pb-32">
       {/* Top Banner & Header */}
-      <div className="bg-surface-container pt-6 md:pt-10 px-4 md:px-6 relative overflow-hidden">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-6 md:gap-12 items-center justify-between relative z-10">
+      <div className="bg-surface-container pt-4 md:pt-6 px-4 md:px-6 relative overflow-hidden">
+        <div className="max-w-7xl mx-auto mb-4">
+          <Link href={`/customer/services/${resolvedParams.category}/sub/${service.subcategory_id}`} className="inline-flex items-center gap-2 text-on-surface hover:opacity-80 transition-all">
+            <span className="material-symbols-outlined text-[20px] md:text-[22px]">arrow_back</span>
+            <span className="text-xs md:text-sm font-semibold">Back to Services</span>
+          </Link>
+        </div>
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-6 md:gap-12 items-center justify-between relative z-10 pb-6 md:pb-10">
           <div className="flex-1 w-full">
             {/* Icon + Title */}
             <div className="flex items-center gap-4 mb-4">

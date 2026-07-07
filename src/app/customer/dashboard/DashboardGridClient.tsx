@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
 
 interface ServiceWithSubcategory {
@@ -112,6 +113,7 @@ const getCategoryIcon = (id: string) => {
 
 export default function DashboardGridClient({ categories, availableServices }: DashboardGridClientProps) {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const router = useRouter();
 
   if (selectedCategoryId) {
     const servicesForCategory = availableServices.filter(
@@ -192,7 +194,13 @@ export default function DashboardGridClient({ categories, availableServices }: D
 
           return (
             <div
-              onClick={() => setSelectedCategoryId(cat.id)}
+              onClick={() => {
+                const catSlug = cat.category_name
+                  .toLowerCase()
+                  .replace(/\s+/g, "-")
+                  .replace(/&/g, "and");
+                router.push(`/customer/services/${catSlug}`);
+              }}
               key={cat.id}
               className="bg-surface-container-low p-5 md:p-6 rounded-2xl flex flex-col items-center justify-center text-center border border-outline-variant/10 shadow-sm aspect-square cursor-pointer active:bg-surface-container-high active:scale-95 transition-all"
             >

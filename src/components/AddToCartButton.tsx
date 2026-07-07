@@ -30,16 +30,20 @@ export default function AddToCartButton({
     return (
       <button
         id={`cart-btn-${item.serviceId}`}
-        onClick={handleClick}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleClick();
+        }}
         aria-label={inCart ? "View in cart" : "Add to cart"}
-        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-95 shrink-0 ${
+        className={`w-8 h-8 md:w-9 md:h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 shrink-0 border shadow-[0_4px_10px_rgba(15,23,42,0.08)] ${
           inCart
-            ? "bg-primary text-white shadow-md shadow-primary/20"
-            : "bg-surface-container-low border border-outline-variant/20 text-on-surface-variant hover:bg-surface-container hover:text-primary hover:border-primary/30"
+            ? "bg-emerald-600 border-emerald-600 text-white shadow-[0_4px_10px_rgba(5,150,105,0.2)]"
+            : "bg-surface-container-lowest border-outline-variant/15 text-emerald-600 hover:bg-emerald-50/50 hover:border-emerald-600/30"
         } ${className}`}
       >
-        <span className="material-symbols-outlined text-lg">
-          {inCart ? "shopping_cart_checkout" : "add_shopping_cart"}
+        <span className="material-symbols-outlined text-[20px] md:text-[22px] font-bold">
+          {inCart ? "done" : "add"}
         </span>
       </button>
     );

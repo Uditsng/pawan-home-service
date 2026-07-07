@@ -135,7 +135,16 @@ export default function TrackingClient({
 }: {
   initialBooking: BookingDetails;
   initialExtensions?: BookingExtension[];
-  existingReview: { rating: number; comment: string | null } | null;
+  existingReview: {
+    rating: number;
+    comment: string | null;
+    quality_rating?: number | null;
+    behaviour_rating?: number | null;
+    timeliness_rating?: number | null;
+    value_rating?: number | null;
+    review_tags?: string[] | null;
+    review_images?: string[] | null;
+  } | null;
 }) {
   const router = useRouter();
 

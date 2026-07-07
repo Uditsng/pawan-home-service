@@ -91,6 +91,14 @@ export default async function ProfilePage() {
             <span className="material-symbols-outlined text-slate-300 text-[18px] md:text-[20px] group-hover:text-slate-400 transition-colors">chevron_right</span>
           </Link>
 
+          <Link href="/customer/profile/reviews" className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
+            <div className="flex items-center gap-3 md:gap-4">
+              <span className="material-symbols-outlined text-slate-500 text-[18px] md:text-[20px]">rate_review</span>
+              <span className="font-semibold text-[13px] md:text-[15px] text-[#1c2438]">My reviews</span>
+            </div>
+            <span className="material-symbols-outlined text-slate-300 text-[18px] md:text-[20px] group-hover:text-slate-400 transition-colors">chevron_right</span>
+          </Link>
+
           <Link href="/about-us" className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
             <div className="flex items-center gap-3 md:gap-4">
               <span className="material-symbols-outlined text-slate-500 text-[18px] md:text-[20px]">info</span>

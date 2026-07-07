@@ -1,10 +1,24 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const supabase = createClient();
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setIsAuthenticated(!!user);
+      setLoading(false);
+    };
+    checkAuth();
+  }, []);
 
   const navItems = [
     { href: "/customer/dashboard", icon: "home", label: "Home" },
@@ -13,6 +27,8 @@ export default function BottomNav() {
     { href: "/customer/wallet", icon: "account_balance_wallet", label: "Wallet" },
     { href: "/customer/profile", icon: "person", label: "Profile" },
   ];
+
+  if (loading || !isAuthenticated) return null;
 
   return (
     <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 pb-safe bg-white/80 backdrop-blur-[20px] shadow-[0_-12px_32px_rgba(15,23,42,0.06)] rounded-t-2xl border-t border-outline-variant/10">

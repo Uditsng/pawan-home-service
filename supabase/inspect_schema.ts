@@ -20,8 +20,7 @@ async function inspectColumns(tableName: string) {
 }
 
 async function run() {
-  await inspectColumns("user_addresses");
-  await inspectColumns("bookings");
+  await inspectColumns("reviews");
 }
 
 run();

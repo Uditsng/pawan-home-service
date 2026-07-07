@@ -61,6 +61,98 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
     );
   }
 
+  // Fetch approved reviews (defensively handle database migration missing fields)
+  let reviewsData = null;
+  const extendedReviewsRes = await supabase
+    .from("reviews")
+    .select(`
+      id,
+      rating,
+      comment,
+      created_at,
+      quality_rating,
+      behaviour_rating,
+      timeliness_rating,
+      value_rating,
+      review_tags,
+      review_images,
+      customer:customer_id (
+        full_name,
+        avatar_url
+      )
+    `)
+    .eq("service_id", service.id)
+    .eq("status", "approved")
+    .order("created_at", { ascending: false });
+
+  if (extendedReviewsRes.error) {
+    console.warn("Extended reviews query failed, trying basic query:", extendedReviewsRes.error.message);
+    const basicReviewsRes = await supabase
+      .from("reviews")
+      .select(`
+        id,
+        rating,
+        comment,
+        created_at,
+        customer:customer_id (
+          full_name,
+          avatar_url
+        )
+      `)
+      .eq("service_id", service.id)
+      .order("created_at", { ascending: false });
+
+    if (!basicReviewsRes.error && basicReviewsRes.data) {
+      reviewsData = basicReviewsRes.data.map(r => ({
+        ...r,
+        quality_rating: null,
+        behaviour_rating: null,
+        timeliness_rating: null,
+        value_rating: null,
+        review_tags: [] as string[],
+        review_images: [] as string[]
+      }));
+    } else {
+      console.error("Basic reviews fallback query also failed:", basicReviewsRes.error?.message);
+    }
+  } else {
+    reviewsData = extendedReviewsRes.data;
+  }
+
+  interface PublicReview {
+    id: string;
+    rating: number;
+    comment: string | null;
+    created_at: string;
+    quality_rating: number | null;
+    behaviour_rating: number | null;
+    timeliness_rating: number | null;
+    value_rating: number | null;
+    review_tags: string[];
+    review_images: string[];
+    customer: {
+      full_name: string;
+      avatar_url: string | null;
+    } | null;
+  }
+
+  const reviews = (reviewsData || []) as unknown as PublicReview[];
+  const totalReviewsCount = reviews.length;
+  const averageRating = totalReviewsCount > 0
+    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviewsCount).toFixed(1)
+    : null;
+
+  const getCategoryAverage = (key: keyof Pick<PublicReview, 'quality_rating' | 'behaviour_rating' | 'timeliness_rating' | 'value_rating'>) => {
+    const ratedReviews = reviews.filter(r => r[key] !== null && r[key] !== undefined && r[key]! > 0);
+    if (ratedReviews.length === 0) return null;
+    return (ratedReviews.reduce((sum, r) => sum + (r[key] as number), 0) / ratedReviews.length).toFixed(1);
+  };
+
+  const avgQuality = getCategoryAverage('quality_rating');
+  const avgBehaviour = getCategoryAverage('behaviour_rating');
+  const avgTimeliness = getCategoryAverage('timeliness_rating');
+  const avgValue = getCategoryAverage('value_rating');
+
   // Fetch variants, addons, and surcharge rules in parallel
   const [variantsRes, addonsRes, rulesRes] = await Promise.all([
     supabase
@@ -128,7 +220,7 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
             </p>
             <div className="flex flex-wrap gap-2 md:gap-4">
               <span className="inline-flex items-center gap-1 bg-surface px-2 py-1.5 md:py-2 rounded-full font-bold shadow-sm text-xs md:text-sm border border-outline-variant/30">
-                <span className="material-symbols-outlined text-yellow-500 text-xs md:text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>star</span> 4.8 (10k+)
+                <span className="material-symbols-outlined text-yellow-500 text-xs md:text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>star</span> {averageRating ? `${averageRating} (${totalReviewsCount})` : "No ratings yet"}
               </span>
               <span className="inline-flex items-center gap-1 bg-surface px-2 py-1.5 md:py-2 rounded-full font-bold shadow-sm text-xs md:text-sm border border-outline-variant/30">
                 <span className="material-symbols-outlined text-primary text-xs md:text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span> Verified
@@ -250,6 +342,172 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
             </div>
           </section>
         )}
+
+        {/* Customer Reviews Section */}
+        <section className="max-w-4xl mx-auto border-t border-outline-variant/20 pt-8 md:pt-12">
+          <h2 className="text-2xl md:text-3xl font-extrabold text-center mb-8 md:mb-10 font-headline tracking-tighter">Customer Reviews</h2>
+          
+          {totalReviewsCount === 0 ? (
+            <div className="text-center bg-surface-container-low border border-outline-variant/10 rounded-3xl p-8 max-w-lg mx-auto">
+              <span className="material-symbols-outlined text-4xl text-on-surface-variant/40 mb-2">rate_review</span>
+              <p className="font-bold text-primary font-headline text-sm md:text-base">No reviews yet</p>
+              <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                Be the first to review this service after completing your booking!
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+              {/* Reviews Summary Stats */}
+              <div className="bg-surface-container-low/40 rounded-3xl p-6 border border-outline-variant/10 space-y-5 lg:col-span-1 shadow-xs">
+                <div className="text-center">
+                  <h3 className="text-4xl md:text-5xl font-black text-primary font-headline tracking-tighter">{averageRating}</h3>
+                  <div className="flex justify-center gap-0.5 mt-1.5 mb-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <span
+                        key={star}
+                        className={`material-symbols-outlined text-xl ${
+                          star <= Math.round(Number(averageRating || 0)) ? "text-secondary" : "text-on-surface-variant/20"
+                        }`}
+                        style={star <= Math.round(Number(averageRating || 0)) ? { fontVariationSettings: "'FILL' 1" } : {}}
+                      >
+                        star
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-xs text-on-surface-variant font-bold">Based on {totalReviewsCount} review{totalReviewsCount > 1 ? "s" : ""}</p>
+                </div>
+
+                {/* Category averages */}
+                <div className="border-t border-outline-variant/10 pt-4 space-y-2.5">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-on-surface-variant/60 mb-2">Category Scores</h4>
+                  {avgQuality && (
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-on-surface-variant/70 font-semibold">Quality of Work</span>
+                      <span className="font-bold text-primary">{avgQuality} / 5</span>
+                    </div>
+                  )}
+                  {avgBehaviour && (
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-on-surface-variant/70 font-semibold">Behaviour</span>
+                      <span className="font-bold text-primary">{avgBehaviour} / 5</span>
+                    </div>
+                  )}
+                  {avgTimeliness && (
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-on-surface-variant/70 font-semibold">Timeliness</span>
+                      <span className="font-bold text-primary">{avgTimeliness} / 5</span>
+                    </div>
+                  )}
+                  {avgValue && (
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-on-surface-variant/70 font-semibold">Value for Money</span>
+                      <span className="font-bold text-primary">{avgValue} / 5</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Reviews List */}
+              <div className="space-y-4 lg:col-span-2">
+                {reviews.map((review) => {
+                  const rDate = new Date(review.created_at).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  });
+                  const initial = review.customer?.full_name ? review.customer.full_name.charAt(0).toUpperCase() : "?";
+
+                  return (
+                    <div
+                      key={review.id}
+                      className="bg-surface-container-lowest border border-outline-variant/10 rounded-2xl p-5 space-y-3.5 shadow-xs"
+                    >
+                      {/* Customer Profile & Date */}
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full overflow-hidden bg-primary-fixed/20 text-primary-fixed-variant flex items-center justify-center font-bold text-sm shrink-0 border border-outline-variant/5 relative">
+                            {review.customer?.avatar_url ? (
+                              <Image
+                                src={review.customer.avatar_url}
+                                alt="User avatar"
+                                fill
+                                className="object-cover"
+                              />
+                            ) : (
+                              <span>{initial}</span>
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="text-xs md:text-sm font-bold text-primary leading-tight">
+                              {review.customer?.full_name || "Customer"}
+                            </h4>
+                            <p className="text-[9px] text-on-surface-variant/50 font-bold">{rDate}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-[0.5px]">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <span
+                              key={star}
+                              className={`material-symbols-outlined text-sm ${
+                                star <= review.rating ? "text-secondary" : "text-on-surface-variant/20"
+                              }`}
+                              style={star <= review.rating ? { fontVariationSettings: "'FILL' 1" } : {}}
+                            >
+                              star
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Selected Tags */}
+                      {review.review_tags && review.review_tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {review.review_tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="text-[9px] font-bold bg-secondary/10 text-primary border border-secondary/15 px-2 py-0.5 rounded-full"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Review Comment */}
+                      {review.comment && (
+                        <p className="text-xs md:text-sm text-on-surface-variant italic font-medium leading-relaxed">
+                          &ldquo;{review.comment}&rdquo;
+                        </p>
+                      )}
+
+                      {/* Review Images */}
+                      {review.review_images && review.review_images.length > 0 && (
+                        <div className="flex gap-1.5 flex-wrap pt-1">
+                          {review.review_images.map((img, idx) => (
+                            <a
+                              key={idx}
+                              href={img}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="relative w-12 h-12 rounded-lg overflow-hidden border border-outline-variant/10 shadow-xs hover:opacity-95 transition-opacity cursor-zoom-in"
+                            >
+                              <Image
+                                src={img}
+                                alt={`User review attachment ${idx + 1}`}
+                                fill
+                                className="object-cover"
+                              />
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </section>
 
       </main>
 

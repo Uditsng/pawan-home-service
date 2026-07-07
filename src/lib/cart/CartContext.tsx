@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useReducer, useEffect, useCallback } from "react";
+import { createContext, useContext, useReducer, useEffect, useCallback, useRef } from "react";
 import type { CartItem } from "@/lib/types";
 
 // ─── State & Actions ─────────────────────────────────────────
@@ -69,6 +69,7 @@ const CART_STORAGE_KEY = "phs_cart_v1";
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, { items: [], isOpen: false });
+  const isLoaded = useRef(false);
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -82,11 +83,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
     } catch {
       // Ignore parse errors
+    } finally {
+      isLoaded.current = true;
     }
   }, []);
 
-  // Persist to localStorage on every change
+  // Persist to localStorage on every change (only after initial load has finished)
   useEffect(() => {
+    if (!isLoaded.current) return;
     try {
       localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(state.items));
     } catch {

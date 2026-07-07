@@ -78,10 +78,10 @@ export default function SubcategoriesListClient({
                 className="bg-surface-container-low p-3 md:p-6 rounded-2xl flex flex-col items-center justify-center text-center border border-outline-variant/10 shadow-sm aspect-square cursor-pointer active:bg-surface-container-high active:scale-95 transition-all"
               >
                 {/* Icon Container conforming to Premium CSS standard */}
-                <div className="w-10 h-10 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-green-500/10 mb-2 md:mb-4 flex items-center justify-center text-[#059669] transition-transform active:scale-105">
+                <div className="w-14 h-14 md:w-18 md:h-18 rounded-xl md:rounded-2xl bg-green-500/10 mb-2 md:mb-4 flex items-center justify-center text-[#059669] transition-transform active:scale-105">
                   <ServiceIconComponent
                     iconName={iconName}
-                    className="w-5 h-5 md:w-8 md:h-8 text-[#059669] drop-shadow-sm"
+                    className="w-8 h-8 md:w-10 md:h-10 text-[#059669] drop-shadow-sm"
                   />
                 </div>
                 <span className="font-headline font-bold text-[12px] md:text-base text-on-surface leading-tight md:leading-snug line-clamp-2">

@@ -195,7 +195,17 @@ export interface Review {
   customer_id: string;
   rating: number;
   comment: string | null;
+  quality_rating: number | null;
+  behaviour_rating: number | null;
+  timeliness_rating: number | null;
+  value_rating: number | null;
+  review_tags: string[];
+  review_images: string[];
+  status: 'pending' | 'approved' | 'rejected' | 'hidden';
+  approved_by: string | null;
+  approved_at: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface ReviewWithCustomer extends Review {

@@ -153,8 +153,8 @@ export default function DashboardGridClient({ categories, availableServices }: D
                 key={service.id}
                 className="bg-surface-container-low p-3 md:p-5 rounded-xl flex flex-col items-center justify-center text-center border border-outline-variant/10 shadow-sm cursor-pointer active:bg-surface-container-high transition-colors"
               >
-                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-green-500/10 mb-2 md:mb-3 flex items-center justify-center transition-transform active:scale-105">
-                  <ServiceIconComponent iconName={iconName} className="w-5 h-5 text-emerald-600 drop-shadow-sm" />
+                <div className="w-14 h-14 md:w-16 md:h-16 rounded-xl bg-green-500/10 mb-2 md:mb-3 flex items-center justify-center transition-transform active:scale-105">
+                  <ServiceIconComponent iconName={iconName} className="w-8 h-8 md:w-10 md:h-10 text-emerald-600 drop-shadow-sm" />
                 </div>
                 <span className="font-headline font-bold text-xs md:text-sm text-on-surface line-clamp-2 leading-tight">{service.title}</span>
                 <div className="flex items-center gap-1.5 mt-1 md:mt-1.5">

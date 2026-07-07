@@ -112,16 +112,43 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
   }
 
   // Fetch existing review if booking is completed
-  let existingReview: { rating: number; comment: string | null } | null = null;
+  let existingReview: {
+    rating: number;
+    comment: string | null;
+    quality_rating?: number | null;
+    behaviour_rating?: number | null;
+    timeliness_rating?: number | null;
+    value_rating?: number | null;
+    review_tags?: string[] | null;
+    review_images?: string[] | null;
+  } | null = null;
   if (booking.status === "completed") {
-    const { data: reviewData } = await supabase
+    const extendedReviewRes = await supabase
       .from("reviews")
-      .select("rating, comment")
+      .select("rating, comment, quality_rating, behaviour_rating, timeliness_rating, value_rating, review_tags, review_images")
       .eq("booking_id", bookingId)
       .maybeSingle();
 
-    if (reviewData) {
-      existingReview = reviewData;
+    if (extendedReviewRes.error) {
+      console.warn("Extended review query failed on tracking, trying basic query:", extendedReviewRes.error.message);
+      const basicReviewRes = await supabase
+        .from("reviews")
+        .select("rating, comment")
+        .eq("booking_id", bookingId)
+        .maybeSingle();
+      if (basicReviewRes.data) {
+        existingReview = {
+          ...basicReviewRes.data,
+          quality_rating: null,
+          behaviour_rating: null,
+          timeliness_rating: null,
+          value_rating: null,
+          review_tags: [],
+          review_images: [],
+        };
+      }
+    } else if (extendedReviewRes.data) {
+      existingReview = extendedReviewRes.data;
     }
   }
 

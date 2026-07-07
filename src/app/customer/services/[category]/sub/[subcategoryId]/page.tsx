@@ -102,8 +102,8 @@ export default async function SubcategoryServiceListingPage({
 
                 {/* z-10 pointer-events-none Card Content */}
                 <div className="z-10 pointer-events-none flex flex-col items-center justify-between h-full w-full py-1">
-                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
-                    <ServiceIconComponent iconName={iconName} className="w-5 h-5 text-emerald-600 drop-shadow-sm" />
+                  <div className="w-14 h-14 md:w-16 md:h-16 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
+                    <ServiceIconComponent iconName={iconName} className="w-8 h-8 md:w-10 md:h-10 text-emerald-600 drop-shadow-sm" />
                   </div>
                   <span className="font-headline font-bold text-sm md:text-base text-on-surface line-clamp-2 leading-tight grow flex items-center justify-center px-1">
                     {service.title}
@@ -121,7 +121,7 @@ export default async function SubcategoryServiceListingPage({
                 </div>
 
                 {/* z-20 clickable Add to Cart button */}
-                <div className="absolute top-1.5 right-1.5 z-20">
+                <div className="absolute bottom-2 right-2 z-20">
                   <AddToCartButton
                     item={{
                       serviceId: service.id,

@@ -32,6 +32,8 @@ function getRequiredRole(pathname: string): string | null {
 function isPublicPage(pathname: string): boolean {
   // Top-level /services showcase (no sub-segments) is public
   if (pathname === '/services') return true
+  // Customer catalog browsing routes
+  if (pathname.startsWith('/customer/services') || pathname.startsWith('/customer/search')) return true
   // Static informational pages
   if (
     pathname.startsWith('/about-us') ||

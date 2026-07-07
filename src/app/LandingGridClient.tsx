@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
 
 interface ServiceWithSubcategory {
@@ -68,7 +69,6 @@ const categoryIcons: Record<string, React.ReactNode> = {
     <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="12" cy="12" r="6" fill="#a6ce37" fillOpacity="0.25" stroke="#002261" strokeWidth="2" />
       <path d="M12 4V6M12 18V20M4 12H6M18 12H20" stroke="#002261" strokeWidth="2" strokeLinecap="round" />
-      <path d="M24 36V40" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       <path d="M6.3 6.3L7.7 7.7M16.3 16.3L17.7 17.7M6.3 17.7L7.7 16.3M16.3 7.7L17.7 6.3" stroke="#002261" strokeWidth="2" strokeLinecap="round" />
       <path d="M10 8L14 12" stroke="#a6ce37" strokeWidth="3" strokeLinecap="round" />
       <path d="M16 16C17.5 17.5 17 19.5 15.5 21C14 22.5 12 22 10.5 20.5L6 16C4.5 14.5 5 12.5 6.5 11C8 9.5 10 10 11.5 11.5L16 16Z" stroke="#a6ce37" strokeWidth="1.5" strokeLinecap="round" />
@@ -113,6 +113,7 @@ const getCategoryIcon = (id: string) => {
 
 export default function LandingGridClient({ categories, availableServices }: LandingGridClientProps) {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const router = useRouter();
 
   if (selectedCategoryId) {
     const servicesForCategory = availableServices.filter(
@@ -191,7 +192,13 @@ export default function LandingGridClient({ categories, availableServices }: Lan
 
           return (
             <div
-              onClick={() => setSelectedCategoryId(cat.id)}
+              onClick={() => {
+                const catSlug = cat.category_name
+                  .toLowerCase()
+                  .replace(/\s+/g, "-")
+                  .replace(/&/g, "and");
+                router.push(`/customer/services/${catSlug}`);
+              }}
               key={cat.id}
               className="bg-surface-container-low p-5 md:p-6 rounded-2xl flex flex-col items-center justify-center text-center border border-outline-variant/10 shadow-sm aspect-square cursor-pointer active:bg-surface-container-high active:scale-95 transition-all"
             >

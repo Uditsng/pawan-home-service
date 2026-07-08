@@ -57,7 +57,7 @@ export default async function ReferralPage() {
     supabase.rpc("get_referral_stats", { p_user_id: user.id }),
     supabase
       .from("referrals")
-      .select("id, referred_id, status, referrer_reward, created_at, completed_at, referred:referred_id(full_name)")
+      .select("id, referred_id, status, referrer_reward, created_at, completed_at, referred:profiles!referred_id(full_name)")
       .eq("referrer_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20),

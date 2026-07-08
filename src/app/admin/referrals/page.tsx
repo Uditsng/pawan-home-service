@@ -22,19 +22,41 @@ export default async function AdminReferralsPage() {
   const supabase = await createClient();
 
   // Parallel fetch: stats + full list
+  // Note: Since the referrals table has multiple foreign keys pointing to profiles,
+  // we must explicitly specify the relationship using target_table!foreign_key_column.
   const [allResult, completedResult, pendingResult] = await Promise.all([
     supabase
       .from("referrals")
       .select(`
-        id, status, referrer_reward, referred_discount, created_at, completed_at,
-        referrer:referrer_id ( full_name, phone ),
-        referred:referred_id ( full_name, phone )
+        id,
+        status,
+        referrer_reward,
+        referred_discount,
+        created_at,
+        completed_at,
+        referrer:profiles!referrer_id(full_name, phone),
+        referred:profiles!referred_id(full_name, phone)
       `)
       .order("created_at", { ascending: false })
       .limit(100),
     supabase.from("referrals").select("id", { count: "exact" }).eq("status", "completed"),
     supabase.from("referrals").select("id", { count: "exact" }).eq("status", "pending"),
   ]);
+
+  if (allResult.error || completedResult.error || pendingResult.error) {
+    return (
+      <div className="p-6 bg-red-50 text-red-800 rounded-2xl border border-red-200">
+        <h2 className="text-lg font-bold mb-2">Database Fetch Errors:</h2>
+        <pre className="text-xs overflow-auto bg-white p-4 rounded-xl border border-red-100 font-mono">
+          {JSON.stringify({
+            allResultError: allResult.error,
+            completedResultError: completedResult.error,
+            pendingResultError: pendingResult.error
+          }, null, 2)}
+        </pre>
+      </div>
+    );
+  }
 
   const referrals = (allResult.data ?? []) as unknown as ReferralRecord[];
   const totalReferrals = referrals.length;

@@ -82,7 +82,7 @@ export function ImageUploadField({
         ...prev,
         width: w,
         height: h,
-        format: url.endsWith(".webp") || url.includes(".webp") ? "WebP" : url.endsWith(".png") ? "PNG" : "JPG/JPEG",
+        format: url.endsWith(".webp") || url.includes(".webp") ? "WebP" : url.endsWith(".avif") || url.includes(".avif") ? "AVIF" : url.endsWith(".png") ? "PNG" : "JPG/JPEG",
       }));
 
       // Try fetching headers to check file size (HEAD request)
@@ -298,7 +298,7 @@ export function ImageUploadField({
               type="file"
               ref={fileInputRef}
               onChange={handleFileChange}
-              accept="image/png, image/jpeg, image/webp"
+              accept="image/png, image/jpeg, image/webp, image/avif"
               className="hidden"
             />
             {imageUrl && (

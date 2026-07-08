@@ -107,7 +107,7 @@ export default async function Home() {
           <div className="flex-1 w-full relative z-30">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/70 backdrop-blur-md border border-white/60 rounded-full mb-6 shadow-sm mx-auto md:mx-0">
               <span className="flex h-2.5 w-2.5 rounded-full bg-secondary shadow-secondary animate-pulse"></span>
-              <span className="text-[11px] sm:text-xs md:text-sm font-bold text-primary">50k+ Verified Pros • Active Now</span>
+              <span className="text-[11px] sm:text-xs md:text-sm font-bold text-primary">10k+ Verified Pros • Active Now</span>
             </div>
 
             <h1 className="text-[2.5rem] leading-[1.1] sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-primary mb-4 md:mb-6">
@@ -155,7 +155,7 @@ export default async function Home() {
         {/* Section 5: Trust Stats Strip (Responsive Flow) */}
         <section className={`flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 sm:gap-6 p-5 sm:p-6 md:p-8 rounded-[20px] sm:rounded-[24px] w-full ${glassBg} shadow-inner`}>
           <div className="text-center flex-1 min-w-[100px]">
-            <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-primary">50<span className="text-secondary">k+</span></div>
+            <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-primary">10<span className="text-secondary">k+</span></div>
             <div className="text-[11px] sm:text-xs md:text-sm text-on-surface-variant font-bold uppercase tracking-wide mt-1">Verified Pros</div>
           </div>
           <div className="w-px h-10 bg-primary/10 hidden sm:block"></div>

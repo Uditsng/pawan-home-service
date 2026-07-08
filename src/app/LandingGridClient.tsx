@@ -1,9 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ServiceIconComponent } from "@/utils/serviceIcon";
 
 interface ServiceWithSubcategory {
   id: string;
@@ -112,68 +109,7 @@ const getCategoryIcon = (id: string) => {
 };
 
 export default function LandingGridClient({ categories, availableServices }: LandingGridClientProps) {
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const router = useRouter();
-
-  if (selectedCategoryId) {
-    const servicesForCategory = availableServices.filter(
-      (s) => s.subcategories?.categories?.id === selectedCategoryId
-    );
-    const activeCategoryName = categories.find((c) => c.id === selectedCategoryId)?.category_name || "Services";
-
-    return (
-      <section className="w-full">
-        {/* Category Header with Back Button */}
-        <div className="flex items-center gap-3 mb-5 md:mb-6">
-          <button
-            onClick={() => setSelectedCategoryId(null)}
-            className="w-10 h-10 rounded-xl bg-surface-container-low border border-outline-variant/15 flex items-center justify-center text-on-surface active:bg-surface-container-high cursor-pointer transition-all active:scale-95 shadow-2xs"
-            aria-label="Back to categories"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <div>
-            <h3 className="font-headline text-lg md:text-xl font-extrabold text-primary">{activeCategoryName}</h3>
-            <p className="text-on-surface-variant text-xs md:text-sm font-medium">Popular services in this category</p>
-          </div>
-        </div>
-
-        {/* Services Grid (no sticky hovers) */}
-        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
-          {servicesForCategory.map((service) => {
-            const iconName = service.subcategories?.icon_name || "sparkles";
-
-            return (
-              <Link
-                href="/login"
-                key={service.id}
-                className="bg-surface-container-low p-3 md:p-5 rounded-xl flex flex-col items-center justify-center text-center border border-outline-variant/10 shadow-sm cursor-pointer active:bg-surface-container-high transition-colors"
-              >
-                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-green-500/10 mb-2 md:mb-3 flex items-center justify-center transition-transform active:scale-105">
-                  <ServiceIconComponent iconName={iconName} className="w-5 h-5 text-emerald-600 drop-shadow-sm" />
-                </div>
-                <span className="font-headline font-bold text-xs md:text-sm text-on-surface line-clamp-2 leading-tight">{service.title}</span>
-                <div className="flex items-center gap-1.5 mt-1 md:mt-1.5">
-                  {service.original_price && (
-                    <span className="text-[9px] md:text-[10px] text-on-surface-variant/50 line-through">₹{service.original_price}</span>
-                  )}
-                  <span className="text-[10px] md:text-[11px] text-primary font-bold tracking-tight">₹{service.base_price}</span>
-                </div>
-              </Link>
-            );
-          })}
-
-          {servicesForCategory.length === 0 && (
-            <div className="col-span-3 md:col-span-4 lg:col-span-5 text-center py-8 text-on-surface-variant text-sm font-semibold">
-              No active services available in this category right now.
-            </div>
-          )}
-        </div>
-      </section>
-    );
-  }
 
   return (
     <section className="w-full">
@@ -197,7 +133,7 @@ export default function LandingGridClient({ categories, availableServices }: Lan
                   .toLowerCase()
                   .replace(/\s+/g, "-")
                   .replace(/&/g, "and");
-                router.push(`/customer/services/${catSlug}`);
+                router.push(`/services/${catSlug}`);
               }}
               key={cat.id}
               className="bg-surface-container-low p-5 md:p-6 rounded-2xl flex flex-col items-center justify-center text-center border border-outline-variant/10 shadow-sm aspect-square cursor-pointer active:bg-surface-container-high active:scale-95 transition-all"

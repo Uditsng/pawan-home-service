@@ -95,12 +95,12 @@ export default function Header() {
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-6 lg:gap-8">
-          <Link
+          {/* <Link
             href="/services"
             className="text-primary font-bold border-b-2 border-secondary font-headline tracking-tight text-sm hover:text-secondary transition-colors"
           >
             Services
-          </Link>
+          </Link> */}
           <Link
             href="/contact-us"
             className="text-on-surface-variant font-medium font-headline tracking-tight text-sm hover:text-secondary transition-colors"
@@ -146,14 +146,14 @@ export default function Header() {
       {menuOpen && (
         <div className="md:hidden absolute top-full left-0 w-full bg-surface-container-lowest/98 backdrop-blur-xl shadow-xl border-t border-outline-variant/50 animate-[slideDown_0.2s_ease-out]">
           <div className="flex flex-col px-6 py-6 gap-1 max-w-7xl mx-auto">
-            <Link
+            {/* <Link
               href="/services"
               onClick={() => setMenuOpen(false)}
               className="flex items-center gap-3 py-3.5 px-4 rounded-xl text-primary font-bold text-[15px] hover:bg-surface-container-low transition-colors"
             >
               <span className="material-symbols-outlined text-[20px] text-on-surface-variant">search</span>
               Services
-            </Link>
+            </Link> */}
             <Link
               href="/contact-us"
               onClick={() => setMenuOpen(false)}

@@ -20,7 +20,17 @@ async function inspectColumns(tableName: string) {
 }
 
 async function run() {
-  await inspectColumns("reviews");
+  const { data, error } = await supabase
+    .from("information_schema.routines")
+    .select("routine_name, routine_type")
+    .eq("routine_schema", "public");
+
+  if (error) {
+    console.error("Error querying routines:", error.message);
+  } else {
+    console.log("Found functions/routines:");
+    console.log(data?.map(r => r.routine_name));
+  }
 }
 
 run();

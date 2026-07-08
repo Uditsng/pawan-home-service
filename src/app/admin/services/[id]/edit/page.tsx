@@ -129,6 +129,8 @@ export default async function AdminEditServicePage({ params }: { params: Promise
       ]
     };
 
+    const status = (formData.get("status") as string) || serviceData.status || "published";
+
     const { error } = await db.from("services").update({
       title,
       subcategory_id,
@@ -142,6 +144,7 @@ export default async function AdminEditServicePage({ params }: { params: Promise
       pricing_config,
       form_fields,
       gst_applicable,
+      status,
     }).eq("id", id);
 
     if (error) {

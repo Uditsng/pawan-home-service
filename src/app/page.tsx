@@ -70,6 +70,7 @@ export default async function Home() {
         )
       `)
       .eq('is_active', true)
+      .eq('status', 'published')
       .order('title', { ascending: true }),
     supabase
       .from('categories')

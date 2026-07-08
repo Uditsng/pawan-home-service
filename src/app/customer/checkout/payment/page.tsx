@@ -1,19 +1,10 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import PaymentFormClient from "./PaymentFormClient";
-import { calculatePricingBreakdown } from "@/utils/pricingEngine";
+import { calculatePricingBreakdown, PricingInput } from "@/utils/pricingEngine";
 import { PricingModel, Service, ServiceVariant, ServiceAddon, ServicePricingRule, Coupon, UserMembership, MembershipPlan } from "@/lib/types";
 
-interface ServicePackage {
-  id: string;
-  title: string;
-  price: number;
-  original_price?: number;
-}
 
-interface ServicePageContent {
-  packages?: ServicePackage[];
-}
 
 export default async function CheckoutPaymentPage({
   searchParams,
@@ -68,7 +59,7 @@ export default async function CheckoutPaymentPage({
 
   const [addressResult, serviceResult, settingsResult, profileResult, completedBookingsResult] = await Promise.all([
     supabase.from("user_addresses").select("formatted_address, city, pincode, label").eq("id", addressId).eq("user_id", user.id).single(),
-    supabase.from("services").select("id, title, base_price, category, pricing_model, page_content, pricing_config, gst_applicable").eq("id", serviceId).single(),
+    supabase.from("services").select("id, title, base_price, category, pricing_model, page_content, pricing_config, gst_applicable").eq("id", serviceId).eq("status", "published").single(),
     supabase.from("platform_settings").select("key, value").in("key", ["tax_rate", "referral_reward_referred"]),
     supabase.from("profiles").select("referred_by, wallet_balance").eq("id", user.id).single(),
     supabase.from("bookings").select("id", { count: "exact" }).eq("customer_id", user.id).eq("status", "completed"),
@@ -193,7 +184,7 @@ export default async function CheckoutPaymentPage({
   const breakdown = calculatePricingBreakdown({
     pricingModel: (service.pricing_model || "fixed") as PricingModel,
     basePrice: Number(service.base_price || 0),
-    pricingConfig: (service.pricing_config as any) || {},
+    pricingConfig: (service.pricing_config as unknown as PricingInput["pricingConfig"]) || {},
     variantPrice,
     durationMinutes: durationVal,
     areaSqft: parsedAreaSqft,

@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
-import { deleteService, duplicateService } from "@/app/admin/actions";
+import { deleteService, duplicateService, toggleServiceStatus } from "@/app/admin/actions";
+import { getServiceStatusDetails } from "@/utils/statusConfig";
 
 interface ServiceItem {
   id: string;
@@ -14,6 +15,7 @@ interface ServiceItem {
   base_price: number;
   original_price?: number | null;
   category?: string | null;
+  status?: string | null;
   subcategories?: {
     subcategory_name: string;
     icon_name: string | null;
@@ -36,7 +38,9 @@ export function ServiceDataGrid({ services, categories }: { services: ServiceIte
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedSubcategory, setSelectedSubcategory] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("");
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isToggling, setIsToggling] = useState<string | null>(null);
 
   // Pagination & Compact view controls
   const [currentPage, setCurrentPage] = useState(1);
@@ -57,7 +61,10 @@ export function ServiceDataGrid({ services, categories }: { services: ServiceIte
     // Subcategory match
     const matchesSubcategory = selectedSubcategory ? subcatName === selectedSubcategory : true;
 
-    return matchesSearch && matchesCategory && matchesSubcategory;
+    // Status match
+    const matchesStatus = selectedStatus ? (service.status || 'published') === selectedStatus : true;
+
+    return matchesSearch && matchesCategory && matchesSubcategory && matchesStatus;
   });
 
   // Calculate pagination
@@ -90,6 +97,18 @@ export function ServiceDataGrid({ services, categories }: { services: ServiceIte
       setErrorMsg("Failed to duplicate service: " + ((err as Error).message || ""));
     } finally {
       setIsDuplicating(null);
+    }
+  };
+
+  const handleToggleStatus = async (serviceId: string, currentStatus: string | null | undefined) => {
+    try {
+      setIsToggling(serviceId);
+      setErrorMsg(null);
+      await toggleServiceStatus(serviceId, (currentStatus || 'published') as 'draft' | 'published');
+    } catch (err: unknown) {
+      setErrorMsg("Failed to update status: " + ((err as Error).message || ""));
+    } finally {
+      setIsToggling(null);
     }
   };
 
@@ -204,6 +223,19 @@ export function ServiceDataGrid({ services, categories }: { services: ServiceIte
             ))}
           </select>
         </div>
+
+        {/* Status Dropdown */}
+        <div className="w-full md:w-36">
+          <select
+            className="w-full px-3 py-2 bg-surface-container rounded-lg border border-outline-variant/20 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none transition-all text-xs appearance-none cursor-pointer"
+            value={selectedStatus}
+            onChange={(e) => { setSelectedStatus(e.target.value); setCurrentPage(1); }}
+          >
+            <option value="">All Statuses</option>
+            <option value="published">Published</option>
+            <option value="draft">Draft</option>
+          </select>
+        </div>
       </div>
 
       {/* Data Table Layout (Compact) */}
@@ -215,6 +247,7 @@ export function ServiceDataGrid({ services, categories }: { services: ServiceIte
                 <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Icon</th>
                 <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Title</th>
                 <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Category / Sub-category</th>
+                <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Status</th>
                 <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Starting Price</th>
                 <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-on-surface-variant text-right">Actions</th>
               </tr>
@@ -222,7 +255,7 @@ export function ServiceDataGrid({ services, categories }: { services: ServiceIte
             <tbody className="divide-y divide-outline-variant/10">
               {currentServices.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-on-surface-variant">
+                  <td colSpan={6} className="px-4 py-8 text-center text-on-surface-variant">
                     <div className="flex flex-col items-center gap-2">
                       <span className="material-symbols-outlined text-3xl opacity-20">search_off</span>
                       <p className="text-xs font-medium">No services found matching your filters.</p>
@@ -234,6 +267,7 @@ export function ServiceDataGrid({ services, categories }: { services: ServiceIte
                   const iconName = service.subcategories?.icon_name || "sparkles";
                   const catName = service.subcategories?.categories?.category_name || service.category || "Uncategorized";
                   const subcatName = service.subcategories?.subcategory_name || "General";
+                  const statusDetails = getServiceStatusDetails(service.status);
 
                   return (
                     <tr key={service.id} className="hover:bg-surface-container-low/30 transition-colors group">
@@ -245,9 +279,6 @@ export function ServiceDataGrid({ services, categories }: { services: ServiceIte
                       <td className="px-4 py-1.5">
                         <div className="flex flex-col">
                           <span className="font-bold text-primary text-xs leading-tight">{service.title}</span>
-                          {!service.is_active && (
-                            <Badge variant="danger" className="w-max mt-0.5 text-[8px] px-1 py-0">Draft / Inactive</Badge>
-                          )}
                         </div>
                       </td>
                       <td className="px-4 py-1.5">
@@ -255,6 +286,25 @@ export function ServiceDataGrid({ services, categories }: { services: ServiceIte
                           <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider leading-none mb-0.5">{catName}</span>
                           <span className="text-[10px] text-on-surface-variant/70 leading-none">{subcatName}</span>
                         </div>
+                      </td>
+                      <td className="px-4 py-1.5 whitespace-nowrap">
+                        <button
+                          onClick={() => handleToggleStatus(service.id, service.status)}
+                          disabled={isToggling === service.id || isDeleting === service.id || !!isDuplicating}
+                          className="hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+                          title="Click to toggle status (Publish/Draft)"
+                        >
+                          {isToggling === service.id ? (
+                            <span className="material-symbols-outlined animate-spin text-[14px]">progress_activity</span>
+                          ) : (
+                            <Badge variant={statusDetails.badgeVariant} className="text-[8px] px-1.5 py-0 w-max tracking-wide">
+                              {statusDetails.label}
+                            </Badge>
+                          )}
+                          {!service.is_active && (
+                            <Badge variant="danger" className="text-[8px] px-1.5 py-0 w-max tracking-wide">Inactive</Badge>
+                          )}
+                        </button>
                       </td>
                       <td className="px-4 py-1.5 whitespace-nowrap">
                         <div className="flex flex-col">

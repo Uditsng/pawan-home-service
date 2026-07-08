@@ -41,7 +41,8 @@ export default async function PartnerServicesPage() {
           )
         )
       `)
-      .eq('is_active', true),
+      .eq('is_active', true)
+      .eq('status', 'published'),
     supabase
       .from('partner_services')
       .select('service_id')

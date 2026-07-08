@@ -27,6 +27,7 @@ export default async function CheckoutSchedulePage({ searchParams }: { searchPar
       .from("services")
       .select("id, title, category, pricing_model, page_content, form_fields")
       .eq("id", serviceId)
+      .eq("status", "published")
       .single();
 
     if (error) {

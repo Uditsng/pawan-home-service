@@ -84,6 +84,7 @@ export interface Service {
   base_price: number;
   original_price?: number | null;
   is_active: boolean;
+  status?: 'draft' | 'published';
   created_at: string;
   page_content: ServicePageContent | null;
   pricing_model?: PricingModel;

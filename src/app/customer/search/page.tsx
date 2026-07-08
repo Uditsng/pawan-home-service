@@ -78,6 +78,7 @@ export default async function SearchPage({
         `)
         .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
         .eq("is_active", true)
+        .eq("status", "published")
         .limit(15),
 
       // Search Subcategories

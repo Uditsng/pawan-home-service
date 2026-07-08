@@ -46,6 +46,7 @@ export default async function CustomerDashboard() {
         )
       `)
       .eq('is_active', true)
+      .eq('status', 'published')
       .order('title', { ascending: true }),
     // Fetch all categories
     supabase

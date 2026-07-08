@@ -73,6 +73,7 @@ export async function createRazorpayOrderAction(payload: {
       .from("services")
       .select("id, base_price, pricing_model, pricing_config, gst_applicable")
       .eq("id", payload.serviceId)
+      .eq("status", "published")
       .single();
     if (!service) throw new Error("Service not found");
 
@@ -202,7 +203,8 @@ export async function createRazorpayOrderAction(payload: {
     const { data: services } = await supabase
       .from("services")
       .select("id, base_price, pricing_model, pricing_config, gst_applicable")
-      .in("id", payload.serviceIds);
+      .in("id", payload.serviceIds)
+      .eq("status", "published");
 
     if (!services || services.length === 0) throw new Error("Services not found");
 
@@ -357,6 +359,7 @@ export async function verifyRazorpayPaymentAction(payload: {
       .from("services")
       .select("id, title, base_price, pricing_model, pricing_config, gst_applicable")
       .eq("id", payload.serviceId)
+      .eq("status", "published")
       .single();
     if (!service) return { success: false, error: "Service not found." };
 
@@ -611,7 +614,8 @@ export async function verifyRazorpayPaymentAction(payload: {
     const { data: dbServices } = await supabase
       .from("services")
       .select("id, title, base_price, pricing_model, pricing_config, gst_applicable")
-      .in("id", payload.serviceIds);
+      .in("id", payload.serviceIds)
+      .eq("status", "published");
 
     if (!dbServices || dbServices.length === 0) {
       return { success: false, error: "Services not found." };

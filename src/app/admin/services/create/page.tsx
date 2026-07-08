@@ -78,6 +78,7 @@ export default async function AdminCreateServicePage() {
     const image_url = formData.get("image_url") as string || null;
     const pricing_model = (formData.get("pricing_model") as string) || "fixed";
     const duration_rates_raw = formData.get("duration_rates_json") as string;
+    const status = (formData.get("status") as string) || "published";
 
     const pricing_config_json = formData.get("pricing_config_json") as string;
     const form_fields_json = formData.get("form_fields_json") as string;
@@ -141,6 +142,7 @@ export default async function AdminCreateServicePage() {
       pricing_config,
       form_fields,
       gst_applicable,
+      status,
     }).select("id").single();
 
     if (error) {

@@ -38,6 +38,7 @@ type ServiceInitialData = {
   pricing_config?: PricingInput["pricingConfig"];
   form_fields?: FormFieldConfig[];
   gst_applicable?: boolean;
+  status?: string | null;
   page_content?: {
     included_features?: string[] | null;
     excluded_features?: string[] | null;
@@ -1276,8 +1277,11 @@ export function EditServiceForm({
 
       {/* Save Button Bar */}
       <div className="flex justify-end gap-3 border-t border-outline-variant/10 pt-4 sticky bottom-0 bg-surface-container-lowest py-3 z-10">
-        <Button type="submit" variant="primary" size="lg" disabled={isPending}>
-          {isPending ? "Saving..." : "Save Changes"}
+        <Button type="submit" name="status" value="draft" variant="slate" size="lg" disabled={isPending}>
+          {isPending ? "Saving..." : "Save as Draft"}
+        </Button>
+        <Button type="submit" name="status" value="published" variant="primary" size="lg" disabled={isPending}>
+          {isPending ? "Saving..." : "Publish Service"}
         </Button>
       </div>
     </form>

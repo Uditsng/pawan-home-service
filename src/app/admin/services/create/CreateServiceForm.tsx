@@ -1450,7 +1450,10 @@ export function CreateServiceForm({
 
         {/* Submit Bar */}
         <div className="flex justify-end gap-3 border-t border-outline-variant/10 pt-4 sticky bottom-0 bg-surface-container-lowest py-3 z-10">
-          <Button type="submit" variant="primary" size="lg" disabled={isPending}>
+          <Button type="submit" name="status" value="draft" variant="slate" size="lg" disabled={isPending}>
+            {isPending ? "Saving..." : "Save as Draft"}
+          </Button>
+          <Button type="submit" name="status" value="published" variant="primary" size="lg" disabled={isPending}>
             {isPending ? "Publishing..." : "Publish Service"}
           </Button>
         </div>

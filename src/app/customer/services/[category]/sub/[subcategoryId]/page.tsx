@@ -61,6 +61,7 @@ export default async function SubcategoryServiceListingPage({
     `)
     .eq("subcategory_id", subcategoryId)
     .eq("is_active", true)
+    .eq("status", "published")
     .order("title", { ascending: true }) as { data: ServiceWithSubcategory[] | null };
 
   const subcategoryTitle = subcategory?.subcategory_name || "Services";

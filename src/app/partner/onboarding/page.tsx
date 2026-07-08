@@ -34,7 +34,8 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
         )
       )
     `)
-    .eq('is_active', true);
+    .eq('is_active', true)
+    .eq('status', 'published');
 
   interface RawService {
     id: string;

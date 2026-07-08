@@ -157,6 +157,7 @@ export async function duplicateService(serviceId: string) {
       original_price: service.original_price,
       price_breakdown: service.price_breakdown,
       is_active: false, // Start as draft/inactive
+      status: 'draft',  // Cloned services default to draft
       is_featured: service.is_featured,
       priority: service.priority,
       estimated_duration: service.estimated_duration,
@@ -259,5 +260,27 @@ export async function duplicateService(serviceId: string) {
   }
 
   revalidatePath("/admin/services");
+}
+
+/**
+ * Toggle Service Status (Publish / Draft)
+ */
+export async function toggleServiceStatus(serviceId: string, currentStatus: 'draft' | 'published') {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const newStatus = currentStatus === 'draft' ? 'published' : 'draft';
+
+  const { error } = await supabase
+    .from('services')
+    .update({ status: newStatus })
+    .eq('id', serviceId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath('/admin/services');
+  revalidatePath('/');
 }
 

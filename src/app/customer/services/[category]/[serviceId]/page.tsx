@@ -45,6 +45,7 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
       )
     `)
     .eq("id", resolvedParams.serviceId)
+    .eq("status", "published")
     .single() as { data: ServiceWithSubcategory | null };
 
   if (!service) {

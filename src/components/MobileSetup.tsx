@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { PluginListenerHandle } from "@capacitor/core";
 import { registerTokenAction, deleteTokenAction } from "@/app/actions/notification-tokens";
@@ -20,6 +20,27 @@ export default function MobileSetup() {
   const routerRef = useRef(router);
   const currentSignedInUserIdRef = useRef<string | null>(null);
   useEffect(() => { routerRef.current = router; }, [router]);
+
+  const invalidateCacheKeys = useCallback(async (bookingId?: string | null) => {
+    try {
+      const { storageService } = await import("@/lib/storage/StorageService");
+      const userId = currentSignedInUserIdRef.current;
+      const keys = ["notifications", "booking_active", "current_job", "wallet", "bookings"];
+      if (userId) {
+        keys.push(`partner_jobs_${userId}`);
+      }
+      if (bookingId) {
+        keys.push(`booking_detail_${bookingId}`);
+      }
+      for (const key of keys) {
+        await storageService.remove(`phs_cache_${key}`);
+      }
+      window.dispatchEvent(new CustomEvent("phs-cache-invalidated"));
+      console.log("[Push] Invalidated cache keys:", keys);
+    } catch (err) {
+      console.error("[Push] Cache invalidation failed:", err);
+    }
+  }, []);
 
   // ─── 1. Handle Back Button Listener (Depends on path changes) ───
   useEffect(() => {
@@ -140,7 +161,10 @@ export default function MobileSetup() {
           console.log("[Push] registration listener fired");
           console.log("[Push] Received registration token:", maskFcmToken(token.value), "platform:", platform);
           try {
-            const res = await registerTokenAction(token.value, platform);
+            const supabase = createClient();
+            const { data: { session } } = await supabase.auth.getSession();
+            const accessToken = session?.access_token || undefined;
+            const res = await registerTokenAction(token.value, platform, accessToken);
             if (res.success) {
               localStorage.setItem("fcm_token", token.value);
             } else {
@@ -185,18 +209,8 @@ export default function MobileSetup() {
 
           // Invalidate cache immediately on receiving a notification in the foreground
           // to fix caching/outdated UI issue
-          try {
-            const { storageService } = await import("@/lib/storage/StorageService");
-            // Clear specific key prefixes to force re-fetch
-            const keysToInvalidate = ["notifications", "booking_active", "current_job", "wallet"];
-            for (const key of keysToInvalidate) {
-              await storageService.remove(`phs_cache_${key}`);
-            }
-            // Dispatch a custom event to notify mounted components or hook listeners
-            window.dispatchEvent(new CustomEvent("phs-cache-invalidated"));
-          } catch (cacheErr) {
-            console.error("[Push] Failed to invalidate cache on foreground notification:", cacheErr);
-          }
+          const bookingId = notification.data?.booking_id as string | undefined;
+          await invalidateCacheKeys(bookingId);
 
           // Schedule local notification to display manually in foreground
           try {
@@ -243,16 +257,7 @@ export default function MobileSetup() {
           console.log(`[Notification Pipeline] [7. TAP_ACTION] Source: Push, BookingId: ${bookingId}, Type: ${type}`);
 
           // Invalidate cache on click/action to make sure the target screens show fresh data
-          try {
-            const { storageService } = await import("@/lib/storage/StorageService");
-            const keysToInvalidate = ["notifications", "booking_active", "current_job", "wallet"];
-            for (const key of keysToInvalidate) {
-              await storageService.remove(`phs_cache_${key}`);
-            }
-            window.dispatchEvent(new CustomEvent("phs-cache-invalidated"));
-          } catch (cacheErr) {
-            console.error("[Push] Failed to invalidate cache on notification click:", cacheErr);
-          }
+          await invalidateCacheKeys(bookingId ? String(bookingId) : undefined);
 
           if (bookingId) {
             const bookingIdStr = String(bookingId);

@@ -26,7 +26,8 @@ function maskFcmToken(token: string | null | undefined) {
 
 export async function registerTokenAction(
   fcmToken: string,
-  platform: "web" | "android" | "ios" = "web"
+  platform: "web" | "android" | "ios" = "web",
+  accessToken?: string
 ): Promise<{ success: boolean; error?: string }> {
   console.log(`[notification-tokens] registerTokenAction called token=${maskFcmToken(fcmToken)} platform=${platform}`);
 
@@ -46,11 +47,20 @@ export async function registerTokenAction(
     return { success: false, error: "Invalid platform." };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  let user: import("@supabase/supabase-js").User | null = null;
+  let authError: import("@supabase/supabase-js").AuthError | null = null;
+  const supabaseAdmin = createAdminClient();
+
+  if (accessToken) {
+    const { data: authData, error: aErr } = await supabaseAdmin.auth.getUser(accessToken);
+    user = authData?.user || null;
+    authError = aErr;
+  } else {
+    const supabase = await createClient();
+    const { data: authData, error: aErr } = await supabase.auth.getUser();
+    user = authData?.user || null;
+    authError = aErr;
+  }
 
   console.log("[notification-tokens] auth.getUser result", {
     user: user ? { id: user.id, email: user.email } : null,
@@ -61,8 +71,6 @@ export async function registerTokenAction(
     console.warn("[notification-tokens] registerTokenAction failed because auth.getUser returned no user.");
     return { success: false, error: "Not authenticated." };
   }
-
-  const supabaseAdmin = createAdminClient();
 
   const { data: existingTokens, error: existingTokensError } = await supabaseAdmin
     .from("notification_tokens")
@@ -174,27 +182,32 @@ export async function registerTokenAction(
  */
 export async function deleteTokenAction(
   fcmToken: string,
-  explicitUserId?: string
+  explicitUserId?: string,
+  accessToken?: string
 ): Promise<{ success: boolean; error?: string }> {
   if (!fcmToken || typeof fcmToken !== "string" || fcmToken.trim().length === 0) {
     return { success: false, error: "Invalid FCM token." };
   }
 
-  const supabase = await createClient();
+  const supabaseAdmin = createAdminClient();
 
   // Prefer the explicitly supplied userId (needed for post-signout calls)
   let userId = explicitUserId;
   if (!userId) {
-    const { data: { user } } = await supabase.auth.getUser();
-    userId = user?.id;
+    if (accessToken) {
+      const { data: authData } = await supabaseAdmin.auth.getUser(accessToken);
+      userId = authData?.user?.id;
+    } else {
+      const supabase = await createClient();
+      const { data: authData } = await supabase.auth.getUser();
+      userId = authData?.user?.id;
+    }
   }
 
   if (!userId) {
     console.warn("[notification-tokens] deleteTokenAction called with no userId and no active session — skipping.");
     return { success: false, error: "Not authenticated." };
   }
-
-  const supabaseAdmin = createAdminClient();
 
   const { error } = await supabaseAdmin
     .from("notification_tokens")

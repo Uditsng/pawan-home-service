@@ -110,7 +110,7 @@ export default async function SubcategoryServiceListingPage({
                     />
                   </div>
                   {/* Title: reserved min-height so cards in a row stay aligned */}
-                  <div className="min-h-[2.5rem] flex items-center justify-center w-full px-1 mb-1.5">
+                  <div className="min-h-10 flex items-center justify-center w-full px-1 mb-1.5">
                     <span className="font-headline font-bold text-[11px] sm:text-xs md:text-sm text-on-surface line-clamp-2 leading-tight w-full">
                       {service.title}
                     </span>

@@ -133,7 +133,7 @@ export default async function AdminReviewsPage() {
   const reviews = (reviewsData || []) as unknown as SerializedReview[];
 
   return (
-    <div className="flex-grow p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full font-body selection:bg-secondary/30">
+    <div className="grow p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full font-body selection:bg-secondary/30">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-primary tracking-tight font-headline">

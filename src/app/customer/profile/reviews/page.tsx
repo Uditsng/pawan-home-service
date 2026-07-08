@@ -141,7 +141,7 @@ export default async function CustomerReviewsPage() {
                     </h3>
                     <p className="text-[10px] text-on-surface-variant/60 font-semibold">{reviewDate}</p>
                   </div>
-                  <div className="flex gap-[1px]">
+                  <div className="flex gap-0.25">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <span
                         key={star}

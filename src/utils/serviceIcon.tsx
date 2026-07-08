@@ -159,6 +159,7 @@ export function ServiceIconComponent({
       loading="lazy"
       decoding="async"
       draggable={false}
+      {...props}
     />
   );
 }

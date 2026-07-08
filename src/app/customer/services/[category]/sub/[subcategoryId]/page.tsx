@@ -92,7 +92,7 @@ export default async function SubcategoryServiceListingPage({
             return (
               <div
                 key={service.id}
-                className="relative group bg-surface-container-low p-3 md:p-4 rounded-xl flex flex-col items-center justify-between text-center border border-outline-variant/10 shadow-xs transition-all aspect-[2/3] w-full"
+                className="relative group bg-surface-container-low p-3 sm:p-4 md:p-5 rounded-xl flex flex-col items-center justify-start text-center border border-outline-variant/10 shadow-xs transition-all h-auto min-h-[140px] sm:min-h-[155px] md:min-h-[175px] w-full"
               >
                 {/* z-0 absolute Link covering the card */}
                 <Link
@@ -101,19 +101,26 @@ export default async function SubcategoryServiceListingPage({
                 />
 
                 {/* z-10 pointer-events-none Card Content */}
-                <div className="z-10 pointer-events-none flex flex-col items-center justify-between h-full w-full py-1">
-                  <div className="w-14 h-14 md:w-16 md:h-16 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
-                    <ServiceIconComponent iconName={iconName} className="w-8 h-8 md:w-10 md:h-10 text-emerald-600 drop-shadow-sm" />
+                <div className="z-10 pointer-events-none flex flex-col items-center w-full pt-1">
+                  {/* Icon: 48px phones → 56px sm → 64px md → 72px lg */}
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 lg:w-[72px] lg:h-[72px] rounded-xl bg-green-500/10 mb-2 sm:mb-2.5 md:mb-3 flex items-center justify-center shrink-0">
+                    <ServiceIconComponent
+                      iconName={iconName}
+                      className="w-6 h-6 sm:w-7 sm:h-7 md:w-9 md:h-9 lg:w-10 lg:h-10 text-emerald-600 drop-shadow-sm"
+                    />
                   </div>
-                  <span className="font-headline font-bold text-sm md:text-base text-on-surface line-clamp-2 leading-tight grow flex items-center justify-center px-1">
-                    {service.title}
-                  </span>
+                  {/* Title: reserved min-height so cards in a row stay aligned */}
+                  <div className="min-h-[2.5rem] flex items-center justify-center w-full px-1 mb-1.5">
+                    <span className="font-headline font-bold text-[11px] sm:text-xs md:text-sm text-on-surface line-clamp-2 leading-tight w-full">
+                      {service.title}
+                    </span>
+                  </div>
                   <div className="flex flex-col items-center gap-0.5 shrink-0">
-                    <span className="text-[15px] md:text-[17px] text-primary font-black tracking-tight leading-none">
+                    <span className="text-[13px] sm:text-[15px] md:text-[17px] text-primary font-black tracking-tight leading-none">
                       ₹{service.base_price}
                     </span>
                     {service.original_price && (
-                      <span className="text-[11px] md:text-xs text-on-surface-variant/60 line-through font-medium">
+                      <span className="text-[10px] md:text-xs text-on-surface-variant/60 line-through font-medium">
                         ₹{service.original_price}
                       </span>
                     )}

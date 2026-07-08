@@ -83,7 +83,7 @@ export default function ReviewsConsole({ initialReviews }: ReviewsConsoleProps) 
 
   const renderStars = (rating: number, sizeClass = "text-base") => {
     return (
-      <div className="flex gap-[1px]">
+      <div className="flex gap-0.25">
         {[1, 2, 3, 4, 5].map((star) => (
           <span
             key={star}

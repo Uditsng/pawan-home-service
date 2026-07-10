@@ -5,6 +5,7 @@ import MobileSetup from "@/components/MobileSetup";
 import SplashLoader from "@/components/SplashLoader";
 import { RefreshProvider } from "@/lib/refresh/RefreshContext";
 import VersionAlert from "@/components/VersionAlert";
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 
 const bricolage = Bricolage_Grotesque({
@@ -47,6 +48,7 @@ export default function RootLayout({
           <VersionAlert />
           {children}
         </RefreshProvider>
+        <SpeedInsights />
       </body>
     </html>
   );

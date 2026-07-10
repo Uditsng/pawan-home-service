@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { EditServiceForm } from "./EditServiceForm";
 import { requireAdmin } from "@/utils/supabase/auth-checks";
 import { ServiceVariant, ServiceAddon } from "@/lib/types";
+import { revalidateServices } from "@/utils/supabase/cacheInvalidators";
 
 export default async function AdminEditServicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -220,6 +221,7 @@ export default async function AdminEditServicePage({ params }: { params: Promise
       }
     }
 
+    revalidateServices(subcategory_id, id);
     revalidatePath('/admin/services');
     revalidatePath('/');
     redirect('/admin/services');

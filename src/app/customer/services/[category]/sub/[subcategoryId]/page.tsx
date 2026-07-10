@@ -1,27 +1,9 @@
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
-import { createClient } from "@/utils/supabase/server";
 import AddToCartButton from "@/components/AddToCartButton";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
-
-interface ServiceWithSubcategory {
-  id: string;
-  title: string;
-  description: string;
-  base_price: number;
-  original_price?: number | null;
-  is_active: boolean;
-  subcategory_id: string;
-  category?: string;
-  pricing_model?: string | null;
-  subcategories: {
-    subcategory_name: string;
-    icon_name: string;
-    categories: {
-      category_name: string;
-    };
-  } | null;
-}
+import { getCachedServicesBySubcategory } from "@/utils/supabase/cachedServiceQueries";
+import { getCachedAllSubcategories } from "@/utils/supabase/cachedSubcategoryQueries";
 
 export default async function SubcategoryServiceListingPage({
   params,
@@ -31,38 +13,12 @@ export default async function SubcategoryServiceListingPage({
   const resolvedParams = await params;
   const { category: categorySlug, subcategoryId } = resolvedParams;
 
-  const supabase = await createClient();
-
-  // Fetch the subcategory details to resolve title and icon
-  const { data: subcategory } = await supabase
-    .from("subcategories")
-    .select(`
-      subcategory_name,
-      icon_name,
-      categories (
-        category_name
-      )
-    `)
-    .eq("id", subcategoryId)
-    .single();
+  // Resolve subcategory details from the cache
+  const allSubcategories = await getCachedAllSubcategories();
+  const subcategory = allSubcategories.find((sub) => sub.id === subcategoryId);
 
   // Fetch services belonging to this subcategory
-  const { data: displayServices } = await supabase
-    .from("services")
-    .select(`
-      *,
-      subcategories (
-        subcategory_name,
-        icon_name,
-        categories (
-          category_name
-        )
-      )
-    `)
-    .eq("subcategory_id", subcategoryId)
-    .eq("is_active", true)
-    .eq("status", "published")
-    .order("title", { ascending: true }) as { data: ServiceWithSubcategory[] | null };
+  const displayServices = await getCachedServicesBySubcategory(subcategoryId);
 
   const subcategoryTitle = subcategory?.subcategory_name || "Services";
 

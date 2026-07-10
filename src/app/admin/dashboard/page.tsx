@@ -46,55 +46,68 @@ interface AdminDashboardMetrics {
 export default async function AdminDashboardPage() {
   const supabase = await createClient();
 
-  const { data: metricsRaw, error } = await supabase.rpc("get_admin_dashboard_metrics");
+  // Fetch all metrics and stats in parallel to prevent database waterfall
+  const [
+    metricsRes,
+    totalHourlyRes,
+    totalExtensionsRes,
+    approvedCountRes,
+    resolvedCountRes,
+    revenueRes,
+    avgDurationRes,
+    avgExtendedRes
+  ] = await Promise.all([
+    supabase.rpc("get_admin_dashboard_metrics"),
+    supabase
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("pricing_model", "hourly"),
+    supabase
+      .from("booking_extensions")
+      .select("id", { count: "exact", head: true }),
+    supabase
+      .from("booking_extensions")
+      .select("id")
+      .in("status", ["approved", "paid", "active", "completed"]),
+    supabase
+      .from("booking_extensions")
+      .select("id")
+      .in("status", ["approved", "rejected", "paid", "active", "completed"]),
+    supabase
+      .from("booking_extensions")
+      .select("additional_amount")
+      .in("status", ["paid", "active", "completed"]),
+    supabase
+      .from("bookings")
+      .select("selected_duration_minutes")
+      .eq("pricing_model", "hourly"),
+    supabase
+      .from("booking_extensions")
+      .select("additional_minutes")
+      .in("status", ["paid", "active", "completed"])
+  ]);
 
-  if (error || !metricsRaw) {
-    console.error("Failed to fetch dashboard metrics from database RPC:", error);
-    throw new Error(error?.message || "Failed to load dashboard metrics.");
+  if (metricsRes.error || !metricsRes.data) {
+    console.error("Failed to fetch dashboard metrics from database RPC:", metricsRes.error);
+    throw new Error(metricsRes.error?.message || "Failed to load dashboard metrics.");
   }
 
-  // Fetch hourly stats
-  const { count: totalHourlyBookings } = await supabase
-    .from("bookings")
-    .select("id", { count: "exact", head: true })
-    .eq("pricing_model", "hourly");
-
-  const { count: totalExtensions } = await supabase
-    .from("booking_extensions")
-    .select("id", { count: "exact", head: true });
-
-  const { data: approvedCountData } = await supabase
-    .from("booking_extensions")
-    .select("id")
-    .in("status", ["approved", "paid", "active", "completed"]);
+  const metricsRaw = metricsRes.data;
+  const totalHourlyBookings = totalHourlyRes.count;
+  const totalExtensions = totalExtensionsRes.count;
+  const approvedCountData = approvedCountRes.data;
+  const resolvedCountData = resolvedCountRes.data;
   const approvedCount = approvedCountData?.length || 0;
-
-  const { data: resolvedCountData } = await supabase
-    .from("booking_extensions")
-    .select("id")
-    .in("status", ["approved", "rejected", "paid", "active", "completed"]);
   const resolvedCount = resolvedCountData?.length || 0;
   const approvalRate = resolvedCount > 0 ? (approvedCount / resolvedCount) * 100 : 0;
-
-  const { data: revenueData } = await supabase
-    .from("booking_extensions")
-    .select("additional_amount")
-    .in("status", ["paid", "active", "completed"]);
+  const revenueData = revenueRes.data;
   const extensionRevenue = (revenueData || []).reduce((sum, row) => sum + Number(row.additional_amount || 0), 0);
-
-  const { data: avgDurationData } = await supabase
-    .from("bookings")
-    .select("selected_duration_minutes")
-    .eq("pricing_model", "hourly");
+  const avgDurationData = avgDurationRes.data;
   const hourlyBookings = avgDurationData || [];
   const avgBookingDuration = hourlyBookings.length > 0
     ? hourlyBookings.reduce((sum, b) => sum + (b.selected_duration_minutes || 0), 0) / hourlyBookings.length
     : 0;
-
-  const { data: avgExtendedData } = await supabase
-    .from("booking_extensions")
-    .select("additional_minutes")
-    .in("status", ["paid", "active", "completed"]);
+  const avgExtendedData = avgExtendedRes.data;
   const extendedRows = avgExtendedData || [];
   const avgExtendedDuration = extendedRows.length > 0
     ? extendedRows.reduce((sum, b) => sum + (b.additional_minutes || 0), 0) / extendedRows.length

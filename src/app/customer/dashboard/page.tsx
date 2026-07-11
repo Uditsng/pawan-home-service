@@ -3,6 +3,7 @@ import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/utils/supabase/server";
 import DashboardCarousel from "./DashboardCarousel";
 import DashboardGridClient from "./DashboardGridClient";
+import { getCachedCategories } from "@/utils/supabase/cachedCategoryQueries";
 
 interface ServiceWithSubcategory {
   id: string;
@@ -21,16 +22,11 @@ interface ServiceWithSubcategory {
   } | null;
 }
 
-interface Category {
-  id: string;
-  category_name: string;
-}
-
 export default async function CustomerDashboard() {
   const supabase = await createClient();
 
   // Parallelize independent queries for ~400ms savings
-  const [servicesResult, categoriesResult] = await Promise.all([
+  const [servicesResult, categories] = await Promise.all([
     // Fetch services with only needed columns (no page_content JSONB)
     supabase
       .from('services')
@@ -49,14 +45,10 @@ export default async function CustomerDashboard() {
       .eq('status', 'published')
       .order('title', { ascending: true }),
     // Fetch all categories
-    supabase
-      .from('categories')
-      .select('id, category_name')
-      .order('category_name', { ascending: true }),
+    getCachedCategories(),
   ]);
 
   const availableServices = (servicesResult.data || []) as unknown as ServiceWithSubcategory[];
-  const categories = (categoriesResult.data || []) as Category[];
 
   return (
     <div className="bg-surface font-body text-on-surface antialiased min-h-screen pb-24">

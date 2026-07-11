@@ -15,7 +15,12 @@ export function NotificationImageUploadField({
   defaultValue = "",
   onValueChange,
 }: NotificationImageUploadFieldProps) {
-  const [activeTab, setActiveTab] = useState<"upload" | "url">("upload");
+  const [activeTab, setActiveTab] = useState<"upload" | "url">(() => {
+    if (defaultValue) {
+      return defaultValue.startsWith("/assets/") ? "upload" : "url";
+    }
+    return "upload";
+  });
   const [imageUrl, setImageUrl] = useState<string>(defaultValue);
   const [previewUrl, setPreviewUrl] = useState<string>(defaultValue);
   const [uploadState, setUploadState] = useState<"idle" | "compressing" | "uploading" | "success" | "error">("idle");
@@ -33,11 +38,6 @@ export function NotificationImageUploadField({
 
   useEffect(() => {
     if (defaultValue) {
-      if (defaultValue.startsWith("/assets/")) {
-        setActiveTab("upload");
-      } else {
-        setActiveTab("url");
-      }
       validateImageUrl(defaultValue);
     }
   }, [defaultValue]);
@@ -49,7 +49,7 @@ export function NotificationImageUploadField({
     }
   };
 
-  const validateImageUrl = (url: string) => {
+  function validateImageUrl(url: string) {
     if (!url) {
       setPreviewUrl("");
       setValidationWarnings([]);
@@ -188,7 +188,7 @@ export function NotificationImageUploadField({
         .replace(/^-|-$/g, "");
       const fileName = `notifications/${cleanName}-${timestamp}.webp`;
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from("services")
         .upload(fileName, blob, {
           contentType: "image/webp",

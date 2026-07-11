@@ -19,7 +19,7 @@ export default function AreaSelector({
   areaSqft,
   minArea,
   maxArea,
-  step = 50,
+  step = 1,
   areaSlabs = [],
   onChange,
 }: AreaSelectorProps) {

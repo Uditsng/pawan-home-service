@@ -5,10 +5,10 @@ import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import HeroConversationalCard from "@/components/HeroConversationalCard";
 import LandingGridClient from "./LandingGridClient";
+import { getCachedCategories } from "@/utils/supabase/cachedCategoryQueries";
 
 
 export const revalidate = 300; // ISR: revalidate every 5 minutes
-
 // Centralized role → dashboard mapping (must match proxy.ts)
 const ROLE_DASHBOARDS: Record<string, string> = {
   admin: '/admin/dashboard',
@@ -34,11 +34,6 @@ interface ServiceWithSubcategory {
   } | null;
 }
 
-interface Category {
-  id: string;
-  category_name: string;
-}
-
 export default async function Home() {
   const supabase = await createClient();
 
@@ -55,7 +50,7 @@ export default async function Home() {
   }
 
   // Parallelize independent queries for faster page loads
-  const [servicesResult, categoriesResult] = await Promise.all([
+  const [servicesResult, categories] = await Promise.all([
     supabase
       .from('services')
       .select(`
@@ -72,14 +67,10 @@ export default async function Home() {
       .eq('is_active', true)
       .eq('status', 'published')
       .order('title', { ascending: true }),
-    supabase
-      .from('categories')
-      .select('id, category_name')
-      .order('category_name', { ascending: true }),
+    getCachedCategories(),
   ]);
 
   const availableServices = (servicesResult.data || []) as unknown as ServiceWithSubcategory[];
-  const categories = (categoriesResult.data || []) as Category[];
 
   // Shared Glassmorphism styles
   const glassBg = "glass-panel";

@@ -11,39 +11,49 @@ export default async function PerformancePage() {
 
   if (!user) redirect("/login");
 
-  // ─── Fetch partner profile with metrics ────────────────────
-  const { data: profileData } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+  // ─── Fetch all performance data in parallel to resolve the waterfall ────────
+  const [
+    profileRes,
+    totalCompletedRes,
+    completedJobsRes,
+    reviewsRes,
+    distributionRes
+  ] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single(),
+    supabase
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("partner_id", user.id)
+      .eq("status", "completed"),
+    supabase
+      .from("bookings")
+      .select("scheduled_date, started_at")
+      .eq("partner_id", user.id)
+      .eq("status", "completed")
+      .not("started_at", "is", null),
+    supabase
+      .from("reviews")
+      .select(
+        "*, customer:customer_id(full_name, avatar_url), booking:booking_id(services:service_id(title))"
+      )
+      .eq("partner_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(5),
+    supabase
+      .from("reviews")
+      .select("rating")
+      .eq("partner_id", user.id)
+  ]);
 
-  const profile = profileData as PartnerProfile | null;
-
-
-  // ─── Fetch total completed jobs count ──────────────────────
-  const { count: totalCompleted } = await supabase
-    .from("bookings")
-    .select("id", { count: "exact", head: true })
-    .eq("partner_id", user.id)
-    .eq("status", "completed");
-
-  // ─── Fetch total cancelled by partner ──────────────────────
-  // const { count: totalCancelled } = await supabase
-  //   .from("bookings")
-  //   .select("id", { count: "exact", head: true })
-  //   .eq("partner_id", user.id)
-  //   .eq("status", "cancelled")
-  //   .eq("cancelled_by", "PARTNER");
-
-  // ─── Calculate on-time rate from bookings ──────────────────
-  // On-time = started_at is before or within 15 min of scheduled_date
-  const { data: completedJobs } = await supabase
-    .from("bookings")
-    .select("scheduled_date, started_at")
-    .eq("partner_id", user.id)
-    .eq("status", "completed")
-    .not("started_at", "is", null);
+  const profile = profileRes.data as PartnerProfile | null;
+  const totalCompleted = totalCompletedRes.count;
+  const completedJobs = completedJobsRes.data;
+  const reviews = (reviewsRes.data || []) as unknown as ReviewWithCustomer[];
+  const distributionData = distributionRes.data;
 
   let onTimeCount = 0;
   const totalWithStartTime = completedJobs?.length || 0;
@@ -61,24 +71,6 @@ export default async function PerformancePage() {
     totalWithStartTime > 0
       ? Math.round((onTimeCount / totalWithStartTime) * 100)
       : 0;
-
-  // ─── Fetch recent reviews ─────────────────────────────────
-  const { data: reviewsData } = await supabase
-    .from("reviews")
-    .select(
-      "*, customer:customer_id(full_name, avatar_url), booking:booking_id(services:service_id(title))"
-    )
-    .eq("partner_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(5);
-
-  const reviews = (reviewsData || []) as unknown as ReviewWithCustomer[];
-
-  // ─── Fetch rating distribution ────────────────────────────
-  const { data: distributionData } = await supabase
-    .from("reviews")
-    .select("rating")
-    .eq("partner_id", user.id);
 
   const distribution = [0, 0, 0, 0, 0]; // 5, 4, 3, 2, 1 star counts
   distributionData?.forEach((r) => {

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { CreateServiceForm } from "./CreateServiceForm";
 import { requireAdmin } from "@/utils/supabase/auth-checks";
+import { revalidateCategories, revalidateSubcategories, revalidateServices } from "@/utils/supabase/cacheInvalidators";
 
 export default async function AdminCreateServicePage() {
   const supabase = await createClient();
@@ -25,6 +26,7 @@ export default async function AdminCreateServicePage() {
       .select("id, category_name")
       .single();
     if (error) return { error: error.message };
+    revalidateCategories();
     revalidatePath("/admin/services/create");
     return { id: data.id, category_name: data.category_name };
   }
@@ -40,6 +42,7 @@ export default async function AdminCreateServicePage() {
       .select("id, subcategory_name, icon_name, category_id")
       .single();
     if (error) return { error: error.message };
+    revalidateSubcategories();
     revalidatePath("/admin/services/create");
     return { id: data.id, subcategory_name: data.subcategory_name, icon_name: data.icon_name, category_id: data.category_id };
   }
@@ -213,6 +216,7 @@ export default async function AdminCreateServicePage() {
       }
     }
 
+    revalidateServices(subcategory_id);
     revalidatePath('/admin/services');
     revalidatePath('/');
     redirect('/admin/services');

@@ -1,52 +1,22 @@
 import Link from "next/link";
-import { createClient } from "@/utils/supabase/server";
 import Image from "next/image";
 import DynamicServiceConfigurator from "@/components/DynamicServiceConfigurator";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
 import { formatStartingPrice } from "@/utils/pricingEngine";
-import { Service, ServiceVariant, ServiceAddon, ServicePricingRule, ServicePageContent } from "@/lib/types";
-
-interface ServiceWithSubcategory {
-  id: string;
-  title: string;
-  description: string;
-  base_price: number;
-  original_price?: number | null;
-  image_url?: string;
-  category?: string;
-  page_content: ServicePageContent;
-  subcategory_id: string;
-  price_breakdown: string | null;
-  pricing_model?: "fixed" | "hourly" | "area" | "quantity" | "inspection" | "distance" | "hybrid" | null;
-
-  subcategories: {
-    subcategory_name: string;
-    icon_name: string;
-    categories: {
-      category_name: string;
-    };
-  } | null;
-}
+import { Service } from "@/lib/types";
+import {
+  getCachedServiceDetails,
+  getCachedServiceReviews,
+  getCachedServiceVariants,
+  getCachedServiceAddons,
+  getCachedPricingRules,
+  PublicReview
+} from "@/utils/supabase/cachedServiceQueries";
 
 export default async function ServiceDetailsPage({ params }: { params: Promise<{ category: string, serviceId: string }> }) {
   const resolvedParams = await params;
-  const supabase = await createClient();
 
-  const { data: service } = await supabase
-    .from("services")
-    .select(`
-      *,
-      subcategories (
-        subcategory_name,
-        icon_name,
-        categories (
-          category_name
-        )
-      )
-    `)
-    .eq("id", resolvedParams.serviceId)
-    .eq("status", "published")
-    .single() as { data: ServiceWithSubcategory | null };
+  const service = await getCachedServiceDetails(resolvedParams.serviceId);
 
   if (!service) {
     return (
@@ -62,82 +32,8 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
     );
   }
 
-  // Fetch approved reviews (defensively handle database migration missing fields)
-  let reviewsData = null;
-  const extendedReviewsRes = await supabase
-    .from("reviews")
-    .select(`
-      id,
-      rating,
-      comment,
-      created_at,
-      quality_rating,
-      behaviour_rating,
-      timeliness_rating,
-      value_rating,
-      review_tags,
-      review_images,
-      customer:customer_id (
-        full_name,
-        avatar_url
-      )
-    `)
-    .eq("service_id", service.id)
-    .eq("status", "approved")
-    .order("created_at", { ascending: false });
-
-  if (extendedReviewsRes.error) {
-    console.warn("Extended reviews query failed, trying basic query:", extendedReviewsRes.error.message);
-    const basicReviewsRes = await supabase
-      .from("reviews")
-      .select(`
-        id,
-        rating,
-        comment,
-        created_at,
-        customer:customer_id (
-          full_name,
-          avatar_url
-        )
-      `)
-      .eq("service_id", service.id)
-      .order("created_at", { ascending: false });
-
-    if (!basicReviewsRes.error && basicReviewsRes.data) {
-      reviewsData = basicReviewsRes.data.map(r => ({
-        ...r,
-        quality_rating: null,
-        behaviour_rating: null,
-        timeliness_rating: null,
-        value_rating: null,
-        review_tags: [] as string[],
-        review_images: [] as string[]
-      }));
-    } else {
-      console.error("Basic reviews fallback query also failed:", basicReviewsRes.error?.message);
-    }
-  } else {
-    reviewsData = extendedReviewsRes.data;
-  }
-
-  interface PublicReview {
-    id: string;
-    rating: number;
-    comment: string | null;
-    created_at: string;
-    quality_rating: number | null;
-    behaviour_rating: number | null;
-    timeliness_rating: number | null;
-    value_rating: number | null;
-    review_tags: string[];
-    review_images: string[];
-    customer: {
-      full_name: string;
-      avatar_url: string | null;
-    } | null;
-  }
-
-  const reviews = (reviewsData || []) as unknown as PublicReview[];
+  // Fetch approved reviews from cache
+  const reviews = await getCachedServiceReviews(resolvedParams.serviceId);
   const totalReviewsCount = reviews.length;
   const averageRating = totalReviewsCount > 0
     ? (reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviewsCount).toFixed(1)
@@ -154,30 +50,12 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
   const avgTimeliness = getCategoryAverage('timeliness_rating');
   const avgValue = getCategoryAverage('value_rating');
 
-  // Fetch variants, addons, and surcharge rules in parallel
-  const [variantsRes, addonsRes, rulesRes] = await Promise.all([
-    supabase
-      .from("service_variants")
-      .select("*")
-      .eq("service_id", service.id)
-      .eq("is_active", true)
-      .order("price", { ascending: true }),
-    supabase
-      .from("service_addons")
-      .select("*")
-      .eq("service_id", service.id)
-      .eq("is_active", true)
-      .order("created_at", { ascending: true }),
-    supabase
-      .from("service_pricing_rules")
-      .select("*")
-      .or(`service_id.eq.${service.id},service_id.is.null`)
-      .eq("is_active", true)
+  // Fetch variants, addons, and surcharge rules in parallel from cache
+  const [variants, addons, rules] = await Promise.all([
+    getCachedServiceVariants(resolvedParams.serviceId),
+    getCachedServiceAddons(resolvedParams.serviceId),
+    getCachedPricingRules(resolvedParams.serviceId)
   ]);
-
-  const variants = (variantsRes.data || []) as ServiceVariant[];
-  const addons = (addonsRes.data || []) as ServiceAddon[];
-  const rules = (rulesRes.data || []) as ServicePricingRule[];
 
   const content = service.page_content || {};
   const iconName = service.subcategories?.icon_name || "sparkles";

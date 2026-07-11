@@ -4,8 +4,8 @@ import { useState, useActionState, useTransition, useMemo } from "react";
 import { Button } from "@/components/ui/Button";
 import { ImageUploadField } from "@/components/ui/ImageUploadField";
 import { ServiceIconComponent, SERVICE_ICON_OPTIONS, ICON_GROUPS } from "@/utils/serviceIcon";
-import { PricingModel, ServiceVariant, ServiceAddon } from "@/lib/types";
-import { calculatePricingBreakdown, formatDuration } from "@/utils/pricingEngine";
+import { PricingModel } from "@/lib/types";
+import { calculatePricingBreakdown, formatDuration, PricingInput } from "@/utils/pricingEngine";
 import { FormFieldConfig } from "@/utils/bookingValidation";
 
 type Subcategory = {
@@ -229,10 +229,8 @@ export function CreateServiceForm({
 
   // General Form States
   const [title, setTitle] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
   const [basePrice, setBasePrice] = useState(299);
   const [originalPrice, setOriginalPrice] = useState<number | null>(null);
-  const [priceBreakdown, setPriceBreakdown] = useState("");
   const [description, setDescription] = useState("");
   const [gstApplicable, setGstApplicable] = useState(true);
   const [pricingModel, setPricingModel] = useState("fixed");
@@ -251,7 +249,7 @@ export function CreateServiceForm({
   const [areaPricePerSqft, setAreaPricePerSqft] = useState(2);
   const [areaMin, setAreaMin] = useState(200);
   const [areaMax, setAreaMax] = useState(5000);
-  const [areaStep, setAreaStep] = useState(50);
+  const areaStep = 1;
   const [areaSlabs, setAreaSlabs] = useState<{ min: number; max?: number; rate: number }[]>([
     { min: 0, max: 500, rate: 1.5 },
     { min: 501, max: 1000, rate: 1.2 },
@@ -278,7 +276,7 @@ export function CreateServiceForm({
   const [hybridQtyRate, setHybridQtyRate] = useState(50);
 
   // Dynamic Form Builder (Questions asked to the customer)
-  const [formFields, setFormFields] = useState<FormFieldConfig[]>([]);
+  const formFields: FormFieldConfig[] = [];
 
   // Variants & Addons Lists
   const [variantsList, setVariantsList] = useState<{ title: string; description: string; price: number; original_price: number | null; duration_minutes: number | null }[]>([]);
@@ -345,7 +343,7 @@ export function CreateServiceForm({
 
   // Compile final pricing config dynamically
   const pricingConfigObj = useMemo(() => {
-    const cfg: Record<string, any> = {};
+    const cfg: PricingInput["pricingConfig"] = {};
     if (pricingModel === "area") {
       cfg.min_area = areaMin;
       cfg.max_area = areaMax;
@@ -362,9 +360,8 @@ export function CreateServiceForm({
       cfg.unit_name = qtyUnitName;
     } else if (pricingModel === "hourly") {
       cfg.price_per_hour = basePrice;
-      const sortedRates = [...durationRates].sort((a, b) => a.duration - b.duration);
-      cfg.min_hours = sortedRates[0]?.duration ? sortedRates[0].duration / 60 : 1;
-      cfg.max_hours = sortedRates[sortedRates.length - 1]?.duration ? sortedRates[sortedRates.length - 1].duration / 60 : 8;
+      cfg.min_hours = 0.5; // Always show from 30min
+      cfg.max_hours = 3.0; // Always show up to 3 hours
     } else if (pricingModel === "distance") {
       cfg.base_distance_fee = distanceBaseFee;
       cfg.free_km = distanceFreeKm;
@@ -382,7 +379,7 @@ export function CreateServiceForm({
     return cfg;
   }, [
     pricingModel, areaMin, areaMax, areaStrategy, areaPricePerSqft, areaSlabs,
-    qtyRate, qtyMin, qtyMax, qtyUnitName, basePrice, durationRates,
+    qtyRate, qtyMin, qtyMax, qtyUnitName, basePrice,
     distanceBaseFee, distanceFreeKm, distanceRatePerKm, inspectionFee,
     hybridBaseFee, hybridHourlyRate, hybridDistanceRate, hybridQtyRate
   ]);
@@ -434,18 +431,18 @@ export function CreateServiceForm({
 
         {/* Tab Navigation Menu */}
         <div className="flex border-b border-outline-variant/30 gap-1 overflow-x-auto no-scrollbar">
-          {[
+          {([
             { id: "basic", label: "Basic Info", icon: "info" },
             { id: "pricing", label: "Pricing & Slabs", icon: "payments" },
             { id: "variants", label: "Variants", icon: "category" },
             { id: "addons", label: "Add-ons", icon: "library_add" },
             { id: "content", label: "Page Content", icon: "description" },
             { id: "preview", label: "Live Preview", icon: "visibility" }
-          ].map((tab) => (
+          ] as const).map((tab) => (
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-1.5 px-5 py-3 border-b-2 text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
                 activeTab === tab.id
                   ? "border-primary text-primary bg-primary/5"
@@ -598,7 +595,7 @@ export function CreateServiceForm({
                       <label className="block text-[10px] font-bold text-on-surface-variant uppercase mb-1">Pricing Strategy</label>
                       <select
                         value={areaStrategy}
-                        onChange={(e) => setAreaStrategy(e.target.value as any)}
+                        onChange={(e) => setAreaStrategy(e.target.value as "flat" | "slab")}
                         className="w-full border border-outline-variant/20 rounded-lg p-2 bg-surface-container-lowest focus:ring-2 focus:ring-primary/20 outline-none text-xs font-bold"
                       >
                         <option value="flat">Flat Rate per Sqft</option>

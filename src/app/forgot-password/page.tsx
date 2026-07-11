@@ -162,25 +162,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{
-        __html: `
-        @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap');
-        body { font-family: 'Bricolage Grotesque', sans-serif; background: #F8FAFC; color: #002261; overflow-x: hidden; }
-        @keyframes float-3d-1 {
-          0%, 100% { transform: translateY(0) rotate(0deg) scale(1); filter: drop-shadow(0 10px 25px rgba(0,0,0,0.3)); }
-          50% { transform: translateY(-20px) rotate(8deg) scale(1.05); filter: drop-shadow(0 25px 35px rgba(0,0,0,0.4)); }
-        }
-        @keyframes float-3d-2 {
-          0%, 100% { transform: translateY(0) rotate(0deg) scale(1); filter: drop-shadow(0 10px 25px rgba(0,0,0,0.2)); }
-          50% { transform: translateY(15px) rotate(-6deg) scale(1.08); filter: drop-shadow(0 20px 30px rgba(0,0,0,0.3)); }
-        }
-        @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .animate-float-1 { animation: float-3d-1 7s ease-in-out infinite; }
-        .animate-float-2 { animation: float-3d-2 6s ease-in-out infinite; }
-        .animate-spin-slow { animation: spin-slow 20s linear infinite; }
-      `}} />
-
-      <div className="flex min-h-screen bg-surface selection:bg-secondary/30 selection:text-primary">
+      <div className="flex min-h-screen bg-surface selection:bg-secondary/30 selection:text-primary overflow-x-hidden">
 
         {/* Left — Brand Panel */}
         <div className="hidden lg:flex w-1/2 p-6 relative perspective-[1000px]">

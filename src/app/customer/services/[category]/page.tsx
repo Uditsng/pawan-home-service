@@ -1,36 +1,14 @@
 import BottomNav from "@/components/BottomNav";
-import { createClient } from "@/utils/supabase/server";
 import SubcategoriesListClient from "./SubcategoriesListClient";
-
-interface SubcategoryWithCategory {
-  id: string;
-  subcategory_name: string;
-  icon_name: string;
-  categories: {
-    id: string;
-    category_name: string;
-  } | null;
-}
+import { getCachedCategories } from "@/utils/supabase/cachedCategoryQueries";
+import { getCachedAllSubcategories } from "@/utils/supabase/cachedSubcategoryQueries";
 
 export default async function CategorySubcategoryListingPage({ params }: { params: Promise<{ category: string }> }) {
   const resolvedParams = await params;
   const categorySlug = resolvedParams.category;
 
-  const supabase = await createClient();
-
   // Fetch subcategories with their parent categories
-  const { data: allSubcategories } = await supabase
-    .from("subcategories")
-    .select(`
-      id,
-      subcategory_name,
-      icon_name,
-      categories (
-        id,
-        category_name
-      )
-    `)
-    .order("subcategory_name", { ascending: true }) as { data: SubcategoryWithCategory[] | null };
+  const allSubcategories = await getCachedAllSubcategories();
 
   // Normalize slug comparing logic
   const normalizeSlug = (str: string) => str.toLowerCase().replace(/&/g, "and").replace(/[-_,\s]+/g, " ").trim();
@@ -42,9 +20,7 @@ export default async function CategorySubcategoryListingPage({ params }: { param
   });
 
   // Fetch all categories to find the correct display name as fallback
-  const { data: categories } = await supabase
-    .from("categories")
-    .select("id, category_name");
+  const categories = await getCachedCategories();
 
   const matchedCategory = (categories || []).find(
     (c) => normalizeSlug(c.category_name) === targetSlug
@@ -52,7 +28,7 @@ export default async function CategorySubcategoryListingPage({ params }: { param
 
   const categoryTitle = matchedCategory?.category_name || 
     (displaySubcategories.length > 0 
-      ? displaySubcategories[0].categories?.category_name 
+      ? (displaySubcategories[0].categories?.category_name || "")
       : categorySlug.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase()));
 
   return (

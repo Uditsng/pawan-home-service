@@ -114,12 +114,12 @@ function normalizeIconName(name: string): string {
     "bed", "bell", "blinds", "bug", "bug_report", "bulb", "campaign", "car", "carpenter",
     "carpet", "celebration", "chair", "chimney", "cleaning_services", "construction",
     "cooler", "cooling_fan", "countertops", "curtains", "cutlery", "directions_car",
-    "door", "electric_car", "electrical_services", "electrician", "fan", "flower",
+    "door", "electric_car", "electrical_services", "electrician", "fan", "female_salon", "flower",
     "grid_on", "kitchen", "leaf", "lightbulb", "lizard", "local_laundry_service",
-    "meeting_room", "microwave", "mode_fan", "mop", "mosquito", "party", "pest_control",
+    "male_salon", "meeting_room", "microwave", "mode_fan", "mop", "mosquito", "party", "pest_control",
     "pest_control_rodent", "pipe", "plant-a-tree", "plumber", "plumbing", "potted_plant",
     "power", "rat", "refrigerator", "save_water", "shirt", "shopping_bag", "shower",
-    "sofa", "sparkles", "spider", "sprout", "switch", "tap", "television", "texture",
+    "sofa", "solar", "sparkles", "spider", "sprout", "switch", "tap", "television", "texture",
     "toilet", "tree", "tv", "vacuum-cleaner", "videocam", "wallpaper", "washbasin",
     "washing_machine", "water_damage", "water_drop", "wc", "window"
   ]);
@@ -182,13 +182,20 @@ export const SERVICE_ICON_OPTIONS: { name: string; label: string; group: string 
   { name: "wind", label: "Air / Freshening", group: "Cleaning" },
   { name: "bath", label: "Bathroom / Bathtub", group: "Cleaning" },
   { name: "shower", label: "Shower / Bathroom", group: "Cleaning" },
+  { name: "vacuum-cleaner", label: "Vacuum Cleaner / Floor Care", group: "Cleaning" },
+  { name: "mop", label: "Mop / Sweeping", group: "Cleaning" },
+  { name: "carpet", label: "Carpet Cleaning", group: "Cleaning" },
   // Pest Control
   { name: "bug", label: "Bug / Insects", group: "Pest Control" },
+  { name: "bug_report", label: "Bug Report / Inspection", group: "Pest Control" },
   { name: "rat", label: "Rodent / Rat", group: "Pest Control" },
   { name: "shield", label: "Protection / Shield", group: "Pest Control" },
   { name: "zap", label: "Zap / Fumigation", group: "Pest Control" },
   { name: "flask", label: "Chemical / Flask", group: "Pest Control" },
   { name: "siren", label: "Alert / Emergency", group: "Pest Control" },
+  { name: "mosquito", label: "Mosquito Control", group: "Pest Control" },
+  { name: "spider", label: "Spider Control", group: "Pest Control" },
+  { name: "lizard", label: "Lizard Control", group: "Pest Control" },
   // Repairs & Electrical
   { name: "wrench", label: "Wrench / Repair", group: "Repairs" },
   { name: "hammer", label: "Hammer / Carpentry", group: "Repairs" },
@@ -198,10 +205,21 @@ export const SERVICE_ICON_OPTIONS: { name: string; label: string; group: string 
   { name: "cpu", label: "CPU / Electronics", group: "Repairs" },
   { name: "wifi", label: "WiFi / Network", group: "Repairs" },
   { name: "settings", label: "Settings / Maintenance", group: "Repairs" },
+  { name: "electrician", label: "Electrician / Wiring", group: "Repairs" },
+  { name: "carpenter", label: "Carpenter / Woodwork", group: "Repairs" },
+  { name: "switch", label: "Switch / Socket", group: "Repairs" },
+  { name: "bell", label: "Doorbell / Chime", group: "Repairs" },
+  { name: "solar", label: "Solar Panel / System", group: "Repairs" },
   // Plumbing
   { name: "waves", label: "Waves / Water", group: "Plumbing" },
   { name: "droplet", label: "Droplet / Leak", group: "Plumbing" },
   { name: "pipette", label: "Pipette / Pipe", group: "Plumbing" },
+  { name: "plumber", label: "Plumber / Pipe Repair", group: "Plumbing" },
+  { name: "tap", label: "Tap / Faucet", group: "Plumbing" },
+  { name: "toilet", label: "Toilet / Sanitation", group: "Plumbing" },
+  { name: "bathtub", label: "Bathtub / Bath Fit", group: "Plumbing" },
+  { name: "washbasin", label: "Washbasin / Sink", group: "Plumbing" },
+  { name: "pipe", label: "Pipe / Water Tube", group: "Plumbing" },
   // Home & Furniture
   { name: "sofa", label: "Sofa / Upholstery", group: "Home & Furniture" },
   { name: "bed", label: "Bed / Bedroom", group: "Home & Furniture" },
@@ -211,6 +229,11 @@ export const SERVICE_ICON_OPTIONS: { name: string; label: string; group: string 
   { name: "lamp", label: "Lamp / Lighting", group: "Home & Furniture" },
   { name: "door", label: "Door / Entry", group: "Home & Furniture" },
   { name: "frame", label: "Frame / Picture", group: "Home & Furniture" },
+  { name: "curtains", label: "Curtains / Blinds", group: "Home & Furniture" },
+  { name: "blinds", label: "Blinds / Window Cover", group: "Home & Furniture" },
+  { name: "chimney", label: "Chimney / Kitchen Vent", group: "Home & Furniture" },
+  { name: "cutlery", label: "Cutlery / Kitchenware", group: "Home & Furniture" },
+  { name: "wallpaper", label: "Wallpaper / Wall Decor", group: "Home & Furniture" },
   // Garden
   { name: "leaf", label: "Leaf / Garden", group: "Garden & Outdoor" },
   { name: "tree", label: "Tree / Landscaping", group: "Garden & Outdoor" },
@@ -218,17 +241,27 @@ export const SERVICE_ICON_OPTIONS: { name: string; label: string; group: string 
   { name: "sprout", label: "Sprout / Planting", group: "Garden & Outdoor" },
   { name: "shovel", label: "Shovel / Digging", group: "Garden & Outdoor" },
   { name: "sun", label: "Sun / Outdoor", group: "Garden & Outdoor" },
+  { name: "plant-a-tree", label: "Plant a Tree / Forestry", group: "Garden & Outdoor" },
   // Appliances
   { name: "air_vent", label: "AC / Air Vent", group: "Appliances" },
   { name: "refrigerator", label: "Refrigerator / Fridge", group: "Appliances" },
   { name: "microwave", label: "Microwave / Oven", group: "Appliances" },
   { name: "tv", label: "TV / Electronics", group: "Appliances" },
   { name: "thermometer", label: "Thermometer / HVAC", group: "Appliances" },
+  { name: "cooling_fan", label: "Cooling Fan / Air Flow", group: "Appliances" },
+  { name: "cooler", label: "Cooler / Air Cooler", group: "Appliances" },
+  { name: "television", label: "Television / LED TV", group: "Appliances" },
   // Moving
   { name: "package", label: "Package / Moving", group: "Moving & Logistics" },
   { name: "truck", label: "Truck / Transport", group: "Moving & Logistics" },
   { name: "move", label: "Move / Shifting", group: "Moving & Logistics" },
   { name: "grid", label: "Grid / Organization", group: "Moving & Logistics" },
+  // Events & Celebration
+  { name: "celebration", label: "Celebration / Event", group: "Events & Celebration" },
+  { name: "party", label: "Party / Decor", group: "Events & Celebration" },
+  // Salon & Beauty
+  { name: "female_salon", label: "Female Salon / Grooming", group: "Salon & Beauty" },
+  { name: "male_salon", label: "Male Salon / Grooming", group: "Salon & Beauty" },
 ];
 
 export const ICON_GROUPS = [...new Set(SERVICE_ICON_OPTIONS.map((o) => o.group))];

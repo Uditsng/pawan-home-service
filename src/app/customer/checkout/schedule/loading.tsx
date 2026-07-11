@@ -1,14 +1,6 @@
 export default function Loading() {
   return (
-    <div className="bg-surface min-h-screen pb-24">
-      {/* Header skeleton */}
-      <header className="sticky top-0 w-full z-50 bg-surface/90 backdrop-blur-lg">
-        <div className="flex justify-between items-center w-full px-4 md:px-6 py-3 md:py-4 max-w-7xl mx-auto">
-          <div className="w-12 h-12 bg-surface-container-high rounded-xl animate-pulse" />
-          <div className="w-9 h-9 bg-surface-container-high rounded-full animate-pulse" />
-        </div>
-      </header>
-
+    <div className="bg-surface min-h-screen pb-24 font-body">
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-6">
         {/* Calendar skeleton */}
         <div className="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/10 mb-6">

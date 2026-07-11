@@ -231,7 +231,7 @@ export default function DynamicServiceConfigurator({
                 const isSelected = bookingState.durationMinutes === mins;
                 const minH = Number(config.min_hours || 0.5);
                 const maxH = Number(config.max_hours || 24);
-                if (hrs < minH || hrs > maxH) return null;
+                if (model !== "hourly" && (hrs < minH || hrs > maxH)) return null;
 
                 const label = formatDuration(mins);
 

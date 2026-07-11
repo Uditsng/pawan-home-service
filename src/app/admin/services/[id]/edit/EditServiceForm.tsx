@@ -96,7 +96,7 @@ export function EditServiceForm({
   const [areaPricePerSqft, setAreaPricePerSqft] = useState(Number(pricingConfig.price_per_sqft || 2));
   const [areaMin, setAreaMin] = useState(Number(pricingConfig.min_area || 200));
   const [areaMax, setAreaMax] = useState(Number(pricingConfig.max_area || 5000));
-  const areaStep = 50;
+  const areaStep = 1;
   const [areaSlabs, setAreaSlabs] = useState<{ min: number; max?: number; rate: number }[]>(
     pricingConfig.area_slabs?.length ? pricingConfig.area_slabs : [
       { min: 0, max: 500, rate: 1.5 },
@@ -203,9 +203,8 @@ export function EditServiceForm({
       cfg.unit_name = qtyUnitName;
     } else if (pricingModel === "hourly") {
       cfg.price_per_hour = basePrice;
-      const sortedRates = [...durationRates].sort((a, b) => a.duration - b.duration);
-      cfg.min_hours = sortedRates[0]?.duration ? sortedRates[0].duration / 60 : 1;
-      cfg.max_hours = sortedRates[sortedRates.length - 1]?.duration ? sortedRates[sortedRates.length - 1].duration / 60 : 8;
+      cfg.min_hours = 0.5; // Always show from 30min
+      cfg.max_hours = 3.0; // Always show up to 3 hours
     } else if (pricingModel === "distance") {
       cfg.base_distance_fee = distanceBaseFee;
       cfg.free_km = distanceFreeKm;
@@ -223,7 +222,7 @@ export function EditServiceForm({
     return cfg;
   }, [
     pricingModel, areaMin, areaMax, areaStrategy, areaPricePerSqft, areaSlabs,
-    qtyRate, qtyMin, qtyMax, qtyUnitName, basePrice, durationRates,
+    qtyRate, qtyMin, qtyMax, qtyUnitName, basePrice,
     distanceBaseFee, distanceFreeKm, distanceRatePerKm, inspectionFee,
     hybridBaseFee, hybridHourlyRate, hybridDistanceRate, hybridQtyRate
   ]);

@@ -146,6 +146,7 @@ export default async function AdminEditServicePage({ params }: { params: Promise
       form_fields,
       gst_applicable,
       status,
+      is_active: true, // Reactivate on save/update
     }).eq("id", id);
 
     if (error) {

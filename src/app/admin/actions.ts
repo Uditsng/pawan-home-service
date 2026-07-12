@@ -156,7 +156,7 @@ export async function duplicateService(serviceId: string) {
       base_price: service.base_price,
       original_price: service.original_price,
       price_breakdown: service.price_breakdown,
-      is_active: false, // Start as draft/inactive
+      is_active: true, // Start as draft but active so it can be published
       status: 'draft',  // Cloned services default to draft
       is_featured: service.is_featured,
       priority: service.priority,
@@ -273,7 +273,10 @@ export async function toggleServiceStatus(serviceId: string, currentStatus: 'dra
 
   const { error } = await supabase
     .from('services')
-    .update({ status: newStatus })
+    .update({ 
+      status: newStatus,
+      is_active: true // Ensure it is activated when status is toggled
+    })
     .eq('id', serviceId);
 
   if (error) {

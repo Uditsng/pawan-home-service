@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createRazorpayOrderAction, verifyRazorpayPaymentAction } from "@/app/actions/payment";
 import { formatDuration } from "@/utils/pricingEngine";
 import { Card } from "@/components/ui/Card";
+import { ServiceIconComponent } from "@/utils/serviceIcon";
 
 interface Address {
   formatted_address: string;
@@ -280,9 +281,12 @@ export default function CartPaymentClient({
                     <div key={item.serviceId} className="flex items-center justify-between p-3 bg-surface-container-low rounded-xl border border-outline-variant/10">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
-                          <span className="material-symbols-outlined text-[#059669] text-xl">
-                            {item.iconName}
-                          </span>
+                          <ServiceIconComponent
+                            iconName={item.iconName}
+                            width={24}
+                            height={24}
+                            className="w-6 h-6 text-emerald-600 drop-shadow-sm"
+                          />
                         </div>
                         <div className="min-w-0">
                           <p className="font-bold text-sm text-on-surface truncate leading-tight">{item.title}</p>

@@ -170,17 +170,18 @@ export default function DynamicServiceConfigurator({
 
   // Cart item compile
   const cartItem = useMemo(() => {
+    const priceWithoutGst = breakdown.total_price - breakdown.gst_amount;
     return {
       serviceId: service.id,
       title: service.title,
       iconName,
-      basePrice: breakdown.total_price,
+      basePrice: priceWithoutGst,
       subcategoryName,
       categorySlug,
       pricingModel: model,
       selectedDuration: model === "hourly" ? (bookingState.durationMinutes || undefined) : undefined,
     };
-  }, [service, iconName, breakdown.total_price, subcategoryName, categorySlug, model, bookingState.durationMinutes]);
+  }, [service, iconName, breakdown.total_price, breakdown.gst_amount, subcategoryName, categorySlug, model, bookingState.durationMinutes]);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 relative">

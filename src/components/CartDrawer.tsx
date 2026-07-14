@@ -3,6 +3,7 @@
 import { useCart } from "@/lib/cart/CartContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { ServiceIconComponent } from "@/utils/serviceIcon";
 
 export default function CartDrawer() {
   const { items, isDrawerOpen, closeDrawer, removeItem, subtotal, itemCount } =
@@ -104,9 +105,12 @@ export default function CartDrawer() {
               >
                 {/* Icon */}
                 <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-[#059669] drop-shadow-sm">
-                    {item.iconName}
-                  </span>
+                  <ServiceIconComponent
+                    iconName={item.iconName}
+                    width={24}
+                    height={24}
+                    className="w-6 h-6 text-emerald-600 drop-shadow-sm"
+                  />
                 </div>
 
                 {/* Info */}

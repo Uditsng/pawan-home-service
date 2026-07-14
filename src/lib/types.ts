@@ -416,6 +416,31 @@ export interface BookingFormAnswer {
   created_at: string;
 }
 
+export interface CheckoutPricingSnapshot {
+  serviceId?: string;
+  serviceIds?: string[];
+  cartItems: { serviceId: string; selectedDuration?: number }[];
+  addressId: string;
+  pincode: string;
+  scheduledDate: string;
+  duration?: number;
+  areaSqft?: number;
+  quantity?: number;
+  distanceKm?: number;
+  variantId?: string;
+  addons?: string;
+  referralDiscount: number;
+  couponCode?: string;
+  walletAmountToUse: number;
+  meetingLocation?: string;
+  destination?: string;
+  expectedBags?: string;
+  selectedPackages?: string;
+  businessName?: string;
+  businessGstin?: string;
+  formAnswers?: string;
+}
+
 export interface BookingQuote {
   id: string;
   booking_id: string;

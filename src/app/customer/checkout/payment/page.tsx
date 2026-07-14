@@ -181,6 +181,16 @@ export default async function CheckoutPaymentPage({
   const parsedQuantity = quantity ? parseInt(quantity, 10) : undefined;
   const parsedDistanceKm = distanceKm ? parseInt(distanceKm, 10) : undefined;
 
+  let scheduledDateObj: Date = new Date();
+  if (date && time) {
+    const [timePart, modifier] = time.split(" ");
+    const [rawH, min] = timePart.split(":").map(Number);
+    let h = rawH;
+    if (modifier === "PM" && h !== 12) h += 12;
+    if (modifier === "AM" && h === 12) h = 0;
+    scheduledDateObj = new Date(`${date}T${h.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}:00+05:30`);
+  }
+
   const breakdown = calculatePricingBreakdown({
     pricingModel: (service.pricing_model || "fixed") as PricingModel,
     basePrice: Number(service.base_price || 0),
@@ -191,7 +201,7 @@ export default async function CheckoutPaymentPage({
     quantity: parsedQuantity,
     distanceKm: parsedDistanceKm,
     addons: parsedAddons,
-    scheduledDate: new Date(),
+    scheduledDate: scheduledDateObj,
     pincode: addressObj.pincode,
     surchargeRules: rules,
     coupon: couponObj,

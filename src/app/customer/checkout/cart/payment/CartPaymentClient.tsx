@@ -53,13 +53,14 @@ export default function CartPaymentClient({
   const [bookAsBusiness, setBookAsBusiness] = useState(false);
   const [businessName, setBusinessName] = useState("");
   const [businessGstin, setBusinessGstin] = useState("");
+  const [paymentSubmitted, setPaymentSubmitted] = useState(false);
 
-  // Redirect if cart is empty
+  // Redirect if cart is empty (but NOT after a successful payment clears the cart)
   useEffect(() => {
-    if (items.length === 0 && !isPending) {
+    if (items.length === 0 && !isPending && !paymentSubmitted) {
       router.push("/customer/dashboard");
     }
-  }, [items, router, isPending]);
+  }, [items, router, isPending, paymentSubmitted]);
 
   // Calculations
   const gstTax = Math.round(subtotal * (taxRatePercent / 100));
@@ -103,15 +104,21 @@ export default function CartPaymentClient({
           serviceId: i.serviceId,
           selectedDuration: i.selectedDuration,
         }));
+        const cartItemPricesMap: Record<string, number> = {};
+        for (const item of items) {
+          cartItemPricesMap[item.serviceId] = item.basePrice;
+        }
 
         // 1. Create Razorpay order on server
         const rzOrder = await createRazorpayOrderAction({
           serviceIds: serviceIds,
+          cartItemPrices: cartItemPricesMap,
           addressId: addressId,
           date: date,
           time: time,
           walletAmountToUse: walletApplied,
           cartItems: mappedCartItems,
+          referralDiscount: referralDiscount,
         });
 
         if (rzOrder.freeOrder) {
@@ -119,21 +126,31 @@ export default function CartPaymentClient({
           const verifyRes = await verifyRazorpayPaymentAction({
             isFree: true,
             serviceIds: serviceIds,
+            cartItemPrices: cartItemPricesMap,
             addressId: addressId,
             date: date,
             time: time,
             walletAmountToUse: walletApplied,
             cartItems: mappedCartItems,
+            referralDiscount: referralDiscount,
             businessName: bookAsBusiness ? businessName : undefined,
             businessGstin: bookAsBusiness ? businessGstin : undefined,
           });
 
           if (verifyRes.success && verifyRes.orderId) {
+            setPaymentSubmitted(true);
             clearCart();
             router.push(`/customer/checkout/success?orderId=${verifyRes.orderId}`);
           } else {
             setErrorMessage(verifyRes.error || "Failed to confirm booking.");
           }
+          return;
+        }
+
+        if (Math.abs(rzOrder.amount - finalPrice) > 1) {
+          setErrorMessage(
+            `Price updated by server (was ₹${finalPrice}, now ₹${rzOrder.amount}). Please refresh and try again.`
+          );
           return;
         }
 
@@ -182,34 +199,34 @@ export default function CartPaymentClient({
             },
           },
           handler: async function (response: RazorpaySuccessResponse) {
-            startTransition(async () => {
-              try {
-                // 3. Verify Razorpay payment signature
-                const verifyRes = await verifyRazorpayPaymentAction({
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature,
-                  serviceIds: serviceIds,
-                  addressId: addressId,
-                  date: date,
-                  time: time,
-                  walletAmountToUse: walletApplied,
-                  cartItems: mappedCartItems,
-                  businessName: bookAsBusiness ? businessName : undefined,
-                  businessGstin: bookAsBusiness ? businessGstin : undefined,
-                });
+            try {
+              const verifyRes = await verifyRazorpayPaymentAction({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                serviceIds: serviceIds,
+                cartItemPrices: cartItemPricesMap,
+                addressId: addressId,
+                date: date,
+                time: time,
+                walletAmountToUse: walletApplied,
+                cartItems: mappedCartItems,
+                referralDiscount: referralDiscount,
+                businessName: bookAsBusiness ? businessName : undefined,
+                businessGstin: bookAsBusiness ? businessGstin : undefined,
+              });
 
-                if (verifyRes.success && verifyRes.orderId) {
-                  clearCart();
-                  router.push(`/customer/checkout/success?orderId=${verifyRes.orderId}`);
-                } else {
-                  setErrorMessage(verifyRes.error || "Payment verification failed.");
-                }
-              } catch (verifyErr) {
-                console.error("Verification error:", verifyErr);
-                setErrorMessage("An error occurred during payment verification.");
+              if (verifyRes.success && verifyRes.orderId) {
+                setPaymentSubmitted(true);
+                clearCart();
+                router.push(`/customer/checkout/success?orderId=${verifyRes.orderId}`);
+              } else {
+                setErrorMessage(verifyRes.error || "Payment verification failed.");
               }
-            });
+            } catch (verifyErr) {
+              console.error("Verification error:", verifyErr);
+              setErrorMessage("An error occurred during payment verification.");
+            }
           },
           modal: {
             ondismiss: function () {

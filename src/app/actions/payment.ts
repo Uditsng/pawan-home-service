@@ -35,6 +35,7 @@ interface DBAddress {
 export async function createRazorpayOrderAction(payload: {
   serviceId?: string;
   serviceIds?: string[];
+  cartItemPrices?: Record<string, number>;
   addressId: string;
   date: string;
   time: string;
@@ -51,6 +52,7 @@ export async function createRazorpayOrderAction(payload: {
   expectedBags?: string;
   selectedPackages?: string;
   couponCode?: string;
+  referralDiscount?: number;
 }): Promise<RazorpayOrderResult> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -187,7 +189,15 @@ export async function createRazorpayOrderAction(payload: {
       quantity: payload.quantity,
       distanceKm: payload.distanceKm,
       addons: parsedAddons,
-      scheduledDate: payload.date ? new Date(`${payload.date}T${payload.time.split(' ')[0]}:00`) : new Date(),
+      scheduledDate: (() => {
+        if (!payload.date) return new Date();
+        const [tPart, mod] = payload.time.split(" ");
+        const [rH, mM] = tPart.split(":").map(Number);
+        let hr = rH;
+        if (mod === "PM" && hr !== 12) hr += 12;
+        if (mod === "AM" && hr === 12) hr = 0;
+        return new Date(`${payload.date}T${hr.toString().padStart(2, "0")}:${mM.toString().padStart(2, "0")}:00+05:30`);
+      })(),
       pincode: addr.pincode,
       surchargeRules: mappedRules,
       coupon: couponObj,
@@ -199,7 +209,6 @@ export async function createRazorpayOrderAction(payload: {
 
     subtotal = breakdown.total_price;
   } else if (payload.serviceIds && payload.serviceIds.length > 0) {
-    // Multi-service cart checkouts (simplified cumulative calculation)
     const { data: services } = await supabase
       .from("services")
       .select("id, base_price, pricing_model, pricing_config, gst_applicable")
@@ -208,29 +217,99 @@ export async function createRazorpayOrderAction(payload: {
 
     if (!services || services.length === 0) throw new Error("Services not found");
 
-    let totalPayable = 0;
+    if (payload.cartItemPrices && Object.keys(payload.cartItemPrices).length > 0) {
+      const { data: settingsRows } = await supabase
+        .from("platform_settings")
+        .select("value")
+        .eq("key", "tax_rate")
+        .limit(1)
+        .maybeSingle();
+      let taxRatePercent = 18;
+      try {
+        const rawTax = (settingsRows?.value as string)?.replace(/%/g, "").trim();
+        const parsed = parseFloat(rawTax || "18");
+        if (!isNaN(parsed)) taxRatePercent = parsed;
+      } catch { /* use default */ }
 
-    for (const s of services) {
-      const itemDuration = payload.cartItems?.find((ci) => ci.serviceId === s.id)?.selectedDuration;
-      
-      const breakdown = calculatePricingBreakdown({
-        pricingModel: (s.pricing_model || "fixed") as PricingModel,
-        basePrice: Number(s.base_price || 0),
-        pricingConfig: (s.pricing_config as unknown as PricingInput["pricingConfig"]) || {},
-        durationMinutes: itemDuration,
-        walletBalanceToUse: 0,
-        gstApplicable: s.gst_applicable,
-      });
-      totalPayable += breakdown.total_price;
+      let preGstSubtotal = 0;
+      for (const s of services) {
+        const clientPrice = Number(payload.cartItemPrices[s.id] || 0);
+        preGstSubtotal += clientPrice;
+      }
+
+      const gstTax = Math.round(preGstSubtotal * (taxRatePercent / 100));
+      let totalWithTax = preGstSubtotal + gstTax;
+      const referralDiscount = Number(payload.referralDiscount || 0);
+      totalWithTax = Math.max(0, totalWithTax - referralDiscount);
+
+      let finalPayable = totalWithTax;
+      if (payload.walletAmountToUse && payload.walletAmountToUse > 0) {
+        finalPayable = Math.max(0, totalWithTax - payload.walletAmountToUse);
+      }
+
+      subtotal = finalPayable;
+    } else {
+      let totalPayable = 0;
+
+      for (const s of services) {
+        const itemDuration = payload.cartItems?.find((ci) => ci.serviceId === s.id)?.selectedDuration;
+
+        const { data: svcRules } = await supabase
+          .from("service_pricing_rules")
+          .select("*")
+          .or(`service_id.eq.${s.id},service_id.is.null`)
+          .eq("is_active", true);
+
+        const mappedSvcRules = (svcRules || []).map((r) => {
+          const cond = (r.conditions || {}) as Record<string, unknown>;
+          return {
+            name: r.name,
+            rule_type: r.rule_type as "surcharge" | "discount",
+            amount_type: r.amount_type as "fixed" | "percentage",
+            amount_value: Number(r.amount_value),
+            is_active: r.is_active,
+            conditions: {
+              days_of_week: Array.isArray(cond.days_of_week) ? (cond.days_of_week as number[]) : undefined,
+              hours_range: Array.isArray(cond.hours_range) && cond.hours_range.length === 2 ? (cond.hours_range as [string, string]) : undefined,
+              dates: Array.isArray(cond.dates) ? (cond.dates as string[]) : undefined,
+              pincodes: Array.isArray(cond.pincodes) ? (cond.pincodes as string[]) : undefined,
+            },
+          };
+        });
+
+        const [timePart, modifier] = payload.time.split(" ");
+        const [rawH, min] = timePart.split(":").map(Number);
+        let h = rawH;
+        if (modifier === "PM" && h !== 12) h += 12;
+        if (modifier === "AM" && h === 12) h = 0;
+        const scheduledDate = new Date(`${payload.date}T${h.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}:00+05:30`);
+
+        const breakdown = calculatePricingBreakdown({
+          pricingModel: (s.pricing_model || "fixed") as PricingModel,
+          basePrice: Number(s.base_price || 0),
+          pricingConfig: (s.pricing_config as unknown as PricingInput["pricingConfig"]) || {},
+          durationMinutes: itemDuration,
+          scheduledDate,
+          pincode: addr.pincode,
+          surchargeRules: mappedSvcRules,
+          walletBalanceToUse: 0,
+          gstApplicable: s.gst_applicable,
+        });
+        totalPayable += breakdown.total_price;
+      }
+
+      let finalPayable = totalPayable;
+      if (payload.walletAmountToUse && payload.walletAmountToUse > 0) {
+        finalPayable = Math.max(0, totalPayable - payload.walletAmountToUse);
+      }
+
+      const referralDiscount = Number(payload.referralDiscount || 0);
+      if (referralDiscount > 0) {
+        finalPayable = Math.max(0, finalPayable - referralDiscount);
+      }
+
+      subtotal = finalPayable;
     }
-
-    // Apply wallet usage globally over order total
-    let finalPayable = totalPayable;
-    if (payload.walletAmountToUse && payload.walletAmountToUse > 0) {
-      finalPayable = Math.max(0, totalPayable - payload.walletAmountToUse);
-    }
-
-    subtotal = finalPayable;
   } else {
     throw new Error("No services specified");
   }
@@ -286,6 +365,7 @@ export async function verifyRazorpayPaymentAction(payload: {
   isFree?: boolean;
   serviceId?: string;
   serviceIds?: string[];
+  cartItemPrices?: Record<string, number>;
   addressId: string;
   date: string;
   time: string;
@@ -302,9 +382,10 @@ export async function verifyRazorpayPaymentAction(payload: {
   expectedBags?: string;
   selectedPackages?: string;
   couponCode?: string;
-  formAnswers?: string; // JSON String of dynamic fields
+  formAnswers?: string;
   businessName?: string;
   businessGstin?: string;
+  referralDiscount?: number;
 }): Promise<VerificationResult> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -329,6 +410,20 @@ export async function verifyRazorpayPaymentAction(payload: {
         success: false,
         error: `Payment verification failed (signature mismatch).`,
       };
+    }
+  }
+
+  // 1b. Duplicate payment guard
+  if (!payload.isFree && payload.razorpay_order_id) {
+    const { data: existingPayment } = await supabase
+      .from("payments")
+      .select("id")
+      .eq("razorpay_order_id", payload.razorpay_order_id)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingPayment) {
+      return { success: false, error: "This payment has already been processed." };
     }
   }
 
@@ -466,7 +561,7 @@ export async function verifyRazorpayPaymentAction(payload: {
     });
 
     const isInspection = service.pricing_model === "inspection";
-    const bookingStatus = isInspection ? "pending" : "pending"; // Standard startup is pending, but triggers autoassign
+    const bookingStatus = isInspection ? "pending" : "pending";
 
     // Create booking
     const { data: booking, error: bookingError } = await supabase
@@ -564,7 +659,7 @@ export async function verifyRazorpayPaymentAction(payload: {
     }
 
     // Record Payment
-    await supabase.from("payments").insert({
+    const { error: paymentError } = await supabase.from("payments").insert({
       customer_id: user.id,
       booking_id: booking.id,
       amount: breakdown.total_price,
@@ -574,8 +669,12 @@ export async function verifyRazorpayPaymentAction(payload: {
       razorpay_signature: payload.razorpay_signature ?? null,
     });
 
+    if (paymentError) {
+      console.error("[payment] Payment record insert failed:", paymentError);
+    }
+
     // Log event
-    await supabase.from("booking_events").insert({
+    const { error: eventError } = await supabase.from("booking_events").insert({
       booking_id: booking.id,
       event_type: "BOOKING_CREATED",
       actor: "USER",
@@ -587,6 +686,10 @@ export async function verifyRazorpayPaymentAction(payload: {
         payment_verified: true,
       },
     });
+
+    if (eventError) {
+      console.error("[payment] Booking event insert failed:", eventError);
+    }
 
     // Trigger Partner Auto-Assignment Dispatch
     void triggerDispatchBatch(booking.id, 1);
@@ -610,7 +713,6 @@ export async function verifyRazorpayPaymentAction(payload: {
 
     return { success: true, bookingId: booking.id };
   } else if (payload.serviceIds && payload.serviceIds.length > 0) {
-    // Multi-service Cart Checkout
     const { data: dbServices } = await supabase
       .from("services")
       .select("id, title, base_price, pricing_model, pricing_config, gst_applicable")
@@ -624,25 +726,127 @@ export async function verifyRazorpayPaymentAction(payload: {
     let totalOrderAmount = 0;
     const serviceBreakdowns: Record<string, ReturnType<typeof calculatePricingBreakdown>> = {};
 
-    for (const s of dbServices) {
-      const itemDuration = payload.cartItems?.find((ci) => ci.serviceId === s.id)?.selectedDuration;
-      
-      const breakdown = calculatePricingBreakdown({
-        pricingModel: (s.pricing_model || "fixed") as PricingModel,
-        basePrice: Number(s.base_price || 0),
-        pricingConfig: (s.pricing_config as unknown as PricingInput["pricingConfig"]) || {},
-        durationMinutes: itemDuration,
-        walletBalanceToUse: 0,
-        gstApplicable: s.gst_applicable,
-      });
+    if (payload.cartItemPrices && Object.keys(payload.cartItemPrices).length > 0) {
+      const { data: settingsRows } = await supabase
+        .from("platform_settings")
+        .select("value")
+        .eq("key", "tax_rate")
+        .limit(1)
+        .maybeSingle();
+      let taxRatePercent = 18;
+      try {
+        const rawTax = (settingsRows?.value as string)?.replace(/%/g, "").trim();
+        const parsed = parseFloat(rawTax || "18");
+        if (!isNaN(parsed)) taxRatePercent = parsed;
+      } catch { /* use default */ }
 
-      totalOrderAmount += breakdown.total_price;
-      serviceBreakdowns[s.id] = breakdown;
+      let preGstSubtotal = 0;
+      for (const s of dbServices) {
+        preGstSubtotal += Number(payload.cartItemPrices[s.id] || 0);
+      }
+
+      const gstTax = Math.round(preGstSubtotal * (taxRatePercent / 100));
+      let totalWithTax = preGstSubtotal + gstTax;
+      const referralDiscount = Number(payload.referralDiscount || 0);
+      totalWithTax = Math.max(0, totalWithTax - referralDiscount);
+
+      const walletAmountToUse = Number(payload.walletAmountToUse || 0);
+      totalOrderAmount = Math.max(0, totalWithTax - walletAmountToUse);
+
+      for (const s of dbServices) {
+        const itemBase = Number(payload.cartItemPrices[s.id] || 0);
+        const itemGst = Math.round(itemBase * (taxRatePercent / 100));
+        serviceBreakdowns[s.id] = {
+          base_price: itemBase,
+          hourly_price: 0,
+          area_price: 0,
+          quantity_price: 0,
+          distance_price: 0,
+          inspection_fee: 0,
+          travel_fee: 0,
+          surcharges: [],
+          addons_total: 0,
+          addons_breakdown: [],
+          gst_amount: itemGst,
+          discount_amount: referralDiscount,
+          coupon_discount: 0,
+          wallet_discount: 0,
+          total_price: itemBase + itemGst,
+        };
+      }
+    } else {
+      for (const s of dbServices) {
+        const itemDuration = payload.cartItems?.find((ci) => ci.serviceId === s.id)?.selectedDuration;
+
+        const { data: svcRules } = await supabase
+          .from("service_pricing_rules")
+          .select("*")
+          .or(`service_id.eq.${s.id},service_id.is.null`)
+          .eq("is_active", true);
+
+        const mappedSvcRules = (svcRules || []).map((r) => {
+          const cond = (r.conditions || {}) as Record<string, unknown>;
+          return {
+            name: r.name,
+            rule_type: r.rule_type as "surcharge" | "discount",
+            amount_type: r.amount_type as "fixed" | "percentage",
+            amount_value: Number(r.amount_value),
+            is_active: r.is_active,
+            conditions: {
+              days_of_week: Array.isArray(cond.days_of_week) ? (cond.days_of_week as number[]) : undefined,
+              hours_range: Array.isArray(cond.hours_range) && cond.hours_range.length === 2 ? (cond.hours_range as [string, string]) : undefined,
+              dates: Array.isArray(cond.dates) ? (cond.dates as string[]) : undefined,
+              pincodes: Array.isArray(cond.pincodes) ? (cond.pincodes as string[]) : undefined,
+            },
+          };
+        });
+
+        const breakdown = calculatePricingBreakdown({
+          pricingModel: (s.pricing_model || "fixed") as PricingModel,
+          basePrice: Number(s.base_price || 0),
+          pricingConfig: (s.pricing_config as unknown as PricingInput["pricingConfig"]) || {},
+          durationMinutes: itemDuration,
+          scheduledDate: timestamp,
+          pincode: addr.pincode,
+          surchargeRules: mappedSvcRules,
+          walletBalanceToUse: 0,
+          gstApplicable: s.gst_applicable,
+        });
+
+        totalOrderAmount += breakdown.total_price;
+        serviceBreakdowns[s.id] = breakdown;
+      }
+
+      const walletAmountToUse = Number(payload.walletAmountToUse || 0);
+      const referralDiscount = Number(payload.referralDiscount || 0);
+      totalOrderAmount = Math.max(0, totalOrderAmount - walletAmountToUse);
+      if (referralDiscount > 0) {
+        totalOrderAmount = Math.max(0, totalOrderAmount - referralDiscount);
+      }
     }
 
-    // Apply wallet balance globally
     const walletAmountToUse = Number(payload.walletAmountToUse || 0);
-    const finalOrderAmount = Math.max(0, totalOrderAmount - walletAmountToUse);
+    const referralDiscount = Number(payload.referralDiscount || 0);
+    const finalOrderAmount = totalOrderAmount;
+
+    // Validate against Razorpay order amount
+    if (!payload.isFree && payload.razorpay_order_id) {
+      const rzKeySecret = process.env.RAZORPAY_KEY_SECRET?.trim();
+      if (rzKeySecret) {
+        const authHeader = "Basic " + Buffer.from(process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.trim() + ":" + rzKeySecret).toString("base64");
+        const rzRes = await fetch(`https://api.razorpay.com/v1/orders/${payload.razorpay_order_id}`, {
+          headers: { Authorization: authHeader },
+        });
+        if (rzRes.ok) {
+          const rzOrder = await rzRes.json();
+          const rzAmount = Number(rzOrder.amount) / 100;
+          if (Math.abs(rzAmount - finalOrderAmount) > 1) {
+            console.error(`[payment] Amount mismatch: Razorpay order ₹${rzAmount} vs computed ₹${finalOrderAmount}`);
+            return { success: false, error: "Payment amount mismatch detected. Please contact support." };
+          }
+        }
+      }
+    }
 
     // Create Order
     const { data: order, error: orderError } = await supabase
@@ -652,7 +856,6 @@ export async function verifyRazorpayPaymentAction(payload: {
         status: "pending",
         total_amount: finalOrderAmount,
         city: addr.city,
-        area: typedAddr.area ?? null,
         address: addr.formatted_address,
         pincode: addr.pincode,
         scheduled_date: timestamp.toISOString(),
@@ -663,11 +866,10 @@ export async function verifyRazorpayPaymentAction(payload: {
       .single();
 
     if (orderError || !order) {
-      console.error("[payment] Order creation failed:", orderError);
-      return { success: false, error: "Failed to create order." };
+      console.error("[payment] Order creation failed:", JSON.stringify(orderError));
+      return { success: false, error: `Failed to create order. ${orderError?.message || ""}` };
     }
 
-    // Deduct from wallet if used
     if (walletAmountToUse > 0) {
       const { data: walletRes, error: walletError } = await supabase.rpc("use_wallet_balance", {
         p_user_id: user.id,
@@ -682,8 +884,7 @@ export async function verifyRazorpayPaymentAction(payload: {
       }
     }
 
-    // Record Payment
-    await supabase.from("payments").insert({
+    const { error: orderPaymentError } = await supabase.from("payments").insert({
       customer_id: user.id,
       order_id: order.id,
       amount: finalOrderAmount,
@@ -693,7 +894,10 @@ export async function verifyRazorpayPaymentAction(payload: {
       razorpay_signature: payload.razorpay_signature ?? null,
     });
 
-    // Create individual bookings per service in cart
+    if (orderPaymentError) {
+      console.error("[payment] Order payment record insert failed:", orderPaymentError);
+    }
+
     for (const service of dbServices) {
       const breakdown = serviceBreakdowns[service.id];
       const itemDuration = payload.cartItems?.find((ci) => ci.serviceId === service.id)?.selectedDuration || null;
@@ -716,15 +920,18 @@ export async function verifyRazorpayPaymentAction(payload: {
           selected_duration_minutes: itemDuration,
           base_price: breakdown.base_price,
           final_price: breakdown.total_price,
+          wallet_discount_applied: breakdown.wallet_discount,
           business_name: payload.businessName || null,
           business_gstin: payload.businessGstin || null,
         })
         .select("id")
         .single();
 
-      if (bookingError || !booking) continue;
+      if (bookingError || !booking) {
+        console.error("[payment] Cart booking creation failed:", bookingError);
+        continue;
+      }
 
-      // Save breakdown
       await supabase.from("booking_pricing").insert({
         booking_id: booking.id,
         base_price: breakdown.base_price,
@@ -744,7 +951,6 @@ export async function verifyRazorpayPaymentAction(payload: {
         total_price: breakdown.total_price,
       });
 
-      // Save initial Booking Status History
       await supabase.from("booking_status_history").insert({
         booking_id: booking.id,
         status: "pending",
@@ -752,8 +958,7 @@ export async function verifyRazorpayPaymentAction(payload: {
         remarks: "Booking created in cart checkout",
       });
 
-      // Log event
-      await supabase.from("booking_events").insert({
+      const { error: cartEventError } = await supabase.from("booking_events").insert({
         booking_id: booking.id,
         event_type: "BOOKING_CREATED",
         actor: "USER",
@@ -762,14 +967,17 @@ export async function verifyRazorpayPaymentAction(payload: {
           service_id: service.id,
           amount: breakdown.total_price,
           order_id: order.id,
+          referral_discount: referralDiscount,
           payment_verified: true,
         },
       });
 
-      // Trigger Partner Auto-Assignment Dispatch
+      if (cartEventError) {
+        console.error("[payment] Cart booking event insert failed:", cartEventError);
+      }
+
       void triggerDispatchBatch(booking.id, 1);
 
-      // Notify Customer
       void notifyCustomer(
         user.id,
         "Booking Confirmed & Paid!",
@@ -778,7 +986,6 @@ export async function verifyRazorpayPaymentAction(payload: {
         { booking_id: booking.id, service_title: service.title }
       );
 
-      // Notify Admins
       void notifyAdmins(
         "New Booking Placed",
         `A new booking for ${service.title} has been placed by ${user.email}.`,

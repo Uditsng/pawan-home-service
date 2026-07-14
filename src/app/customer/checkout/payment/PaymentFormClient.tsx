@@ -153,6 +153,7 @@ export default function PaymentFormClient({
           destination: destination,
           expectedBags: expectedBags,
           selectedPackages: selectedPackages,
+          referralDiscount: referralDiscount,
         });
 
         if (rzOrder.freeOrder) {
@@ -176,6 +177,7 @@ export default function PaymentFormClient({
             destination: destination,
             expectedBags: expectedBags,
             selectedPackages: selectedPackages,
+            referralDiscount: referralDiscount,
             businessName: bookAsBusiness ? businessName : undefined,
             businessGstin: bookAsBusiness ? businessGstin : undefined,
           });
@@ -185,6 +187,13 @@ export default function PaymentFormClient({
           } else {
             setErrorMessage(verifyRes.error || "Failed to confirm booking.");
           }
+          return;
+        }
+
+        if (Math.abs(rzOrder.amount - finalPrice) > 1) {
+          setErrorMessage(
+            `Price updated by server (was ₹${finalPrice}, now ₹${rzOrder.amount}). Please refresh and try again.`
+          );
           return;
         }
 
@@ -233,44 +242,42 @@ export default function PaymentFormClient({
             },
           },
           handler: async function (response: RazorpaySuccessResponse) {
-            startTransition(async () => {
-              try {
-                // 3. Verify Razorpay payment signature
-                const verifyRes = await verifyRazorpayPaymentAction({
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature,
-                  serviceId: service.id,
-                  addressId: addressId,
-                  date: date,
-                  time: time,
-                  walletAmountToUse: walletApplied,
-                  duration: duration,
-                  areaSqft: areaSqft,
-                  quantity: quantity,
-                  distanceKm: distanceKm,
-                  variantId: variantId,
-                  addons: addons,
-                  couponCode: couponCode,
-                  formAnswers: formAnswers,
-                  meetingLocation: meetingLocation,
-                  destination: destination,
-                  expectedBags: expectedBags,
-                  selectedPackages: selectedPackages,
-                  businessName: bookAsBusiness ? businessName : undefined,
-                  businessGstin: bookAsBusiness ? businessGstin : undefined,
-                });
+            try {
+              const verifyRes = await verifyRazorpayPaymentAction({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                serviceId: service.id,
+                addressId: addressId,
+                date: date,
+                time: time,
+                walletAmountToUse: walletApplied,
+                duration: duration,
+                areaSqft: areaSqft,
+                quantity: quantity,
+                distanceKm: distanceKm,
+                variantId: variantId,
+                addons: addons,
+                couponCode: couponCode,
+                formAnswers: formAnswers,
+                meetingLocation: meetingLocation,
+                destination: destination,
+                expectedBags: expectedBags,
+                selectedPackages: selectedPackages,
+                referralDiscount: referralDiscount,
+                businessName: bookAsBusiness ? businessName : undefined,
+                businessGstin: bookAsBusiness ? businessGstin : undefined,
+              });
 
-                if (verifyRes.success && verifyRes.bookingId) {
-                  router.push(`/customer/checkout/success?bookingId=${verifyRes.bookingId}`);
-                } else {
-                  setErrorMessage(verifyRes.error || "Payment verification failed.");
-                }
-              } catch (verifyErr) {
-                console.error("Verification error:", verifyErr);
-                setErrorMessage("An error occurred during payment verification.");
+              if (verifyRes.success && verifyRes.bookingId) {
+                router.push(`/customer/checkout/success?bookingId=${verifyRes.bookingId}`);
+              } else {
+                setErrorMessage(verifyRes.error || "Payment verification failed.");
               }
-            });
+            } catch (verifyErr) {
+              console.error("Verification error:", verifyErr);
+              setErrorMessage("An error occurred during payment verification.");
+            }
           },
           modal: {
             ondismiss: function () {

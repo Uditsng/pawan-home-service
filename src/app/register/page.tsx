@@ -95,7 +95,6 @@ function Countdown({ seconds, onExpire }: { seconds: number; onExpire: () => voi
 type Step = "details" | "otp";
 
 export default function RegisterPage() {
-  const isBypassOtp = process.env.NEXT_PUBLIC_BYPASS_OTP === "true";
   const router = useRouter();
   const [step, setStep] = useState<Step>("details");
   const [role, setRole] = useState<"customer" | "partner">("customer");
@@ -131,33 +130,6 @@ export default function RegisterPage() {
       setStep("otp");
     }
   }, [fullName, email, password, phone]);
-
-  const handleDirectRegister = useCallback(async () => {
-    setError("");
-    // Basic client-side validation
-    if (!fullName.trim()) return setError("Full name is required.");
-    if (!email.includes("@")) return setError("Enter a valid email address.");
-    if (password.length < 8) return setError("Password must be at least 8 characters.");
-
-    setLoading(true);
-    const fd = new FormData();
-    fd.set("phone", phone);
-    fd.set("otp", "123456"); // Dummy OTP for bypass
-    fd.set("email", email);
-    fd.set("password", password);
-    fd.set("full_name", fullName);
-    fd.set("role", role);
-    if (referralCode.trim()) fd.set("referral_code", referralCode.trim().toUpperCase());
-
-    const result = await verifyOtpAndRegister(fd);
-    setLoading(false);
-
-    if (!result.success) {
-      setError(result.error || "Registration failed.");
-    } else if (result.redirectTo) {
-      router.push(result.redirectTo);
-    }
-  }, [fullName, email, password, phone, role, referralCode, router]);
 
   const handleResend = useCallback(async () => {
     setError("");
@@ -364,7 +336,7 @@ export default function RegisterPage() {
                   {/* Send OTP or Register Button */}
                   <Button
                     type="button"
-                    onClick={isBypassOtp ? handleDirectRegister : handleSendOtp}
+                    onClick={handleSendOtp}
                     disabled={loading}
                     variant="gradient"
                     className="w-full py-4 bg-linear-to-br from-secondary to-success text-primary font-extrabold text-[15px] rounded-xl hover:scale-[1.02] active:scale-95 shadow-[0_8px_20px_rgba(42,245,152,0.3)] hover:shadow-[0_15px_30px_rgba(42,245,152,0.4)] transition-all duration-300 border-none disabled:opacity-60 disabled:cursor-not-allowed"
@@ -372,14 +344,12 @@ export default function RegisterPage() {
                     {loading ? (
                       <span className="flex items-center gap-2">
                         <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
-                        {isBypassOtp ? "Creating account…" : "Sending OTP…"}
+                        Sending OTP…
                       </span>
                     ) : (
                       <span className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[18px]">
-                          {isBypassOtp ? "how_to_reg" : "send"}
-                        </span>
-                        {isBypassOtp ? "Register" : "Send OTP to Mobile"}
+                        <span className="material-symbols-outlined text-[18px]">send</span>
+                        Send OTP to Mobile
                       </span>
                     )}
                   </Button>

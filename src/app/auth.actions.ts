@@ -38,14 +38,6 @@ export async function sendRegistrationOtp(
     return { success: false, error: "Invalid phone number format." };
   }
 
-  //   const sendLimit = await otpSendLimiter.check(e164);
-  // if (!sendLimit.allowed) {
-  //   return {
-  //     success: false,
-  //     error: `Too many OTP requests. Please wait ${sendLimit.retryAfter} seconds before trying again.`,
-  //   };
-  // }
-
   // Check if phone already registered
   const supabase = await createClient();
   const { data: existing } = await supabase
@@ -56,12 +48,6 @@ export async function sendRegistrationOtp(
 
   if (existing) {
     return { success: false, error: "This mobile number is already registered. Please login instead." };
-  }
-
-  // Bypass OTP check if configured (e.g. for testing with trial Twilio accounts)
-  const isBypass = process.env.NEXT_PUBLIC_BYPASS_OTP === "true";
-  if (isBypass) {
-    return { success: true };
   }
 
   // Rate limit per phone
@@ -113,27 +99,21 @@ export async function verifyOtpAndRegister(formData: FormData): Promise<{ succes
     return { success: false, error: "Invalid phone number." };
   }
 
-  // Verify OTP with Twilio, or bypass if configured
-  const isBypass = process.env.NEXT_PUBLIC_BYPASS_OTP === "true";
-  let isValid: boolean = false;
-  if (isBypass) {
-    isValid = true;
-  } else {
-    // Rate limit OTP verify attempts
-    const verifyLimit = await otpVerifyLimiter.check(e164);
-    if (!verifyLimit.allowed) {
-      return {
-        success: false,
-        error: `Too many verification attempts. Please wait ${verifyLimit.retryAfter} seconds.`,
-      };
-    }
+  // Rate limit OTP verify attempts
+  const verifyLimit = await otpVerifyLimiter.check(e164);
+  if (!verifyLimit.allowed) {
+    return {
+      success: false,
+      error: `Too many verification attempts. Please wait ${verifyLimit.retryAfter} seconds.`,
+    };
+  }
 
-    // Verify OTP with Twilio (server-side, never trust client)
-    try {
-      isValid = await verifyOtp(e164, otp.trim());
-    } catch (err) {
-      return { success: false, error: `OTP verification failed: ${(err as Error).message}` };
-    }
+  // Verify OTP with Twilio (server-side, never trust client)
+  let isValid: boolean;
+  try {
+    isValid = await verifyOtp(e164, otp.trim());
+  } catch (err) {
+    return { success: false, error: `OTP verification failed: ${(err as Error).message}` };
   }
 
   if (!isValid) {

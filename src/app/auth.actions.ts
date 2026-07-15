@@ -150,7 +150,6 @@ export async function verifyOtpAndRegister(formData: FormData): Promise<{ succes
     phone: e164,
     role,
     status,
-    is_available: role === "partner" ? true : undefined,
     kyc_status: role === "partner" ? "draft" : null,
   });
 

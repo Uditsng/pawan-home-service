@@ -70,7 +70,7 @@ export async function completeOnboarding(formData: FormData) {
   // 3. Update profile status to active
   const { error: profileError } = await supabase
     .from('profiles')
-    .update({ status: 'active' })
+    .update({ status: 'active', is_available: true })
     .eq('id', user.id);
 
   if (profileError) {

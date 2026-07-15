@@ -64,6 +64,17 @@ export async function updateBookingStatusAction(
     handleDatabaseError(error);
   }
 
+  if (status === "completed") {
+    const { data: completedBooking } = await supabase
+      .from("bookings")
+      .select("partner_id")
+      .eq("id", bookingId)
+      .single();
+    if (completedBooking?.partner_id) {
+      void supabase.from("profiles").update({ is_available: true }).eq("id", completedBooking.partner_id);
+    }
+  }
+
   // Log booking event for audit trail
   await supabase.from("booking_events").insert({
     booking_id: bookingId,

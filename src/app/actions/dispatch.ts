@@ -45,13 +45,18 @@ export async function triggerDispatchBatch(
     );
 
     if (rpcError) {
-      console.error("[dispatch] get_dispatch_batch error:", rpcError.message);
-      return { dispatched: 0, error: rpcError.message };
+      console.error("[dispatch] RPC error:", rpcError);
+      return { dispatched: 0, error: "Failed to dispatch booking. Please try again." };
     }
 
     if (!partners || partners.length === 0) {
-      // No eligible partners found for this tier — booking stays pending for admin
-      console.log(`[dispatch] No partners found for booking ${bookingId} tier ${tier}`);
+      console.warn("[dispatch] Zero eligible partners for booking", bookingId, "tier", tier);
+      const { data: b } = await serviceClient
+        .from("bookings")
+        .select("service_id, pincode, area")
+        .eq("id", bookingId)
+        .single();
+      if (b) console.warn("[dispatch] Booking details:", b);
       return { dispatched: 0 };
     }
 
@@ -127,10 +132,6 @@ export async function triggerDispatchBatch(
         recipientRole: "partner",
       });
     }
-
-    console.log(
-      `[dispatch] Tier ${tier}: dispatched to ${partnerIds.length} partners for booking ${bookingId}`
-    );
 
     return { dispatched: partnerIds.length };
   } catch (err) {

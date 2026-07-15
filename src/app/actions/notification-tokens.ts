@@ -29,8 +29,6 @@ export async function registerTokenAction(
   platform: "web" | "android" | "ios" = "web",
   accessToken?: string
 ): Promise<{ success: boolean; error?: string }> {
-  console.log(`[notification-tokens] registerTokenAction called token=${maskFcmToken(fcmToken)} platform=${platform}`);
-
   if (!fcmToken || typeof fcmToken !== "string" || fcmToken.trim().length === 0) {
     console.warn("[notification-tokens] Invalid FCM token detected in registerTokenAction.");
     return { success: false, error: "Invalid FCM token." };
@@ -62,11 +60,6 @@ export async function registerTokenAction(
     authError = aErr;
   }
 
-  console.log("[notification-tokens] auth.getUser result", {
-    user: user ? { id: user.id, email: user.email } : null,
-    authError: authError?.message,
-  });
-
   if (!user) {
     console.warn("[notification-tokens] registerTokenAction failed because auth.getUser returned no user.");
     return { success: false, error: "Not authenticated." };
@@ -80,8 +73,6 @@ export async function registerTokenAction(
 
   if (existingTokensError) {
     console.error("[notification-tokens] Failed to read existing notification_tokens:", existingTokensError.message);
-  } else {
-    console.log("[notification-tokens] Existing notification_tokens for user", user.id, existingTokens);
   }
 
   const { data: existingDeviceTokens, error: existingDeviceTokensError } = await supabaseAdmin
@@ -92,8 +83,6 @@ export async function registerTokenAction(
 
   if (existingDeviceTokensError) {
     console.error("[notification-tokens] Failed to read existing device_tokens:", existingDeviceTokensError.message);
-  } else {
-    console.log("[notification-tokens] Existing device_tokens for user", user.id, existingDeviceTokens);
   }
 
   // ── Step 1: Evict this token from any OTHER user account ─────────────────
@@ -129,8 +118,6 @@ export async function registerTokenAction(
     .eq("user_id", user.id)
     .eq("platform", platform)
     .neq("device_token", fcmToken.trim());
-
-  console.log(`[notification-tokens] Token hygiene complete for user ${user.id}. Registering ${maskFcmToken(fcmToken)}...`);
 
   // ── Step 3: Upsert the current token ─────────────────────────────────────
   const { error } = await supabaseAdmin.from("notification_tokens").upsert(
@@ -226,8 +213,6 @@ export async function deleteTokenAction(
     .delete()
     .eq("user_id", userId)
     .eq("device_token", fcmToken.trim());
-
-  console.log(`[notification-tokens] Token deleted for user ${userId}`);
 
   return { success: true };
 }

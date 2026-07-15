@@ -131,7 +131,7 @@ export default function LandingGridClient({ categories, availableServices }: Lan
               onClick={() => {
                 const catSlug = cat.category_name
                   .toLowerCase()
-                  .replace(/\s+/g, "-")
+                  .replace(/[,\s]+/g, "-")
                   .replace(/&/g, "and");
                 router.push(`/services/${catSlug}`);
               }}

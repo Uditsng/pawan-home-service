@@ -318,9 +318,11 @@ export function CreateServiceForm({
   const removeFaq = (i: number) => setFaqs((prev) => prev.filter((_, idx) => idx !== i));
 
   // Save new category
+  const [catError, setCatError] = useState<string | null>(null);
+
   const handleSaveCategory = async (name: string) => {
     const result = await addCategoryAction(name);
-    if ("error" in result) { alert(result.error); return; }
+    if ("error" in result) { setCatError(result.error); setTimeout(() => setCatError(null), 3000); return; }
     setLocalCategories((prev) => [...prev, { id: result.id, category_name: result.category_name, subcategories: [] }]);
     setShowAddCategory(false);
   };
@@ -328,7 +330,7 @@ export function CreateServiceForm({
   // Save new subcategory
   const handleSaveSubcategory = async (categoryId: string, name: string, iconName: string) => {
     const result = await addSubcategoryAction(categoryId, name, iconName);
-    if ("error" in result) { alert(result.error); return; }
+    if ("error" in result) { setCatError(result.error); setTimeout(() => setCatError(null), 3000); return; }
     setLocalCategories((prev) =>
       prev.map((cat) =>
         cat.id === categoryId

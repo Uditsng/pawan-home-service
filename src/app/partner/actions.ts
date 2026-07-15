@@ -308,6 +308,8 @@ export async function completeJob(
     };
   }
 
+  void supabase.from("profiles").update({ is_available: true }).eq("id", user.id);
+
   await logBookingEvent(supabase, bookingId, "JOB_COMPLETED", "PARTNER", {
     partner_id: user.id,
   });
@@ -398,6 +400,8 @@ export async function cancelJob(
   if (error) {
     return { success: false, error: "Failed to cancel the booking." };
   }
+
+  void supabase.from("profiles").update({ is_available: true }).eq("id", user.id);
 
   // Update partner cancellation metrics
   if (booking.partner_id === user.id) {
@@ -852,7 +856,6 @@ export async function verifyCompletionOtp(
     .eq("id", bookingId);
 
   if (updateError) {
-    // Log the real database error for debugging (visible in server logs / Vercel logs)
     console.error(
       "[verifyCompletionOtp] DB update failed for booking", bookingId,
       "|", updateError.code, "|", updateError.message,
@@ -866,6 +869,8 @@ export async function verifyCompletionOtp(
           : "Failed to mark booking completed. Please try again or contact support.",
     };
   }
+
+  void supabase.from("profiles").update({ is_available: true }).eq("id", user.id);
 
   await logBookingEvent(supabase, bookingId, "COMPLETION_OTP_VERIFIED", "SYSTEM");
   await logBookingEvent(supabase, bookingId, "JOB_COMPLETED", "PARTNER", { partner_id: user.id });
@@ -992,9 +997,12 @@ export async function toggleOnlineStatus(
 
   const newStatus = goOnline ? "active" : "offline";
 
+  const updateData: Record<string, unknown> = { status: newStatus };
+  if (goOnline) updateData.is_available = true;
+
   const { error } = await supabase
     .from("profiles")
-    .update({ status: newStatus })
+    .update(updateData)
     .eq("id", user.id);
 
   if (error) {

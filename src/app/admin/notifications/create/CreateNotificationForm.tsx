@@ -228,7 +228,7 @@ export function CreateNotificationForm({
         router.refresh();
       }
     } catch (err) {
-      alert((err as Error).message);
+      console.error("Failed to create notification:", err);
     } finally {
       setLoading(false);
     }

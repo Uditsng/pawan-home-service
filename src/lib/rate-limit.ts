@@ -51,3 +51,9 @@ export const otpSendLimiter = new RateLimiter({ maxRequests: 3, windowMs: 10 * 6
 
 /** Max 5 OTP verification attempts per phone number per 10 minutes */
 export const otpVerifyLimiter = new RateLimiter({ maxRequests: 5, windowMs: 10 * 60 * 1000 });
+
+/** Max 5 login attempts per phone number per minute (brute-force protection) */
+export const loginLimiter = new RateLimiter({ maxRequests: 5, windowMs: 60 * 1000 });
+
+/** Max 3 password reset OTP sends per phone number per hour */
+export const passwordResetLimiter = new RateLimiter({ maxRequests: 3, windowMs: 60 * 60 * 1000 });

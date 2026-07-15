@@ -75,7 +75,8 @@ export async function saveAddress(payload: SaveAddressPayload) {
     .single();
 
   if (error) {
-    return { error: error.message };
+    console.error("Address creation error:", error.message);
+    return { error: "Failed to save address. Please try again." };
   }
 
   revalidatePath("/customer/profile/addresses");
@@ -110,7 +111,8 @@ export async function deleteAddress(addressId: string) {
     .eq("user_id", user.id);
 
   if (error) {
-    return { error: error.message };
+    console.error("Address deletion error:", error.message);
+    return { error: "Failed to delete address. Please try again." };
   }
 
   // If deleted address was default, set the most recent one as default
@@ -161,7 +163,8 @@ export async function setDefaultAddress(addressId: string) {
     .eq("user_id", user.id);
 
   if (error) {
-    return { error: error.message };
+    console.error("Address update error:", error.message);
+    return { error: "Failed to update address. Please try again." };
   }
 
   revalidatePath("/customer/profile/addresses");

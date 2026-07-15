@@ -271,7 +271,7 @@ export function EditNotificationForm({
         router.refresh();
       }
     } catch (err) {
-      alert((err as Error).message);
+      console.error("Failed to update notification:", err);
     } finally {
       setLoading(false);
     }

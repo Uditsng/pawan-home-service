@@ -102,12 +102,12 @@ export function CampaignDetailsClient({
         router.refresh();
       }
     } catch (err) {
-      alert("Duplication failed: " + (err as Error).message);
+      console.error("Duplication failed:", err);
     } finally {
       setLoading(false);
     }
   };
-
+  
   // Cancel Scheduled handler
   const handleCancelScheduled = async () => {
     if (!confirm("Are you sure you want to cancel this scheduled dispatch?")) return;
@@ -116,7 +116,7 @@ export function CampaignDetailsClient({
       await cancelScheduledNotification(campaign.id);
       router.refresh();
     } catch (err) {
-      alert("Cancellation failed: " + (err as Error).message);
+      console.error("Cancellation failed:", err);
     } finally {
       setLoading(false);
     }

@@ -128,7 +128,7 @@ export function TemplatesList({
       setTemplates(prev => prev.filter(t => t.id !== id));
       router.refresh();
     } catch (err) {
-      alert("Delete failed: " + (err as Error).message);
+      console.error("Delete failed:", err);
     } finally {
       setLoading(false);
     }
@@ -162,7 +162,7 @@ export function TemplatesList({
         router.refresh();
       }
     } catch (err) {
-      alert("Save failed: " + (err as Error).message);
+      console.error("Save failed:", err);
     } finally {
       setLoading(false);
     }

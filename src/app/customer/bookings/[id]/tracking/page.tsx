@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
+import type { BookingExtension } from "@/lib/types";
 import TrackingClient from "./TrackingClient";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -159,7 +160,7 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
     .eq("booking_id", bookingId)
     .order("created_at", { ascending: false });
 
-  const extensions = (extensionsData || []) as any[];
+  const extensions: BookingExtension[] = (extensionsData || []) as BookingExtension[];
 
   return (
     <TrackingClient

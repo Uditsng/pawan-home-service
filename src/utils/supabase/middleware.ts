@@ -1,21 +1,11 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { getDashboardForRole } from './roles'
 
 interface MiddlewareProfile {
   role: string | null;
   status: string | null;
   kyc_status?: string | null;
-}
-
-// ─── Centralized role → dashboard mapping ─────────────────────
-const ROLE_DASHBOARDS: Record<string, string> = {
-  admin: '/admin/dashboard',
-  partner: '/partner/dashboard',
-  customer: '/customer/dashboard',
-}
-
-function getDashboardForRole(role: string | undefined): string {
-  return ROLE_DASHBOARDS[role ?? 'customer'] ?? '/customer/dashboard'
 }
 
 // ─── Route classification helpers ─────────────────────────────

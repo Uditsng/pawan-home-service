@@ -7,18 +7,28 @@ import { revalidatePath } from "next/cache";
 import { sendNotification } from "@/lib/notifications";
 
 // Helper to check for missing database tables
-function handleDbError(error: any) {
+function handleDbError(error: unknown) {
   if (!error) return;
-  const errMsg = error.message || "";
-  const isMissing = error.code === '42P01' || errMsg.includes('relation "admin_notifications" does not exist') || errMsg.includes('relation "notification_logs" does not exist') || errMsg.includes('relation "notification_templates" does not exist') || errMsg.includes('Could not find the table') || errMsg.includes('schema cache');
-  
+  const errMsg = error instanceof Error ? error.message : String(error);
+  const errCode =
+    typeof error === "object" && error !== null && "code" in error
+      ? String((error as Record<string, unknown>).code)
+      : undefined;
+  const isMissing =
+    errCode === '42P01' ||
+    errMsg.includes('relation "admin_notifications" does not exist') ||
+    errMsg.includes('relation "notification_logs" does not exist') ||
+    errMsg.includes('relation "notification_templates" does not exist') ||
+    errMsg.includes('Could not find the table') ||
+    errMsg.includes('schema cache');
+
   if (isMissing) {
     throw new Error(
       "DATABASE_SCHEMA_ERROR: The notification module database tables do not exist. " +
       "Please execute the DDL queries in the migration file supabase/migrations/20260630010000_notification_management.sql inside your Supabase Dashboard SQL Editor."
     );
   }
-  throw new Error(error.message);
+  throw new Error(errMsg);
 }
 
 /**

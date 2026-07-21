@@ -37,7 +37,7 @@ async function getAuthenticatedUser() {
 // ─── Helper: Log a booking event ─────────────────────────────
 
 async function logBookingEvent(
-  supabase: any,
+  supabase: import("@supabase/supabase-js").SupabaseClient,
   bookingId: string,
   eventType: string,
   actor: "USER" | "PARTNER" | "SYSTEM",
@@ -170,9 +170,10 @@ export async function requestExtensionAction(
     revalidatePath("/partner", "layout");
     revalidatePath("/customer/bookings/[id]/tracking", "page");
     return { success: true, extensionId: extension.id };
-  } catch (err: any) {
-    console.error("[extensions] request extension error:", err.message);
-    return { success: false, error: err.message || "An unexpected error occurred." };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[extensions] request extension error:", message);
+    return { success: false, error: message || "An unexpected error occurred." };
   }
 }
 
@@ -246,9 +247,10 @@ export async function rejectExtensionAction(
     revalidatePath("/partner", "layout");
     revalidatePath("/customer/bookings/[id]/tracking", "page");
     return { success: true };
-  } catch (err: any) {
-    console.error("[extensions] reject extension error:", err.message);
-    return { success: false, error: err.message || "An unexpected error occurred." };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[extensions] reject extension error:", message);
+    return { success: false, error: message || "An unexpected error occurred." };
   }
 }
 
@@ -477,9 +479,10 @@ export async function verifyExtensionPaymentAction(payload: {
     revalidatePath("/partner", "layout");
     revalidatePath("/customer/bookings/[id]/tracking", "page");
     return { success: true };
-  } catch (err: any) {
-    console.error("[extensions] verify extension payment error:", err.message);
-    return { success: false, error: err.message || "An unexpected error occurred." };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[extensions] verify extension payment error:", message);
+    return { success: false, error: message || "An unexpected error occurred." };
   }
 }
 
@@ -554,7 +557,8 @@ export async function notifyTimeStatusAction(
     revalidatePath("/customer/bookings/[id]/tracking", "page");
     revalidatePath("/partner", "layout");
     return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err.message };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { success: false, error: message };
   }
 }

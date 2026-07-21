@@ -33,6 +33,7 @@ export default function InvoicesConsole({
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("");
+  const [exportError, setExportError] = useState<string | null>(null);
   const [minTotal, setMinTotal] = useState("");
   const [maxTotal, setMaxTotal] = useState("");
 
@@ -85,9 +86,10 @@ export default function InvoicesConsole({
   // Export CSV Utility
   const handleExportCSV = () => {
     if (filteredInvoices.length === 0) {
-      alert("No invoices available to export.");
+      setExportError("No invoices available to export.");
       return;
     }
+    setExportError(null);
 
     const headers = [
       "Invoice Number",
@@ -255,6 +257,13 @@ export default function InvoicesConsole({
                 </Button>
               </div>
             </div>
+
+            {exportError && (
+              <div className="w-full p-3 mb-4 rounded-xl text-[13px] font-semibold flex items-start gap-2 bg-error/10 text-error border border-error/20">
+                <span className="material-symbols-outlined text-[18px]">error</span>
+                <span>{exportError}</span>
+              </div>
+            )}
 
             {/* Filters */}
             <div className="flex flex-wrap gap-4 items-center border-t border-outline-variant/10 pt-4 text-xs font-bold text-on-surface-variant/60">

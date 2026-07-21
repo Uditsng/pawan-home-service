@@ -30,6 +30,7 @@ export function FinanceConsole({ initialBookings }: FinanceConsoleProps) {
   const [showPayoutModal, setShowPayoutModal] = useState(false);
   const [payoutSuccess, setPayoutSuccess] = useState(false);
   const [isProcessingPayout, setIsProcessingPayout] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   // Group transactions by status (Completed booking = settled payout, others = pending payout)
   const processedTransactions = txList.map(tx => {
@@ -71,9 +72,10 @@ export function FinanceConsole({ initialBookings }: FinanceConsoleProps) {
   // Client-side CSV Export Utility
   const handleExportCSV = () => {
     if (filteredTx.length === 0) {
-      alert("No transaction records to export.");
+      setExportError("No transaction records to export.");
       return;
     }
+    setExportError(null);
 
     const headers = ["Transaction ID", "Date", "Customer", "Professional Assigned", "Total Amount", "Platform Share (20%)", "Partner Share (80%)", "Payout Status"];
     const rows = filteredTx.map(tx => [
@@ -221,6 +223,13 @@ export function FinanceConsole({ initialBookings }: FinanceConsoleProps) {
           </Button>
         </div>
       </div>
+
+      {exportError && (
+        <div className="w-full p-3 mb-4 rounded-xl text-[13px] font-semibold flex items-start gap-2 bg-error/10 text-error border border-error/20">
+          <span className="material-symbols-outlined text-[18px]">error</span>
+          <span>{exportError}</span>
+        </div>
+      )}
 
       {/* Transaction Table */}
       <div className="bg-surface-container-lowest rounded-[24px] border border-outline-variant/15 shadow-sm overflow-hidden">

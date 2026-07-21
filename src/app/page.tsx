@@ -6,15 +6,10 @@ import { redirect } from "next/navigation";
 import HeroConversationalCard from "@/components/HeroConversationalCard";
 import LandingGridClient from "./LandingGridClient";
 import { getCachedCategories } from "@/utils/supabase/cachedCategoryQueries";
+import { getDashboardForRole } from "@/utils/supabase/roles";
 
 
 export const revalidate = 300; // ISR: revalidate every 5 minutes
-// Centralized role → dashboard mapping (must match proxy.ts)
-const ROLE_DASHBOARDS: Record<string, string> = {
-  admin: '/admin/dashboard',
-  partner: '/partner/dashboard',
-  customer: '/customer/dashboard',
-};
 
 interface ServiceWithSubcategory {
   id: string;
@@ -45,7 +40,7 @@ export default async function Home() {
       .select('role')
       .eq('id', user.id)
       .single();
-    const target = ROLE_DASHBOARDS[profile?.role ?? 'customer'] ?? '/customer/dashboard';
+    const target = getDashboardForRole(profile?.role);
     redirect(target);
   }
 

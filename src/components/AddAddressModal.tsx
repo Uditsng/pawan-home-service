@@ -50,18 +50,25 @@ export default function AddAddressModal({ isOpen, onClose, onSaved }: AddAddress
       setIsPincodeLoading(true);
       setPincodeError(null);
       try {
-        const res = await fetch(`https://api.postalpincode.in/pincode/${trimmedPin}`);
+        const res = await fetch(`/api/pincode/${trimmedPin}`);
         const data = await res.json();
-        
-        if (data && data[0] && data[0].Status === "Success" && data[0].PostOffice) {
+
+        if (!res.ok) {
+          setSuggestions([]);
+          setPincodeError(data?.error || "Invalid pincode or no areas found.");
+          return;
+        }
+
+        const offices: PostOffice[] = Array.isArray(data.offices) ? data.offices : [];
+        if (offices.length > 0) {
           // Filter unique names to avoid duplicates
-          const uniqueOffices = data[0].PostOffice.filter((v: PostOffice, i: number, a: PostOffice[]) => 
+          const uniqueOffices = offices.filter((v: PostOffice, i: number, a: PostOffice[]) =>
             a.findIndex(t => (t.Name === v.Name)) === i
           );
           setSuggestions(uniqueOffices);
 
           // Pre-populate City and State from first result immediately
-          const firstOffice = data[0].PostOffice[0];
+          const firstOffice = uniqueOffices[0];
           setCity(firstOffice.District);
           setState(firstOffice.State);
         } else {
@@ -69,7 +76,7 @@ export default function AddAddressModal({ isOpen, onClose, onSaved }: AddAddress
           setPincodeError("Invalid pincode or no areas found.");
         }
       } catch {
-        setPincodeError("Failed to fetch areas.");
+        setPincodeError("Failed to fetch areas. Please try again.");
         setSuggestions([]);
       } finally {
         setIsPincodeLoading(false);

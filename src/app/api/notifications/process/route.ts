@@ -121,7 +121,7 @@ export async function GET(request: Request) {
         const chunkSize = 500;
         let totalSuccess = 0;
         let totalFailure = 0;
-        const logRows: any[] = [];
+        const logRows: unknown[] = [];
 
         for (let i = 0; i < targetUserIds.length; i += chunkSize) {
           const chunk = targetUserIds.slice(i, i + chunkSize);

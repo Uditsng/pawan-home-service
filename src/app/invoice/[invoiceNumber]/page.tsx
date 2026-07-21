@@ -218,12 +218,12 @@ export default async function InvoiceVerificationPage({ params }: InvoiceVerific
         <div className="bg-white text-slate-800 p-6 md:p-12 rounded-3xl border border-slate-100 shadow-sm print-card relative overflow-hidden">
           
           {/* Top Decorative Border */}
-          <div className="absolute top-0 left-0 right-0 h-1.5 bg-[#002261]"></div>
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-primary"></div>
 
           {/* 1. Header Section */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-8 border-b border-slate-100">
             <div className="flex items-center gap-3">
-              <div className="relative w-12 h-12 rounded-xl bg-[#002261] flex items-center justify-center shrink-0 shadow-sm print:bg-[#002261]">
+              <div className="relative w-12 h-12 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-sm print:bg-primary">
                 <Image
                   src={seller.logo_url || "/PHS.png"}
                   alt="PHS Logo"
@@ -239,7 +239,7 @@ export default async function InvoiceVerificationPage({ params }: InvoiceVerific
             </div>
 
             <div className="text-left md:text-right">
-              <h1 className="text-xl font-extrabold text-[#002261] tracking-wide uppercase font-headline">Tax Invoice</h1>
+              <h1 className="text-xl font-extrabold text-primary tracking-wide uppercase font-headline">Tax Invoice</h1>
               <div className="mt-2 space-y-0.5 text-xs text-slate-500 font-medium">
                 <p>Invoice No: <span className="font-bold text-slate-800">{typedInvoice.invoice_number}</span></p>
                 <p>Date: <span>{displayInvoiceDate}</span></p>

@@ -455,7 +455,7 @@ export default function ScheduleClient({
                 <span className="material-symbols-outlined text-[#059669] drop-shadow-sm font-bold">directions_walk</span>
               </div>
               <div>
-                <h2 className="font-headline text-base font-bold text-[#002261]">CarryBuddy Assistance Details</h2>
+                <h2 className="font-headline text-base font-bold text-primary">CarryBuddy Assistance Details</h2>
                 <p className="text-[10px] text-on-surface-variant font-medium uppercase tracking-wider mt-0.5">Duration-based personal help</p>
               </div>
             </div>

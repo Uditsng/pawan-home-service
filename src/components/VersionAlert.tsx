@@ -59,7 +59,7 @@ export default function VersionAlert() {
   // 1. Force Update Block (Full-screen Overlay)
   if (alertType === "force") {
     return (
-      <div className="fixed inset-0 bg-[#002261]/95 backdrop-blur-md z-9999 flex flex-col items-center justify-center p-6 text-center select-none animate-in fade-in duration-300">
+      <div className="fixed inset-0 bg-primary/95 backdrop-blur-md z-9999 flex flex-col items-center justify-center p-6 text-center select-none animate-in fade-in duration-300">
         <div className="bg-surface-container-lowest rounded-3xl p-8 max-w-sm border border-outline-variant/15 shadow-2xl relative overflow-hidden flex flex-col items-center">
           <div className="w-20 h-20 bg-error/10 rounded-full flex items-center justify-center mb-6">
             <span className="material-symbols-outlined text-error text-4xl animate-bounce">system_update_alt</span>

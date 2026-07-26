@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { CreateServiceForm } from "./CreateServiceForm";
 import { requireAdmin } from "@/utils/supabase/auth-checks";
 import { revalidateCategories, revalidateSubcategories, revalidateServices } from "@/utils/supabase/cacheInvalidators";
+import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 
 export default async function AdminCreateServicePage() {
   const supabase = await createClient();
@@ -47,18 +48,24 @@ export default async function AdminCreateServicePage() {
     return { id: data.id, subcategory_name: data.subcategory_name, icon_name: data.icon_name, category_id: data.category_id };
   }
 
-  // Fetch categories and subcategories
-  const { data: categoriesData } = await supabase
-    .from('categories')
-    .select(`
-      id,
-      category_name,
-      subcategories (
+  // Fetch categories, subcategories, and platform settings in parallel
+  const [categoriesRes, settings] = await Promise.all([
+    supabase
+      .from('categories')
+      .select(`
         id,
-        subcategory_name,
-        icon_name
-      )
-    `);
+        category_name,
+        subcategories (
+          id,
+          subcategory_name,
+          icon_name
+        )
+      `),
+    fetchPlatformSettings(supabase),
+  ]);
+
+  const categoriesData = categoriesRes.data;
+  const taxRate = settings.taxRate;
 
   type FormActionState = {
     type: "success" | "error" | null;
@@ -85,7 +92,7 @@ export default async function AdminCreateServicePage() {
 
     const pricing_config_json = formData.get("pricing_config_json") as string;
     const form_fields_json = formData.get("form_fields_json") as string;
-    const gst_applicable = formData.get("gst_applicable") === "true";
+    const gst_applicable = formData.get("gst_applicable") === "true" || formData.get("gst_applicable") === "on";
 
     let pricing_config = {};
     try {
@@ -236,6 +243,7 @@ export default async function AdminCreateServicePage() {
         action={createServiceAction}
         addCategoryAction={addCategoryAction}
         addSubcategoryAction={addSubcategoryAction}
+        taxRate={taxRate}
       />
     </div>
   );

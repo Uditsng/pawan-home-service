@@ -427,7 +427,7 @@ export default async function PerformancePage() {
                     <span className="font-headline font-bold text-xs sm:text-sm text-on-surface truncate">
                       {review.customer?.full_name || "Customer"}
                     </span>
-                    <div className="flex gap-[1px] shrink-0">
+                    <div className="flex gap-1 shrink-0">
                       {[1, 2, 3, 4, 5].map((i) => (
                         <span
                           key={i}

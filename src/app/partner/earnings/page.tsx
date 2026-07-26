@@ -221,7 +221,7 @@ export default async function EarningsPage() {
               </span>
             </div>
 
-            <div className="space-y-2.5 max-h-[520px] overflow-y-auto pr-1 no-scrollbar">
+            <div className="space-y-2.5 max-h-130 overflow-y-auto pr-1 no-scrollbar">
               {payouts.map((job) => {
                 const jobPayout = calculateCommissionBreakdown(Number(job.total_amount || 0), commissionPercent).partnerPayoutAmount;
                 return (

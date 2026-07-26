@@ -556,7 +556,7 @@ export default function JobsClient({
         const arrivalExpiresAt = job.arrival_otp_expires_at ? new Date(job.arrival_otp_expires_at) : null;
         const isArrivalExpired = arrivalExpiresAt ? currentTime > arrivalExpiresAt : false;
         return (
-          <div className="flex flex-col gap-1 w-full max-w-[280px]">
+          <div className="flex flex-col gap-1 w-full max-w-70">
             <p className="text-[10px] font-bold text-amber-600 mb-1">
               {isArrivalExpired ? "Arrival OTP has expired:" : "Enter Arrival OTP from customer:"}
             </p>
@@ -624,7 +624,7 @@ export default function JobsClient({
         const completionExpiresAt = job.completion_otp_expires_at ? new Date(job.completion_otp_expires_at) : null;
         const isCompletionExpired = completionExpiresAt ? currentTime > completionExpiresAt : false;
         return (
-          <div className="flex flex-col gap-1 w-full max-w-[280px]">
+          <div className="flex flex-col gap-1 w-full max-w-70">
             <p className="text-[10px] font-bold text-amber-600 mb-1">
               {isCompletionExpired ? "Completion OTP has expired:" : "Enter Completion OTP from customer:"}
             </p>

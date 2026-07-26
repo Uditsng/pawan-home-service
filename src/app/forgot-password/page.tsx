@@ -192,8 +192,8 @@ export default function ForgotPasswordPage() {
         {/* Right — Form */}
         <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-24 relative overflow-hidden">
 
-          <div className="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] rounded-full bg-[radial-gradient(circle,#a6ce37_0%,transparent_70%)] blur-2xl opacity-20 animate-spin-slow pointer-events-none" />
-          <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] rounded-full bg-[radial-gradient(circle,#c4b5fd_0%,transparent_70%)] blur-2xl opacity-20 animate-[spin-slow_25s_linear_infinite_reverse] pointer-events-none" />
+          <div className="absolute top-[-10%] right-[-10%] w-75 h-75 rounded-full bg-[radial-gradient(circle,#a6ce37_0%,transparent_70%)] blur-2xl opacity-20 animate-spin-slow pointer-events-none" />
+          <div className="absolute bottom-[-10%] left-[-10%] w-100 h-100 rounded-full bg-[radial-gradient(circle,#c4b5fd_0%,transparent_70%)] blur-2xl opacity-20 animate-[spin-slow_25s_linear_infinite_reverse] pointer-events-none" />
 
           {/* Back button */}
           <Link href="/login" className="absolute top-8 right-8 text-xs font-extrabold uppercase tracking-widest text-primary hover:bg-primary/5 px-4 py-2 rounded-full transition-all flex items-center gap-2 z-20 border border-transparent hover:border-primary/10">

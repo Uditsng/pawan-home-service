@@ -3,6 +3,8 @@
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { sendNotification } from "@/lib/notifications";
+import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
+import { calculateCommissionBreakdown } from "@/lib/engines/commissionEngine";
 
 interface DispatchPartner {
   partner_id: string;
@@ -109,18 +111,24 @@ export async function triggerDispatchBatch(
       },
     });
 
-    // 4. Fetch booking details for the push notification body
-    const { data: booking } = await serviceClient
-      .from("bookings")
-      .select("services:service_id(title), city, area, scheduled_date, total_amount")
-      .eq("id", bookingId)
-      .single<BookingForDispatch>();
+    // 4. Fetch booking details and platform settings for push notification body
+    const [bookingResult, settings] = await Promise.all([
+      serviceClient
+        .from("bookings")
+        .select("services:service_id(title), city, area, scheduled_date, total_amount")
+        .eq("id", bookingId)
+        .single<BookingForDispatch>(),
+      fetchPlatformSettings(serviceClient),
+    ]);
+
+    const booking = bookingResult.data;
 
     if (booking) {
       const serviceTitle =
         (booking.services as { title: string } | null)?.title ?? "Service";
       const locationLabel = booking.area || booking.city || "Kanpur Nagar";
-      const payout       = Math.round(Number(booking.total_amount) * 0.8);
+      const commissionBreakdown = calculateCommissionBreakdown(Number(booking.total_amount || 0), settings.platformCommission);
+      const payout = commissionBreakdown.partnerPayoutAmount;
 
       // Fire-and-forget batch notification to all matched partners
       void sendNotification({

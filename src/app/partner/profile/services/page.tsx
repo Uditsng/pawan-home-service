@@ -70,12 +70,12 @@ export default async function PartnerServicesPage() {
   const activeServiceIds = (partnerServices || []).map(ps => ps.service_id);
 
   return (
-    <div className="bg-[#f5f6f8] text-on-background min-h-screen flex flex-col font-sans pb-24">
-      <main className="flex-1 max-w-3xl mx-auto w-full px-4 md:px-5 pt-6 space-y-6">
+    <div className="bg-surface text-on-surface min-h-screen flex flex-col font-body pb-24 lg:pb-12">
+      <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 space-y-6">
 
         <div>
-          <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 ml-1">
-            Professional Details
+          <h2 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-4 ml-1">
+            Professional Skill & Service Configuration
           </h2>
 
           {/* Services Offered Section */}

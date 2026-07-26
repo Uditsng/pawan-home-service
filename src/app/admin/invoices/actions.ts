@@ -12,12 +12,7 @@ export async function regenerateInvoiceAction(bookingId: string) {
   await requireAdmin();
   const supabase = await createClient();
 
-  try {
-    await generateAndSaveInvoice(supabase, bookingId);
-  } catch (err) {
-    const errMsg = err instanceof Error ? err.message : String(err);
-    throw new Error(`Failed to regenerate invoice: ${errMsg}`);
-  }
+  await generateAndSaveInvoice(supabase, bookingId);
 
   revalidatePath("/admin/invoices");
   revalidatePath("/customer/bookings");

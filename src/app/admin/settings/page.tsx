@@ -1,39 +1,17 @@
 import { createClient } from "@/utils/supabase/server";
 import { SettingsConsole } from "./SettingsConsole";
+import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 
 export default async function AdminSettingsPage() {
   const supabase = await createClient();
   let isSchemaError = false;
 
-  // 2. Fetch platform_settings
-  const { data, error } = await supabase
-    .from('platform_settings')
-    .select('*');
-
-  if (error) {
-    if (error.code === '42P01') {
-      isSchemaError = true;
-    } else {
-      console.error("Settings query error:", error);
-    }
+  const { data, error } = await supabase.from('platform_settings').select('*');
+  if (error && error.code === '42P01') {
+    isSchemaError = true;
   }
 
-  // Parse fields or fall back to defaults
-  const settingsMap = (data || []).reduce<Record<string, unknown>>((acc, row) => {
-    try {
-      acc[row.key] = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
-    } catch {
-      acc[row.key] = row.value;
-    }
-    return acc;
-  }, {});
-
-  const taxRate = String(settingsMap['tax_rate'] || "18%");
-  const cancellationWindow = String(settingsMap['free_cancellation_window'] || "2 Hours");
-  const penaltyRate = String(settingsMap['partner_penalty_rate'] || "10%");
-  const serviceAreas = (settingsMap['service_areas'] as string[]) || ['Roorkee', 'Chandigarh', 'Dehradun', 'Haridwar'];
-  const referralRewardReferrer = String(settingsMap['referral_reward_referrer'] || "50");
-  const referralRewardReferred = String(settingsMap['referral_reward_referred'] || "50");
+  const settings = await fetchPlatformSettings(supabase);
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -65,12 +43,15 @@ export default async function AdminSettingsPage() {
 
       {/* Settings console interface */}
       <SettingsConsole
-        initialTaxRate={taxRate}
-        initialCancellationWindow={cancellationWindow}
-        initialPenaltyRate={penaltyRate}
-        initialServiceAreas={serviceAreas}
-        initialReferralRewardReferrer={referralRewardReferrer}
-        initialReferralRewardReferred={referralRewardReferred}
+        initialPlatformCommission={String(settings.platformCommission)}
+        initialTaxRate={String(settings.taxRate)}
+        initialGstEnabled={settings.gstEnabled}
+        initialReferralEnabled={settings.referralEnabled}
+        initialCancellationWindow={settings.freeCancellationWindow}
+        initialPenaltyRate={String(settings.partnerPenaltyRate)}
+        initialServiceAreas={settings.serviceAreas}
+        initialReferralRewardReferrer={String(settings.referralRewardReferrer)}
+        initialReferralRewardReferred={String(settings.referralRewardReferred)}
       />
     </div>
   );

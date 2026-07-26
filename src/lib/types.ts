@@ -159,6 +159,7 @@ export interface CartItem {
   pricingModel?: PricingModel;
   selectedDuration?: number;
   selectedPackages?: string;
+  gstApplicable?: boolean;
 }
 
 export interface Order {
@@ -400,6 +401,7 @@ export interface BookingPricing {
   addons_total: number;
   addons_breakdown: { addon_id: string; title: string; price: number; quantity: number }[];
   gst_amount: number;
+  tax_rate_percent: number;
   discount_amount: number;
   coupon_discount: number;
   wallet_discount: number;

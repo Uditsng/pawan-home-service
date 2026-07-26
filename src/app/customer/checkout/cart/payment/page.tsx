@@ -1,6 +1,8 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import CartPaymentClient from "./CartPaymentClient";
+import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
+import { calculateReferralDiscount } from "@/lib/engines/referralEngine";
 
 export default async function CartPaymentPage({
   searchParams,
@@ -19,9 +21,9 @@ export default async function CartPaymentPage({
 
   if (!user) redirect("/login");
 
-  const [addressResult, settingsResult, profileResult, completedBookingsResult] = await Promise.all([
+  const [addressResult, platformSettings, profileResult, completedBookingsResult] = await Promise.all([
     supabase.from("user_addresses").select("formatted_address, city, area, pincode, label").eq("id", addressId).eq("user_id", user.id).single(),
-    supabase.from("platform_settings").select("key, value").in("key", ["tax_rate", "referral_reward_referred"]),
+    fetchPlatformSettings(supabase),
     supabase.from("profiles").select("referred_by, wallet_balance").eq("id", user.id).single(),
     supabase.from("bookings").select("id", { count: "exact" }).eq("customer_id", user.id).eq("status", "completed"),
   ]);
@@ -29,28 +31,15 @@ export default async function CartPaymentPage({
   const addressObj = addressResult.data;
   if (!addressObj) redirect("/customer/dashboard");
 
-  // Parse platform settings
-  const settingsMap = (settingsResult.data || []).reduce<Record<string, string>>((acc, row) => {
-    acc[row.key] = typeof row.value === "string" ? row.value : String(row.value);
-    return acc;
-  }, {});
-
-  let taxRatePercent = 18;
-  try {
-    const rawTax = settingsMap["tax_rate"]?.replace(/%/g, "").trim();
-    const parsed = parseFloat(rawTax || "18");
-    if (!isNaN(parsed)) taxRatePercent = parsed;
-  } catch {
-    /* use default */
-  }
-
   const isReferred = !!profileResult.data?.referred_by;
   const hasCompletedBookings = (completedBookingsResult.count ?? 0) > 0;
-  let referralDiscount = 0;
-  if (isReferred && !hasCompletedBookings) {
-    const rawDiscount = parseFloat(settingsMap["referral_reward_referred"] || "50");
-    if (!isNaN(rawDiscount) && rawDiscount > 0) referralDiscount = rawDiscount;
-  }
+
+  const referralCalc = calculateReferralDiscount(isReferred && !hasCompletedBookings, {
+    referrerReward: platformSettings.referralRewardReferrer,
+    referredDiscount: platformSettings.referralRewardReferred,
+    isEnabled: platformSettings.referralEnabled,
+  });
+  const referralDiscount = referralCalc.discountAmount;
 
   const walletBalance = Number(profileResult.data?.wallet_balance || 0);
 
@@ -60,7 +49,8 @@ export default async function CartPaymentPage({
       addressId={addressId}
       date={date}
       time={time}
-      taxRatePercent={taxRatePercent}
+      taxRatePercent={platformSettings.taxRate}
+      gstEnabled={platformSettings.gstEnabled}
       referralDiscount={referralDiscount}
       walletBalance={walletBalance}
     />

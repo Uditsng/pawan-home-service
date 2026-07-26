@@ -43,8 +43,8 @@ CREATE POLICY "Customers view own invoices" ON public.invoices
 DROP POLICY IF EXISTS "Admins have full access to invoices" ON public.invoices;
 CREATE POLICY "Admins have full access to invoices" ON public.invoices
   FOR ALL TO authenticated
-  USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'))
-  WITH CHECK (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+  USING (public.is_admin(auth.uid()))
+  WITH CHECK (public.is_admin(auth.uid()));
 
 -- 5. FUNCTION: Auto-assign Invoice Number
 CREATE OR REPLACE FUNCTION public.assign_invoice_number()

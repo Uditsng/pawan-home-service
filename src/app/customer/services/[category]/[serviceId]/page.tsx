@@ -12,11 +12,18 @@ import {
   getCachedPricingRules,
   PublicReview
 } from "@/utils/supabase/cachedServiceQueries";
+import { createClient } from "@/utils/supabase/server";
+import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 
 export default async function ServiceDetailsPage({ params }: { params: Promise<{ category: string, serviceId: string }> }) {
   const resolvedParams = await params;
 
-  const service = await getCachedServiceDetails(resolvedParams.serviceId);
+  const supabase = await createClient();
+
+  const [service, platformSettings] = await Promise.all([
+    getCachedServiceDetails(resolvedParams.serviceId),
+    fetchPlatformSettings(supabase),
+  ]);
 
   if (!service) {
     return (
@@ -180,6 +187,8 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
           categorySlug={resolvedParams.category}
           subcategoryName={service.subcategories?.subcategory_name || "Service"}
           iconName={iconName}
+          gstRate={platformSettings.taxRate}
+          gstEnabled={platformSettings.gstEnabled}
         />
 
         {/* Why Choose Us */}

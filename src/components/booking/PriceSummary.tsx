@@ -123,7 +123,7 @@ export default function PriceSummary({
 
         {breakdown.gst_amount > 0 && (
           <div className="flex justify-between">
-            <span>GST (18%)</span>
+            <span>GST ({breakdown.tax_rate_percent}%)</span>
             <span className="font-bold text-primary">+₹{breakdown.gst_amount}</span>
           </div>
         )}

@@ -7,7 +7,10 @@ import { Button } from "@/components/ui/Button";
 import { updateSettingsAction } from "./actions";
 
 interface SettingsConsoleProps {
+  initialPlatformCommission: string;
   initialTaxRate: string;
+  initialGstEnabled: boolean;
+  initialReferralEnabled: boolean;
   initialCancellationWindow: string;
   initialPenaltyRate: string;
   initialServiceAreas: string[];
@@ -16,14 +19,20 @@ interface SettingsConsoleProps {
 }
 
 export function SettingsConsole({
+  initialPlatformCommission,
   initialTaxRate,
+  initialGstEnabled,
+  initialReferralEnabled,
   initialCancellationWindow,
   initialPenaltyRate,
   initialServiceAreas,
   initialReferralRewardReferrer,
   initialReferralRewardReferred,
 }: SettingsConsoleProps) {
+  const [platformCommission, setPlatformCommission] = useState(initialPlatformCommission);
   const [taxRate, setTaxRate] = useState(initialTaxRate);
+  const [gstEnabled, setGstEnabled] = useState(initialGstEnabled);
+  const [referralEnabled, setReferralEnabled] = useState(initialReferralEnabled);
   const [cancellationWindow, setCancellationWindow] = useState(initialCancellationWindow);
   const [penaltyRate, setPenaltyRate] = useState(initialPenaltyRate);
   const [serviceAreas, setServiceAreas] = useState<string[]>(initialServiceAreas);
@@ -56,7 +65,10 @@ export function SettingsConsole({
     setErrorMessage("");
     try {
       await updateSettingsAction({
+        platform_commission: platformCommission,
         tax_rate: taxRate,
+        gst_enabled: gstEnabled,
+        referral_enabled: referralEnabled,
         free_cancellation_window: cancellationWindow,
         partner_penalty_rate: penaltyRate,
         service_areas: serviceAreas,
@@ -71,8 +83,6 @@ export function SettingsConsole({
       setIsSaving(false);
     }
   };
-
-
 
   return (
     <div className="space-y-6">
@@ -97,23 +107,75 @@ export function SettingsConsole({
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Tax & Currency */}
+        {/* Commission Engine Card */}
         <Card variant="solid" className="space-y-6 flex flex-col justify-between">
           <div className="space-y-6">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                <span className="material-symbols-outlined">payments</span>
+                <span className="material-symbols-outlined">percent</span>
               </div>
-              <h3 className="text-lg font-bold tracking-tight text-primary font-headline">Tax & Currency</h3>
+              <h3 className="text-lg font-bold tracking-tight text-primary font-headline">Commission</h3>
             </div>
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60">Platform Tax (GST)</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60">Platform Commission (%)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={platformCommission}
+                  onChange={(e) => setPlatformCommission(e.target.value)}
+                  className="w-full p-3.5 rounded-xl bg-surface border border-outline-variant/20 text-sm font-bold text-primary outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary transition-all"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60">Partner Payout Share</label>
+                <input
+                  type="text"
+                  value={`${Math.max(0, 100 - (parseFloat(platformCommission) || 0))}%`}
+                  disabled
+                  className="w-full p-3.5 rounded-xl bg-surface-container border border-outline-variant/25 text-sm font-bold text-on-surface-variant/70 cursor-not-allowed"
+                />
+              </div>
+            </div>
+          </div>
+          <p className="text-[10px] font-bold text-on-surface-variant/40 mt-4 uppercase">Applies immediately to upcoming services & partner payouts.</p>
+        </Card>
+
+        {/* Tax & Currency (GST System Engine) */}
+        <Card variant="solid" className="space-y-6 flex flex-col justify-between">
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                  <span className="material-symbols-outlined">payments</span>
+                </div>
+                <h3 className="text-lg font-bold tracking-tight text-primary font-headline">GST System</h3>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={gstEnabled}
+                  onChange={(e) => setGstEnabled(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary"></div>
+              </label>
+            </div>
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60">Platform GST Rate (%)</label>
+                  <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${gstEnabled ? 'bg-green-500/10 text-green-700' : 'bg-red-500/10 text-red-700'}`}>
+                    {gstEnabled ? 'ACTIVE' : 'DISABLED'}
+                  </span>
+                </div>
                 <input
                   type="text"
                   value={taxRate}
+                  disabled={!gstEnabled}
                   onChange={(e) => setTaxRate(e.target.value)}
-                  className="w-full p-3.5 rounded-xl bg-surface border border-outline-variant/20 text-sm font-bold text-primary outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary transition-all"
+                  className={`w-full p-3.5 rounded-xl bg-surface border border-outline-variant/20 text-sm font-bold text-primary outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary transition-all ${!gstEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                 />
               </div>
               <div className="space-y-1">
@@ -127,7 +189,9 @@ export function SettingsConsole({
               </div>
             </div>
           </div>
-          <p className="text-[10px] font-bold text-on-surface-variant/40 mt-4 uppercase">GST values apply strictly on payment checkout invoices.</p>
+          <p className="text-[10px] font-bold text-on-surface-variant/40 mt-4 uppercase">
+            {gstEnabled ? "GST applies across single & cart checkouts." : "GST is globally disabled (0% applied)."}
+          </p>
         </Card>
 
         {/* Cancellation Rules */}
@@ -205,63 +269,58 @@ export function SettingsConsole({
             </button>
           </form>
         </Card>
-
-        {/* Invoice Settings Card */}
-        <Card variant="solid" className="space-y-6 flex flex-col justify-between border-secondary/20 bg-secondary/5">
-          <div className="space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-secondary/20 flex items-center justify-center text-secondary">
-                <span className="material-symbols-outlined font-bold">receipt_long</span>
-              </div>
-              <h3 className="text-lg font-bold tracking-tight text-primary font-headline">Invoice Profile</h3>
-            </div>
-            <p className="text-xs text-on-surface-variant font-medium leading-relaxed">
-              Configure company registry profiles, logos, support phone/email, office address, and billing parameters.
-            </p>
-          </div>
-          <Link
-            href="/admin/settings/invoice"
-            className="w-full text-center py-3.5 bg-primary text-white font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-primary/95 transition-all shadow-md mt-4"
-          >
-            Manage Invoices
-          </Link>
-        </Card>
       </div>
 
-      {/* Referral Program */}
+      {/* Referral Program Engine Card */}
       <Card variant="solid" className="space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-            <span className="material-symbols-outlined">volunteer_activism</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+              <span className="material-symbols-outlined">volunteer_activism</span>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold tracking-tight text-primary font-headline">Referral Program System</h3>
+              <p className="text-xs text-on-surface-variant font-medium">Configure referrer reward and friend checkout discount parameters (default 50-50 split).</p>
+            </div>
           </div>
-          <h3 className="text-lg font-bold tracking-tight text-primary font-headline">Referral Program</h3>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={referralEnabled}
+              onChange={(e) => setReferralEnabled(e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary"></div>
+          </label>
         </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1">
             <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60">Referrer Reward (₹)</label>
             <input
               type="number"
               min="0"
+              disabled={!referralEnabled}
               value={referralRewardReferrer}
               onChange={(e) => setReferralRewardReferrer(e.target.value)}
-              className="w-full p-3.5 rounded-xl bg-surface border border-outline-variant/20 text-sm font-bold text-primary outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary transition-all"
+              className={`w-full p-3.5 rounded-xl bg-surface border border-outline-variant/20 text-sm font-bold text-primary outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary transition-all ${!referralEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             />
-            <p className="text-[10px] text-on-surface-variant/50 font-medium">Credited to referrer on friend&apos;s first booking.</p>
+            <p className="text-[10px] text-on-surface-variant/50 font-medium">Credited to referrer on friend&apos;s first completed booking.</p>
           </div>
           <div className="space-y-1">
             <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60">Referred Friend Discount (₹)</label>
             <input
               type="number"
               min="0"
+              disabled={!referralEnabled}
               value={referralRewardReferred}
               onChange={(e) => setReferralRewardReferred(e.target.value)}
-              className="w-full p-3.5 rounded-xl bg-surface border border-outline-variant/20 text-sm font-bold text-primary outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary transition-all"
+              className={`w-full p-3.5 rounded-xl bg-surface border border-outline-variant/20 text-sm font-bold text-primary outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary transition-all ${!referralEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             />
             <p className="text-[10px] text-on-surface-variant/50 font-medium">Discount applied to friend&apos;s first booking checkout.</p>
           </div>
         </div>
       </Card>
-
 
       {/* Floating Save Banner */}
       <div className="flex justify-between items-center bg-surface-container-low p-4 rounded-2xl border border-outline-variant/10 shadow-md">

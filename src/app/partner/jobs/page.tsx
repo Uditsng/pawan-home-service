@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import JobsClient, { RawOfferRow } from "./JobsClient";
 import type { BookingWithDetails } from "@/lib/types";
+import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 
 export default async function PartnerJobsPage() {
   const supabase = await createClient();
@@ -11,8 +12,8 @@ export default async function PartnerJobsPage() {
 
   if (!user) redirect("/login");
 
-  // ─── Fetch partner status + all job lists in parallel ──────────
-  const [profileResult, assignedResult, activeResult, completedResult, offersResult] = await Promise.all([
+  // ─── Fetch partner status + all job lists + platform settings in parallel ───
+  const [profileResult, assignedResult, activeResult, completedResult, offersResult, platformSettings] = await Promise.all([
     supabase.from("profiles").select("status").eq("id", user.id).single(),
     supabase
       .from("bookings")
@@ -47,6 +48,7 @@ export default async function PartnerJobsPage() {
       .eq("partner_id", user.id)
       .eq("status", "offered")
       .order("created_at", { ascending: false }),
+    fetchPlatformSettings(supabase),
   ]);
 
   const partnerStatus = profileResult.data?.status ?? "offline";
@@ -108,6 +110,7 @@ export default async function PartnerJobsPage() {
           completedJobs={completedJobs}
           offeredJobs={offeredJobs}
           partnerId={user.id}
+          commissionPercent={platformSettings.platformCommission}
         />
       </main>
     </div>

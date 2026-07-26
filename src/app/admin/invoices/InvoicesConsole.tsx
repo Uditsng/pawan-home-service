@@ -20,11 +20,13 @@ interface CompletedWithoutInvoice {
 interface InvoicesConsoleProps {
   initialInvoices: AdminInvoice[];
   completedWithoutInvoice: CompletedWithoutInvoice[];
+  fetchError?: string | null;
 }
 
 export default function InvoicesConsole({
   initialInvoices,
   completedWithoutInvoice: initialCompletedWithoutInvoice,
+  fetchError,
 }: InvoicesConsoleProps) {
   const invoices = initialInvoices;
   const pendingBookings = initialCompletedWithoutInvoice;
@@ -161,6 +163,20 @@ export default function InvoicesConsole({
 
   return (
     <div className="space-y-6">
+      {/* Database Fetch Error Banner */}
+      {fetchError && (
+        <div className="p-5 rounded-2xl border border-error/30 bg-error/5 flex items-start gap-3">
+          <span className="material-symbols-outlined text-error shrink-0 text-xl">error</span>
+          <div className="text-sm font-semibold text-error leading-relaxed">{fetchError}</div>
+          <button
+            onClick={() => window.location.reload()}
+            className="ml-auto shrink-0 px-4 py-1.5 bg-error/10 hover:bg-error/20 text-error text-[10px] font-black uppercase tracking-widest rounded-xl transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Top Banner Message */}
       {message && (
         <div

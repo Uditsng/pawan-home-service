@@ -95,64 +95,91 @@ export default async function PerformancePage() {
     : 0;
 
   return (
-    <div className="bg-surface font-body text-on-surface min-h-screen pb-32">
-      <main className="max-w-7xl mx-auto px-6 pt-8 pb-10 space-y-8">
+    <div className="bg-surface font-body text-on-surface min-h-screen pb-20 lg:pb-10">
+      <main className="grow max-w-6xl mx-auto w-full px-3.5 sm:px-6 space-y-5 mt-3 sm:mt-5">
+        
+        {/* Header Title */}
+        <div className="flex items-center justify-between border-b border-outline-variant/15 pb-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-headline font-black tracking-tight text-on-surface">
+              Performance & Quality
+            </h1>
+            <p className="text-xs text-on-surface-variant font-medium mt-0.5">
+              Monitor your customer ratings, punctuality, and quality badges
+            </p>
+          </div>
+          <div className="hidden sm:flex items-center gap-1.5 bg-secondary/15 text-primary px-3 py-1.5 rounded-xl border border-secondary/30 text-xs font-bold font-label">
+            <span className="material-symbols-outlined text-base">workspace_premium</span>
+            <span>Quality Scorecard</span>
+          </div>
+        </div>
+
         {/* Insight Banner */}
         <section>
-          <div className="relative overflow-hidden rounded-4xl bg-linear-to-br from-primary to-primary-container p-8 text-on-primary shadow-[0_12px_32px_rgba(0,104,95,0.2)]">
-            <div className="relative z-10 flex flex-col md:flex-row gap-6">
-              <div className="w-14 h-14 bg-white/10 border border-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center shrink-0">
-                <span
-                  className="material-symbols-outlined text-[32px] text-primary-fixed"
-                  style={{ fontVariationSettings: "'FILL' 1" }}
-                >
-                  workspace_premium
-                </span>
+          <div className="relative overflow-hidden rounded-2xl bg-primary p-4 sm:p-5 text-on-primary shadow-xs">
+            <div className="relative z-10 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 sm:w-11 sm:h-11 bg-white/15 border border-white/20 backdrop-blur-md rounded-xl flex items-center justify-center shrink-0">
+                  <span
+                    className="material-symbols-outlined text-xl sm:text-2xl text-secondary"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
+                    workspace_premium
+                  </span>
+                </div>
+                <div>
+                  <span className="font-label text-[10px] font-extrabold uppercase tracking-widest text-secondary block">
+                    Partner Metric Overview
+                  </span>
+                  <h2 className="font-headline font-extrabold text-sm sm:text-base leading-snug text-white">
+                    {ratingAvg >= 4.5
+                      ? `Outstanding! Your ${ratingAvg.toFixed(1)}★ rating puts you in the top tier!`
+                      : ratingAvg > 0
+                        ? `Keep improving! Your current rating is ${ratingAvg.toFixed(1)}★.`
+                        : `Welcome! Complete jobs to earn your first rating.`}
+                  </h2>
+                </div>
               </div>
-              <div className="max-w-md">
-                <span className="font-label text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-2 block text-primary-fixed">
-                  Performance Summary
-                </span>
-                <h2 className="font-headline font-black text-[22px] leading-snug tracking-tight">
-                  {ratingAvg >= 4.5
-                    ? `Outstanding! Your ${ratingAvg.toFixed(1)}★ rating puts you in the top tier!`
-                    : ratingAvg > 0
-                      ? `Keep improving! Your current rating is ${ratingAvg.toFixed(1)}★.`
-                      : `Welcome! Complete jobs and earn your first reviews.`}
-                </h2>
-                <p className="text-[13px] mt-2 opacity-90 font-medium leading-relaxed">
+
+              <div className="text-left sm:text-right shrink-0">
+                <span className="text-[11px] font-bold text-white/90 bg-white/15 px-3 py-1 rounded-full border border-white/20 inline-block">
                   {(totalCompleted || 0) > 0
-                    ? `You've completed ${totalCompleted} jobs with a ${completionRate}% completion rate.`
-                    : `Start accepting jobs to build your performance metrics.`}
-                </p>
+                    ? `${totalCompleted} Jobs · ${completionRate}% Completion`
+                    : `No jobs completed yet`}
+                </span>
               </div>
             </div>
-            {/* Abstract visual element */}
-            <div className="absolute -right-16 -top-16 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+            {/* Ambient visual element */}
+            <div className="absolute -right-16 -top-16 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
           </div>
         </section>
 
-        {/* Metrics Grid (Asymmetric Bento) */}
-        <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Metrics Grid */}
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Rating Card */}
-          <div className="md:col-span-2 bg-surface-container-lowest border border-outline-variant/10 rounded-2xl p-6 relative overflow-hidden group shadow-[0_2px_8px_rgba(15,23,42,0.02)]">
-            <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary"></div>
-            <p className="font-label text-[10px] font-black uppercase tracking-widest text-on-surface-variant mb-4 pl-1">
-              Overall Rating & Breakdown
-            </p>
+          <div className="sm:col-span-2 bg-surface-container-lowest border border-outline-variant/15 rounded-2xl p-4 sm:p-5 relative overflow-hidden shadow-xs">
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+            <div className="flex items-center justify-between mb-3 pl-1">
+              <span className="font-label text-[10px] sm:text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+                Rating Breakdown
+              </span>
+              <span className="text-[11px] font-extrabold text-on-surface-variant bg-surface-container-low px-2.5 py-0.5 rounded-full border border-outline-variant/15">
+                {totalReviews} review{totalReviews !== 1 ? "s" : ""}
+              </span>
+            </div>
             
-            <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start pl-1">
+            <div className="flex flex-col sm:flex-row gap-5 items-center sm:items-start pl-1">
               {/* Overall Score */}
-              <div className="sm:w-1/3 flex flex-col justify-between">
+              <div className="sm:w-1/3 flex flex-col justify-between text-center sm:text-left">
                 <div>
-                  <h3 className="font-headline font-black text-[56px] leading-none tracking-tighter text-on-surface">
+                  <h3 className="font-headline font-black text-3xl sm:text-4xl leading-none tracking-tight text-primary">
                     {ratingAvg > 0 ? ratingAvg.toFixed(1) : "—"}
                   </h3>
-                  <div className="flex items-center gap-0.5 mt-2">
+                  <div className="flex items-center justify-center sm:justify-start gap-0.5 mt-1.5">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <span
                         key={star}
-                        className={`material-symbols-outlined text-base ${
+                        className={`material-symbols-outlined text-sm ${
                           star <= Math.round(ratingAvg)
                             ? "text-secondary font-fill"
                             : "text-on-surface-variant/20"
@@ -163,30 +190,25 @@ export default async function PerformancePage() {
                     ))}
                   </div>
                 </div>
-                <div className="mt-4">
-                  <span className="text-on-surface-variant text-[11px] font-bold bg-surface-container-high/50 px-2.5 py-1 rounded-md">
-                    {totalReviews} review{totalReviews !== 1 ? "s" : ""}
-                  </span>
-                </div>
               </div>
 
               {/* Distribution Bars */}
-              <div className="flex-1 w-full space-y-2">
+              <div className="flex-1 w-full space-y-1.5">
                 {distribution.map((count, index) => {
                   const stars = 5 - index;
                   const percentage = totalReviews > 0 ? Math.round((count / totalReviews) * 100) : 0;
                   return (
-                    <div key={stars} className="flex items-center gap-3 text-xs">
-                      <span className="w-6 font-semibold text-on-surface-variant text-right">
+                    <div key={stars} className="flex items-center gap-2.5 text-xs">
+                      <span className="w-5 font-semibold text-on-surface-variant text-right text-[11px]">
                         {stars}★
                       </span>
-                      <div className="flex-1 h-2 bg-surface-container-high rounded-full overflow-hidden">
+                      <div className="flex-1 h-1.5 bg-surface-container-high rounded-full overflow-hidden">
                         <div
                           className="h-full bg-secondary rounded-full transition-all duration-500"
                           style={{ width: `${percentage}%` }}
                         ></div>
                       </div>
-                      <span className="w-8 text-on-surface-variant/70 text-right font-medium">
+                      <span className="w-6 text-on-surface-variant/70 text-right font-medium text-[11px]">
                         {count}
                       </span>
                     </div>
@@ -197,212 +219,184 @@ export default async function PerformancePage() {
           </div>
 
           {/* Job Completion */}
-          <div className="bg-surface-container-lowest border border-outline-variant/10 rounded-2xl p-6 relative overflow-hidden shadow-[0_2px_8px_rgba(15,23,42,0.02)]">
-            <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-secondary-container"></div>
+          <div className="bg-surface-container-lowest border border-outline-variant/15 rounded-2xl p-4 sm:p-5 relative overflow-hidden shadow-xs flex flex-col justify-between">
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary"></div>
             <div className="pl-1">
-              <p className="font-label text-[10px] font-black uppercase tracking-widest text-on-surface-variant mb-2">
-                Completion
-              </p>
-              <h3 className="font-headline font-black text-3xl text-on-surface tracking-tighter mb-8">
+              <span className="font-label text-[10px] sm:text-xs font-bold uppercase tracking-widest text-on-surface-variant block mb-1">
+                Completion Rate
+              </span>
+              <h3 className="font-headline font-black text-2xl sm:text-3xl text-on-surface tracking-tight mb-4">
                 {completionRate > 0 ? `${completionRate}%` : "—"}
               </h3>
-              <div className="w-full h-2 bg-surface-container-high rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-secondary-container rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(completionRate, 100)}%` }}
-                ></div>
-              </div>
+            </div>
+            <div className="w-full h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+              <div
+                className="h-full bg-secondary rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(completionRate, 100)}%` }}
+              ></div>
             </div>
           </div>
 
           {/* On-time Arrival */}
-          <div className="bg-surface-container-lowest border border-outline-variant/10 rounded-2xl p-6 relative overflow-hidden shadow-[0_2px_8px_rgba(15,23,42,0.02)]">
-            <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-tertiary"></div>
-            <div className="pl-1 h-full flex flex-col justify-between">
-              <div>
-                <p className="font-label text-[10px] font-black uppercase tracking-widest text-on-surface-variant mb-2">
-                  On-time
-                </p>
-                <h3 className="font-headline font-black text-3xl text-on-surface tracking-tighter">
-                  {totalWithStartTime > 0 ? `${onTimeRate}%` : "—"}
-                </h3>
-              </div>
-              <div className="flex items-center gap-2 text-[11px] text-tertiary font-bold bg-tertiary/10 px-3 py-1.5 rounded-lg w-fit mt-6">
-                <span className="material-symbols-outlined text-sm">
-                  schedule
-                </span>
-                <span>
-                  {onTimeRate >= 90
-                    ? "High Punctuality"
-                    : onTimeRate > 0
-                      ? "Keep Improving"
-                      : "No Data Yet"}
-                </span>
-              </div>
+          <div className="bg-surface-container-lowest border border-outline-variant/15 rounded-2xl p-4 sm:p-5 relative overflow-hidden shadow-xs flex flex-col justify-between">
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+            <div className="pl-1">
+              <span className="font-label text-[10px] sm:text-xs font-bold uppercase tracking-widest text-on-surface-variant block mb-1">
+                On-Time Rate
+              </span>
+              <h3 className="font-headline font-black text-2xl sm:text-3xl text-on-surface tracking-tight">
+                {totalWithStartTime > 0 ? `${onTimeRate}%` : "—"}
+              </h3>
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px] text-primary font-bold bg-primary/10 px-2.5 py-1 rounded-lg w-fit mt-3">
+              <span className="material-symbols-outlined text-xs">
+                schedule
+              </span>
+              <span>
+                {onTimeRate >= 90
+                  ? "High Punctuality"
+                  : onTimeRate > 0
+                    ? "Keep Improving"
+                    : "No Data"}
+              </span>
             </div>
           </div>
 
-          {/* Cancellation Rate (Warning State) */}
-          <div className="md:col-span-4 lg:col-span-1 bg-surface-container-lowest border border-outline-variant/10 rounded-2xl p-6 relative overflow-hidden shadow-[0_2px_8px_rgba(15,23,42,0.02)]">
-            <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-error"></div>
-            <div className="pl-1 flex flex-row items-center justify-between lg:flex-col md:items-start">
-              <div>
-                <p className="font-label text-[10px] font-black uppercase tracking-widest text-on-surface-variant mb-2">
-                  Cancellations
-                </p>
-                <h3 className="font-headline font-black text-3xl text-on-surface tracking-tighter">
-                  {cancellationRate > 0 ? `${cancellationRate}%` : "0%"}
-                </h3>
-              </div>
-              <p className="text-[10px] bg-error/10 text-error px-2.5 py-1 rounded-md font-bold uppercase tracking-widest mt-0 lg:mt-4">
-                Threshold:{" "}
-                <span className="text-on-surface">5%</span>
+          {/* Cancellation Rate */}
+          <div className="sm:col-span-2 lg:col-span-4 bg-surface-container-lowest border border-outline-variant/15 rounded-2xl p-3.5 sm:p-4 relative overflow-hidden shadow-xs flex items-center justify-between">
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-error"></div>
+            <div className="pl-2">
+              <span className="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant block">
+                Job Cancellation Rate
+              </span>
+              <p className="font-headline font-black text-lg sm:text-xl text-on-surface tracking-tight mt-0.5">
+                {cancellationRate > 0 ? `${cancellationRate}%` : "0%"}
               </p>
             </div>
+            <span className="text-[10px] bg-error/10 text-error px-2.5 py-1 rounded-lg font-bold uppercase tracking-wider">
+              Safety Threshold: 5%
+            </span>
           </div>
         </section>
 
         {/* Badges Section */}
-        <section>
-          <div className="flex items-center justify-between mb-5 px-1 relative">
-            <h2 className="font-headline font-black text-[22px] tracking-tight text-on-surface">
-              Active Badges
-            </h2>
-            <div className="absolute top-1/2 right-16 left-32 h-px bg-linear-to-r from-outline-variant/20 to-transparent -translate-y-1/2 z-[-1]"></div>
-          </div>
+        <section className="space-y-3">
+          <h2 className="font-headline font-bold text-base sm:text-lg tracking-tight text-on-surface pl-1">
+            Performance Badges
+          </h2>
 
-          <div className="flex gap-4 overflow-x-auto pb-6 no-scrollbar mask-linear -mx-2 px-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {/* Top Rated Badge */}
             <div
-              className={`min-w-[130px] shrink-0 border shadow-[0_2px_8px_rgba(15,23,42,0.02)] rounded-3xl p-5 flex flex-col items-center text-center transition-transform hover:scale-105 cursor-pointer ${ratingAvg >= 4.5
-                ? "bg-surface-container-lowest border-outline-variant/10 hover:border-primary/30"
-                : "bg-surface-container-high/30 border-outline-variant/5 grayscale opacity-50 cursor-not-allowed"
+              className={`border rounded-2xl p-3.5 flex flex-col items-center text-center transition-all ${ratingAvg >= 4.5
+                ? "bg-surface-container-lowest border-outline-variant/15 shadow-xs"
+                : "bg-surface-container-low border-outline-variant/10 opacity-60"
                 }`}
             >
               <div
-                className={`w-14 h-14 rounded-full border flex items-center justify-center mb-4 ${ratingAvg >= 4.5
-                  ? "bg-primary/10 border-primary/20"
-                  : "bg-surface-dim/50 border-surface-variant"
+                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 ${ratingAvg >= 4.5
+                  ? "bg-primary/10 text-primary"
+                  : "bg-surface-container-high text-on-surface-variant"
                   }`}
               >
-                <span
-                  className={`material-symbols-outlined text-[28px] ${ratingAvg >= 4.5 ? "text-primary" : "text-on-surface-variant"}`}
-                  style={{
-                    fontVariationSettings: `'FILL' ${ratingAvg >= 4.5 ? 1 : 0}`,
-                  }}
-                >
+                <span className="material-symbols-outlined text-xl">
                   {ratingAvg >= 4.5 ? "verified" : "lock"}
                 </span>
               </div>
-              <span className="font-headline font-black text-[13px] text-on-surface tracking-tight">
+              <span className="font-headline font-bold text-xs text-on-surface">
                 Top Rated
               </span>
-              <span className="text-[10px] font-medium text-on-surface-variant mt-1">
-                Consistent 4.5+
+              <span className="text-[10px] text-on-surface-variant mt-0.5">
+                4.5+ Avg Rating
               </span>
             </div>
 
             {/* Punctual Pro Badge */}
             <div
-              className={`min-w-[130px] shrink-0 border shadow-[0_2px_8px_rgba(15,23,42,0.02)] rounded-3xl p-5 flex flex-col items-center text-center transition-transform hover:scale-105 cursor-pointer ${onTimeRate >= 95
-                ? "bg-surface-container-lowest border-outline-variant/10 hover:border-secondary-container/30"
-                : "bg-surface-container-high/30 border-outline-variant/5 grayscale opacity-50 cursor-not-allowed"
+              className={`border rounded-2xl p-3.5 flex flex-col items-center text-center transition-all ${onTimeRate >= 95
+                ? "bg-surface-container-lowest border-outline-variant/15 shadow-xs"
+                : "bg-surface-container-low border-outline-variant/10 opacity-60"
                 }`}
             >
               <div
-                className={`w-14 h-14 rounded-full border flex items-center justify-center mb-4 ${onTimeRate >= 95
-                  ? "bg-secondary-container/10 border-secondary-container/20"
-                  : "bg-surface-dim/50 border-surface-variant"
+                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 ${onTimeRate >= 95
+                  ? "bg-secondary/20 text-primary"
+                  : "bg-surface-container-high text-on-surface-variant"
                   }`}
               >
-                <span
-                  className={`material-symbols-outlined text-[28px] ${onTimeRate >= 95 ? "text-secondary-container" : "text-on-surface-variant"}`}
-                  style={{
-                    fontVariationSettings: `'FILL' ${onTimeRate >= 95 ? 1 : 0}`,
-                  }}
-                >
+                <span className="material-symbols-outlined text-xl">
                   {onTimeRate >= 95 ? "bolt" : "lock"}
                 </span>
               </div>
-              <span className="font-headline font-black text-[13px] text-on-surface tracking-tight">
+              <span className="font-headline font-bold text-xs text-on-surface">
                 Punctual Pro
               </span>
-              <span className="text-[10px] font-medium text-on-surface-variant mt-1">
-                {onTimeRate >= 95 ? "No late arrivals" : `${onTimeRate}% on-time`}
+              <span className="text-[10px] text-on-surface-variant mt-0.5">
+                95%+ On-Time
               </span>
             </div>
 
             {/* 100+ Jobs Badge */}
             <div
-              className={`min-w-[130px] shrink-0 border shadow-[0_2px_8px_rgba(15,23,42,0.02)] rounded-3xl p-5 flex flex-col items-center text-center transition-transform hover:scale-105 cursor-pointer ${(totalCompleted || 0) >= 100
-                ? "bg-surface-container-lowest border-outline-variant/10 hover:border-tertiary-container/30"
-                : "bg-surface-container-high/30 border-outline-variant/5 grayscale opacity-50 cursor-not-allowed"
+              className={`border rounded-2xl p-3.5 flex flex-col items-center text-center transition-all ${(totalCompleted || 0) >= 100
+                ? "bg-surface-container-lowest border-outline-variant/15 shadow-xs"
+                : "bg-surface-container-low border-outline-variant/10 opacity-60"
                 }`}
             >
               <div
-                className={`w-14 h-14 rounded-full border flex items-center justify-center mb-4 ${(totalCompleted || 0) >= 100
-                  ? "bg-tertiary-container/10 border-tertiary-container/20"
-                  : "bg-surface-dim/50 border-surface-variant"
+                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 ${(totalCompleted || 0) >= 100
+                  ? "bg-primary/10 text-primary"
+                  : "bg-surface-container-high text-on-surface-variant"
                   }`}
               >
-                <span
-                  className={`material-symbols-outlined text-[28px] ${(totalCompleted || 0) >= 100 ? "text-tertiary-container" : "text-on-surface-variant"}`}
-                  style={{
-                    fontVariationSettings: `'FILL' ${(totalCompleted || 0) >= 100 ? 1 : 0}`,
-                  }}
-                >
+                <span className="material-symbols-outlined text-xl">
                   {(totalCompleted || 0) >= 100 ? "military_tech" : "lock"}
                 </span>
               </div>
-              <span className="font-headline font-black text-[13px] text-on-surface tracking-tight">
+              <span className="font-headline font-bold text-xs text-on-surface">
                 100+ Jobs
               </span>
-              <span className="text-[10px] font-medium text-on-surface-variant mt-1">
-                {(totalCompleted || 0) >= 100
-                  ? "Veteran Partner"
-                  : `${totalCompleted || 0}/100 jobs`}
+              <span className="text-[10px] text-on-surface-variant mt-0.5">
+                {(totalCompleted || 0) >= 100 ? "Veteran Partner" : `${totalCompleted || 0}/100 Jobs`}
               </span>
             </div>
 
-            {/* Locked Badge — Elite 500 */}
-            <div className="min-w-[130px] shrink-0 bg-surface-container-high/30 border border-outline-variant/5 rounded-3xl p-5 flex flex-col items-center text-center grayscale opacity-50 cursor-not-allowed">
-              <div className="w-14 h-14 rounded-full bg-surface-dim/50 border border-surface-variant flex items-center justify-center mb-4">
-                <span className="material-symbols-outlined text-on-surface-variant text-[28px]">
+            {/* Locked Badge */}
+            <div className="border bg-surface-container-low border-outline-variant/10 opacity-60 rounded-2xl p-3.5 flex flex-col items-center text-center">
+              <div className="w-10 h-10 rounded-xl bg-surface-container-high text-on-surface-variant flex items-center justify-center mb-2">
+                <span className="material-symbols-outlined text-xl">
                   lock
                 </span>
               </div>
-              <span className="font-headline font-black text-[13px] text-on-surface tracking-tight">
+              <span className="font-headline font-bold text-xs text-on-surface">
                 Elite 500
               </span>
-              <span className="text-[10px] font-bold text-on-surface-variant mt-1">
-                {totalCompleted || 0}
-                <span className="opacity-60">/500 jobs</span>
+              <span className="text-[10px] text-on-surface-variant mt-0.5">
+                {totalCompleted || 0}/500 Jobs
               </span>
             </div>
           </div>
         </section>
 
         {/* Recent Feedback Section */}
-        <section className="bg-surface-container-lowest border border-outline-variant/10 rounded-4xl overflow-hidden shadow-[0_4px_16px_rgba(15,23,42,0.02)]">
-          <div className="px-6 py-5 border-b border-surface-variant/30 flex justify-between items-center bg-surface-container-lowest group relative overflow-hidden">
-            <h2 className="font-headline font-black text-[17px] text-on-surface tracking-tight relative z-10">
-              Recent Feedback
+        <section className="bg-surface-container-lowest border border-outline-variant/15 rounded-2xl overflow-hidden shadow-xs">
+          <div className="px-4 py-3 border-b border-outline-variant/15 flex justify-between items-center bg-surface-container-low/40">
+            <h2 className="font-headline font-bold text-xs sm:text-sm text-on-surface uppercase tracking-wider">
+              Recent Customer Reviews
             </h2>
-            <div className="relative z-10 w-9 h-9 flex items-center justify-center rounded-full hover:bg-surface-container-low transition-colors cursor-pointer text-on-surface-variant">
-              <span className="material-symbols-outlined text-[20px]">
-                tune
-              </span>
-            </div>
+            <span className="text-[11px] font-bold text-on-surface-variant">
+              Top 5 Reviews
+            </span>
           </div>
 
-          <div className="divide-y divide-surface-variant/20">
+          <div className="divide-y divide-outline-variant/15">
             {reviews.length === 0 && (
-              <div className="p-8 text-center text-on-surface-variant">
-                <span className="material-symbols-outlined text-4xl mb-2 opacity-40">
+              <div className="p-6 text-center text-on-surface-variant">
+                <span className="material-symbols-outlined text-3xl mb-1 opacity-40">
                   rate_review
                 </span>
-                <p className="font-bold">No reviews yet</p>
-                <p className="text-xs mt-1 text-outline-variant">
+                <p className="font-bold text-xs sm:text-sm text-on-surface">No reviews yet</p>
+                <p className="text-[11px] mt-0.5">
                   Customer feedback will appear here after completing jobs.
                 </p>
               </div>
@@ -411,36 +405,33 @@ export default async function PerformancePage() {
             {reviews.map((review) => (
               <div
                 key={review.id}
-                className="flex gap-4 p-6 hover:bg-surface-container-low/50 transition-colors"
+                className="flex gap-3.5 p-4 hover:bg-surface-container-low/50 transition-colors"
               >
-                <div className="w-12 h-12 rounded-2xl bg-surface-container-high shrink-0 overflow-hidden border border-outline-variant/10 shadow-sm">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary shrink-0 overflow-hidden flex items-center justify-center font-bold text-sm">
                   {review.customer?.avatar_url ? (
                     <Image
-                      width={48}
-                      height={48}
+                      width={36}
+                      height={36}
                       alt="User"
                       className="w-full h-full object-cover"
                       src={review.customer.avatar_url}
                     />
                   ) : (
-                    <div className="w-full h-full bg-primary-fixed/20 text-primary-fixed-variant flex items-center justify-center font-bold">
-                      {review.customer?.full_name
-                        ? review.customer.full_name.charAt(0).toUpperCase()
-                        : "?"}
-                    </div>
+                    review.customer?.full_name
+                      ? review.customer.full_name.charAt(0).toUpperCase()
+                      : "?"
                   )}
                 </div>
-                <div className="flex-1">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="font-headline font-black text-[15px] text-on-surface tracking-tight">
-                      {review.customer?.full_name || "Anonymous"}
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-start mb-1">
+                    <span className="font-headline font-bold text-xs sm:text-sm text-on-surface truncate">
+                      {review.customer?.full_name || "Customer"}
                     </span>
-                    <div className="flex gap-[2px]">
+                    <div className="flex gap-[1px] shrink-0">
                       {[1, 2, 3, 4, 5].map((i) => (
                         <span
                           key={i}
-                          className={`material-symbols-outlined text-[15px] ${i <= review.rating ? "text-primary" : "text-surface-dim"}`}
-                          style={{ fontVariationSettings: "'FILL' 1" }}
+                          className={`material-symbols-outlined text-xs ${i <= review.rating ? "text-secondary font-fill" : "text-outline-variant/30"}`}
                         >
                           star
                         </span>
@@ -448,21 +439,18 @@ export default async function PerformancePage() {
                     </div>
                   </div>
                   {review.comment && (
-                    <p className="text-[13px] font-medium text-on-surface-variant leading-relaxed">
+                    <p className="text-xs font-medium text-on-surface-variant leading-relaxed">
                       &quot;{review.comment}&quot;
                     </p>
                   )}
-                  <div className="mt-3 flex items-center gap-3">
+                  <div className="mt-2 flex items-center gap-2">
                     {review.booking?.services?.title && (
-                      <span className="text-[9px] font-label font-black uppercase tracking-widest bg-surface-container-high text-on-surface px-2.5 py-1 rounded-md">
+                      <span className="text-[9px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-md">
                         {review.booking.services.title}
                       </span>
                     )}
-                    <span className="text-[11px] font-bold text-outline-variant flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[12px]">
-                        schedule
-                      </span>
-                      {new Date(review.created_at).toLocaleDateString()}
+                    <span className="text-[11px] text-on-surface-variant/70">
+                      {new Date(review.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                     </span>
                   </div>
                 </div>

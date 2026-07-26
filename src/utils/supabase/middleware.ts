@@ -176,19 +176,28 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    // Fetch profile for role verification (cached in cookie for performance and bound to user.id)
+    // Fetch profile for role verification (cached in cookie for performance and bound to user.id with HMAC signature)
     const cookieName = 'phs-role-cache';
     const cachedCookie = request.cookies.get(cookieName)?.value;
     let profile: MiddlewareProfile | null = null;
 
+    const secretKey = process.env.AUTH_HMAC_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'phs-server-only-secret-key';
+    const getSignature = (uid: string, r: string | null, s: string | null) => {
+      const crypto = require('node:crypto');
+      return crypto.createHmac('sha256', secretKey).update(`${uid}:${r ?? ''}:${s ?? ''}`).digest('hex');
+    };
+
     if (cachedCookie) {
       try {
         const parsed = JSON.parse(cachedCookie);
-        if (parsed && parsed.userId === user.id) {
-          profile = parsed.profile as MiddlewareProfile;
+        if (parsed && parsed.userId === user.id && parsed.profile && parsed.sig) {
+          const expectedSig = getSignature(user.id, parsed.profile.role, parsed.profile.status);
+          if (parsed.sig === expectedSig) {
+            profile = parsed.profile as MiddlewareProfile;
+          }
         }
       } catch {
-        // ignore JSON errors
+        // ignore invalid JSON / corrupted cookies
       }
     }
 
@@ -201,7 +210,8 @@ export async function updateSession(request: NextRequest) {
       
       if (rawProfile) {
         profile = rawProfile as MiddlewareProfile;
-        supabaseResponse.cookies.set(cookieName, JSON.stringify({ userId: user.id, profile }), {
+        const sig = getSignature(user.id, profile.role, profile.status);
+        supabaseResponse.cookies.set(cookieName, JSON.stringify({ userId: user.id, profile, sig }), {
           maxAge: 600, // 10 minutes cache
           path: '/',
           httpOnly: true,

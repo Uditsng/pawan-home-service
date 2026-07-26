@@ -1,6 +1,7 @@
 import { calculateInvoice } from "./calculateInvoice";
 import { InvoiceSnapshot, InvoiceSeller } from "./invoiceTypes";
 import { SupabaseClient } from "@supabase/supabase-js";
+import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 
 const DEFAULT_COMPANY_PROFILE: InvoiceSeller = {
   company_name: "PHS Cleaning Company",
@@ -93,18 +94,8 @@ export async function compileInvoiceSnapshot(supabase: SupabaseClient, bookingId
 
   // 5. Fetch Platform settings
   let companyProfile = DEFAULT_COMPANY_PROFILE;
-  const { data: taxSetting } = await supabase
-    .from("platform_settings")
-    .select("value")
-    .eq("key", "tax_rate")
-    .maybeSingle();
-  
-  let taxRatePercent = 18.00;
-  if (taxSetting?.value) {
-    const rawTax = typeof taxSetting.value === "string" ? taxSetting.value : String(taxSetting.value);
-    const parsed = parseFloat(rawTax.replace(/%/g, "").replace(/"/g, "").trim());
-    if (!isNaN(parsed)) taxRatePercent = parsed;
-  }
+  const platformSettings = await fetchPlatformSettings(supabase);
+  const taxRatePercent = platformSettings.gstEnabled ? platformSettings.taxRate : 0;
 
   const { data: companySetting } = await supabase
     .from("platform_settings")

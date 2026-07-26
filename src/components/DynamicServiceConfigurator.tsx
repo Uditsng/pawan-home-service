@@ -21,6 +21,8 @@ interface DynamicServiceConfiguratorProps {
   categorySlug: string;
   subcategoryName: string;
   iconName: string;
+  gstRate?: number;
+  gstEnabled?: boolean;
 }
 
 export default function DynamicServiceConfigurator({
@@ -31,6 +33,8 @@ export default function DynamicServiceConfigurator({
   categorySlug,
   subcategoryName,
   iconName,
+  gstRate = 18,
+  gstEnabled = true,
 }: DynamicServiceConfiguratorProps) {
   const model = (service.pricing_model || "fixed") as PricingModel;
   const config = (service.pricing_config || {}) as Record<string, unknown>;
@@ -120,6 +124,9 @@ export default function DynamicServiceConfigurator({
       scheduledDate: new Date(),
       surchargeRules,
       isMember: false,
+      gstRate,
+      gstEnabled,
+      gstApplicable: service.gst_applicable,
     });
   }, [
     model,
@@ -180,6 +187,7 @@ export default function DynamicServiceConfigurator({
       categorySlug,
       pricingModel: model,
       selectedDuration: model === "hourly" ? (bookingState.durationMinutes || undefined) : undefined,
+      gstApplicable: service.gst_applicable,
     };
   }, [service, iconName, breakdown.total_price, breakdown.gst_amount, subcategoryName, categorySlug, model, bookingState.durationMinutes]);
 

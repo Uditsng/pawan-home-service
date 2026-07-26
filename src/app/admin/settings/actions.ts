@@ -8,7 +8,10 @@ import { requireAdmin } from "@/utils/supabase/auth-checks";
  * Save settings to database
  */
 export async function updateSettingsAction(settings: {
+  platform_commission?: string;
   tax_rate?: string;
+  gst_enabled?: boolean;
+  referral_enabled?: boolean;
   free_cancellation_window?: string;
   partner_penalty_rate?: string;
   service_areas?: string[];
@@ -18,49 +21,78 @@ export async function updateSettingsAction(settings: {
   await requireAdmin();
   const supabase = await createClient();
 
+  // Update platform_commission
+  if (settings.platform_commission !== undefined) {
+    await supabase
+      .from("platform_settings")
+      .upsert({ key: "platform_commission", value: settings.platform_commission, updated_at: new Date().toISOString() });
+  }
+
   // Update tax_rate
   if (settings.tax_rate !== undefined) {
     await supabase
       .from("platform_settings")
-      .upsert({ key: "tax_rate", value: JSON.stringify(settings.tax_rate) });
+      .upsert({ key: "tax_rate", value: settings.tax_rate, updated_at: new Date().toISOString() });
+  }
+
+  // Update gst_enabled
+  if (settings.gst_enabled !== undefined) {
+    await supabase
+      .from("platform_settings")
+      .upsert({ key: "gst_enabled", value: settings.gst_enabled, updated_at: new Date().toISOString() });
+  }
+
+  // Update referral_enabled
+  if (settings.referral_enabled !== undefined) {
+    await supabase
+      .from("platform_settings")
+      .upsert({ key: "referral_enabled", value: settings.referral_enabled, updated_at: new Date().toISOString() });
   }
 
   // Update free_cancellation_window
   if (settings.free_cancellation_window !== undefined) {
     await supabase
       .from("platform_settings")
-      .upsert({ key: "free_cancellation_window", value: JSON.stringify(settings.free_cancellation_window) });
+      .upsert({ key: "free_cancellation_window", value: settings.free_cancellation_window, updated_at: new Date().toISOString() });
   }
 
   // Update partner_penalty_rate
   if (settings.partner_penalty_rate !== undefined) {
     await supabase
       .from("platform_settings")
-      .upsert({ key: "partner_penalty_rate", value: JSON.stringify(settings.partner_penalty_rate) });
+      .upsert({ key: "partner_penalty_rate", value: settings.partner_penalty_rate, updated_at: new Date().toISOString() });
   }
 
   // Update service_areas
   if (settings.service_areas !== undefined) {
     await supabase
       .from("platform_settings")
-      .upsert({ key: "service_areas", value: JSON.stringify(settings.service_areas) });
+      .upsert({ key: "service_areas", value: settings.service_areas, updated_at: new Date().toISOString() });
   }
 
   // Update referral_reward_referrer
   if (settings.referral_reward_referrer !== undefined) {
     await supabase
       .from("platform_settings")
-      .upsert({ key: "referral_reward_referrer", value: settings.referral_reward_referrer });
+      .upsert({ key: "referral_reward_referrer", value: settings.referral_reward_referrer, updated_at: new Date().toISOString() });
   }
 
   // Update referral_reward_referred
   if (settings.referral_reward_referred !== undefined) {
     await supabase
       .from("platform_settings")
-      .upsert({ key: "referral_reward_referred", value: settings.referral_reward_referred });
+      .upsert({ key: "referral_reward_referred", value: settings.referral_reward_referred, updated_at: new Date().toISOString() });
   }
 
+  revalidatePath("/", "layout");
   revalidatePath("/admin/settings");
+  revalidatePath("/admin/finance");
+  revalidatePath("/admin/services");
+  revalidatePath("/partner/earnings");
+  revalidatePath("/partner/jobs");
+  revalidatePath("/partner/dashboard");
+  revalidatePath("/customer/checkout/payment");
+  revalidatePath("/customer/checkout/cart/payment");
   return { success: true };
 }
 

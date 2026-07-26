@@ -4,23 +4,13 @@ import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
 import ReferralCodeCopyClient from "@/components/ReferralCodeCopyClient";
+import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
+import { getReferralRewardConfig } from "@/lib/engines/referralEngine";
 
 export async function generateMetadata(): Promise<Metadata> {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("platform_settings")
-    .select("value")
-    .eq("key", "referral_reward_referrer")
-    .maybeSingle();
-  
-  let reward = "100";
-  if (data) {
-    try {
-      reward = typeof data.value === 'string' ? JSON.parse(data.value) : String(data.value);
-    } catch {
-      reward = String(data.value);
-    }
-  }
+  const settings = await fetchPlatformSettings(supabase);
+  const reward = settings.referralRewardReferrer;
 
   return {
     title: "Refer & Earn | PHS Cleaning Company",
@@ -53,7 +43,7 @@ export default async function ReferralPage() {
   if (!user) redirect("/login");
 
   // Fetch stats, history, and referral settings in parallel
-  const [statsResult, historyResult, settingsResult] = await Promise.all([
+  const [statsResult, historyResult, platformSettings] = await Promise.all([
     supabase.rpc("get_referral_stats", { p_user_id: user.id }),
     supabase
       .from("referrals")
@@ -61,7 +51,7 @@ export default async function ReferralPage() {
       .eq("referrer_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20),
-    supabase.from("platform_settings").select("*").in("key", ["referral_reward_referrer", "referral_reward_referred"])
+    fetchPlatformSettings(supabase),
   ]);
 
   const stats: ReferralStats = statsResult.data ?? {
@@ -74,18 +64,15 @@ export default async function ReferralPage() {
   };
 
   const referralHistory = (historyResult.data ?? []) as unknown as ReferralRow[];
+  const referralConfig = getReferralRewardConfig({
+    referrerReward: platformSettings.referralRewardReferrer,
+    referredDiscount: platformSettings.referralRewardReferred,
+    isEnabled: platformSettings.referralEnabled,
+  });
 
-  const settingsMap = (settingsResult.data || []).reduce<Record<string, string>>((acc, row) => {
-    try {
-      acc[row.key] = typeof row.value === 'string' ? JSON.parse(row.value) : String(row.value);
-    } catch {
-      acc[row.key] = String(row.value);
-    }
-    return acc;
-  }, {});
-
-  const referrerReward = settingsMap["referral_reward_referrer"] || "100";
-  const referredDiscount = settingsMap["referral_reward_referred"] || "50";
+  const referrerReward = referralConfig.referrerReward;
+  const referredDiscount = referralConfig.referredDiscount;
+  const isReferralEnabled = referralConfig.isEnabled;
 
   const statusConfig: Record<string, { label: string; className: string }> = {
     pending:   { label: "Pending",   className: "bg-amber-500/10 text-amber-700 border border-amber-500/20" },
@@ -107,6 +94,13 @@ export default async function ReferralPage() {
             <span className="material-symbols-outlined text-[14px]">arrow_back</span>
             Back to Profile
           </Link>
+
+          {!isReferralEnabled && (
+            <div className="bg-amber-500/20 border border-amber-500/40 rounded-xl p-3 mb-4 text-amber-200 text-xs font-semibold flex items-center gap-2">
+              <span className="material-symbols-outlined text-sm">pause_circle</span>
+              Referral program is currently paused by administrator. New code activations are disabled.
+            </div>
+          )}
 
           <div className="flex items-start justify-between gap-4">
             <div className="relative z-10">

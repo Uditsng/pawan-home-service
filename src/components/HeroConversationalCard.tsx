@@ -168,7 +168,7 @@ export default function HeroConversationalCard() {
         <div className="flex items-center gap-3">
           <div className="relative w-9 h-9 rounded-full bg-linear-to-tr from-secondary to-teal-400 flex items-center justify-center font-bold text-primary shadow-md">
             👩‍💼
-            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#002261] animate-pulse"></span>
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-primary animate-pulse"></span>
           </div>
           <div>
             <h4 className="text-sm font-extrabold text-white leading-tight">Priya</h4>

@@ -132,25 +132,25 @@ export default function EditProfileForm({ initialData, userId }: EditProfileForm
   const isLoading = isPending || isUploading;
 
   return (
-    <div className="w-full">
-      <div className="flex items-center gap-3 bg-white p-4 justify-start border-b border-outline-variant/10">
-        <Link href="/partner/profile" className="text-on-surface-variant hover:opacity-80 flex items-center">
+    <div className="w-full min-h-screen bg-surface font-body text-on-surface pb-24 lg:pb-12">
+      <div className="flex items-center gap-3 bg-surface-container-lowest p-4 px-4 sm:px-6 lg:px-8 border-b border-outline-variant/15 shadow-xs">
+        <Link href="/partner/profile" className="text-on-surface-variant hover:text-primary transition-colors flex items-center">
           <span className="material-symbols-outlined text-[24px]">arrow_back</span>
         </Link>
-        <span className="text-[18px] font-extrabold text-[#1c2438]">Edit Profile</span>
+        <h1 className="text-lg sm:text-xl font-headline font-black text-on-surface">Edit Profile</h1>
       </div>
 
-      <div className="p-4 md:p-6 max-w-lg mx-auto">
-        <div className="bg-white rounded-3xl p-5 md:p-6 shadow-sm w-full">
+      <div className="p-4 sm:p-6 max-w-xl mx-auto mt-4">
+        <div className="bg-surface-container-lowest border border-outline-variant/15 rounded-3xl p-5 sm:p-8 shadow-xs w-full">
           {alertMsg && (
             <div
-              className={`w-full p-4 mb-5 rounded-2xl text-sm font-semibold flex items-start gap-2.5 ${
+              className={`w-full p-4 mb-5 rounded-2xl text-xs sm:text-sm font-semibold flex items-start gap-2.5 ${
                 alertMsg.type === "error"
-                  ? "bg-red-50 text-red-600 border border-red-100"
-                  : "bg-green-50 text-green-700 border border-green-100"
+                  ? "bg-error/10 text-error border border-error/20"
+                  : "bg-success/10 text-success border border-success/20"
               }`}
             >
-              <span className="material-symbols-outlined text-lg shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>
+              <span className="material-symbols-outlined text-base shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>
                 {alertMsg.type === "error" ? "error" : "check_circle"}
               </span>
               <span>{alertMsg.text}</span>
@@ -159,27 +159,27 @@ export default function EditProfileForm({ initialData, userId }: EditProfileForm
 
           <form onSubmit={handleSubmit} className="flex flex-col items-center">
             {/* Avatar Section */}
-            <div className="relative mb-6 md:mb-8 mt-2">
-              <div className="w-[100px] h-[100px] md:w-[120px] md:h-[120px] rounded-full flex items-center justify-center shrink-0 border-4 border-primary bg-surface overflow-hidden relative">
+            <div className="relative mb-6 sm:mb-8 mt-2">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full flex items-center justify-center shrink-0 border-4 border-primary bg-surface-container-low overflow-hidden relative">
                 {avatarPreview ? (
                   <Image
                     src={avatarPreview}
                     alt="Profile"
                     className="w-full h-full object-cover"
-                    width={120}
-                    height={120}
+                    width={112}
+                    height={112}
                   />
                 ) : (
-                  <span className="material-symbols-outlined text-[60px] md:text-[80px] text-slate-400">person</span>
+                  <span className="material-symbols-outlined text-4xl text-on-surface-variant/40">person</span>
                 )}
               </div>
               <button
                 type="button"
                 disabled={isLoading}
-                className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-secondary flex items-center justify-center border-2 border-white shadow-sm cursor-pointer hover:opacity-95 transition-opacity disabled:opacity-50"
+                className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-secondary flex items-center justify-center border-2 border-white shadow-xs cursor-pointer hover:scale-105 transition-transform disabled:opacity-50"
                 onClick={() => fileInputRef.current?.click()}
               >
-                <span className="material-symbols-outlined text-[16px] text-primary font-bold">edit</span>
+                <span className="material-symbols-outlined text-sm text-primary font-bold">edit</span>
               </button>
               <input
                 type="file"
@@ -195,7 +195,7 @@ export default function EditProfileForm({ initialData, userId }: EditProfileForm
             <div className="w-full space-y-5">
               {/* Full Name */}
               <div className="relative">
-                <label className="absolute -top-2.5 left-4 bg-white px-1 text-xs font-bold text-slate-500">
+                <label className="absolute -top-2.5 left-4 bg-surface-container-lowest px-1 text-xs font-bold text-on-surface-variant">
                   Full Name
                 </label>
                 <input
@@ -205,20 +205,20 @@ export default function EditProfileForm({ initialData, userId }: EditProfileForm
                   onChange={handleInputChange}
                   placeholder="Your Full Name"
                   disabled={isLoading}
-                  className={`w-full border rounded-xl p-4 text-sm font-semibold focus:ring-1 outline-none transition-all ${
+                  className={`w-full border rounded-2xl p-4 text-sm font-semibold focus:ring-2 outline-none transition-all bg-surface-container-lowest ${
                     errors.full_name
-                      ? "border-red-500 focus:ring-red-500 focus:border-red-500"
-                      : "border-slate-300 focus:ring-primary focus:border-primary text-primary"
+                      ? "border-error focus:ring-error"
+                      : "border-outline-variant/20 focus:ring-primary focus:border-primary text-on-surface"
                   }`}
                 />
                 {errors.full_name && (
-                  <p className="text-red-500 text-xs font-semibold mt-1 ml-1">{errors.full_name}</p>
+                  <p className="text-error text-xs font-semibold mt-1 ml-1">{errors.full_name}</p>
                 )}
               </div>
 
               {/* Mobile */}
               <div className="relative">
-                <label className="absolute -top-2.5 left-4 bg-white px-1 text-xs font-bold text-slate-500">
+                <label className="absolute -top-2.5 left-4 bg-surface-container-lowest px-1 text-xs font-bold text-on-surface-variant">
                   Mobile Number
                 </label>
                 <input
@@ -228,7 +228,7 @@ export default function EditProfileForm({ initialData, userId }: EditProfileForm
                   onChange={handleInputChange}
                   disabled={isLoading}
                   placeholder="e.g. +91 98765 43210"
-                  className="w-full border border-slate-300 rounded-xl p-4 text-sm font-semibold focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all text-primary"
+                  className="w-full border border-outline-variant/20 bg-surface-container-lowest rounded-2xl p-4 text-sm font-semibold focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-on-surface"
                 />
               </div>
             </div>
@@ -237,7 +237,7 @@ export default function EditProfileForm({ initialData, userId }: EditProfileForm
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full mt-6 bg-[#22c55e] text-white py-4 rounded-xl font-bold text-sm hover:bg-green-600 transition-colors disabled:opacity-75 flex justify-center items-center h-[56px] cursor-pointer"
+              className="w-full mt-6 bg-primary hover:bg-primary/95 text-on-primary py-4 rounded-2xl font-bold font-headline text-sm shadow-sm active:scale-[0.98] transition-all disabled:opacity-75 flex justify-center items-center h-14 cursor-pointer"
             >
               {isLoading ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>

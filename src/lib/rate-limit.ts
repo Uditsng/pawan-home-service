@@ -28,8 +28,8 @@ export class RateLimiter {
       });
 
       if (error || !data || data.length === 0) {
-        console.error("Rate limiter RPC failed, allowing request by default:", error);
-        return { allowed: true, retryAfter: 0 };
+        console.error("Rate limiter RPC failed, denying request by default for security:", error);
+        return { allowed: false, retryAfter: 60 };
       }
 
       // data is returned as an array of rows
@@ -39,8 +39,8 @@ export class RateLimiter {
         retryAfter: result.retry_after_seconds
       };
     } catch (err) {
-      console.error("Rate limiter error, allowing request by default:", err);
-      return { allowed: true, retryAfter: 0 };
+      console.error("Rate limiter error, denying request by default for security:", err);
+      return { allowed: false, retryAfter: 60 };
     }
   }
 }
@@ -51,3 +51,9 @@ export const otpSendLimiter = new RateLimiter({ maxRequests: 3, windowMs: 10 * 6
 
 /** Max 5 OTP verification attempts per phone number per 10 minutes */
 export const otpVerifyLimiter = new RateLimiter({ maxRequests: 5, windowMs: 10 * 60 * 1000 });
+
+/** Max 5 login attempts per phone number per minute (brute-force protection) */
+export const loginLimiter = new RateLimiter({ maxRequests: 5, windowMs: 60 * 1000 });
+
+/** Max 3 password reset OTP sends per phone number per hour */
+export const passwordResetLimiter = new RateLimiter({ maxRequests: 3, windowMs: 60 * 60 * 1000 });

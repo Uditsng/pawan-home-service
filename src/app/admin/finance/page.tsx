@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { FinanceConsole } from "./FinanceConsole";
+import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 
 interface BookingRow {
   id: string;
@@ -17,23 +18,24 @@ interface BookingRow {
 export default async function AdminFinancePage() {
   const supabase = await createClient();
 
-  // Fetch active & completed bookings for dynamic financial reporting
-  const { data: bookings } = await supabase
-    .from('bookings')
-    .select(`
-      id,
-      total_amount,
-      created_at,
-      status,
-      customer:customer_id (full_name),
-      partner:partner_id (full_name)
-    `)
-    .neq('status', 'pending') // Pending jobs are searching for partner, no money split yet
-    .order('created_at', { ascending: false });
+  const [settings, bookingsResult] = await Promise.all([
+    fetchPlatformSettings(supabase),
+    supabase
+      .from('bookings')
+      .select(`
+        id,
+        total_amount,
+        created_at,
+        status,
+        customer:customer_id (full_name),
+        partner:partner_id (full_name)
+      `)
+      .neq('status', 'pending')
+      .order('created_at', { ascending: false })
+  ]);
 
-  const bookingRows = (bookings as unknown as BookingRow[]) || [];
+  const bookingRows = (bookingsResult.data as unknown as BookingRow[]) || [];
 
-  // Map and serialize bookings data
   const serializedBookings = bookingRows.map((b) => ({
     id: b.id,
     total_amount: Number(b.total_amount || 0),
@@ -55,7 +57,7 @@ export default async function AdminFinancePage() {
       </div>
 
       {/* Finance Console Ledger */}
-      <FinanceConsole initialBookings={serializedBookings} />
+      <FinanceConsole initialBookings={serializedBookings} commissionPercent={settings.platformCommission} />
     </div>
   );
 }

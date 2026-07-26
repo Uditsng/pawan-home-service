@@ -10,20 +10,14 @@ export default function SplashLoader() {
   const [isFading, setIsFading] = useState(false);
 
   useEffect(() => {
-    console.log("PHS SplashLoader: Component mounted client-side");
     if (hasShownSplash) {
-      console.log("PHS SplashLoader: Already shown, skipping animation");
       return;
     }
 
-    // Start fade out after initial mount
     const fadeTimer = setTimeout(() => {
-      console.log("PHS SplashLoader: Triggering fade-out");
       setIsFading(true);
       
-      // Completely remove from DOM after fade animation (500ms)
       const removeTimer = setTimeout(() => {
-        console.log("PHS SplashLoader: Fading done, removing from DOM");
         setShow(false);
         hasShownSplash = true;
       }, 500);

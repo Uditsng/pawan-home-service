@@ -145,7 +145,7 @@ export default function DashboardGridClient({ categories, availableServices }: D
           {servicesForCategory.map((service) => {
             const iconName = service.subcategories?.icon_name || "sparkles";
             const catSlug = (service.subcategories?.categories?.category_name || service.category || "services")
-              .toLowerCase().replace(/\s+/g, "-").replace(/&/g, "and");
+              .toLowerCase().replace(/[,\s]+/g, "-").replace(/&/g, "and");
 
             return (
               <Link
@@ -197,7 +197,7 @@ export default function DashboardGridClient({ categories, availableServices }: D
               onClick={() => {
                 const catSlug = cat.category_name
                   .toLowerCase()
-                  .replace(/\s+/g, "-")
+                  .replace(/[,\s]+/g, "-")
                   .replace(/&/g, "and");
                 router.push(`/customer/services/${catSlug}`);
               }}

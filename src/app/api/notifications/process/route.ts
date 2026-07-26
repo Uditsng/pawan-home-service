@@ -5,6 +5,19 @@ import { sendNotification } from "@/lib/notifications";
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+  // Authorization check for cron worker trigger
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret) {
+    const authHeader = request.headers.get("authorization");
+    const headerSecret = request.headers.get("x-cron-secret");
+    const isBearerValid = authHeader === `Bearer ${cronSecret}`;
+    const isHeaderValid = headerSecret === cronSecret;
+
+    if (!isBearerValid && !isHeaderValid) {
+      return NextResponse.json({ error: "Unauthorized cron request." }, { status: 401 });
+    }
+  }
+
   const supabaseAdmin = createAdminClient();
   const now = new Date().toISOString();
 
@@ -121,7 +134,7 @@ export async function GET(request: Request) {
         const chunkSize = 500;
         let totalSuccess = 0;
         let totalFailure = 0;
-        const logRows: any[] = [];
+        const logRows: unknown[] = [];
 
         for (let i = 0; i < targetUserIds.length; i += chunkSize) {
           const chunk = targetUserIds.slice(i, i + chunkSize);

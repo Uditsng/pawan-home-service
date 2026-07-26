@@ -27,15 +27,15 @@ export default async function PartnerSupportPage() {
   }
 
   return (
-    <div className="bg-[#f5f6f8] text-on-background min-h-screen pb-24 flex flex-col font-sans">
+    <div className="bg-surface text-on-surface min-h-screen pb-24 lg:pb-12 flex flex-col font-body">
 
-      <main className="flex-1 max-w-3xl mx-auto w-full px-4 md:px-5 pt-4 md:pt-5">
+      <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
         <div className="border-b border-outline-variant/15 pb-4">
-          <h1 className="text-[22px] font-extrabold tracking-tight text-[#1c2438]">
-            Help & Support
+          <h1 className="text-xl sm:text-2xl font-headline font-black tracking-tight text-on-surface">
+            Help & Support Center
           </h1>
-          <p className="text-slate-500 text-xs font-semibold mt-1">
-            Need assistance with bookings or payouts? Our partner helpline is available.
+          <p className="text-on-surface-variant text-xs sm:text-sm font-medium mt-1">
+            Need assistance with bookings, payouts, or account status? Our central support desk is here to help.
           </p>
         </div>
 

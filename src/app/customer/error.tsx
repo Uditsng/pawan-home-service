@@ -29,21 +29,9 @@ export default function CustomerErrorBoundary({ error, reset }: ErrorProps) {
             Something went wrong
           </h1>
           <p className="text-sm text-on-surface-variant leading-relaxed">
-            An unexpected error occurred in your portal. Please try again or return to your dashboard.
+            An unexpected error occurred. Please try again or return to your dashboard. If the problem persists, contact support and reference error code: {error.digest || "unknown"}.
           </p>
         </div>
-
-        {/* Technical Error details (toggled) */}
-        {error.message && (
-          <div className="p-3 bg-surface-container rounded-xl text-left border border-outline-variant/10">
-            <p className="text-xs text-on-surface-variant font-bold uppercase tracking-wider mb-1">
-              Error Message
-            </p>
-            <p className="text-[11px] font-mono break-all text-on-surface opacity-80 line-clamp-2">
-              {error.message}
-            </p>
-          </div>
-        )}
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-3 pt-2">

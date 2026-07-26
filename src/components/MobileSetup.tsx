@@ -7,12 +7,6 @@ import { registerTokenAction, deleteTokenAction } from "@/app/actions/notificati
 import { createClient } from "@/utils/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 
-function maskFcmToken(token: string | null | undefined) {
-  if (!token || token.length === 0) return "<empty>";
-  if (token.length <= 16) return token;
-  return `${token.slice(0, 8)}...${token.slice(-8)}`;
-}
-
 export default function MobileSetup() {
   const pathname = usePathname();
   const router = useRouter();
@@ -36,7 +30,6 @@ export default function MobileSetup() {
         await storageService.remove(`phs_cache_${key}`);
       }
       window.dispatchEvent(new CustomEvent("phs-cache-invalidated"));
-      console.log("[Push] Invalidated cache keys:", keys);
     } catch (err) {
       console.error("[Push] Cache invalidation failed:", err);
     }
@@ -95,24 +88,17 @@ export default function MobileSetup() {
     const initPushNotifications = async () => {
       try {
         const { Capacitor } = await import("@capacitor/core");
-        console.log("[Push] initPushNotifications starting");
         if (!Capacitor.isNativePlatform()) {
-          console.log("[Push] Not a native platform, skipping push initialization.");
           return;
         }
 
-        const cachedToken = localStorage.getItem("fcm_token");
-        console.log("[Push] Existing cached FCM token:", maskFcmToken(cachedToken));
-
         const platform = Capacitor.getPlatform();
-        console.log("[Push] Native platform detected:", platform);
 
         const { PushNotifications } = await import("@capacitor/push-notifications");
         const { LocalNotifications } = await import("@capacitor/local-notifications");
 
         // 2a. Request permissions
         let permStatus = await PushNotifications.checkPermissions();
-        console.log("[Push] Push permission status before request:", permStatus);
         if (permStatus.receive === "prompt") {
           permStatus = await PushNotifications.requestPermissions();
         }
@@ -149,7 +135,7 @@ export default function MobileSetup() {
               visibility: 1, // Visibility.PUBLIC (1)
               vibration: true,
             });
-            console.log("[Push] Custom notification channels 'service_assignment' & 'phs_bookings' created/verified.");
+
           } catch (channelErr) {
             console.error("[Push] Failed to create custom notification channels:", channelErr);
           }
@@ -158,8 +144,6 @@ export default function MobileSetup() {
         // 2b2. Attach registration listeners first so we never miss the registration event.
         registrationListener = await PushNotifications.addListener("registration", async (token) => {
           const platform = Capacitor.getPlatform() as "android" | "ios";
-          console.log("[Push] registration listener fired");
-          console.log("[Push] Received registration token:", maskFcmToken(token.value), "platform:", platform);
           try {
             const supabase = createClient();
             const { data: { session } } = await supabase.auth.getSession();
@@ -176,23 +160,17 @@ export default function MobileSetup() {
         });
 
         // 2e. On registration error
-        errorListener = await PushNotifications.addListener("registrationError", (err) => {
-          console.error("[Push] registrationError listener fired", err);
-        });
-
-        console.log("[Push] registration/error listeners attached. Awaiting authenticated registration.");
+        errorListener = await PushNotifications.addListener("registrationError", () => {});
 
         // 2e2. Register on mount if user is already logged in (race-free check)
         const supabase = createClient();
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-          console.log("[Push] User session detected on mount, registering push notifications.");
           await PushNotifications.register();
         }
 
         // 2f. Handle foreground notifications (app is active)
         receiveListener = await PushNotifications.addListener("pushNotificationReceived", async (notification) => {
-          console.log("[Push] Notification received in foreground:", notification);
           
           const type = notification.data?.type;
           const currentPath = window.location.pathname;
@@ -205,8 +183,6 @@ export default function MobileSetup() {
             (type === "extension_requested" && isPartnerRoute);
 
           // Log structured pipeline stage 6 (OS / foreground client receipt)
-          console.log(`[Notification Pipeline] [6. OS_DELIVERY] State: Foreground, Title: "${notification.title}", Type: ${type}`);
-
           // Invalidate cache immediately on receiving a notification in the foreground
           // to fix caching/outdated UI issue
           const bookingId = notification.data?.booking_id as string | undefined;
@@ -253,9 +229,6 @@ export default function MobileSetup() {
 
           const type = data.type as string | undefined;
 
-          // Log structured pipeline stage 7 (User opened notification / tap)
-          console.log(`[Notification Pipeline] [7. TAP_ACTION] Source: Push, BookingId: ${bookingId}, Type: ${type}`);
-
           // Invalidate cache on click/action to make sure the target screens show fresh data
           await invalidateCacheKeys(bookingId ? String(bookingId) : undefined);
 
@@ -277,13 +250,11 @@ export default function MobileSetup() {
 
         // 2h. Handle click actions (app is backgrounded or killed, user taps push notification)
         actionListener = await PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
-          console.log("[Push] Action performed on push notification:", action);
           handleNotificationClick(action.notification.data);
         });
 
         // 2i. Handle local notification click actions (foreground notification tap)
         localActionListener = await LocalNotifications.addListener("localNotificationActionPerformed", (action) => {
-          console.log("[Push] Action performed on local notification:", action);
           handleNotificationClick(action.notification.extra);
         });
 
@@ -311,7 +282,6 @@ export default function MobileSetup() {
     const supabase = createClient();
 
     const handleAuthChange = async (event: string, session: Session | null) => {
-      console.log("[Push] onAuthStateChange event:", event, "session:", session?.user ? { id: session.user.id, email: session.user.email } : null);
       const { Capacitor } = await import("@capacitor/core");
       if (!Capacitor.isNativePlatform()) return;
 
@@ -324,7 +294,6 @@ export default function MobileSetup() {
       if (event === "SIGNED_IN") {
         if (session?.user) {
           try {
-            console.log(`[Notification Pipeline] [AUTH_CHANGE] ${event}. Registering push notifications.`);
             let permStatus = await PushNotifications.checkPermissions();
             if (permStatus.receive === "prompt") {
               permStatus = await PushNotifications.requestPermissions();
@@ -340,7 +309,6 @@ export default function MobileSetup() {
         try {
           const token = localStorage.getItem("fcm_token");
           const userId = session?.user?.id ?? currentSignedInUserIdRef.current ?? undefined;
-          console.log(`[Notification Pipeline] [AUTH_CHANGE] SIGNED_OUT. Cleaning up push token. token=${maskFcmToken(token)} userId=${userId}`);
           if (token && userId) {
             await deleteTokenAction(token, userId);
             localStorage.removeItem("fcm_token");

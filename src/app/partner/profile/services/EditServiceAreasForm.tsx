@@ -41,21 +41,21 @@ export default function EditServiceAreasForm({ initialAreas }: EditServiceAreasF
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+    <div className="bg-surface-container-lowest rounded-3xl shadow-xs border border-outline-variant/15 overflow-hidden">
       {/* Toast Messages */}
       {success && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-100 bg-green-600 text-white px-6 py-3 rounded-2xl shadow-2xl font-bold text-sm flex items-center gap-2 animate-[slideDown_0.3s_ease-out]">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-100 bg-success text-on-success px-6 py-3 rounded-2xl shadow-xl font-bold text-sm flex items-center gap-2 animate-[slideDown_0.3s_ease-out]">
           <span className="material-symbols-outlined text-lg">check_circle</span>
           {success}
         </div>
       )}
 
-      <div className="p-4 md:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-        <h3 className="font-extrabold text-[#1c2438] text-[15px]">Service Areas</h3>
+      <div className="p-4 sm:p-5 border-b border-outline-variant/15 flex items-center justify-between bg-surface-container-low/50">
+        <h3 className="font-headline font-bold text-on-surface text-base">Service Areas</h3>
         {!isEditing && (
           <button
             onClick={() => setIsEditing(true)}
-            className="px-4 py-2 bg-primary text-white text-xs font-bold rounded-xl shadow-md hover:opacity-90 active:scale-95 transition-all"
+            className="px-4 py-2 bg-primary text-on-primary text-xs font-bold rounded-xl shadow-xs hover:bg-primary/95 active:scale-95 transition-all cursor-pointer border-none"
           >
             Edit Areas
           </button>
@@ -63,18 +63,20 @@ export default function EditServiceAreasForm({ initialAreas }: EditServiceAreasF
       </div>
 
       {!isEditing ? (
-        <div className="divide-y divide-slate-100">
+        <div className="divide-y divide-outline-variant/15">
           {initialAreas.length > 0 ? (
             initialAreas.map((area) => (
               <div
                 key={`${area.pincode}-${area.locality}`}
-                className="p-4 md:p-5 flex items-center justify-between hover:bg-slate-50 transition-colors"
+                className="p-4 sm:p-5 flex items-center justify-between hover:bg-surface-container-low transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-[20px]">📍</span>
-                  <span className="font-semibold text-[14px] text-[#1c2438]">
-                    {area.locality || "Unknown Area"}{" "}
-                    <span className="text-slate-400 text-xs font-medium ml-1">
+                  <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                    <span className="material-symbols-outlined text-lg">location_on</span>
+                  </div>
+                  <span className="font-bold text-sm text-on-surface">
+                    {area.locality || "Area"}{" "}
+                    <span className="text-on-surface-variant/70 text-xs font-semibold ml-1">
                       ({area.pincode})
                     </span>
                   </span>
@@ -82,7 +84,7 @@ export default function EditServiceAreasForm({ initialAreas }: EditServiceAreasF
               </div>
             ))
           ) : (
-            <div className="p-6 text-center text-slate-500 font-medium text-sm">
+            <div className="p-6 text-center text-on-surface-variant font-medium text-sm">
               No service areas added yet.
             </div>
           )}
@@ -92,7 +94,7 @@ export default function EditServiceAreasForm({ initialAreas }: EditServiceAreasF
           <PincodeSelector initialAreas={initialAreas} />
 
           {error && (
-            <div className="p-4 bg-red-50 text-red-600 text-sm font-bold rounded-xl border border-red-200">
+            <div className="p-4 bg-error/10 text-error text-sm font-bold rounded-2xl border border-error/20">
               {error}
             </div>
           )}
@@ -105,18 +107,18 @@ export default function EditServiceAreasForm({ initialAreas }: EditServiceAreasF
                 setError(null);
               }}
               disabled={isPending}
-              className="flex-1 py-3 rounded-xl border border-outline-variant/30 font-bold text-sm text-on-surface-variant hover:bg-surface-container-low transition-colors"
+              className="flex-1 py-3 rounded-2xl border border-outline-variant/20 font-bold text-sm text-on-surface-variant hover:bg-surface-container-low transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="flex-1 py-3 rounded-xl bg-secondary text-white font-bold text-sm shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 border-none"
+              className="flex-1 py-3 rounded-2xl bg-secondary text-primary font-bold text-sm shadow-xs hover:bg-secondary/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 border-none cursor-pointer"
             >
               {isPending ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
                   Saving...
                 </>
               ) : (

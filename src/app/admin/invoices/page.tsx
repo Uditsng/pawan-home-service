@@ -45,7 +45,7 @@ interface DBInvoiceRow {
   payment_method: string | null;
   transaction_id: string | null;
   created_at: string;
-  snapshot: Record<string, unknown> | null;
+  snapshot?: Record<string, unknown> | null;
   booking: {
     id: string;
     status: string;
@@ -114,7 +114,6 @@ export default async function AdminInvoicesPage() {
         payment_method,
         transaction_id,
         created_at,
-        snapshot,
         booking:booking_id (
           id,
           status,
@@ -149,8 +148,10 @@ export default async function AdminInvoicesPage() {
   const { data: invoicesRaw, error } = invoicesRes;
   const { data: missingInvoicesBookings } = missingInvoicesRes;
 
+  let fetchError: string | null = null;
   if (error) {
     console.error("Failed to fetch invoices for admin console:", error);
+    fetchError = "Failed to load invoices from the database. Please check the database connection and try again.";
   }
 
   const invoices: AdminInvoice[] = ((invoicesRaw as unknown as DBInvoiceRow[]) || []).map((inv) => {
@@ -220,6 +221,7 @@ export default async function AdminInvoicesPage() {
     <InvoicesConsole 
       initialInvoices={invoices} 
       completedWithoutInvoice={completedWithoutInvoice} 
+      fetchError={fetchError}
     />
   );
 }

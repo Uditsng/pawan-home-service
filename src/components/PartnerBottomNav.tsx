@@ -15,7 +15,7 @@ export default function PartnerBottomNav() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 pb-safe bg-white/80 backdrop-blur-[20px] shadow-[0_-12px_32px_rgba(15,23,42,0.06)] rounded-t-2xl border-t border-outline-variant/10">
+    <nav className="lg:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 pb-safe bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_-12px_32px_rgba(15,23,42,0.06)] rounded-t-2xl border-t border-outline-variant/15">
       {navItems.map((item) => {
         const isActive = pathname === item.href || (item.href !== "/partner/dashboard" && pathname?.startsWith(item.href));
 
@@ -24,8 +24,13 @@ export default function PartnerBottomNav() {
             key={item.label}
             href={item.href}
             prefetch={false}
+<<<<<<< HEAD
             className={`flex flex-col items-center justify-center min-h-12 px-3 py-1.5 transition-colors duration-300 hover:text-emerald-600 ${isActive
               ? "text-emerald-600 bg-emerald-500/10 rounded-2xl px-4 py-1.5"
+=======
+            className={`flex flex-col items-center justify-center min-h-12 px-3 py-1.5 transition-colors duration-200 hover:text-primary ${isActive
+              ? "text-primary bg-primary/10 rounded-2xl px-4 py-1.5"
+>>>>>>> c9d904fd1bffc7db7316b39b30807c6826653432
               : "text-on-surface-variant/70"
               }`}
           >

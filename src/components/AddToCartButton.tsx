@@ -36,13 +36,13 @@ export default function AddToCartButton({
           handleClick();
         }}
         aria-label={inCart ? "View in cart" : "Add to cart"}
-        className={`w-8 h-8 md:w-9 md:h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 shrink-0 border shadow-[0_4px_10px_rgba(15,23,42,0.08)] ${
+        className={`w-6.5 h-6.5 md:w-7 md:h-7 rounded-lg flex items-center justify-center transition-all active:scale-95 shrink-0 border shadow-[0_4px_10px_rgba(15,23,42,0.08)] ${
           inCart
             ? "bg-emerald-600 border-emerald-600 text-white shadow-[0_4px_10px_rgba(5,150,105,0.2)]"
             : "bg-surface-container-lowest border-outline-variant/15 text-emerald-600 hover:bg-emerald-50/50 hover:border-emerald-600/30"
         } ${className}`}
       >
-        <span className="material-symbols-outlined text-[20px] md:text-[22px] font-bold">
+        <span className="material-symbols-outlined text-[16px] md:text-[18px] font-bold">
           {inCart ? "done" : "add"}
         </span>
       </button>

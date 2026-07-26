@@ -37,22 +37,25 @@ export default function PincodeSelector({
       setIsLoading(true);
       setError(null);
       try {
-        const res = await fetch(`https://api.postalpincode.in/pincode/${pincodeInput}`);
+        const res = await fetch(`/api/pincode/${pincodeInput}`);
         const data = await res.json();
-        
-        if (data[0].Status === "Success") {
-          // Filter unique names to avoid duplicates
-          const uniqueOffices = data[0].PostOffice.filter((v: PostOffice, i: number, a: PostOffice[]) => 
-            a.findIndex(t => (t.Name === v.Name)) === i
-          );
-          setSuggestions(uniqueOffices);
+
+        if (!res.ok) {
+          setSuggestions([]);
+          setError(data?.error || "Invalid pincode or no areas found.");
+          return;
+        }
+
+        const offices: PostOffice[] = Array.isArray(data.offices) ? data.offices : [];
+        if (offices.length > 0) {
+          setSuggestions(offices);
         } else {
           setSuggestions([]);
           setError("Invalid pincode or no areas found.");
         }
       } catch {
-        setError("Failed to fetch areas.");
         setSuggestions([]);
+        setError("Failed to fetch areas. Please try again.");
       } finally {
         setIsLoading(false);
       }

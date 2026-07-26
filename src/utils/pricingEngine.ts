@@ -1,4 +1,5 @@
 import { BookingPricing, PricingModel, MembershipPlan } from "@/lib/types";
+import { calculateGstBreakdown } from "@/lib/engines/gstEngine";
 
 export interface PricingInput {
   pricingModel: PricingModel;
@@ -84,6 +85,7 @@ export interface PricingInput {
 
   walletBalanceToUse?: number;
   gstRate?: number; // default 18
+  gstEnabled?: boolean; // default true
   gstApplicable?: boolean; // default true
 }
 
@@ -92,8 +94,6 @@ export interface PricingInput {
  */
 export function calculatePricingBreakdown(input: PricingInput): Omit<BookingPricing, "id" | "booking_id" | "created_at"> {
   const config = input.pricingConfig || {};
-  const isGstApplicable = input.gstApplicable !== false;
-  const gstRatePercent = input.gstRate !== undefined ? input.gstRate : 18;
 
   let basePrice = Number(input.basePrice || 0);
   let hourlyPrice = 0;
@@ -311,11 +311,15 @@ export function calculatePricingBreakdown(input: PricingInput): Omit<BookingPric
     }
   }
 
-  // 5. Calculate GST Amount
-  let gstAmount = 0;
-  if (isGstApplicable) {
-    gstAmount = Math.round(subtotal * (gstRatePercent / 100));
-  }
+  // 5. Calculate GST Amount using gstEngine
+  const gstBreakdown = calculateGstBreakdown({
+    subtotal,
+    taxRatePercent: input.gstRate !== undefined ? input.gstRate : 18,
+    gstEnabled: input.gstEnabled,
+    serviceGstApplicable: input.gstApplicable,
+  });
+  const gstAmount = gstBreakdown.gstAmount;
+  const taxRatePercent = gstBreakdown.taxRatePercent;
 
   // 6. Apply Coupon Codes
   let couponDiscount = 0;
@@ -358,6 +362,7 @@ export function calculatePricingBreakdown(input: PricingInput): Omit<BookingPric
     addons_total: addonsTotal,
     addons_breakdown: addonsBreakdown,
     gst_amount: gstAmount,
+    tax_rate_percent: taxRatePercent,
     discount_amount: discountAmount,
     coupon_discount: couponDiscount,
     wallet_discount: walletDiscount,

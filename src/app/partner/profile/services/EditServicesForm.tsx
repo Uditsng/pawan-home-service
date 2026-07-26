@@ -52,21 +52,21 @@ export default function EditServicesForm({ allServices, initialSelectedServices 
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-6">
+    <div className="bg-surface-container-lowest rounded-3xl shadow-xs border border-outline-variant/15 overflow-hidden mb-6">
       {/* Toast Messages */}
       {success && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-100 bg-green-600 text-white px-6 py-3 rounded-2xl shadow-2xl font-bold text-sm flex items-center gap-2 animate-[slideDown_0.3s_ease-out]">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-100 bg-success text-on-success px-6 py-3 rounded-2xl shadow-xl font-bold text-sm flex items-center gap-2 animate-[slideDown_0.3s_ease-out]">
           <span className="material-symbols-outlined text-lg">check_circle</span>
           {success}
         </div>
       )}
 
-      <div className="p-4 md:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-        <h3 className="font-extrabold text-[#1c2438] text-[15px]">Services Offered</h3>
+      <div className="p-4 sm:p-5 border-b border-outline-variant/15 flex items-center justify-between bg-surface-container-low/50">
+        <h3 className="font-headline font-bold text-on-surface text-base">Services Offered</h3>
         {!isEditing && (
           <button
             onClick={() => setIsEditing(true)}
-            className="px-4 py-2 bg-primary text-white text-xs font-bold rounded-xl shadow-md hover:opacity-90 active:scale-95 transition-all cursor-pointer border-none"
+            className="px-4 py-2 bg-primary text-on-primary text-xs font-bold rounded-xl shadow-xs hover:bg-primary/95 active:scale-95 transition-all cursor-pointer border-none"
           >
             Edit Services
           </button>
@@ -74,47 +74,47 @@ export default function EditServicesForm({ allServices, initialSelectedServices 
       </div>
 
       {!isEditing ? (
-        <div className="divide-y divide-slate-100">
+        <div className="divide-y divide-outline-variant/15">
           {activeServices.length > 0 ? (
             activeServices.map((service) => (
-              <div key={service.id} className="p-4 md:p-5 flex items-center justify-between hover:bg-slate-50 transition-colors">
+              <div key={service.id} className="p-4 sm:p-5 flex items-center justify-between hover:bg-surface-container-low transition-colors">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
-                    <span className="material-symbols-outlined text-[#059669] drop-shadow-sm text-[20px]">
+                  <div className="w-10 h-10 bg-primary/10 rounded-2xl flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-primary text-[20px]">
                       {service.iconName}
                     </span>
                   </div>
                   <div>
-                    <span className="font-semibold text-[14px] text-[#1c2438] block">
+                    <span className="font-bold text-sm text-on-surface block">
                       {service.title}
                     </span>
-                    <span className="text-[11px] text-slate-400 font-medium">
+                    <span className="text-xs text-on-surface-variant font-medium">
                       {service.categoryName} • {service.subcategoryName}
                     </span>
                   </div>
                 </div>
-                <span className="bg-success/10 text-success text-[10px] font-extrabold px-2 py-1 rounded-[6px] uppercase tracking-wide flex items-center gap-1">
+                <span className="bg-success/10 text-success text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wide flex items-center gap-1">
                   Active ✓
                 </span>
               </div>
             ))
           ) : (
-            <div className="p-6 text-center text-slate-500 font-medium text-sm">
-              No services selected.
+            <div className="p-6 text-center text-on-surface-variant font-medium text-sm">
+              No services selected yet.
             </div>
           )}
         </div>
       ) : (
         <form onSubmit={handleSave} className="p-5 space-y-6">
           <div className="space-y-4">
-            <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">
+            <h4 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
               Choose your service expertise
             </h4>
             <ServiceSelectionDrawer services={allServices} initialSelectedServices={initialSelectedServices} />
           </div>
 
           {error && (
-            <div className="p-4 bg-red-50 text-red-600 text-sm font-bold rounded-xl border border-red-200">
+            <div className="p-4 bg-error/10 text-error text-sm font-bold rounded-2xl border border-error/20">
               {error}
             </div>
           )}
@@ -127,18 +127,18 @@ export default function EditServicesForm({ allServices, initialSelectedServices 
                 setError(null);
               }}
               disabled={isPending}
-              className="flex-1 py-3 rounded-xl border border-outline-variant/30 font-bold text-sm text-on-surface-variant hover:bg-surface-container-low transition-colors cursor-pointer"
+              className="flex-1 py-3 rounded-2xl border border-outline-variant/20 font-bold text-sm text-on-surface-variant hover:bg-surface-container-low transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="flex-1 py-3 rounded-xl bg-secondary text-white font-bold text-sm shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 border-none cursor-pointer"
+              className="flex-1 py-3 rounded-2xl bg-secondary text-primary font-bold text-sm shadow-xs hover:bg-secondary/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 border-none cursor-pointer"
             >
               {isPending ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
                   Saving...
                 </>
               ) : (

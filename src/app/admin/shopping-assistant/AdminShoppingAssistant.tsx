@@ -298,7 +298,7 @@ export default function AdminShoppingAssistant({
                     </div>
 
                     <div className="flex items-baseline gap-2 pt-2">
-                      <span className="text-2xl font-bold text-[#002261]">₹{pkg.price}</span>
+                      <span className="text-2xl font-bold text-primary">₹{pkg.price}</span>
                       {pkg.original_price && (
                         <span className="text-sm text-slate-400 line-through font-medium">
                           ₹{pkg.original_price}
@@ -351,7 +351,7 @@ export default function AdminShoppingAssistant({
                 <span className="material-symbols-outlined text-4xl block mb-2 text-slate-300">
                   package
                 </span>
-                No CarryBuddy packages found. Click "Add Custom Package" above to get started.
+                No CarryBuddy packages found. Click &quot;Add Custom Package&quot; above to get started.
               </div>
             )}
           </div>
@@ -517,7 +517,7 @@ export default function AdminShoppingAssistant({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           {/* Overlay */}
           <div
-            className="fixed inset-0 bg-[#002261]/40 backdrop-blur-xs"
+            className="fixed inset-0 bg-primary/40 backdrop-blur-xs"
             onClick={() => !isPending && setIsModalOpen(false)}
           />
 

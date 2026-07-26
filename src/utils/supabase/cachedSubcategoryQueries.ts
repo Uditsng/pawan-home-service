@@ -41,7 +41,7 @@ export const getCachedAllSubcategories = unstable_cache(
   },
   ["subcategories-all-list"],
   {
-    revalidate: 3600, // Cache for 1 hour
+    revalidate: 300, // Cache for 5 minutes
     tags: [TAG_SUBCATEGORIES],
   }
 );

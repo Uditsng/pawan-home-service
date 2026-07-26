@@ -6,6 +6,7 @@ import { EditServiceForm } from "./EditServiceForm";
 import { requireAdmin } from "@/utils/supabase/auth-checks";
 import { ServiceVariant, ServiceAddon } from "@/lib/types";
 import { revalidateServices } from "@/utils/supabase/cacheInvalidators";
+import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 
 export default async function AdminEditServicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -17,11 +18,12 @@ export default async function AdminEditServicePage({ params }: { params: Promise
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
   if (!profile || profile.role !== 'admin') redirect('/');
 
-  // Fetch initial service data, variants, and addons in parallel
-  const [serviceRes, variantsRes, addonsRes] = await Promise.all([
+  // Fetch initial service data, variants, addons, and platform settings in parallel
+  const [serviceRes, variantsRes, addonsRes, settings] = await Promise.all([
     supabase.from('services').select('*').eq('id', id).single(),
     supabase.from("service_variants").select("*").eq("service_id", id).order("price", { ascending: true }),
     supabase.from("service_addons").select("*").eq("service_id", id).order("created_at", { ascending: true }),
+    fetchPlatformSettings(supabase),
   ]);
 
   const serviceData = serviceRes.data;
@@ -31,6 +33,7 @@ export default async function AdminEditServicePage({ params }: { params: Promise
 
   const initialVariants = (variantsRes.data || []) as ServiceVariant[];
   const initialAddons = (addonsRes.data || []) as ServiceAddon[];
+  const taxRate = settings.taxRate;
 
   // Fetch duration rates if it's an hourly service
   let durationRates: { duration: number; price: number }[] = [];
@@ -84,7 +87,7 @@ export default async function AdminEditServicePage({ params }: { params: Promise
 
     const pricing_config_json = formData.get("pricing_config_json") as string;
     const form_fields_json = formData.get("form_fields_json") as string;
-    const gst_applicable = formData.get("gst_applicable") === "true";
+    const gst_applicable = formData.get("gst_applicable") === "true" || formData.get("gst_applicable") === "on";
 
     let pricing_config = {};
     try {
@@ -244,6 +247,7 @@ export default async function AdminEditServicePage({ params }: { params: Promise
         initialVariants={initialVariants}
         initialAddons={initialAddons}
         action={editServiceAction}
+        taxRate={taxRate}
       />
     </div>
   );

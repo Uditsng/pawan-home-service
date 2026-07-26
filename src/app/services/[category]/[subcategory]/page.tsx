@@ -114,9 +114,9 @@ export default async function PublicSubcategoryServiceListingPage({
                   </div>
 
                   {/* Add button mimic */}
-                  <div className="absolute bottom-2 right-2">
-                    <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl flex items-center justify-center bg-surface-container-lowest border border-outline-variant/15 text-emerald-600 shadow-[0_4px_10px_rgba(15,23,42,0.08)]">
-                      <span className="material-symbols-outlined text-[20px] md:text-[22px] font-bold">
+                  <div className="absolute bottom-1 right-1">
+                    <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center bg-surface-container-lowest border border-outline-variant/15 text-emerald-600 shadow-[0_4px_10px_rgba(15,23,42,0.08)]">
+                      <span className="material-symbols-outlined text-[16px] md:text-[18px] font-bold">
                         add
                       </span>
                     </div>

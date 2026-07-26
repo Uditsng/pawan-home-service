@@ -52,7 +52,8 @@ export function EditServiceForm({
   initialDurationRates = [],
   initialVariants = [],
   initialAddons = [],
-  action
+  action,
+  taxRate = 18,
 }: {
   categories: Category[];
   initialData: ServiceInitialData;
@@ -60,8 +61,10 @@ export function EditServiceForm({
   initialVariants?: ServiceVariant[];
   initialAddons?: ServiceAddon[];
   action: (prevState: FormActionState, formData: FormData) => Promise<FormActionState>;
+  taxRate?: number;
 }) {
   const [state, formAction, isPending] = useActionState(action, { type: null, message: null });
+  const [submitType, setSubmitType] = useState<"draft" | "published" | null>(null);
 
   // Tab State
   const [activeTab, setActiveTab] = useState<"basic" | "pricing" | "variants" | "addons" | "content" | "preview" >("basic");
@@ -252,11 +255,12 @@ export function EditServiceForm({
       distanceKm: prevDistanceKm,
       addons: activeAddons,
       gstApplicable: gstApplicable,
+      gstRate: taxRate,
     });
   }, [
     pricingModel, basePrice, pricingConfigObj, prevVariantIdx, variantsList,
     addonsList, prevAddonsQty, prevDurationMins, prevAreaSqft, prevQty,
-    prevDistanceKm, gstApplicable
+    prevDistanceKm, gstApplicable, taxRate
   ]);
 
   return (
@@ -404,12 +408,13 @@ export function EditServiceForm({
                 type="checkbox"
                 name="gst_applicable"
                 id="gst_applicable"
+                value="true"
                 checked={gstApplicable}
                 onChange={(e) => setGstApplicable(e.target.checked)}
                 className="w-4 h-4 text-primary focus:ring-primary rounded border-outline-variant"
               />
               <label htmlFor="gst_applicable" className="text-xs font-bold text-on-surface-variant select-none cursor-pointer">
-                GST (18%) Applicable to this service
+                GST ({taxRate}%) Applicable to this service
               </label>
             </div>
 
@@ -1241,7 +1246,7 @@ export function EditServiceForm({
                   )}
                   {previewBreakdown.gst_amount > 0 && (
                     <div className="flex justify-between">
-                      <span>GST (18%)</span>
+                      <span>GST ({taxRate}%)</span>
                       <span>+₹{previewBreakdown.gst_amount}</span>
                     </div>
                   )}
@@ -1276,11 +1281,27 @@ export function EditServiceForm({
 
       {/* Save Button Bar */}
       <div className="flex justify-end gap-3 border-t border-outline-variant/10 pt-4 sticky bottom-0 bg-surface-container-lowest py-3 z-10">
-        <Button type="submit" name="status" value="draft" variant="slate" size="lg" disabled={isPending}>
-          {isPending ? "Saving..." : "Save as Draft"}
+        <Button 
+          type="submit" 
+          name="status" 
+          value="draft" 
+          variant="slate" 
+          size="lg" 
+          disabled={isPending}
+          onClick={() => setSubmitType("draft")}
+        >
+          {isPending && submitType === "draft" ? "Saving..." : "Save as Draft"}
         </Button>
-        <Button type="submit" name="status" value="published" variant="primary" size="lg" disabled={isPending}>
-          {isPending ? "Saving..." : "Publish Service"}
+        <Button 
+          type="submit" 
+          name="status" 
+          value="published" 
+          variant="primary" 
+          size="lg" 
+          disabled={isPending}
+          onClick={() => setSubmitType("published")}
+        >
+          {isPending && submitType === "published" ? "Publishing..." : "Publish Service"}
         </Button>
       </div>
     </form>

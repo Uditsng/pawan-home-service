@@ -61,8 +61,6 @@ export async function enqueueOfflineOperation(
   queue.push(newOp);
   await saveOfflineQueue(queue);
 
-  console.log(`[OfflineQueue] Enqueued operation "${actionName}" with ID ${id}`);
-
   // Trigger processing asynchronously in case we are currently online
   const triggerAuto = options?.autoProcess !== false;
   if (triggerAuto && typeof window !== "undefined" && window.navigator.onLine) {
@@ -103,11 +101,9 @@ function cascadeFailures(queue: OfflineOperation[]): boolean {
 export async function processOfflineQueue(): Promise<void> {
   if (isProcessing) return;
   if (typeof window === "undefined" || !window.navigator.onLine) {
-    console.log("[OfflineQueue] Device is offline, skipping queue processing.");
     return;
   }
   isProcessing = true;
-  console.log("[OfflineQueue] Starting queue processing...");
 
   try {
     let queue = await getOfflineQueue();
@@ -130,7 +126,6 @@ export async function processOfflineQueue(): Promise<void> {
     );
 
     if (readyOps.length === 0) {
-      console.log("[OfflineQueue] No operations are ready for processing.");
       isProcessing = false;
       return;
     }
@@ -198,11 +193,9 @@ async function executeOperation(op: OfflineOperation): Promise<boolean> {
   await updateOperationInQueue(op);
 
   try {
-    console.log(`[OfflineQueue] Executing action "${op.actionName}" (ID: ${op.id})...`);
     const result = await actionFn(op.payload);
 
     if (result.success) {
-      console.log(`[OfflineQueue] Action "${op.actionName}" (ID: ${op.id}) succeeded!`);
       // Remove from queue completely
       const queue = await getOfflineQueue();
       const filtered = queue.filter((o) => o.id !== op.id);

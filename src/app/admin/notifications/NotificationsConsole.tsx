@@ -230,7 +230,7 @@ export function NotificationsConsole({
       loadNotifications();
       router.refresh();
     } catch (err) {
-      alert(`Dispatch error: ${(err as Error).message}`);
+      console.error("Dispatch error:", err);
     } finally {
       setActionLoadingId(null);
     }

@@ -8,7 +8,7 @@ import {
   sendVerificationOtp,
   verifyOtp,
 } from "@/lib/twilio";
-import { otpSendLimiter, otpVerifyLimiter } from "@/lib/rate-limit";
+import { otpSendLimiter, otpVerifyLimiter, loginLimiter, passwordResetLimiter } from "@/lib/rate-limit";
 
 // ─── Shared helpers ───────────────────────────────────────────
 
@@ -64,8 +64,8 @@ export async function sendRegistrationOtp(
     await sendVerificationOtp(e164);
     return { success: true };
   } catch (err) {
-    const message = (err as Error).message;
-    return { success: false, error: `Failed to send OTP: ${message}` };
+    console.error("Failed to send OTP:", err);
+    return { success: false, error: "Failed to send OTP. Please try again later." };
   }
 }
 
@@ -113,7 +113,8 @@ export async function verifyOtpAndRegister(formData: FormData): Promise<{ succes
   try {
     isValid = await verifyOtp(e164, otp.trim());
   } catch (err) {
-    return { success: false, error: `OTP verification failed: ${(err as Error).message}` };
+    console.error("OTP verification failed:", err);
+    return { success: false, error: "OTP verification failed. Please try again." };
   }
 
   if (!isValid) {
@@ -133,7 +134,8 @@ export async function verifyOtpAndRegister(formData: FormData): Promise<{ succes
   });
 
   if (error) {
-    return { success: false, error: error.message };
+    console.error("Account creation error:", error.message);
+    return { success: false, error: "Account creation failed. Please try again later." };
   }
 
   if (!data?.user) {
@@ -152,8 +154,8 @@ export async function verifyOtpAndRegister(formData: FormData): Promise<{ succes
   });
 
   if (profileError) {
-    // If profile upsert fails (e.g. duplicate email), we should inform user
-    return { success: false, error: profileError.message };
+    console.error("Profile creation error:", profileError.message);
+    return { success: false, error: "Failed to create account profile. Please contact support." };
   }
 
   // Generate a unique referral code for this new user (fire-and-forget, never blocks)
@@ -206,6 +208,11 @@ export async function loginWithPhone(formData: FormData) {
     e164 = normaliseIndianPhone(phone);
   } catch {
     return redirect("/login?error=Invalid phone number format.");
+  }
+
+  const loginLimit = await loginLimiter.check(e164);
+  if (!loginLimit.allowed) {
+    return redirect(`/login?error=Too many login attempts. Please wait ${loginLimit.retryAfter} seconds before trying again.`);
   }
 
   const supabase = await createClient();
@@ -272,8 +279,7 @@ export async function sendPasswordResetOtp(
     return { success: false, error: "Invalid phone number format." };
   }
 
-  // Rate limit
-  const sendLimit = await otpSendLimiter.check(`reset:${e164}`);
+  const sendLimit = await passwordResetLimiter.check(`reset:${e164}`);
   if (!sendLimit.allowed) {
     return {
       success: false,
@@ -298,7 +304,8 @@ export async function sendPasswordResetOtp(
     await sendVerificationOtp(e164);
     return { success: true };
   } catch (err) {
-    return { success: false, error: `Failed to send OTP: ${(err as Error).message}` };
+    console.error("Password reset OTP send failed:", err);
+    return { success: false, error: "Failed to send OTP. Please try again later." };
   }
 }
 
@@ -332,7 +339,8 @@ export async function verifyOtpAndResetPassword(
   try {
     isValid = await verifyOtp(e164, otp.trim());
   } catch (err) {
-    return { success: false, error: `Verification failed: ${(err as Error).message}` };
+    console.error("Password reset OTP verification failed:", err);
+    return { success: false, error: "Verification failed. Please try again." };
   }
 
   if (!isValid) {
@@ -352,42 +360,23 @@ export async function verifyOtpAndResetPassword(
   }
 
   // Use service-role client for admin password update
-  // We use the regular client's updateUser after signing in via OTP flow
-  // Since we can't sign in without old password, we use the Supabase admin API via REST
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!serviceKey) {
-    // Fallback: send a Supabase magic link / password reset email
-    const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
-      redirectTo: `${supabaseUrl}/reset-password`,
+  try {
+    const { createAdminClient } = await import("@/utils/supabase/admin");
+    const adminClient = createAdminClient();
+    const { error: updateError } = await adminClient.auth.admin.updateUserById(profile.id, {
+      password: newPassword,
     });
-    if (error) {
-      return { success: false, error: "Failed to initiate password reset." };
+
+    if (updateError) {
+      console.error("Password reset failed:", updateError.message);
+      return { success: false, error: "Failed to update password. Please try again." };
     }
-    return {
-      success: true,
-      error: "A password reset link has been sent to your registered email. Please check your inbox.",
-    };
+
+    return { success: true };
+  } catch (err) {
+    console.error("Admin client password reset error:", err);
+    return { success: false, error: "Failed to update password. Please try again later." };
   }
-
-  // Use service role key to update password directly
-  const adminRes = await fetch(`${supabaseUrl}/auth/v1/admin/users/${profile.id}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: serviceKey,
-      Authorization: `Bearer ${serviceKey}`,
-    },
-    body: JSON.stringify({ password: newPassword }),
-  });
-
-  if (!adminRes.ok) {
-    const errData = await adminRes.json().catch(() => ({ message: "Unknown error" })) as { message?: string };
-    return { success: false, error: errData.message || "Failed to update password." };
-  }
-
-  return { success: true };
 }
 
 // ─── LEGACY (kept for backward compatibility) ────────────────

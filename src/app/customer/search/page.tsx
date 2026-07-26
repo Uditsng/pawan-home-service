@@ -120,7 +120,7 @@ export default async function SearchPage({
     servicesResults.length > 0;
 
   const getSlug = (name: string) =>
-    name.toLowerCase().replace(/\s+/g, "-").replace(/&/g, "and");
+    name.toLowerCase().replace(/[,\s]+/g, "-").replace(/&/g, "and");
 
   return (
     <div className="bg-surface font-body text-on-surface min-h-screen pb-24">

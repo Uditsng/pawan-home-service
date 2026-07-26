@@ -38,7 +38,7 @@ export default async function ProfilePage() {
       {/* Green Header Section */}
       <div className="bg-primary text-on-primary pt-5 md:pt-6 pb-6 md:pb-8 px-4 md:px-6 flex gap-4">
         <div className="flex items-center gap-3 md:gap-4 max-w-3xl mx-auto">
-          <div className="w-[60px] h-[60px] md:w-[76px] md:h-[76px] rounded-full overflow-hidden bg-[#dcdff2] flex items-center justify-center shrink-0 relative">
+          <div className="w-15 h-15 md:w-19 md:h-19 rounded-full overflow-hidden bg-[#dcdff2] flex items-center justify-center shrink-0 relative">
             {profile.avatar_url ? (
               <Image src={profile.avatar_url} alt={profile.full_name} fill className="object-cover" sizes="76px" />
             ) : (
@@ -59,30 +59,30 @@ export default async function ProfilePage() {
 
         {/* Top 2 Action Blocks */}
         <div className="grid grid-cols-2 gap-3 md:gap-4">
-          <Link href="/customer/bookings" className="bg-white p-4 md:p-5 rounded-[16px] md:rounded-[20px] shadow-sm flex flex-col justify-between hover:bg-slate-50 transition-colors h-[90px] md:h-[105px]">
+          <Link href="/customer/bookings" className="bg-white p-4 md:p-5 rounded-2xl md:rounded-[20px] shadow-sm flex flex-col justify-between hover:bg-slate-50 transition-colors h-23 md:h-27">
             <span className="material-symbols-outlined text-slate-500 text-[20px] md:text-[24px]">assignment</span>
             <span className="font-bold text-[13px] md:text-[15px] text-[#1c2438] leading-tight">My<br />bookings</span>
           </Link>
-          <Link href="/customer/support" className="bg-white p-4 md:p-5 rounded-[16px] md:rounded-[20px] shadow-sm flex flex-col justify-between hover:bg-slate-50 transition-colors h-[90px] md:h-[105px]">
+          <Link href="/customer/support" className="bg-white p-4 md:p-5 rounded-2xl md:rounded-[20px] shadow-sm flex flex-col justify-between hover:bg-slate-50 transition-colors h-23 md:h-27">
             <span className="material-symbols-outlined text-slate-500 text-[20px] md:text-[24px]">support_agent</span>
             <span className="font-bold text-[13px] md:text-[15px] text-[#1c2438] leading-tight">Help &<br />Support</span>
           </Link>
         </div>
 
         {/* Refer block */}
-        <Link href="/customer/profile/referral" className="bg-white p-4 md:p-[18px] rounded-[16px] md:rounded-[20px] shadow-sm flex items-center justify-between hover:bg-slate-50 transition-colors">
+        <Link href="/customer/profile/referral" className="bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl shadow-sm flex items-center justify-between hover:bg-slate-50 transition-colors">
           <div className="flex items-center gap-3 md:gap-4">
             <span className="material-symbols-outlined text-[#eab308] text-[18px] md:text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>card_giftcard</span>
             <div className="flex items-center flex-wrap gap-y-1">
               <span className="font-bold text-[13px] md:text-[15px] text-on-surface">Refer & earn</span>
-              <span className="bg-[#fef9c3] text-[#ca8a04] text-[8px] md:text-[9px] font-extrabold px-1.5 py-0.5 rounded-[4px] ml-1.5 md:ml-2 uppercase">Upto ₹{referralReward}</span>
+              <span className="bg-[#fef9c3] text-[#ca8a04] text-[8px] md:text-[9px] font-extrabold px-1.5 py-0.5 rounded-sm ml-1.5 md:ml-2 uppercase">Upto ₹{referralReward}</span>
             </div>
           </div>
           <span className="material-symbols-outlined text-slate-400 text-[18px] md:text-[20px]">chevron_right</span>
         </Link>
 
         {/* Links List */}
-        <div className="bg-white rounded-[16px] md:rounded-[20px] shadow-sm overflow-hidden flex flex-col">
+        <div className="bg-white rounded-2xl md:rounded-[20px] shadow-sm overflow-hidden flex flex-col">
           <Link href="/customer/profile/addresses" className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
             <div className="flex items-center gap-3 md:gap-4">
               <span className="material-symbols-outlined text-slate-500 text-[18px] md:text-[20px]">location_on</span>
@@ -128,7 +128,7 @@ export default async function ProfilePage() {
               <span className="material-symbols-outlined text-slate-500 text-[18px] md:text-[20px]">assignment</span>
               <div className="flex items-center flex-wrap gap-y-1">
                 <span className="font-semibold text-[13px] md:text-[15px] text-on-surface">Request account deletion</span>
-                <span className="bg-surface-container-highest text-on-surface-variant text-[8px] md:text-[9px] font-extrabold px-1.5 py-0.5 rounded-[4px] ml-2 md:ml-3 uppercase tracking-wide">Coming Soon</span>
+                <span className="bg-surface-container-highest text-on-surface-variant text-[8px] md:text-[9px] font-extrabold px-1.5 py-0.5 rounded-sm ml-2 md:ml-3 uppercase tracking-wide">Coming Soon</span>
               </div>
             </div>
             <span className="material-symbols-outlined text-slate-300 text-[18px] md:text-[20px] group-hover:text-slate-400 transition-colors">chevron_right</span>

@@ -49,7 +49,7 @@ export default async function SubcategoryServiceListingPage({
             return (
               <div
                 key={service.id}
-                className="relative group bg-surface-container-low p-3 sm:p-4 md:p-5 rounded-xl flex flex-col items-center justify-start text-center border border-outline-variant/10 shadow-xs transition-all h-auto min-h-[140px] sm:min-h-[155px] md:min-h-[175px] w-full"
+                className="relative group bg-surface-container-low p-3 sm:p-4 md:p-5 rounded-xl flex flex-col items-center justify-start text-center border border-outline-variant/10 shadow-xs transition-all h-auto min-h-32 sm:min-h-36 md:min-h-40 w-full"
               >
                 {/* z-0 absolute Link covering the card */}
                 <Link
@@ -60,7 +60,7 @@ export default async function SubcategoryServiceListingPage({
                 {/* z-10 pointer-events-none Card Content */}
                 <div className="z-10 pointer-events-none flex flex-col items-center w-full pt-1">
                   {/* Icon: 48px phones → 56px sm → 64px md → 72px lg */}
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 lg:w-[72px] lg:h-[72px] rounded-xl bg-green-500/10 mb-2 sm:mb-2.5 md:mb-3 flex items-center justify-center shrink-0">
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 lg:w-16 lg:h-16 rounded-xl bg-green-500/10 mb-2 sm:mb-2.5 md:mb-3 flex items-center justify-center shrink-0">
                     <ServiceIconComponent
                       iconName={iconName}
                       className="w-6 h-6 sm:w-7 sm:h-7 md:w-9 md:h-9 lg:w-10 lg:h-10 text-emerald-600 drop-shadow-sm"

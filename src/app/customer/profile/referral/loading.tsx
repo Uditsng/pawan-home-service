@@ -3,7 +3,7 @@ export default function Loading() {
     <div className="bg-[#f5f6f8] min-h-screen pb-24 font-body">
       <main className="max-w-xl mx-auto px-4 md:px-5 pt-4 pb-8 space-y-4">
         {/* Referral Card */}
-        <div className="bg-primary rounded-[24px] p-6 relative overflow-hidden animate-pulse min-h-[220px] flex flex-col justify-between">
+        <div className="bg-primary rounded-3xl p-6 relative overflow-hidden animate-pulse min-h-55 flex flex-col justify-between">
           <div className="space-y-3">
             <div className="w-32 h-4 bg-white/20 rounded" />
             <div className="w-64 h-8 bg-white/20 rounded" />
@@ -23,7 +23,7 @@ export default function Loading() {
         </div>
 
         {/* History */}
-        <div className="bg-white rounded-[24px] p-5 shadow-sm space-y-4 animate-pulse">
+        <div className="bg-white rounded-3xl p-5 shadow-sm space-y-4 animate-pulse">
           <div className="w-32 h-5 bg-slate-200 rounded mb-2" />
           <div className="space-y-3">
             {Array.from({ length: 3 }).map((_, i) => (

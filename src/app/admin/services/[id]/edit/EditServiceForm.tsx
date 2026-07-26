@@ -301,7 +301,7 @@ export function EditServiceForm({
       </div>
 
       {/* Tabs Content */}
-      <div className="bg-surface-container-lowest p-6 rounded-3xl border border-outline-variant/15 shadow-sm min-h-[400px]">
+      <div className="bg-surface-container-lowest p-6 rounded-3xl border border-outline-variant/15 shadow-sm min-h-100">
 
         {/* TAB 1: BASIC INFO */}
         <div className={activeTab === "basic" ? "space-y-6 animate-fade-in" : "hidden"}>
@@ -338,7 +338,7 @@ export function EditServiceForm({
                     </optgroup>
                   ))}
                 </select>
-                <div className="rounded-xl bg-green-500/10 p-3 flex items-center justify-center min-w-[44px] shrink-0">
+                <div className="rounded-xl bg-green-500/10 p-3 flex items-center justify-center min-w-11 shrink-0">
                   <ServiceIconComponent iconName={selectedIcon} className="w-5 h-5 text-emerald-600 drop-shadow-sm" />
                 </div>
               </div>

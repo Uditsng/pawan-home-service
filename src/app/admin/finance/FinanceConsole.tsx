@@ -223,9 +223,9 @@ export function FinanceConsole({ initialBookings }: FinanceConsoleProps) {
       </div>
 
       {/* Transaction Table */}
-      <div className="bg-surface-container-lowest rounded-[24px] border border-outline-variant/15 shadow-sm overflow-hidden">
+      <div className="bg-surface-container-lowest rounded-3xl border border-outline-variant/15 shadow-sm overflow-hidden">
         <div className="overflow-x-auto w-full">
-          <table className="w-full min-w-[1000px] text-left border-collapse">
+          <table className="w-full min-w-250 text-left border-collapse">
             <thead>
               <tr className="bg-surface-container-low/50 border-b border-outline-variant/10">
                 <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-on-surface-variant/40">Transaction ID</th>

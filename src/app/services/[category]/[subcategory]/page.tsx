@@ -81,12 +81,12 @@ export default async function PublicSubcategoryServiceListingPage({
                 <Link
                   key={service.id}
                   href="/login"
-                  className="relative group bg-surface-container-low p-3 sm:p-4 md:p-5 rounded-xl flex flex-col items-center justify-start text-center border border-outline-variant/10 shadow-xs transition-all h-auto min-h-[140px] sm:min-h-[155px] md:min-h-[175px] w-full cursor-pointer hover:bg-surface-container-high"
+                  className="relative group bg-surface-container-low p-3 sm:p-4 md:p-5 rounded-xl flex flex-col items-center justify-start text-center border border-outline-variant/10 shadow-xs transition-all h-auto min-h-35 sm:min-h-39 md:min-h-44 w-full cursor-pointer hover:bg-surface-container-high"
                 >
                   {/* Card Content */}
                   <div className="flex flex-col items-center w-full pt-1">
                     {/* Icon Container conforming to Premium CSS standard */}
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 lg:w-[72px] lg:h-[72px] rounded-xl bg-green-500/10 mb-2 sm:mb-2.5 md:mb-3 flex items-center justify-center shrink-0">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 lg:w-18 lg:h-18 rounded-xl bg-green-500/10 mb-2 sm:mb-2.5 md:mb-3 flex items-center justify-center shrink-0">
                       <ServiceIconComponent
                         iconName={iconName}
                         className="w-6 h-6 sm:w-7 sm:h-7 md:w-9 md:h-9 lg:w-10 lg:h-10 text-emerald-600 drop-shadow-sm"

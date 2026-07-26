@@ -274,7 +274,7 @@ export default async function PerformancePage() {
           <div className="flex gap-4 overflow-x-auto pb-6 no-scrollbar mask-linear -mx-2 px-2">
             {/* Top Rated Badge */}
             <div
-              className={`min-w-[130px] shrink-0 border shadow-[0_2px_8px_rgba(15,23,42,0.02)] rounded-3xl p-5 flex flex-col items-center text-center transition-transform hover:scale-105 cursor-pointer ${ratingAvg >= 4.5
+              className={`min-w-33 shrink-0 border shadow-[0_2px_8px_rgba(15,23,42,0.02)] rounded-3xl p-5 flex flex-col items-center text-center transition-transform hover:scale-105 cursor-pointer ${ratingAvg >= 4.5
                 ? "bg-surface-container-lowest border-outline-variant/10 hover:border-primary/30"
                 : "bg-surface-container-high/30 border-outline-variant/5 grayscale opacity-50 cursor-not-allowed"
                 }`}
@@ -304,7 +304,7 @@ export default async function PerformancePage() {
 
             {/* Punctual Pro Badge */}
             <div
-              className={`min-w-[130px] shrink-0 border shadow-[0_2px_8px_rgba(15,23,42,0.02)] rounded-3xl p-5 flex flex-col items-center text-center transition-transform hover:scale-105 cursor-pointer ${onTimeRate >= 95
+              className={`min-w-33 shrink-0 border shadow-[0_2px_8px_rgba(15,23,42,0.02)] rounded-3xl p-5 flex flex-col items-center text-center transition-transform hover:scale-105 cursor-pointer ${onTimeRate >= 95
                 ? "bg-surface-container-lowest border-outline-variant/10 hover:border-secondary-container/30"
                 : "bg-surface-container-high/30 border-outline-variant/5 grayscale opacity-50 cursor-not-allowed"
                 }`}
@@ -334,7 +334,7 @@ export default async function PerformancePage() {
 
             {/* 100+ Jobs Badge */}
             <div
-              className={`min-w-[130px] shrink-0 border shadow-[0_2px_8px_rgba(15,23,42,0.02)] rounded-3xl p-5 flex flex-col items-center text-center transition-transform hover:scale-105 cursor-pointer ${(totalCompleted || 0) >= 100
+              className={`min-w-33 shrink-0 border shadow-[0_2px_8px_rgba(15,23,42,0.02)] rounded-3xl p-5 flex flex-col items-center text-center transition-transform hover:scale-105 cursor-pointer ${(totalCompleted || 0) >= 100
                 ? "bg-surface-container-lowest border-outline-variant/10 hover:border-tertiary-container/30"
                 : "bg-surface-container-high/30 border-outline-variant/5 grayscale opacity-50 cursor-not-allowed"
                 }`}
@@ -365,7 +365,7 @@ export default async function PerformancePage() {
             </div>
 
             {/* Locked Badge — Elite 500 */}
-            <div className="min-w-[130px] shrink-0 bg-surface-container-high/30 border border-outline-variant/5 rounded-3xl p-5 flex flex-col items-center text-center grayscale opacity-50 cursor-not-allowed">
+            <div className="min-w-33 shrink-0 bg-surface-container-high/30 border border-outline-variant/5 rounded-3xl p-5 flex flex-col items-center text-center grayscale opacity-50 cursor-not-allowed">
               <div className="w-14 h-14 rounded-full bg-surface-dim/50 border border-surface-variant flex items-center justify-center mb-4">
                 <span className="material-symbols-outlined text-on-surface-variant text-[28px]">
                   lock
@@ -435,7 +435,7 @@ export default async function PerformancePage() {
                     <span className="font-headline font-black text-[15px] text-on-surface tracking-tight">
                       {review.customer?.full_name || "Anonymous"}
                     </span>
-                    <div className="flex gap-[2px]">
+                    <div className="flex gap-1">
                       {[1, 2, 3, 4, 5].map((i) => (
                         <span
                           key={i}

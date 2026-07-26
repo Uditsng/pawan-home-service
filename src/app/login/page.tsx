@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState} from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { PasswordInput } from "@/components/ui/PasswordInput";
@@ -18,12 +18,6 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [clientError, setClientError] = useState("");
-
-  // When server action redirects back to /login?error=..., the component state
-  // is preserved (same-route navigation), so we must explicitly reset loading.
-  useEffect(() => {
-    if (errorParam) setLoading(false);
-  }, [errorParam]);
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,12 +38,12 @@ function LoginForm() {
     try {
       await loginWithPhone(fd);
     } catch (err) {
+      setLoading(false);
       // Next.js redirect() throws a special redirect error — re-throw it so
       // the router can handle the navigation (both success and error redirects).
       if (isRedirectError(err)) throw err;
       // Any unexpected network / runtime failure: reset state & show message.
       setClientError("Something went wrong. Please try again.");
-      setLoading(false);
     }
   };
 
@@ -70,7 +64,7 @@ function LoginForm() {
             <div className="absolute top-[40%] left-[10%] text-6xl animate-float-2 z-10 opacity-80" style={{ animationDelay: "1s" }}>🛡️</div>
             <div className="absolute bottom-[40%] right-[20%] text-5xl animate-float-1 z-10 opacity-90" style={{ animationDelay: "2s" }}>✨</div>
             <div className="absolute inset-x-8 bottom-12 p-8 rounded-3xl bg-white/10 backdrop-blur-md border border-white/20 shadow-[0_20px_40px_rgba(0,0,0,0.3)] transform-3d group-hover:rotate-y-2 group-hover:-rotate-x-2 group-hover:-translate-y-2 transition-transform duration-700 ease-out will-change-transform z-20">
-              <div className="transform translate-z-[30px]">
+              <div className="transform translate-z-8">
                 <div className="inline-flex items-center gap-2 bg-secondary/20 border border-secondary/40 rounded-full px-3 py-1.5 text-xs font-bold text-secondary uppercase tracking-wider mb-4 shadow-sm">
                   <div className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
                   Secure Portal
@@ -90,8 +84,8 @@ function LoginForm() {
         <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-24 relative overflow-hidden">
 
           {/* Animated orbs */}
-          <div className="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] rounded-full bg-[radial-gradient(circle,#a6ce37_0%,transparent_70%)] blur-2xl opacity-20 animate-spin-slow pointer-events-none" />
-          <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] rounded-full bg-[radial-gradient(circle,#c4b5fd_0%,transparent_70%)] blur-2xl opacity-20 animate-[spin-slow_25s_linear_infinite_reverse] pointer-events-none" />
+          <div className="absolute top-[-10%] right-[-10%] w-75 h-75 rounded-full bg-[radial-gradient(circle,#a6ce37_0%,transparent_70%)] blur-2xl opacity-20 animate-spin-slow pointer-events-none" />
+          <div className="absolute bottom-[-10%] left-[-10%] w-100 h-100 rounded-full bg-[radial-gradient(circle,#c4b5fd_0%,transparent_70%)] blur-2xl opacity-20 animate-[spin-slow_25s_linear_infinite_reverse] pointer-events-none" />
 
           {/* Mobile floating emojis */}
           <div className="lg:hidden absolute top-[15%] right-[10%] text-4xl animate-float-1 z-0 opacity-60 pointer-events-none">🔐</div>

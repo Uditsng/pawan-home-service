@@ -13,7 +13,7 @@ export default function Loading() {
       <main className="flex-1 max-w-xl mx-auto w-full px-4 md:px-5 pt-8 space-y-6">
         {/* Avatar Upload */}
         <div className="flex flex-col items-center gap-3 mb-6 animate-pulse">
-          <div className="w-[100px] h-[100px] rounded-full bg-slate-200" />
+          <div className="w-25 h-25 rounded-full bg-slate-200" />
           <div className="w-24 h-4 bg-slate-200 rounded" />
         </div>
 

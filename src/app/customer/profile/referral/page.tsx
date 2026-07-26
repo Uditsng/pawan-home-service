@@ -99,7 +99,7 @@ export default async function ReferralPage() {
       <main className="max-w-xl mx-auto px-4 md:px-5 pt-4 pb-8 space-y-4">
 
         {/* ── HERO BANNER ─────────────────────────────────────── */}
-        <div className="bg-primary rounded-[24px] p-6 relative overflow-hidden">
+        <div className="bg-primary rounded-3xl p-6 relative overflow-hidden">
           <div className="absolute -top-8 -right-8 w-40 h-40 bg-secondary/15 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-white/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -150,7 +150,7 @@ export default async function ReferralPage() {
             { label: "Successful",       value: stats.completed_referrals, icon: "verified",    color: "text-[#059669]" },
             { label: "Total Earned",     value: `₹${stats.total_earned}`, icon: "account_balance_wallet", color: "text-secondary" },
           ].map((stat) => (
-            <div key={stat.label} className="bg-white rounded-[16px] shadow-sm p-3.5 flex flex-col items-center text-center gap-1.5">
+            <div key={stat.label} className="bg-white rounded-2xl shadow-sm p-3.5 flex flex-col items-center text-center gap-1.5">
               <span className={`material-symbols-outlined text-[22px] ${stat.color}`} style={{ fontVariationSettings: "'FILL' 1" }}>{stat.icon}</span>
               <span className={`text-xl font-black tracking-tight ${stat.color}`}>{stat.value}</span>
               <span className="text-[9px] font-extrabold text-on-surface-variant/60 uppercase tracking-widest leading-tight">{stat.label}</span>

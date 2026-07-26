@@ -39,7 +39,7 @@ export async function saveCustomerNoteAction(
   await requireAdmin();
   const supabase = await createClient();
 
-  const updateData: Record<string, any> = {
+  const updateData: Record<string, unknown> = {
     internal_note: noteText
   };
 

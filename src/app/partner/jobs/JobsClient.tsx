@@ -15,6 +15,7 @@ import {
 import type { BookingWithDetails, BookingExtension, BookingQuote } from "@/lib/types";
 import { requestExtensionAction } from "@/app/actions/extensions";
 import QuotationWorkflow from "@/components/QuotationWorkflow";
+import { calculateCommissionBreakdown } from "@/lib/engines/commissionEngine";
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -73,6 +74,7 @@ interface JobsClientProps {
   completedJobs: BookingWithDetails[];
   offeredJobs: JobOffer[];
   partnerId: string;
+  commissionPercent?: number;
 }
 
 type TabKey = "offers" | "assigned" | "active" | "completed";
@@ -83,6 +85,7 @@ export default function JobsClient({
   completedJobs,
   offeredJobs: initialOfferedJobs,
   partnerId,
+  commissionPercent = 20,
 }: JobsClientProps) {
   const [activeTab, setActiveTab]     = useState<TabKey>("offers");
   const [isPending, startTransition]  = useTransition();
@@ -553,7 +556,7 @@ export default function JobsClient({
         const arrivalExpiresAt = job.arrival_otp_expires_at ? new Date(job.arrival_otp_expires_at) : null;
         const isArrivalExpired = arrivalExpiresAt ? currentTime > arrivalExpiresAt : false;
         return (
-          <div className="flex flex-col gap-1 w-full max-w-[280px]">
+          <div className="flex flex-col gap-1 w-full max-w-70">
             <p className="text-[10px] font-bold text-amber-600 mb-1">
               {isArrivalExpired ? "Arrival OTP has expired:" : "Enter Arrival OTP from customer:"}
             </p>
@@ -621,7 +624,7 @@ export default function JobsClient({
         const completionExpiresAt = job.completion_otp_expires_at ? new Date(job.completion_otp_expires_at) : null;
         const isCompletionExpired = completionExpiresAt ? currentTime > completionExpiresAt : false;
         return (
-          <div className="flex flex-col gap-1 w-full max-w-[280px]">
+          <div className="flex flex-col gap-1 w-full max-w-70">
             <p className="text-[10px] font-bold text-amber-600 mb-1">
               {isCompletionExpired ? "Completion OTP has expired:" : "Enter Completion OTP from customer:"}
             </p>
@@ -674,7 +677,8 @@ export default function JobsClient({
     const b = offer.bookings;
     if (!b) return null;
     const isClaiming = claimingId === b.id;
-    const payout = Math.round(Number(b.total_amount) * 0.8);
+    const cb = calculateCommissionBreakdown(Number(b.total_amount || 0), commissionPercent);
+    const payout = cb.partnerPayoutAmount;
     const location = b.address || (b.area ? `${b.area}, ${b.city || ""}` : b.city || "Kanpur Nagar");
 
     return (
@@ -939,22 +943,22 @@ export default function JobsClient({
       )}
 
       {/* ─── Tab Bar ────────────────────────────────────────── */}
-      <div className="px-3 flex gap-2 overflow-x-auto no-scrollbar max-w-7xl mx-auto">
+      <div className="px-4 sm:px-6 lg:px-8 mt-4 sm:mt-6 flex gap-2 overflow-x-auto no-scrollbar max-w-7xl mx-auto">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`relative whitespace-nowrap px-4 py-2 rounded-lg text-sm font-bold transition-all active:scale-[0.98] ${
+            className={`relative whitespace-nowrap px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all active:scale-[0.98] ${
               activeTab === tab.key
-                ? "bg-primary text-white shadow-md"
-                : "bg-transparent text-on-surface-variant hover:bg-surface-container-low"
+                ? "bg-primary text-on-primary shadow-sm"
+                : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high"
             }`}
           >
             {tab.label}
             {tab.count > 0 && (
-              <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+              <span className={`ml-1.5 px-2 py-0.5 rounded-full text-[10px] font-black ${
                 activeTab === tab.key
-                  ? "bg-white/25 text-white"
+                  ? "bg-white/20 text-white"
                   : "bg-primary/10 text-primary"
               }`}>
                 {tab.count}
@@ -969,23 +973,25 @@ export default function JobsClient({
       </div>
 
       {/* ─── Tab Content ────────────────────────────────────── */}
-      <main className="max-w-7xl mx-auto px-4 pt-6 space-y-4">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24 lg:pb-12">
 
         {/* Job Offers Tab */}
         {activeTab === "offers" && (
           <>
             {offeredJobs.length === 0 ? (
-              <div className="bg-surface-container p-10 rounded-3xl text-center shadow-inner">
+              <div className="bg-surface-container-low border border-outline-variant/15 p-8 sm:p-12 rounded-3xl text-center">
                 <span className="material-symbols-outlined text-5xl text-on-surface-variant/30 mb-3 block">
                   notifications_paused
                 </span>
-                <p className="font-bold text-on-surface">No new job offers</p>
-                <p className="text-xs font-medium text-on-surface-variant mt-1">
+                <p className="font-bold text-on-surface text-base sm:text-lg">No new job offers</p>
+                <p className="text-xs sm:text-sm font-medium text-on-surface-variant mt-1 max-w-md mx-auto">
                   Make sure you&apos;re Online. New bookings will appear here instantly.
                 </p>
               </div>
             ) : (
-              offeredJobs.map((offer) => renderOfferCard(offer))
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                {offeredJobs.map((offer) => renderOfferCard(offer))}
+              </div>
             )}
           </>
         )}
@@ -993,19 +999,19 @@ export default function JobsClient({
         {/* Assigned / Active / Completed Tabs */}
         {activeTab !== "offers" && (
           <>
-            {currentJobs.length === 0 && (
-              <div className="bg-surface-container p-8 rounded-3xl text-center shadow-inner">
+            {currentJobs.length === 0 ? (
+              <div className="bg-surface-container-low border border-outline-variant/15 p-8 sm:p-12 rounded-3xl text-center">
                 <span className="material-symbols-outlined text-5xl text-on-surface-variant/30 mb-3 block">
                   {activeTab === "assigned" ? "assignment_ind" : activeTab === "active" ? "event_available" : "task_alt"}
                 </span>
-                <p className="font-bold text-on-surface">
+                <p className="font-bold text-on-surface text-base sm:text-lg">
                   {activeTab === "assigned"
                     ? "No new assignments"
                     : activeTab === "active"
                       ? "No active jobs right now"
                       : "No completed jobs yet"}
                 </p>
-                <p className="text-xs font-medium text-on-surface-variant mt-1">
+                <p className="text-xs sm:text-sm font-medium text-on-surface-variant mt-1 max-w-md mx-auto">
                   {activeTab === "assigned"
                     ? "Accept a job offer to see it here."
                     : activeTab === "active"
@@ -1013,36 +1019,39 @@ export default function JobsClient({
                       : "Completed jobs will appear here after you finish them."}
                 </p>
               </div>
-            )}
-
-            {currentJobs.map((job) => (
-              <div
-                key={job.id}
-                className="bg-white/80 backdrop-blur-md rounded-3xl p-5 shadow-[0_4px_16px_0_rgba(15,23,42,0.04)] border border-outline-variant/10 relative group hover:shadow-[0_8px_24px_0_rgba(15,23,42,0.06)] hover:-translate-y-0.5 transition-all"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-2.5">
-                    <div className={`w-10 h-10 rounded-xl ${getStatusColor(job.status)} flex items-center justify-center border border-white/40 shadow-sm`}>
-                      <span className="material-symbols-outlined font-bold">
-                        {getStatusIcon(job.status)}
-                      </span>
-                    </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                {currentJobs.map((job) => {
+                  const jobPayout = calculateCommissionBreakdown(Number(job.total_amount || 0), commissionPercent).partnerPayoutAmount;
+                  return (
+                    <div
+                      key={job.id}
+                      className="bg-surface-container-lowest rounded-3xl p-5 shadow-xs border border-outline-variant/15 relative group hover:shadow-md hover:-translate-y-0.5 transition-all flex flex-col justify-between"
+                    >
                     <div>
-                      <h3 className="font-headline font-bold text-[15px] leading-tight text-on-surface">
-                        {job.services?.title || "Untitled Service"}
-                      </h3>
-                      <p className="text-xs font-medium text-on-surface-variant mt-0.5">
-                        Booking #{job.id.substring(0, 8).toUpperCase()}
-                      </p>
-                    </div>
-                  </div>
-                  <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md flex items-center gap-1 ${getStatusColor(job.status)}`}>
-                    {(job.status === "in_progress" || job.status === "confirmed") && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-                    )}
-                    {getStatusLabel(job.status)}
-                  </span>
-                </div>
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`w-10 h-10 rounded-xl ${getStatusColor(job.status)} flex items-center justify-center border border-white/40 shadow-xs`}>
+                            <span className="material-symbols-outlined font-bold">
+                              {getStatusIcon(job.status)}
+                            </span>
+                          </div>
+                          <div>
+                            <h3 className="font-headline font-bold text-[15px] leading-tight text-on-surface">
+                              {job.services?.title || "Untitled Service"}
+                            </h3>
+                            <p className="text-xs font-medium text-on-surface-variant mt-0.5">
+                              Booking #{job.id.substring(0, 8).toUpperCase()}
+                            </p>
+                          </div>
+                        </div>
+                        <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md flex items-center gap-1 ${getStatusColor(job.status)}`}>
+                          {(job.status === "in_progress" || job.status === "confirmed") && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                          )}
+                          {getStatusLabel(job.status)}
+                        </span>
+                      </div>
 
                 <div className="space-y-2 mb-5 pl-1">
                   <div className="flex items-center gap-3 text-[13px] text-on-surface-variant font-medium">
@@ -1256,6 +1265,7 @@ export default function JobsClient({
                     </div>
                   )}
                 </div>
+              </div>
 
                 <div className="pt-4 border-t border-surface-variant/30 flex justify-between items-center bg-white/40 -mx-5 -mb-5 px-5 py-4 rounded-b-3xl">
                   <div className="flex flex-col">
@@ -1263,13 +1273,16 @@ export default function JobsClient({
                       {activeTab === "completed" ? "Earned" : "Est Payout"}
                     </span>
                     <span className="text-xl font-black text-on-surface tracking-tight">
-                      ₹{(Number(job.total_amount) * 0.8).toFixed(0)}
+                      ₹{jobPayout.toFixed(0)}
                     </span>
                   </div>
                   {getActionButton(job)}
                 </div>
               </div>
-            ))}
+            );
+          })}
+          </div>
+          )}
           </>
         )}
       </main>

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import type { BookingWithDetails, PartnerProfile } from "@/lib/types";
+import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
+import { calculateCommissionBreakdown } from "@/lib/engines/commissionEngine";
 
 export default async function PartnerDashboardPage() {
   const supabase = await createClient();
@@ -27,6 +29,7 @@ export default async function PartnerDashboardPage() {
     nextAssignedResult,
     upcomingResult,
     weeklyResult,
+    platformSettings,
   ] = await Promise.all([
     // Partner profile (select only used columns)
     supabase
@@ -73,6 +76,7 @@ export default async function PartnerDashboardPage() {
       .eq("partner_id", user.id)
       .eq("status", "completed")
       .gte("completed_at", weekStart.toISOString()),
+    fetchPlatformSettings(supabase),
   ]);
 
   const profile = profileResult.data as PartnerProfile | null;
@@ -82,13 +86,11 @@ export default async function PartnerDashboardPage() {
   const upcomingJobs = (upcomingResult.data || []) as BookingWithDetails[];
   const weeklyJobsCount = weeklyResult.count;
 
+  const commissionPercent = platformSettings.platformCommission;
 
   // ─── Derived metrics ───────────────────────────────────────
-  const dailyEarnings =
-    (todayCompleted || []).reduce(
-      (acc, b) => acc + Number(b.total_amount || 0),
-      0
-    ) * 0.8;
+  const todayRawTotal = (todayCompleted || []).reduce((acc, b) => acc + Number(b.total_amount || 0), 0);
+  const dailyEarnings = calculateCommissionBreakdown(todayRawTotal, commissionPercent).partnerPayoutAmount;
   const todayJobsCompleted = todayCompleted?.length || 0;
   const activeHours = todayJobsCompleted * 1.5 + (activeJob ? 0.5 : 0);
 
@@ -100,83 +102,86 @@ export default async function PartnerDashboardPage() {
       case "pest control":
         return "pest_control";
       case "electrical":
-        return "bolt";
+        return "electrical_services";
       case "plumbing":
         return "plumbing";
-      case "painting":
-        return "format_paint";
-      case "ac service":
-        return "ac_unit";
       default:
         return "home_repair_service";
     }
   }
 
   return (
-    <div className="bg-surface font-body text-on-surface min-h-screen pb-32">
-      <main className="max-w-7xl mx-auto px-6 mt-6 space-y-8 relative">
+    <div className="bg-surface font-body text-on-surface min-h-screen pb-24 lg:pb-12">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 sm:mt-6 space-y-6 sm:space-y-8 relative">
         {/* Active Job Banner */}
         {activeJob ? (
-          <div className="bg-linear-to-r from-primary to-primary-container text-on-primary p-5 rounded-2xl flex items-center justify-between shadow-[0_12px_32px_rgba(0,104,95,0.15)] relative overflow-hidden">
-            <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+          <div className="bg-primary text-on-primary p-4 sm:p-6 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-md relative overflow-hidden">
+            <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
             <div className="flex items-center gap-4 relative z-10">
-              <span
-                className="material-symbols-outlined text-3xl"
-                style={{ fontVariationSettings: "'FILL' 1" }}
-              >
-                near_me
-              </span>
+              <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center shrink-0">
+                <span
+                  className="material-symbols-outlined text-2xl sm:text-3xl text-secondary"
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  near_me
+                </span>
+              </div>
               <div>
-                <p className="text-[11px] uppercase tracking-widest font-bold opacity-80 font-label">
-                  Current Mission
+                <p className="text-[10px] sm:text-[11px] uppercase tracking-widest font-extrabold opacity-80 font-label">
+                  Current Mission In Progress
                 </p>
-                <p className="font-semibold text-[15px] mt-0.5">
+                <p className="font-bold text-base sm:text-lg mt-0.5 leading-snug">
                   {activeJob.services?.title} —{" "}
-                  {activeJob.address || activeJob.city || "Location TBD"}
+                  <span className="font-normal opacity-90">{activeJob.address || activeJob.city || "Location TBD"}</span>
                 </p>
               </div>
             </div>
-            <button className="bg-white/10 backdrop-blur-md hover:bg-white/20 whitespace-nowrap px-4 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95 border border-white/10 relative z-10">
-              View Details
-            </button>
+            <Link
+              href="/partner/jobs"
+              className="bg-secondary text-primary hover:bg-secondary/90 whitespace-nowrap px-5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all active:scale-95 shadow-sm relative z-10 self-end sm:self-center"
+            >
+              View Active Job
+            </Link>
           </div>
         ) : (
-          <div className="bg-surface-container-low border border-outline-variant/10 p-5 rounded-2xl flex items-center gap-4">
-            <span className="material-symbols-outlined text-3xl text-slate-400">
-              event_available
-            </span>
+          <div className="bg-surface-container-low border border-outline-variant/15 p-4 sm:p-5 rounded-3xl flex items-center gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-surface-container-highest flex items-center justify-center shrink-0 text-on-surface-variant">
+              <span className="material-symbols-outlined text-2xl sm:text-3xl">
+                event_available
+              </span>
+            </div>
             <div>
-              <p className="font-semibold text-[15px] text-on-surface">
-                No active mission
+              <p className="font-bold text-sm sm:text-base text-on-surface">
+                No active mission currently
               </p>
               <p className="text-xs text-on-surface-variant mt-0.5">
-                Check the{" "}
+                Check your{" "}
                 <Link
                   href="/partner/jobs"
                   className="text-primary font-bold hover:underline"
                 >
                   Job Center
                 </Link>{" "}
-                for your assigned jobs.
+                to view pending assignments and broadcasts.
               </p>
             </div>
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Earnings Card (Asymmetric Bento Style) */}
-          <div className="md:col-span-4 bg-surface-container-lowest border border-outline-variant/10 shadow-sm rounded-2xl p-6 relative overflow-hidden group">
+          <div className="lg:col-span-4 bg-surface-container-lowest border border-outline-variant/15 shadow-xs rounded-3xl p-6 relative overflow-hidden group">
             <div className="relative z-10">
               <span className="font-label text-xs uppercase tracking-widest text-on-surface-variant font-bold">
                 Daily Earnings
               </span>
               <div className="mt-2 flex items-baseline gap-2">
-                <h2 className="text-4xl font-black font-headline tracking-tight">
+                <h2 className="text-3xl sm:text-4xl font-black font-headline tracking-tight text-primary">
                   ₹{dailyEarnings.toFixed(0)}
                 </h2>
                 {todayJobsCompleted > 0 && (
-                  <div className="flex items-center text-tertiary-container gap-1 text-sm font-bold bg-tertiary-container/10 px-2 py-0.5 rounded-md">
-                    <span className="material-symbols-outlined text-base">
+                  <div className="flex items-center text-success gap-1 text-xs font-bold bg-success/10 px-2 py-0.5 rounded-md">
+                    <span className="material-symbols-outlined text-sm">
                       trending_up
                     </span>
                     <span>Active</span>
@@ -184,47 +189,47 @@ export default async function PartnerDashboardPage() {
                 )}
               </div>
 
-              <div className="mt-8 space-y-4">
-                <div className="flex justify-between items-center text-sm border-l-4 border-primary pl-3">
+              <div className="mt-6 sm:mt-8 space-y-4">
+                <div className="flex justify-between items-center text-xs sm:text-sm border-l-4 border-primary pl-3">
                   <span className="text-on-surface-variant font-medium">
-                    Jobs Completed
+                    Jobs Completed Today
                   </span>
-                  <span className="font-bold">
+                  <span className="font-extrabold text-on-surface">
                     {String(todayJobsCompleted).padStart(2, "0")}
                   </span>
                 </div>
-                <div className="flex justify-between items-center text-sm border-l-4 border-secondary-container pl-3">
+                <div className="flex justify-between items-center text-xs sm:text-sm border-l-4 border-secondary pl-3">
                   <span className="text-on-surface-variant font-medium">
-                    Active Hours
+                    Active Service Hours
                   </span>
-                  <span className="font-bold">
+                  <span className="font-extrabold text-on-surface">
                     {Math.floor(activeHours)}h{" "}
                     {Math.round((activeHours % 1) * 60)}m
                   </span>
                 </div>
               </div>
             </div>
-            {/* Abstract visual element */}
-            <div className="absolute -right-8 -bottom-8 w-40 h-40 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all"></div>
+            {/* Ambient detail glow */}
+            <div className="absolute -right-8 -bottom-8 w-40 h-40 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all pointer-events-none"></div>
           </div>
 
           {/* New Job Request (High Priority Card) */}
           {nextAssignedJob ? (
-            <div className="md:col-span-8 bg-surface-container-lowest border border-outline-variant/10 rounded-2xl overflow-hidden shadow-sm relative group hover:shadow-md transition-shadow">
-              <div className="absolute top-0 left-0 w-1.5 h-full bg-secondary-container"></div>
-              <div className="p-6 md:p-8">
-                <div className="flex justify-between items-start">
+            <div className="lg:col-span-8 bg-surface-container-lowest border border-outline-variant/15 rounded-3xl overflow-hidden shadow-xs relative group hover:shadow-md transition-shadow">
+              <div className="absolute top-0 left-0 w-1.5 h-full bg-secondary"></div>
+              <div className="p-5 sm:p-6 lg:p-8">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   <div>
-                    <span className="bg-secondary-container text-on-secondary-container font-label text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-[0_4px_12px_rgba(253,118,26,0.15)]">
+                    <span className="bg-secondary/15 text-primary font-label text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest border border-secondary/30">
                       New Assignment
                     </span>
-                    <h3 className="text-2xl font-black font-headline mt-3 text-on-surface tracking-tight">
+                    <h3 className="text-xl sm:text-2xl font-black font-headline mt-3 text-on-surface tracking-tight">
                       {nextAssignedJob.services?.title || "Service Request"}
                     </h3>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[28px] font-black font-headline tracking-tighter text-primary">
-                      ₹{(Number(nextAssignedJob.total_amount) * 0.8).toFixed(0)}
+                  <div className="sm:text-right bg-surface-container-low sm:bg-transparent p-3 sm:p-0 rounded-xl">
+                    <p className="text-2xl sm:text-3xl font-black font-headline tracking-tighter text-primary">
+                      ₹{calculateCommissionBreakdown(Number(nextAssignedJob.total_amount || 0), commissionPercent).partnerPayoutAmount.toFixed(0)}
                     </p>
                     <p className="font-label text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">
                       Potential Payout
@@ -234,17 +239,17 @@ export default async function PartnerDashboardPage() {
 
                 <div className="flex items-center gap-1.5 mt-4 mb-2">
                   <span className="material-symbols-outlined text-secondary text-sm">bolt</span>
-                  <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">
+                  <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
                     Assigned to You
                   </span>
                 </div>
 
-                <div className="flex flex-wrap gap-x-8 gap-y-4 mt-4 bg-surface-container-low/50 p-4 rounded-xl border border-outline-variant/10">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 bg-surface-container-low/60 p-4 rounded-2xl border border-outline-variant/15">
                   <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-primary-container text-2xl">
+                    <span className="material-symbols-outlined text-primary text-2xl shrink-0">
                       schedule
                     </span>
-                    <div className="text-sm">
+                    <div className="text-xs sm:text-sm">
                       <p className="text-on-surface-variant font-label text-[10px] uppercase font-bold tracking-widest">
                         Time Slot
                       </p>
@@ -263,121 +268,117 @@ export default async function PartnerDashboardPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="hidden sm:block w-px h-10 bg-outline-variant/20"></div>
-                  <div className="flex items-start gap-3 min-w-0 flex-1">
-                    <span className="material-symbols-outlined text-primary-container text-2xl shrink-0 mt-0.5">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <span className="material-symbols-outlined text-primary text-2xl shrink-0 mt-0.5">
                       location_on
                     </span>
-                    <div className="text-sm min-w-0">
+                    <div className="text-xs sm:text-sm min-w-0">
                       <p className="text-on-surface-variant font-label text-[10px] uppercase font-bold tracking-widest">
                         Location
                       </p>
-                      <p className="font-semibold text-on-surface mt-0.5 leading-tight wrap-break-words">
+                      <p className="font-semibold text-on-surface mt-0.5 leading-tight truncate">
                         {nextAssignedJob.address || nextAssignedJob.city || "TBD"}
                       </p>
                     </div>
                   </div>
                   {nextAssignedJob.customer?.full_name && (
-                    <>
-                      <div className="hidden sm:block w-px h-10 bg-outline-variant/20"></div>
-                      <div className="flex items-center gap-3">
-                        <span className="material-symbols-outlined text-primary-container text-2xl">
-                          person
-                        </span>
-                        <div className="text-sm">
-                          <p className="text-on-surface-variant font-label text-[10px] uppercase font-bold tracking-widest">
-                            Customer
-                          </p>
-                          <p className="font-semibold text-on-surface mt-0.5">
-                            {nextAssignedJob.customer.full_name}
-                          </p>
-                        </div>
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-primary text-2xl shrink-0">
+                        person
+                      </span>
+                      <div className="text-xs sm:text-sm">
+                        <p className="text-on-surface-variant font-label text-[10px] uppercase font-bold tracking-widest">
+                          Customer
+                        </p>
+                        <p className="font-semibold text-on-surface mt-0.5">
+                          {nextAssignedJob.customer.full_name}
+                        </p>
                       </div>
-                    </>
+                    </div>
                   )}
                 </div>
 
-                <div className="flex gap-4 mt-8">
+                <div className="flex gap-4 mt-6">
                   <Link
                     href="/partner/jobs"
-                    className="flex-1 bg-linear-to-br from-[#00685f] to-[#008378] text-white py-4 rounded-xl font-bold font-headline tracking-wide text-[15px] shadow-lg active:scale-[0.98] transition-transform text-center"
+                    className="flex-1 bg-primary hover:bg-primary/95 text-on-primary py-3.5 px-6 rounded-2xl font-extrabold font-headline tracking-wide text-sm sm:text-base shadow-sm active:scale-[0.98] transition-all text-center"
                   >
-                    Start This Job
+                    Manage Job in Job Center
                   </Link>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="md:col-span-8 bg-surface-container-lowest border border-outline-variant/10 rounded-2xl p-8 flex flex-col items-center justify-center text-center">
-              <span className="material-symbols-outlined text-5xl text-on-surface-variant/30 mb-3">
-                inbox
-              </span>
-              <p className="font-bold text-on-surface text-lg">
-                No new assignments
+            <div className="lg:col-span-8 bg-surface-container-lowest border border-outline-variant/15 rounded-3xl p-6 sm:p-8 flex flex-col items-center justify-center text-center">
+              <div className="w-14 h-14 rounded-2xl bg-surface-container-low flex items-center justify-center text-on-surface-variant/40 mb-3">
+                <span className="material-symbols-outlined text-3xl">
+                  inbox
+                </span>
+              </div>
+              <p className="font-bold text-on-surface text-base sm:text-lg">
+                No new assignments pending
               </p>
-              <p className="text-sm text-on-surface-variant mt-1">
-                New jobs will be manually assigned to you by the administration team based on your skills and service areas.
+              <p className="text-xs sm:text-sm text-on-surface-variant max-w-md mt-1">
+                New jobs will be auto-assigned to you based on your active status, services, and pincodes.
               </p>
             </div>
           )}
         </div>
 
         {/* Upcoming Jobs Section */}
-        <section className="space-y-5">
-          <div className="flex justify-between items-end">
-            <h3 className="text-xl font-bold font-headline pl-3 border-l-4 border-primary tracking-tight text-on-surface">
-              Upcoming Jobs
+        <section className="space-y-4">
+          <div className="flex justify-between items-end px-1">
+            <h3 className="text-lg sm:text-xl font-bold font-headline pl-3 border-l-4 border-primary tracking-tight text-on-surface">
+              Upcoming Scheduled Jobs
             </h3>
             <Link
               href="/partner/jobs"
-              className="text-primary font-bold text-sm tracking-wide hover:underline"
+              className="text-primary font-bold text-xs sm:text-sm tracking-wide hover:underline flex items-center gap-1"
             >
-              View Schedule
+              <span>View All</span>
+              <span className="material-symbols-outlined text-sm">arrow_forward</span>
             </Link>
           </div>
 
           {upcomingJobs.length === 0 ? (
-            <div className="bg-surface-container-low border border-outline-variant/10 rounded-2xl p-6 text-center">
-              <p className="text-sm text-on-surface-variant font-medium">
+            <div className="bg-surface-container-low border border-outline-variant/15 rounded-3xl p-6 text-center">
+              <p className="text-xs sm:text-sm text-on-surface-variant font-medium">
                 No upcoming jobs scheduled.
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {upcomingJobs.map((job, idx) => (
                 <div
                   key={job.id}
-                  className={`bg-surface-container-lowest border border-outline-variant/10 rounded-2xl p-5 flex items-center justify-between group hover:bg-white hover:border-primary-fixed hover:shadow-sm transition-all cursor-pointer ${idx > 1 ? "opacity-70 hover:opacity-100" : ""}`}
+                  className={`bg-surface-container-lowest border border-outline-variant/15 rounded-3xl p-4 sm:p-5 flex items-center justify-between group hover:border-primary/40 hover:shadow-xs transition-all cursor-pointer ${idx > 1 ? "opacity-80 hover:opacity-100" : ""}`}
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-surface-container-low flex items-center justify-center text-primary-container shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+                  <div className="flex items-center gap-3.5 min-w-0 pr-2">
+                    <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
                       <span
-                        className="material-symbols-outlined text-2xl"
+                        className="material-symbols-outlined text-2xl text-primary"
                         style={{ fontVariationSettings: "'FILL' 1" }}
                       >
                         {getServiceIcon(job.services?.category)}
                       </span>
                     </div>
-                    <div>
-                      <p className="font-bold text-[17px] font-headline text-on-surface">
+                    <div className="min-w-0">
+                      <p className="font-bold text-sm sm:text-base font-headline text-on-surface truncate">
                         {job.services?.title || "Service"}
                       </p>
-                      <p className="text-xs font-medium text-on-surface-variant mt-0.5 leading-tight max-w-[200px] sm:max-w-md wrap-break-words">
+                      <p className="text-xs text-on-surface-variant mt-0.5 truncate">
                         {job.address || job.city || "Location TBD"}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right flex items-center gap-2">
-                    <p className="font-bold font-headline text-[15px] text-primary bg-primary/5 px-3 py-1 rounded-lg">
+                  <div className="text-right shrink-0 flex items-center gap-2">
+                    <span className="font-bold font-headline text-xs sm:text-sm text-primary bg-primary/10 px-2.5 py-1 rounded-xl">
                       {job.scheduled_date
                         ? new Date(job.scheduled_date).toLocaleTimeString(
                           "en-IN",
                           { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" }
                         )
                         : "TBD"}
-                    </p>
-                    <span className="material-symbols-outlined text-outline-variant group-hover:text-primary group-hover:translate-x-1 transition-all">
-                      chevron_right
                     </span>
                   </div>
                 </div>
@@ -387,40 +388,40 @@ export default async function PartnerDashboardPage() {
         </section>
 
         {/* Performance Quick-View */}
-        <div className="bg-surface-container-low border border-surface-container-highest rounded-4xl p-6 lg:p-8 grid grid-cols-2 md:grid-cols-4 gap-6">
-          <div className="text-center md:border-r border-outline-variant/20 px-2 group">
-            <p className="text-3xl font-black font-headline text-on-surface tracking-tighter group-hover:text-primary transition-colors">
+        <div className="bg-surface-container-lowest border border-outline-variant/15 rounded-3xl p-5 sm:p-6 lg:p-8 grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 shadow-xs">
+          <div className="text-center md:border-r border-outline-variant/15 p-2 group">
+            <p className="text-2xl sm:text-3xl font-black font-headline text-primary tracking-tight group-hover:scale-105 transition-transform">
               {profile?.rating_avg
                 ? profile.rating_avg.toFixed(1)
                 : "—"}
             </p>
-            <p className="font-label text-[10px] uppercase font-bold tracking-widest text-on-surface-variant mt-2">
-              Rating
+            <p className="font-label text-[10px] sm:text-xs uppercase font-bold tracking-widest text-on-surface-variant mt-1.5">
+              Rating Avg
             </p>
           </div>
-          <div className="text-center md:border-r border-outline-variant/20 px-2 group">
-            <p className="text-3xl font-black font-headline text-on-surface tracking-tighter group-hover:text-primary transition-colors">
+          <div className="text-center md:border-r border-outline-variant/15 p-2 group">
+            <p className="text-2xl sm:text-3xl font-black font-headline text-primary tracking-tight group-hover:scale-105 transition-transform">
               {profile?.acceptance_rate
                 ? `${(profile.acceptance_rate * 100).toFixed(0)}%`
                 : "—"}
             </p>
-            <p className="font-label text-[10px] uppercase font-bold tracking-widest text-on-surface-variant mt-2">
+            <p className="font-label text-[10px] sm:text-xs uppercase font-bold tracking-widest text-on-surface-variant mt-1.5">
               Acceptance
             </p>
           </div>
-          <div className="text-center md:border-r border-outline-variant/20 px-2 group">
-            <p className="text-3xl font-black font-headline text-on-surface tracking-tighter group-hover:scale-105 transition-transform">
+          <div className="text-center md:border-r border-outline-variant/15 p-2 group">
+            <p className="text-2xl sm:text-3xl font-black font-headline text-primary tracking-tight group-hover:scale-105 transition-transform">
               {profile?.jobs_cancelled_count ?? 0}
             </p>
-            <p className="font-label text-[10px] uppercase font-bold tracking-widest text-on-surface-variant mt-2">
+            <p className="font-label text-[10px] sm:text-xs uppercase font-bold tracking-widest text-on-surface-variant mt-1.5">
               Cancellations
             </p>
           </div>
-          <div className="text-center px-2 group">
-            <p className="text-3xl font-black font-headline text-on-surface tracking-tighter group-hover:text-primary transition-colors">
+          <div className="text-center p-2 group">
+            <p className="text-2xl sm:text-3xl font-black font-headline text-primary tracking-tight group-hover:scale-105 transition-transform">
               {weeklyJobsCount ?? 0}
             </p>
-            <p className="font-label text-[10px] uppercase font-bold tracking-widest text-on-surface-variant mt-2">
+            <p className="font-label text-[10px] sm:text-xs uppercase font-bold tracking-widest text-on-surface-variant mt-1.5">
               Weekly Jobs
             </p>
           </div>

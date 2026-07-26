@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import PaymentFormClient from "./PaymentFormClient";
 import { calculatePricingBreakdown, PricingInput } from "@/utils/pricingEngine";
 import { PricingModel, Service, ServiceVariant, ServiceAddon, ServicePricingRule, Coupon, UserMembership, MembershipPlan } from "@/lib/types";
-
-
+import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
+import { calculateReferralDiscount } from "@/lib/engines/referralEngine";
 
 export default async function CheckoutPaymentPage({
   searchParams,
@@ -57,10 +57,10 @@ export default async function CheckoutPaymentPage({
 
   if (!user) redirect("/login");
 
-  const [addressResult, serviceResult, settingsResult, profileResult, completedBookingsResult] = await Promise.all([
+  const [addressResult, serviceResult, platformSettings, profileResult, completedBookingsResult] = await Promise.all([
     supabase.from("user_addresses").select("formatted_address, city, pincode, label").eq("id", addressId).eq("user_id", user.id).single(),
     supabase.from("services").select("id, title, base_price, category, pricing_model, page_content, pricing_config, gst_applicable").eq("id", serviceId).eq("status", "published").single(),
-    supabase.from("platform_settings").select("key, value").in("key", ["tax_rate", "referral_reward_referred"]),
+    fetchPlatformSettings(supabase),
     supabase.from("profiles").select("referred_by, wallet_balance").eq("id", user.id).single(),
     supabase.from("bookings").select("id", { count: "exact" }).eq("customer_id", user.id).eq("status", "completed"),
   ]);
@@ -72,28 +72,16 @@ export default async function CheckoutPaymentPage({
     redirect("/customer/dashboard");
   }
 
-  // Parse platform settings
-  const settingsMap = (settingsResult.data || []).reduce<Record<string, string>>((acc, row) => {
-    acc[row.key] = typeof row.value === "string" ? row.value : String(row.value);
-    return acc;
-  }, {});
-
-  let taxRatePercent = 18;
-  try {
-    const rawTax = settingsMap["tax_rate"]?.replace(/%/g, "").trim();
-    const parsed = parseFloat(rawTax || "18");
-    if (!isNaN(parsed)) taxRatePercent = parsed;
-  } catch {
-    /* use default */
-  }
-
+  const taxRatePercent = platformSettings.taxRate;
   const isReferred = !!profileResult.data?.referred_by;
   const hasCompletedBookings = (completedBookingsResult.count ?? 0) > 0;
-  let referralDiscount = 0;
-  if (isReferred && !hasCompletedBookings) {
-    const rawDiscount = parseFloat(settingsMap["referral_reward_referred"] || "50");
-    if (!isNaN(rawDiscount) && rawDiscount > 0) referralDiscount = rawDiscount;
-  }
+
+  const referralCalc = calculateReferralDiscount(isReferred && !hasCompletedBookings, {
+    referrerReward: platformSettings.referralRewardReferrer,
+    referredDiscount: platformSettings.referralRewardReferred,
+    isEnabled: platformSettings.referralEnabled,
+  });
+  const referralDiscount = referralCalc.discountAmount;
 
   const walletBalance = Number(profileResult.data?.wallet_balance || 0);
 
@@ -208,6 +196,8 @@ export default async function CheckoutPaymentPage({
     isMember,
     memberBenefit,
     walletBalanceToUse: 0, // calculated dynamically in form client
+    gstRate: taxRatePercent,
+    gstEnabled: platformSettings.gstEnabled,
     gstApplicable: service.gst_applicable,
   });
 

@@ -360,43 +360,23 @@ export async function verifyOtpAndResetPassword(
   }
 
   // Use service-role client for admin password update
-  // We use the regular client's updateUser after signing in via OTP flow
-  // Since we can't sign in without old password, we use the Supabase admin API via REST
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!serviceKey) {
-    // Fallback: send a Supabase magic link / password reset email
-    const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
-      redirectTo: `${supabaseUrl}/reset-password`,
+  try {
+    const { createAdminClient } = await import("@/utils/supabase/admin");
+    const adminClient = createAdminClient();
+    const { error: updateError } = await adminClient.auth.admin.updateUserById(profile.id, {
+      password: newPassword,
     });
-    if (error) {
-      return { success: false, error: "Failed to initiate password reset." };
+
+    if (updateError) {
+      console.error("Password reset failed:", updateError.message);
+      return { success: false, error: "Failed to update password. Please try again." };
     }
-    return {
-      success: true,
-      error: "A password reset link has been sent to your registered email. Please check your inbox.",
-    };
+
+    return { success: true };
+  } catch (err) {
+    console.error("Admin client password reset error:", err);
+    return { success: false, error: "Failed to update password. Please try again later." };
   }
-
-  // Use service role key to update password directly
-  const adminRes = await fetch(`${supabaseUrl}/auth/v1/admin/users/${profile.id}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: serviceKey,
-      Authorization: `Bearer ${serviceKey}`,
-    },
-    body: JSON.stringify({ password: newPassword }),
-  });
-
-  if (!adminRes.ok) {
-    const errData = await adminRes.json().catch(() => ({ message: "Unknown error" })) as { message?: string };
-    console.error("Password reset failed:", errData);
-    return { success: false, error: "Failed to update password. Please try again." };
-  }
-
-  return { success: true };
 }
 
 // ─── LEGACY (kept for backward compatibility) ────────────────

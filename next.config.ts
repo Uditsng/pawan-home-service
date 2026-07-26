@@ -1,5 +1,8 @@
 import type { NextConfig } from "next";
 
+// Fail-fast environment validation at config load (build + server start).
+import "@/lib/env";
+
 const securityHeaders = [
   {
     key: "X-Content-Type-Options",

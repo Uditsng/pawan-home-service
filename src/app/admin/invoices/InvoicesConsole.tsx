@@ -20,11 +20,13 @@ interface CompletedWithoutInvoice {
 interface InvoicesConsoleProps {
   initialInvoices: AdminInvoice[];
   completedWithoutInvoice: CompletedWithoutInvoice[];
+  fetchError?: string | null;
 }
 
 export default function InvoicesConsole({
   initialInvoices,
   completedWithoutInvoice: initialCompletedWithoutInvoice,
+  fetchError,
 }: InvoicesConsoleProps) {
   const invoices = initialInvoices;
   const pendingBookings = initialCompletedWithoutInvoice;
@@ -33,6 +35,7 @@ export default function InvoicesConsole({
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("");
+  const [exportError, setExportError] = useState<string | null>(null);
   const [minTotal, setMinTotal] = useState("");
   const [maxTotal, setMaxTotal] = useState("");
 
@@ -85,9 +88,10 @@ export default function InvoicesConsole({
   // Export CSV Utility
   const handleExportCSV = () => {
     if (filteredInvoices.length === 0) {
-      alert("No invoices available to export.");
+      setExportError("No invoices available to export.");
       return;
     }
+    setExportError(null);
 
     const headers = [
       "Invoice Number",
@@ -159,6 +163,20 @@ export default function InvoicesConsole({
 
   return (
     <div className="space-y-6">
+      {/* Database Fetch Error Banner */}
+      {fetchError && (
+        <div className="p-5 rounded-2xl border border-error/30 bg-error/5 flex items-start gap-3">
+          <span className="material-symbols-outlined text-error shrink-0 text-xl">error</span>
+          <div className="text-sm font-semibold text-error leading-relaxed">{fetchError}</div>
+          <button
+            onClick={() => window.location.reload()}
+            className="ml-auto shrink-0 px-4 py-1.5 bg-error/10 hover:bg-error/20 text-error text-[10px] font-black uppercase tracking-widest rounded-xl transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Top Banner Message */}
       {message && (
         <div
@@ -255,6 +273,13 @@ export default function InvoicesConsole({
                 </Button>
               </div>
             </div>
+
+            {exportError && (
+              <div className="w-full p-3 mb-4 rounded-xl text-[13px] font-semibold flex items-start gap-2 bg-error/10 text-error border border-error/20">
+                <span className="material-symbols-outlined text-[18px]">error</span>
+                <span>{exportError}</span>
+              </div>
+            )}
 
             {/* Filters */}
             <div className="flex flex-wrap gap-4 items-center border-t border-outline-variant/10 pt-4 text-xs font-bold text-on-surface-variant/60">

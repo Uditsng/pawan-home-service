@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { format } from "date-fns";
+import { calculateCommissionBreakdown } from "@/lib/engines/commissionEngine";
 
 export interface FinanceTransaction {
   id: string;
@@ -19,9 +20,10 @@ export interface FinanceTransaction {
 
 interface FinanceConsoleProps {
   initialBookings: FinanceTransaction[];
+  commissionPercent?: number;
 }
 
-export function FinanceConsole({ initialBookings }: FinanceConsoleProps) {
+export function FinanceConsole({ initialBookings, commissionPercent = 20 }: FinanceConsoleProps) {
   const [txList, setTxList] = useState<FinanceTransaction[]>(initialBookings);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "settled" | "pending">("all");
@@ -30,6 +32,7 @@ export function FinanceConsole({ initialBookings }: FinanceConsoleProps) {
   const [showPayoutModal, setShowPayoutModal] = useState(false);
   const [payoutSuccess, setPayoutSuccess] = useState(false);
   const [isProcessingPayout, setIsProcessingPayout] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   // Group transactions by status (Completed booking = settled payout, others = pending payout)
   const processedTransactions = txList.map(tx => {
@@ -40,18 +43,21 @@ export function FinanceConsole({ initialBookings }: FinanceConsoleProps) {
     };
   });
 
-  // Dynamic Metrics
+  // Dynamic Metrics using commissionEngine
   const totalRevenue = txList.reduce((acc, t) => acc + Number(t.total_amount || 0), 0);
-  const platformShare = totalRevenue * 0.2;
-  const partnerPayouts = totalRevenue * 0.8;
+  const totalBreakdown = calculateCommissionBreakdown(totalRevenue, commissionPercent);
+  const platformShare = totalBreakdown.platformCommissionAmount;
+  const partnerPayouts = totalBreakdown.partnerPayoutAmount;
   
-  const pendingPayouts = processedTransactions
+  const pendingRevenue = processedTransactions
     .filter(t => t.payoutStatus === "pending")
-    .reduce((acc, t) => acc + Number(t.total_amount || 0) * 0.8, 0);
+    .reduce((acc, t) => acc + Number(t.total_amount || 0), 0);
+  const pendingPayouts = calculateCommissionBreakdown(pendingRevenue, commissionPercent).partnerPayoutAmount;
 
-  const settledPayouts = processedTransactions
+  const settledRevenue = processedTransactions
     .filter(t => t.payoutStatus === "settled")
-    .reduce((acc, t) => acc + Number(t.total_amount || 0) * 0.8, 0);
+    .reduce((acc, t) => acc + Number(t.total_amount || 0), 0);
+  const settledPayouts = calculateCommissionBreakdown(settledRevenue, commissionPercent).partnerPayoutAmount;
 
   // Filtered transactions
   const filteredTx = processedTransactions.filter(tx => {
@@ -71,21 +77,26 @@ export function FinanceConsole({ initialBookings }: FinanceConsoleProps) {
   // Client-side CSV Export Utility
   const handleExportCSV = () => {
     if (filteredTx.length === 0) {
-      alert("No transaction records to export.");
+      setExportError("No transaction records to export.");
       return;
     }
+    setExportError(null);
 
-    const headers = ["Transaction ID", "Date", "Customer", "Professional Assigned", "Total Amount", "Platform Share (20%)", "Partner Share (80%)", "Payout Status"];
-    const rows = filteredTx.map(tx => [
-      `TX-${tx.id.slice(0, 8).toUpperCase()}`,
-      format(new Date(tx.created_at), 'yyyy-MM-dd HH:mm'),
-      tx.customer?.full_name || "Unknown Customer",
-      tx.partner?.full_name || "Unassigned",
-      `INR ${tx.total_amount}`,
-      `INR ${Number(tx.total_amount) * 0.2}`,
-      `INR ${Number(tx.total_amount) * 0.8}`,
-      tx.payoutStatus.toUpperCase()
-    ]);
+    const partnerSharePct = totalBreakdown.partnerSharePercent;
+    const headers = ["Transaction ID", "Date", "Customer", "Professional Assigned", "Total Amount", `Platform Share (${commissionPercent}%)`, `Partner Share (${partnerSharePct}%)`, "Payout Status"];
+    const rows = filteredTx.map(tx => {
+      const cb = calculateCommissionBreakdown(Number(tx.total_amount || 0), commissionPercent);
+      return [
+        `TX-${tx.id.slice(0, 8).toUpperCase()}`,
+        format(new Date(tx.created_at), 'yyyy-MM-dd HH:mm'),
+        tx.customer?.full_name || "Unknown Customer",
+        tx.partner?.full_name || "Unassigned",
+        `INR ${tx.total_amount}`,
+        `INR ${cb.platformCommissionAmount}`,
+        `INR ${cb.partnerPayoutAmount}`,
+        tx.payoutStatus.toUpperCase()
+      ];
+    });
 
     const csvContent = "data:text/csv;charset=utf-8," 
       + [headers.join(","), ...rows.map(e => e.map(val => `"${val}"`).join(","))].join("\n");
@@ -222,6 +233,13 @@ export function FinanceConsole({ initialBookings }: FinanceConsoleProps) {
         </div>
       </div>
 
+      {exportError && (
+        <div className="w-full p-3 mb-4 rounded-xl text-[13px] font-semibold flex items-start gap-2 bg-error/10 text-error border border-error/20">
+          <span className="material-symbols-outlined text-[18px]">error</span>
+          <span>{exportError}</span>
+        </div>
+      )}
+
       {/* Transaction Table */}
       <div className="bg-surface-container-lowest rounded-[24px] border border-outline-variant/15 shadow-sm overflow-hidden">
         <div className="overflow-x-auto w-full">
@@ -237,41 +255,44 @@ export function FinanceConsole({ initialBookings }: FinanceConsoleProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/10">
-              {filteredTx.map(tx => (
-                <tr key={tx.id} className="hover:bg-surface-container-low/30 transition-colors">
-                  <td className="px-6 py-4">
-                    <p className="text-sm font-black text-primary uppercase font-mono tracking-tighter">TX-{tx.id.slice(0, 8).toUpperCase()}</p>
-                    <p className="text-[10px] font-black text-on-surface-variant/40 uppercase tracking-widest mt-1">
-                      {format(new Date(tx.created_at), 'MMM dd, HH:mm')}
-                    </p>
-                  </td>
-                  <td className="px-4 py-4">
-                    <p className="text-sm font-black text-primary uppercase tracking-tight">{tx.customer?.full_name || "Unknown Customer"}</p>
-                    <p className="text-[10px] font-bold text-secondary uppercase tracking-widest mt-1 flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-sm">engineering</span> {tx.partner?.full_name || "Unassigned Partner"}
-                    </p>
-                  </td>
-                  <td className="px-4 py-4 text-right font-black text-primary text-base tracking-tighter">
-                    ₹{Number(tx.total_amount).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-4 text-right text-xs font-bold text-on-surface-variant/50">
-                    ₹{(Number(tx.total_amount) * 0.2).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-4 text-right text-base font-bold text-secondary tracking-tighter">
-                    ₹{(Number(tx.total_amount) * 0.8).toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${
-                      tx.payoutStatus === 'settled'
-                        ? 'bg-secondary/10 text-secondary border-secondary/20'
-                        : 'bg-amber-50 text-amber-700 border-amber-100'
-                    }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${tx.payoutStatus === 'settled' ? 'bg-secondary' : 'bg-amber-400'}`}></span>
-                      {tx.payoutStatus}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {filteredTx.map(tx => {
+                const cb = calculateCommissionBreakdown(Number(tx.total_amount || 0), commissionPercent);
+                return (
+                  <tr key={tx.id} className="hover:bg-surface-container-low/30 transition-colors">
+                    <td className="px-6 py-4">
+                      <p className="text-sm font-black text-primary uppercase font-mono tracking-tighter">TX-{tx.id.slice(0, 8).toUpperCase()}</p>
+                      <p className="text-[10px] font-black text-on-surface-variant/40 uppercase tracking-widest mt-1">
+                        {format(new Date(tx.created_at), 'MMM dd, HH:mm')}
+                      </p>
+                    </td>
+                    <td className="px-4 py-4">
+                      <p className="text-sm font-black text-primary uppercase tracking-tight">{tx.customer?.full_name || "Unknown Customer"}</p>
+                      <p className="text-[10px] font-bold text-secondary uppercase tracking-widest mt-1 flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-sm">engineering</span> {tx.partner?.full_name || "Unassigned Partner"}
+                      </p>
+                    </td>
+                    <td className="px-4 py-4 text-right font-black text-primary text-base tracking-tighter">
+                      ₹{Number(tx.total_amount).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-4 text-right text-xs font-bold text-on-surface-variant/50">
+                      ₹{cb.platformCommissionAmount.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-4 text-right text-base font-bold text-secondary tracking-tighter">
+                      ₹{cb.partnerPayoutAmount.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${
+                        tx.payoutStatus === 'settled'
+                          ? 'bg-secondary/10 text-secondary border-secondary/20'
+                          : 'bg-amber-50 text-amber-700 border-amber-100'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${tx.payoutStatus === 'settled' ? 'bg-secondary' : 'bg-amber-400'}`}></span>
+                        {tx.payoutStatus}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
 
               {filteredTx.length === 0 && (
                 <tr>

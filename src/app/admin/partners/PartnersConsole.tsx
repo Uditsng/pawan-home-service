@@ -819,7 +819,7 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
 
       {/* ─── 4. INTERACTIVE ONBOARD TECHNICIAN MODAL ─── */}
       {isOnboardingModalOpen && (
-        <div className="fixed inset-0 bg-[#002261]/25 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-primary/25 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
 
           {/* Closer backdrop */}
           <div className="absolute inset-0 cursor-pointer" onClick={() => setIsOnboardingModalOpen(false)} />
@@ -936,7 +936,7 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
 
       {/* ─── 5. INTERACTIVE EDIT TECHNICIAN MODAL ─── */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 bg-[#002261]/25 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-primary/25 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
 
           {/* Closer backdrop */}
           <div className="absolute inset-0 cursor-pointer" onClick={() => setIsEditModalOpen(false)} />
@@ -1055,7 +1055,7 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
 
       {/* ─── 6. INTERACTIVE EMERGENCY DISPATCH ASSIGNMENT MODAL ─── */}
       {emergencyBookingPartnerId && (
-        <div className="fixed inset-0 bg-[#002261]/25 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-primary/25 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
 
           <div className="absolute inset-0 cursor-pointer" onClick={() => setEmergencyBookingPartnerId(null)} />
 
@@ -1126,7 +1126,7 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
 
       {/* ─── 7. INTERACTIVE KYC REVIEW MODAL ─── */}
       {reviewKycPartner && (
-        <div className="fixed inset-0 bg-[#002261]/25 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-primary/25 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="absolute inset-0 cursor-pointer" onClick={() => setReviewKycPartner(null)} />
 
           <div className="relative w-full max-w-2xl bg-white rounded-[32px] overflow-hidden shadow-2xl p-6 border border-outline-variant/30 animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
@@ -1384,7 +1384,7 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
       )}
       {/* ─── 8. REVIEWS & RATINGS DETAIL MODAL ─── */}
       {selectedReviewsPartner && (
-        <div className="fixed inset-0 bg-[#002261]/25 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-primary/25 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
           {/* Closer backdrop */}
           <div className="absolute inset-0 cursor-pointer" onClick={() => setSelectedReviewsPartner(null)} />
 

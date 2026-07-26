@@ -647,7 +647,7 @@ export function EditNotificationForm({
                 <button
                   key={opt.type}
                   type="button"
-                  onClick={() => setDeliveryOption(opt.type as any)}
+                  onClick={() => setDeliveryOption(opt.type as "now" | "schedule" | "draft")}
                   className={`px-3 py-3 rounded-xl text-center text-xs font-bold transition-all border flex flex-col items-center justify-center gap-1 cursor-pointer select-none ${
                     deliveryOption === opt.type
                       ? "bg-primary text-white border-primary shadow-xs"

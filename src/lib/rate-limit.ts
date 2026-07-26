@@ -28,8 +28,8 @@ export class RateLimiter {
       });
 
       if (error || !data || data.length === 0) {
-        console.error("Rate limiter RPC failed, allowing request by default:", error);
-        return { allowed: true, retryAfter: 0 };
+        console.error("Rate limiter RPC failed, denying request by default for security:", error);
+        return { allowed: false, retryAfter: 60 };
       }
 
       // data is returned as an array of rows
@@ -39,8 +39,8 @@ export class RateLimiter {
         retryAfter: result.retry_after_seconds
       };
     } catch (err) {
-      console.error("Rate limiter error, allowing request by default:", err);
-      return { allowed: true, retryAfter: 0 };
+      console.error("Rate limiter error, denying request by default for security:", err);
+      return { allowed: false, retryAfter: 60 };
     }
   }
 }

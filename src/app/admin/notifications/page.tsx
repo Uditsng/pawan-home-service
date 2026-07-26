@@ -80,9 +80,13 @@ export default async function AdminNotificationsPage() {
         totalCount: result.totalCount,
       };
     }
-  } catch (err: any) {
-    const errMsg = err.message || "";
-    if (err.code === '42P01' || errMsg.includes('relation "admin_notifications" does not exist')) {
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    const errCode =
+      typeof err === "object" && err !== null && "code" in err
+        ? String((err as Record<string, unknown>).code)
+        : undefined;
+    if (errCode === '42P01' || errMsg.includes('relation "admin_notifications" does not exist')) {
       isSchemaError = true;
     } else {
       console.error("[NotificationsPage] Error loading data:", err);

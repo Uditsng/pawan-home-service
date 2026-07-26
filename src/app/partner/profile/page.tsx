@@ -33,105 +33,115 @@ export default async function PartnerProfilePage() {
     : Math.round((completedJobs / offeredJobs) * 100);
 
   return (
-    <div className="bg-[#f5f6f8] text-on-background min-h-screen pb-24 flex flex-col font-sans">
-      <div className="bg-primary text-on-primary pt-5 md:pt-6 pb-6 md:pb-8 px-4 md:px-6 flex gap-4">
-        <div className="flex items-center gap-3 md:gap-4 max-w-3xl mx-auto">
-          <div className="w-[60px] h-[60px] md:w-[76px] md:h-[76px] rounded-full overflow-hidden bg-surface-container-low flex items-center justify-center shrink-0 relative">
+    <div className="bg-surface text-on-surface font-body min-h-screen pb-24 lg:pb-12 flex flex-col">
+      <div className="bg-primary text-on-primary py-6 sm:py-8 px-4 sm:px-6 lg:px-8 border-b border-outline-variant/15 shadow-sm">
+        <div className="flex items-center gap-4 max-w-5xl mx-auto">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden bg-white/10 border-2 border-white/20 flex items-center justify-center shrink-0 relative">
             {profile.avatar_url ? (
-              <Image src={profile.avatar_url} alt={profile.full_name || "Technician"} fill className="object-cover" sizes="76px" />
+              <Image src={profile.avatar_url} alt={profile.full_name || "Technician"} fill className="object-cover" sizes="80px" />
             ) : (
-              <span className="material-symbols-outlined text-[32px] md:text-[40px] text-slate-400">person</span>
+              <span className="material-symbols-outlined text-3xl sm:text-4xl text-on-primary">person</span>
             )}
           </div>
           <div>
-            <div className="flex items-center gap-2 mb-0.5 md:mb-1">
-              <h1 className="text-[18px] md:text-[22px] font-extrabold tracking-wide">{profile.full_name || "Technician"}</h1>
+            <div className="flex items-center gap-2 mb-1">
+              <h1 className="text-xl sm:text-2xl font-black font-headline tracking-wide">{profile.full_name || "Technician"}</h1>
               {profile.status === "active" && (
-                <span className="bg-success text-on-success text-[9px] font-extrabold px-1.5 py-0.5 rounded-[4px] uppercase">Online</span>
+                <span className="bg-secondary text-primary text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase">Online</span>
               )}
               {profile.status === "offline" && (
-                <span className="bg-surface-container-highest text-on-surface-variant text-[9px] font-extrabold px-1.5 py-0.5 rounded-[4px] uppercase">Offline</span>
+                <span className="bg-white/20 text-on-primary text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase">Offline</span>
               )}
               {["busy", "professional_en_route", "professional_arrived", "otp_pending", "in_progress"].includes(profile.status) && (
-                <span className="bg-warning/20 text-warning text-[9px] font-extrabold px-1.5 py-0.5 rounded-[4px] uppercase">On Job</span>
+                <span className="bg-warning/30 text-warning-container text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase">On Job</span>
               )}
             </div>
-            {/* <p className="text-[12px] md:text-[13px] text-on-primary/70 font-medium break-all">ID: #{profile.id.substring(0, 8).toUpperCase()}</p> */}
-            <p className="text-[12px] md:text-[13px] text-on-primary/70 font-medium break-all mb-1.5 md:mb-2">{profile.phone || user.email}</p>
-            <Link href="/partner/profile/edit" prefetch={false} className="text-[12px] md:text-[13px] text-on-primary font-bold flex items-center hover:opacity-80 transition-opacity">
-              Edit profile <span className="material-symbols-outlined text-[13px] md:text-[14px] ml-0.5">edit_square</span>
+            <p className="text-xs sm:text-sm text-on-primary/80 font-medium mb-2">{profile.phone || user.email}</p>
+            <Link href="/partner/profile/edit" prefetch={false} className="text-xs sm:text-sm text-secondary font-bold inline-flex items-center gap-1 hover:underline">
+              <span>Edit profile</span>
+              <span className="material-symbols-outlined text-sm">edit_square</span>
             </Link>
           </div>
         </div>
       </div>
 
-      <main className="flex-1 max-w-3xl mx-auto w-full px-4 md:px-5 pt-4 md:pt-5 relative z-10 space-y-3 md:space-y-4">
+      <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
         
         {/* Performance Stats Action Blocks */}
-        <div className="grid grid-cols-3 gap-3 md:gap-4">
-          <div className="bg-white p-3 md:p-4 rounded-[16px] md:rounded-[20px] shadow-sm flex flex-col items-center justify-center text-center h-[90px] md:h-[105px]">
-            <span className="font-extrabold text-[20px] md:text-[24px] text-[#1c2438]">{profile.rating_avg ? profile.rating_avg.toFixed(1) : "—"}</span>
-            <span className="font-bold text-[11px] md:text-[12px] text-slate-500 uppercase tracking-widest mt-1">Rating</span>
+        <div className="grid grid-cols-3 gap-3 sm:gap-6">
+          <div className="bg-surface-container-lowest border border-outline-variant/15 p-4 sm:p-5 rounded-3xl shadow-xs flex flex-col items-center justify-center text-center">
+            <span className="font-black text-2xl sm:text-3xl text-primary font-headline">{profile.rating_avg ? profile.rating_avg.toFixed(1) : "—"}</span>
+            <span className="font-bold text-[10px] sm:text-xs text-on-surface-variant uppercase tracking-widest mt-1">Rating</span>
           </div>
-          <div className="bg-white p-3 md:p-4 rounded-[16px] md:rounded-[20px] shadow-sm flex flex-col items-center justify-center text-center h-[90px] md:h-[105px]">
-            <span className="font-extrabold text-[20px] md:text-[24px] text-[#1c2438]">{completedJobs}</span>
-            <span className="font-bold text-[11px] md:text-[12px] text-slate-500 uppercase tracking-widest mt-1">Jobs Done</span>
+          <div className="bg-surface-container-lowest border border-outline-variant/15 p-4 sm:p-5 rounded-3xl shadow-xs flex flex-col items-center justify-center text-center">
+            <span className="font-black text-2xl sm:text-3xl text-primary font-headline">{completedJobs}</span>
+            <span className="font-bold text-[10px] sm:text-xs text-on-surface-variant uppercase tracking-widest mt-1">Jobs Done</span>
           </div>
-          <div className="bg-white p-3 md:p-4 rounded-[16px] md:rounded-[20px] shadow-sm flex flex-col items-center justify-center text-center h-[90px] md:h-[105px]">
-            <span className="font-extrabold text-[20px] md:text-[24px] text-[#1c2438]">{successRate}%</span>
-            <span className="font-bold text-[11px] md:text-[12px] text-slate-500 uppercase tracking-widest mt-1">Success</span>
+          <div className="bg-surface-container-lowest border border-outline-variant/15 p-4 sm:p-5 rounded-3xl shadow-xs flex flex-col items-center justify-center text-center">
+            <span className="font-black text-2xl sm:text-3xl text-primary font-headline">{successRate}%</span>
+            <span className="font-bold text-[10px] sm:text-xs text-on-surface-variant uppercase tracking-widest mt-1">Success</span>
           </div>
         </div>
 
-        {/* Links List */}
-        <div className="bg-white rounded-[16px] md:rounded-[20px] shadow-sm overflow-hidden flex flex-col">
+        {/* Links List Grid */}
+        <div className="bg-surface-container-lowest border border-outline-variant/15 rounded-3xl shadow-xs overflow-hidden divide-y divide-outline-variant/15">
 
-          <Link href="/partner/profile/services" prefetch={false} className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
-            <div className="flex items-center gap-3 md:gap-4">
-              <span className="material-symbols-outlined text-slate-500 text-[18px] md:text-[20px]">work</span>
-              <span className="font-semibold text-[13px] md:text-[15px] text-[#1c2438]">Services & Areas</span>
+          <Link href="/partner/profile/services" prefetch={false} className="flex items-center justify-between p-4 sm:p-5 hover:bg-surface-container-low transition-colors group">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                <span className="material-symbols-outlined text-xl">work</span>
+              </div>
+              <span className="font-bold text-sm sm:text-base text-on-surface">Services & Service Areas</span>
             </div>
-            <span className="material-symbols-outlined text-slate-300 text-[18px] md:text-[20px] group-hover:text-slate-400 transition-colors">chevron_right</span>
+            <span className="material-symbols-outlined text-on-surface-variant/50 group-hover:text-primary group-hover:translate-x-1 transition-all">chevron_right</span>
           </Link>
 
-          <Link href="/partner/profile/bank" prefetch={false} className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
-            <div className="flex items-center gap-3 md:gap-4">
-              <span className="material-symbols-outlined text-slate-500 text-[18px] md:text-[20px]">account_balance</span>
-              <span className="font-semibold text-[13px] md:text-[15px] text-[#1c2438]">Bank Details</span>
+          <Link href="/partner/profile/bank" prefetch={false} className="flex items-center justify-between p-4 sm:p-5 hover:bg-surface-container-low transition-colors group">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                <span className="material-symbols-outlined text-xl">account_balance</span>
+              </div>
+              <span className="font-bold text-sm sm:text-base text-on-surface">Bank Account Details</span>
             </div>
-            <span className="material-symbols-outlined text-slate-300 text-[18px] md:text-[20px] group-hover:text-slate-400 transition-colors">chevron_right</span>
+            <span className="material-symbols-outlined text-on-surface-variant/50 group-hover:text-primary group-hover:translate-x-1 transition-all">chevron_right</span>
           </Link>
 
-          <Link href="/partner/profile/settings" prefetch={false} className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
-            <div className="flex items-center gap-3 md:gap-4">
-              <span className="material-symbols-outlined text-slate-500 text-[18px] md:text-[20px]">settings</span>
-              <span className="font-semibold text-[13px] md:text-[15px] text-[#1c2438]">App Settings</span>
+          <Link href="/partner/profile/settings" prefetch={false} className="flex items-center justify-between p-4 sm:p-5 hover:bg-surface-container-low transition-colors group">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                <span className="material-symbols-outlined text-xl">settings</span>
+              </div>
+              <span className="font-bold text-sm sm:text-base text-on-surface">App Settings</span>
             </div>
-            <span className="material-symbols-outlined text-slate-300 text-[18px] md:text-[20px] group-hover:text-slate-400 transition-colors">chevron_right</span>
+            <span className="material-symbols-outlined text-on-surface-variant/50 group-hover:text-primary group-hover:translate-x-1 transition-all">chevron_right</span>
           </Link>
           
-          <Link href="/partner/support" prefetch={false} className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
-            <div className="flex items-center gap-3 md:gap-4">
-              <span className="material-symbols-outlined text-slate-500 text-[18px] md:text-[20px]">support_agent</span>
-              <span className="font-semibold text-[13px] md:text-[15px] text-[#1c2438]">Help & Support</span>
+          <Link href="/partner/support" prefetch={false} className="flex items-center justify-between p-4 sm:p-5 hover:bg-surface-container-low transition-colors group">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                <span className="material-symbols-outlined text-xl">support_agent</span>
+              </div>
+              <span className="font-bold text-sm sm:text-base text-on-surface">Help & Support Center</span>
             </div>
-            <span className="material-symbols-outlined text-slate-300 text-[18px] md:text-[20px] group-hover:text-slate-400 transition-colors">chevron_right</span>
+            <span className="material-symbols-outlined text-on-surface-variant/50 group-hover:text-primary group-hover:translate-x-1 transition-all">chevron_right</span>
           </Link>
 
-          <Link href="/partner/delete-account" prefetch={false} className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
-            <div className="flex items-center gap-3 md:gap-4">
-              <span className="material-symbols-outlined text-slate-500 text-[18px] md:text-[20px]">delete_forever</span>
-              <span className="font-semibold text-[13px] md:text-[15px] text-[#1c2438]">Request account deletion</span>
+          <Link href="/partner/delete-account" prefetch={false} className="flex items-center justify-between p-4 sm:p-5 hover:bg-surface-container-low transition-colors group">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-2xl bg-error/10 flex items-center justify-center text-error">
+                <span className="material-symbols-outlined text-xl">delete_forever</span>
+              </div>
+              <span className="font-bold text-sm sm:text-base text-error">Request Account Deletion</span>
             </div>
-            <span className="material-symbols-outlined text-slate-300 text-[18px] md:text-[20px] group-hover:text-slate-400 transition-colors">chevron_right</span>
+            <span className="material-symbols-outlined text-on-surface-variant/50 group-hover:text-error group-hover:translate-x-1 transition-all">chevron_right</span>
           </Link>
 
           <LogoutButton variant="list" />
         </div>
 
         {/* Footer */}
-        <div className="text-center pt-6 md:pt-8 pb-4">
-          <p className="text-[10px] md:text-[11px] font-bold text-slate-500 uppercase tracking-widest">App version: 1.0.2</p>
+        <div className="text-center pt-4 pb-4">
+          <p className="text-[11px] font-bold text-on-surface-variant/60 uppercase tracking-widest">PHS Partner App v1.0.2</p>
         </div>
 
       </main>

@@ -60,29 +60,29 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
   }));
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-6 antialiased">
-      <div className="w-full max-w-2xl bg-white/80 backdrop-blur-xl p-8 md:p-12 rounded-[32px] shadow-[0_20px_50px_rgba(30,41,59,0.06)] border border-white/50 relative overflow-hidden">
+    <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 antialiased">
+      <div className="w-full max-w-3xl bg-surface-container-lowest p-6 sm:p-10 lg:p-12 rounded-3xl shadow-xs border border-outline-variant/15 relative overflow-hidden my-6">
 
         {/* Background glow */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-secondary/10 rounded-full blur-[80px] -z-10 -mr-20 -mt-20"></div>
+        <div className="absolute top-0 right-0 w-64 h-64 bg-secondary/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
 
-        <div className="mb-10 text-center">
-          <div className="inline-flex items-center gap-2 bg-secondary/10 border border-secondary/20 rounded-full px-3 py-1.5 text-xs font-bold text-secondary uppercase tracking-wider mb-4 shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-secondary animate-pulse shadow-secondary"></span>
-            Partner Setup
+        <div className="mb-8 sm:mb-10 text-center">
+          <div className="inline-flex items-center gap-2 bg-secondary/15 border border-secondary/30 rounded-full px-3 py-1.5 text-xs font-bold text-primary uppercase tracking-wider mb-4 shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+            Partner Onboarding Setup
           </div>
-          <h1 className="text-3xl md:text-4xl font-headline font-black tracking-tighter text-primary">
-            Complete Your Profile
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-headline font-black tracking-tight text-on-surface">
+            Complete Your Partner Profile
           </h1>
-          <p className="text-on-surface-variant font-medium mt-3">
-            Select your expertise and service areas to start receiving auto-assigned jobs.
+          <p className="text-on-surface-variant text-xs sm:text-sm font-medium mt-2 max-w-lg mx-auto leading-relaxed">
+            Select your service expertise and pincode coverage to activate auto-assignment on your profile.
           </p>
         </div>
 
-        <form action={completeOnboarding} className="space-y-10">
+        <form action={completeOnboarding} className="space-y-8">
 
           <div className="space-y-4">
-            <h3 className="text-lg font-headline font-extrabold text-on-surface flex items-center gap-2">
+            <h3 className="text-base sm:text-lg font-headline font-extrabold text-on-surface flex items-center gap-2">
               <span className="material-symbols-outlined text-secondary">handyman</span>
               Which services do you offer?
             </h3>
@@ -91,25 +91,25 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-lg font-headline font-extrabold text-on-surface flex items-center gap-2">
+            <h3 className="text-base sm:text-lg font-headline font-extrabold text-on-surface flex items-center gap-2">
               <span className="material-symbols-outlined text-secondary">location_on</span>
-              Which areas do you serve?
+              Which pincode areas do you serve?
             </h3>
 
             <PincodeSelector />
           </div>
 
           {error && (
-            <div className="p-4 bg-red-50 text-red-600 text-center text-sm font-bold rounded-xl border border-red-200 shadow-sm animate-pulse">
+            <div className="p-4 bg-error/10 text-error text-center text-xs sm:text-sm font-bold rounded-2xl border border-error/20">
               {error}
             </div>
           )}
 
-          <div className="pt-4 border-t border-outline-variant/20 flex gap-4">
-            <Link href="/login" className="px-6 py-4 rounded-xl border-2 border-outline-variant/30 font-bold text-on-surface-variant hover:bg-surface-container-low transition-colors flex items-center justify-center">
+          <div className="pt-4 border-t border-outline-variant/15 flex gap-4">
+            <Link href="/login" className="px-6 py-3.5 rounded-2xl border border-outline-variant/20 font-bold text-xs sm:text-sm text-on-surface-variant hover:bg-surface-container-low transition-colors flex items-center justify-center">
               Cancel
             </Link>
-            <Button variant="gradient" className="flex-1 py-4 bg-linear-to-br from-[#059669] to-success text-white font-extrabold text-[15px] rounded-xl hover:scale-[1.02] active:scale-95 shadow-[0_8px_20px_rgba(16,185,129,0.3)] transition-all duration-300 border-none">
+            <Button variant="gradient" className="flex-1 py-3.5 bg-primary text-on-primary font-extrabold text-xs sm:text-sm rounded-2xl hover:bg-primary/95 shadow-sm transition-all border-none cursor-pointer">
               Save & Go Live
             </Button>
           </div>

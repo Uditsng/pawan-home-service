@@ -56,27 +56,27 @@ export default function SupportClient() {
   return (
     <div className="space-y-6 mt-6">
       {/* Intro paragraph */}
-      <div className="space-y-2 bg-white rounded-3xl p-5 shadow-sm border border-outline-variant/10">
-        <p className="text-sm text-slate-500 leading-relaxed font-medium">
+      <div className="space-y-2 bg-surface-container-lowest rounded-3xl p-5 sm:p-6 shadow-xs border border-outline-variant/15">
+        <p className="text-xs sm:text-sm text-on-surface-variant leading-relaxed font-medium">
           We stand fully accountable for our services. Partner support desk is available to assist you with booking assignment status, payout issues, registration updates, and customer complaints.
         </p>
-        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">
-          Operational Hours: <span className="text-[#1c2438]">9:00 AM - 8:00 PM (Mon - Sun)</span>
+        <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mt-2">
+          Operational Hours: <span className="text-primary font-headline">9:00 AM - 8:00 PM (Mon - Sun)</span>
         </p>
       </div>
 
       {/* Details List */}
-      <div className="bg-white rounded-3xl p-5 md:p-6 shadow-sm border border-outline-variant/10 space-y-5">
+      <div className="bg-surface-container-lowest rounded-3xl p-5 sm:p-6 shadow-xs border border-outline-variant/15 space-y-5">
         {contactDetails.map((item, index) => (
           <div
             key={index}
-            className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-slate-100 pb-4 last:border-0 last:pb-0"
+            className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-outline-variant/15 pb-4 last:border-0 last:pb-0"
           >
             <div className="space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+              <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest block">
                 {item.label}
               </span>
-              <span className="text-sm font-semibold text-primary leading-normal block max-w-xl">
+              <span className="text-xs sm:text-sm font-bold text-primary leading-normal block max-w-xl">
                 {item.value}
               </span>
             </div>
@@ -85,11 +85,11 @@ export default function SupportClient() {
               {item.actionHref && item.actionLabel && (
                 <a
                   href={item.actionHref}
-                  className="flex items-center justify-center w-9 h-9 rounded-lg bg-green-500/10 text-[#059669] hover:bg-green-600 hover:text-white transition-all duration-200 active:scale-95 cursor-pointer"
+                  className="flex items-center justify-center w-9 h-9 rounded-2xl bg-primary/10 text-primary hover:bg-primary hover:text-on-primary transition-all duration-200 active:scale-95 cursor-pointer"
                   title={item.actionLabel}
                   aria-label={item.actionLabel}
                 >
-                  <span className="material-symbols-outlined text-[20px]">
+                  <span className="material-symbols-outlined text-[18px]">
                     {item.label.toLowerCase().includes("email") ? "mail" : "call"}
                   </span>
                 </a>
@@ -98,16 +98,16 @@ export default function SupportClient() {
               {item.isCopyable && (
                 <button
                   onClick={() => void handleCopy(item.value, index)}
-                  className={`flex items-center justify-center w-9 h-9 rounded-lg transition-all duration-200 cursor-pointer active:scale-95 border ${
+                  className={`flex items-center justify-center w-9 h-9 rounded-2xl transition-all duration-200 cursor-pointer active:scale-95 border ${
                     copiedIndex === index
-                      ? "bg-green-500/10 text-[#059669] border-[#059669]/20"
-                      : "bg-surface-container text-on-surface-variant border-outline-variant/10 hover:bg-slate-50 hover:text-primary"
+                      ? "bg-success/15 text-success border-success/30"
+                      : "bg-surface-container-low text-on-surface-variant border-outline-variant/15 hover:bg-surface-container-high hover:text-primary"
                   }`}
                   title={copiedIndex === index ? "Copied!" : "Copy to clipboard"}
                   aria-label={copiedIndex === index ? "Copied" : "Copy"}
                 >
                   <span
-                    className="material-symbols-outlined text-[20px]"
+                    className="material-symbols-outlined text-[18px]"
                     style={{ fontVariationSettings: copiedIndex === index ? "'FILL' 1" : "'FILL' 0" }}
                   >
                     {copiedIndex === index ? "check" : "content_copy"}

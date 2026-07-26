@@ -19,6 +19,16 @@ async function getAuthenticatedPartner() {
     return { supabase, user: null, error: "Not authenticated" };
   }
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile || profile.role !== "partner") {
+    return { supabase, user: null, error: "Unauthorized: Partner access required" };
+  }
+
   return { supabase, user, error: null };
 }
 

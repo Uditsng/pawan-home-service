@@ -5,14 +5,8 @@ import { useState, useEffect } from "react";
 import Image from "next/image"
 import { createClient } from "@/utils/supabase/client";
 import LogoutButton from "./LogoutButton";
+import { getDashboardForRole } from "@/utils/supabase/roles";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
-
-// Centralized role → dashboard mapping (must match proxy.ts)
-const ROLE_DASHBOARDS: Record<string, string> = {
-  admin: '/admin/dashboard',
-  partner: '/partner/dashboard',
-  customer: '/customer/dashboard',
-};
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -74,7 +68,7 @@ export default function Header() {
     };
   }, []);
 
-  const dashboardHref = ROLE_DASHBOARDS[userRole] ?? '/customer/dashboard';
+  const dashboardHref = getDashboardForRole(userRole);
 
   return (
     <header className="sticky top-0 w-full z-50 bg-surface/95 backdrop-blur-md shadow-sm pt-safe">

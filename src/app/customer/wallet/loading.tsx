@@ -3,7 +3,7 @@ export default function Loading() {
     <div className="bg-[#f5f6f8] text-on-surface antialiased min-h-screen pb-24 font-body">
       <main className="max-w-xl mx-auto px-4 md:px-5 pt-4 pb-8 space-y-4">
         {/* Balance Hero */}
-        <div className="bg-primary rounded-[24px] p-6 relative overflow-hidden animate-pulse min-h-[160px] flex flex-col justify-between">
+        <div className="bg-primary rounded-3xl p-6 relative overflow-hidden animate-pulse min-h-40 flex flex-col justify-between">
           <div className="flex justify-between items-center">
             <div>
               <div className="w-24 h-3 bg-white/20 rounded mb-2" />
@@ -27,7 +27,7 @@ export default function Loading() {
         <div className="w-full h-12 bg-white rounded-2xl border border-slate-100 shadow-sm animate-pulse" />
 
         {/* Transactions List */}
-        <div className="bg-white rounded-[24px] p-5 shadow-sm space-y-4 animate-pulse">
+        <div className="bg-white rounded-3xl p-5 shadow-sm space-y-4 animate-pulse">
           <div className="w-36 h-5 bg-slate-200 rounded mb-4" />
           <div className="space-y-4">
             {Array.from({ length: 4 }).map((_, i) => (

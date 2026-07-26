@@ -7,6 +7,7 @@ import { createRazorpayOrderAction, verifyRazorpayPaymentAction } from "@/app/ac
 import { formatDuration } from "@/utils/pricingEngine";
 import { Card } from "@/components/ui/Card";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
+import { calculateGstBreakdown } from "@/lib/engines/gstEngine";
 
 interface Address {
   formatted_address: string;
@@ -31,6 +32,7 @@ interface CartPaymentClientProps {
   date: string;
   time: string;
   taxRatePercent: number;
+  gstEnabled?: boolean;
   referralDiscount: number;
   walletBalance?: number;
 }
@@ -41,6 +43,7 @@ export default function CartPaymentClient({
   date,
   time,
   taxRatePercent,
+  gstEnabled,
   referralDiscount,
   walletBalance = 0,
 }: CartPaymentClientProps) {
@@ -62,8 +65,15 @@ export default function CartPaymentClient({
     }
   }, [items, router, isPending, paymentSubmitted]);
 
-  // Calculations
-  const gstTax = Math.round(subtotal * (taxRatePercent / 100));
+  // Calculations using gstEngine
+  const isGstApplicableForCart = items.length === 0 || items.every(item => item.gstApplicable !== false);
+  const gstBreakdown = calculateGstBreakdown({
+    subtotal,
+    taxRatePercent,
+    gstEnabled,
+    serviceGstApplicable: isGstApplicableForCart,
+  });
+  const gstTax = gstBreakdown.gstAmount;
   const totalPrice = Math.max(0, subtotal + gstTax - referralDiscount);
 
   // Wallet Calculations
@@ -415,7 +425,7 @@ export default function CartPaymentClient({
                 <span className="font-bold text-on-surface">₹{subtotal}</span>
               </div>
               <div className="flex justify-between items-center text-on-surface-variant">
-                <span>GST &amp; Taxes ({taxRatePercent}%)</span>
+                <span>{gstBreakdown.displayLabel}</span>
                 <span className="font-bold text-on-surface">₹{gstTax}</span>
               </div>
               {referralDiscount > 0 && (

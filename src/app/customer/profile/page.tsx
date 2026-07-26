@@ -4,6 +4,7 @@ import Image from "next/image";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import LogoutButton from "@/components/LogoutButton";
+import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -13,9 +14,9 @@ export default async function ProfilePage() {
     redirect('/login');
   }
 
-  const [profileResult, settingsResult] = await Promise.all([
+  const [profileResult, platformSettings] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
-    supabase.from('platform_settings').select('value').eq('key', 'referral_reward_referrer').maybeSingle()
+    fetchPlatformSettings(supabase),
   ]);
 
   const profile = {
@@ -23,15 +24,7 @@ export default async function ProfilePage() {
     avatar_url: profileResult.data?.avatar_url || ""
   };
 
-  let referralReward = "100";
-  if (settingsResult.data) {
-    const rawVal = settingsResult.data.value;
-    try {
-      referralReward = typeof rawVal === 'string' ? JSON.parse(rawVal) : String(rawVal);
-    } catch {
-      referralReward = String(rawVal);
-    }
-  }
+  const referralReward = String(platformSettings.referralRewardReferrer);
 
   return (
     <div className="bg-[#f5f6f8] text-on-background min-h-screen pb-24 flex flex-col font-sans">

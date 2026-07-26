@@ -2,12 +2,19 @@
 
 import React, { useState, useTransition } from "react";
 import { createBookingQuoteAction, respondToQuoteAction, QuoteItemInput } from "@/app/actions/quotes";
+import type { BookingQuote, BookingQuoteItem } from "@/lib/types";
+import { calculateGstBreakdown } from "@/lib/engines/gstEngine";
+
+// DB join returns booking_quote_items under this key; reflect the real shape.
+type ActiveQuote = BookingQuote & { booking_quote_items?: BookingQuoteItem[] };
 
 interface QuotationWorkflowProps {
   bookingId: string;
   role: "customer" | "partner" | "admin";
-  activeQuote?: any; // quote data if already exists
+  activeQuote?: ActiveQuote; // quote data if already exists
   onSuccess?: () => void;
+  taxRate?: number;
+  gstEnabled?: boolean;
 }
 
 export default function QuotationWorkflow({
@@ -15,6 +22,8 @@ export default function QuotationWorkflow({
   role,
   activeQuote,
   onSuccess,
+  taxRate = 18,
+  gstEnabled = true,
 }: QuotationWorkflowProps) {
   const [isPending, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -29,7 +38,13 @@ export default function QuotationWorkflow({
 
   // Calculate totals client-side for partner preview
   const subtotal = items.reduce((acc, it) => acc + Number(it.quantity) * Number(it.unit_price), 0);
-  const tax = Math.round(subtotal * 0.18); // 18% GST standard
+  const gstCalc = calculateGstBreakdown({
+    subtotal,
+    taxRatePercent: taxRate,
+    gstEnabled,
+    serviceGstApplicable: true,
+  });
+  const tax = gstCalc.gstAmount;
   const totalPayable = Math.max(0, subtotal + tax - discount);
 
   const handleAddItem = () => {
@@ -41,7 +56,7 @@ export default function QuotationWorkflow({
     setItems((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleItemChange = (index: number, key: keyof QuoteItemInput, val: any) => {
+  const handleItemChange = (index: number, key: keyof QuoteItemInput, val: QuoteItemInput[keyof QuoteItemInput]) => {
     setItems((prev) => {
       const next = [...prev];
       next[index] = {
@@ -161,7 +176,7 @@ export default function QuotationWorkflow({
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/10">
-              {activeQuote.booking_quote_items?.map((item: any) => (
+                {activeQuote.booking_quote_items?.map((item: BookingQuoteItem) => (
                 <tr key={item.id}>
                   <td className="py-3 font-bold text-on-surface">{item.name}</td>
                   <td className="py-3 text-center capitalize">{item.item_type}</td>
@@ -184,8 +199,8 @@ export default function QuotationWorkflow({
           )}
 
           <div className="flex justify-between">
-            <span>Tax (GST 18%)</span>
-            <span>+₹{Math.round(activeQuote.total_amount * 0.15)}</span> {/* rough dynamic preview */}
+            <span>Tax (GST {taxRate}%)</span>
+            <span>+₹{Math.round(activeQuote.total_amount * (taxRate / 100))}</span>
           </div>
           {activeQuote.discount > 0 && (
             <div className="flex justify-between font-bold text-emerald-600">
@@ -276,7 +291,7 @@ export default function QuotationWorkflow({
                 <div>
                   <select
                     value={item.item_type}
-                    onChange={(e) => handleItemChange(index, "item_type", e.target.value as any)}
+                    onChange={(e) => handleItemChange(index, "item_type", e.target.value as QuoteItemInput["item_type"])}
                     className="w-full text-xs font-semibold bg-white border border-outline-variant/20 rounded-xl p-2.5 outline-none"
                   >
                     <option value="labour">Labor</option>
@@ -347,7 +362,7 @@ export default function QuotationWorkflow({
               <span className="font-extrabold text-on-surface">₹{subtotal}</span>
             </div>
             <div className="flex justify-between">
-              <span>GST (18%):</span>
+              <span>GST ({taxRate}%):</span>
               <span className="font-extrabold text-on-surface">₹{tax}</span>
             </div>
             <div className="flex justify-between items-baseline border-t border-outline-variant/15 pt-2 font-bold">

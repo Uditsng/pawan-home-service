@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
 import WalletClient from "./WalletClient";
+import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 
 export const metadata: Metadata = {
   title: "My Wallet | PHS Cleaning Company",
@@ -21,9 +22,10 @@ interface WalletTransaction {
 export default async function WalletPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+
   if (!user) redirect("/login");
 
-  const [profileResult, txResult, settingsResult] = await Promise.all([
+  const [profileResult, txResult, platformSettings] = await Promise.all([
     supabase.from("profiles").select("wallet_balance").eq("id", user.id).single(),
     supabase
       .from("wallet_transactions")
@@ -31,21 +33,12 @@ export default async function WalletPage() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(30),
-    supabase.from("platform_settings").select("value").eq("key", "referral_reward_referrer").maybeSingle()
+    fetchPlatformSettings(supabase),
   ]);
 
   const walletBalance = Number(profileResult.data?.wallet_balance ?? 0);
   const transactions = (txResult.data ?? []) as WalletTransaction[];
-
-  let referralReward = "100";
-  if (settingsResult.data) {
-    const rawVal = settingsResult.data.value;
-    try {
-      referralReward = typeof rawVal === "string" ? JSON.parse(rawVal) : String(rawVal);
-    } catch {
-      referralReward = String(rawVal);
-    }
-  }
+  const referralReward = String(platformSettings.referralRewardReferrer);
 
   return (
     <WalletClient

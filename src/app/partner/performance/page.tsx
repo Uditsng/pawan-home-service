@@ -288,15 +288,9 @@ export default async function PerformancePage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {/* Top Rated Badge */}
             <div
-<<<<<<< HEAD
-              className={`min-w-33 shrink-0 border shadow-[0_2px_8px_rgba(15,23,42,0.02)] rounded-3xl p-5 flex flex-col items-center text-center transition-transform hover:scale-105 cursor-pointer ${ratingAvg >= 4.5
+              className={`border shadow-[0_2px_8px_rgba(15,23,42,0.02)] rounded-3xl p-5 flex flex-col items-center text-center transition-transform hover:scale-105 cursor-pointer ${ratingAvg >= 4.5
                 ? "bg-surface-container-lowest border-outline-variant/10 hover:border-primary/30"
                 : "bg-surface-container-high/30 border-outline-variant/5 grayscale opacity-50 cursor-not-allowed"
-=======
-              className={`border rounded-2xl p-3.5 flex flex-col items-center text-center transition-all ${ratingAvg >= 4.5
-                ? "bg-surface-container-lowest border-outline-variant/15 shadow-xs"
-                : "bg-surface-container-low border-outline-variant/10 opacity-60"
->>>>>>> c9d904fd1bffc7db7316b39b30807c6826653432
                 }`}
             >
               <div
@@ -319,15 +313,9 @@ export default async function PerformancePage() {
 
             {/* Punctual Pro Badge */}
             <div
-<<<<<<< HEAD
-              className={`min-w-33 shrink-0 border shadow-[0_2px_8px_rgba(15,23,42,0.02)] rounded-3xl p-5 flex flex-col items-center text-center transition-transform hover:scale-105 cursor-pointer ${onTimeRate >= 95
+              className={`border shadow-[0_2px_8px_rgba(15,23,42,0.02)] rounded-3xl p-5 flex flex-col items-center text-center transition-transform hover:scale-105 cursor-pointer ${onTimeRate >= 95
                 ? "bg-surface-container-lowest border-outline-variant/10 hover:border-secondary-container/30"
                 : "bg-surface-container-high/30 border-outline-variant/5 grayscale opacity-50 cursor-not-allowed"
-=======
-              className={`border rounded-2xl p-3.5 flex flex-col items-center text-center transition-all ${onTimeRate >= 95
-                ? "bg-surface-container-lowest border-outline-variant/15 shadow-xs"
-                : "bg-surface-container-low border-outline-variant/10 opacity-60"
->>>>>>> c9d904fd1bffc7db7316b39b30807c6826653432
                 }`}
             >
               <div
@@ -350,15 +338,9 @@ export default async function PerformancePage() {
 
             {/* 100+ Jobs Badge */}
             <div
-<<<<<<< HEAD
-              className={`min-w-33 shrink-0 border shadow-[0_2px_8px_rgba(15,23,42,0.02)] rounded-3xl p-5 flex flex-col items-center text-center transition-transform hover:scale-105 cursor-pointer ${(totalCompleted || 0) >= 100
+              className={`border shadow-[0_2px_8px_rgba(15,23,42,0.02)] rounded-3xl p-5 flex flex-col items-center text-center transition-transform hover:scale-105 cursor-pointer ${(totalCompleted || 0) >= 100
                 ? "bg-surface-container-lowest border-outline-variant/10 hover:border-tertiary-container/30"
                 : "bg-surface-container-high/30 border-outline-variant/5 grayscale opacity-50 cursor-not-allowed"
-=======
-              className={`border rounded-2xl p-3.5 flex flex-col items-center text-center transition-all ${(totalCompleted || 0) >= 100
-                ? "bg-surface-container-lowest border-outline-variant/15 shadow-xs"
-                : "bg-surface-container-low border-outline-variant/10 opacity-60"
->>>>>>> c9d904fd1bffc7db7316b39b30807c6826653432
                 }`}
             >
               <div
@@ -379,17 +361,10 @@ export default async function PerformancePage() {
               </span>
             </div>
 
-<<<<<<< HEAD
             {/* Locked Badge — Elite 500 */}
-            <div className="min-w-33 shrink-0 bg-surface-container-high/30 border border-outline-variant/5 rounded-3xl p-5 flex flex-col items-center text-center grayscale opacity-50 cursor-not-allowed">
-              <div className="w-14 h-14 rounded-full bg-surface-dim/50 border border-surface-variant flex items-center justify-center mb-4">
-                <span className="material-symbols-outlined text-on-surface-variant text-[28px]">
-=======
-            {/* Locked Badge */}
-            <div className="border bg-surface-container-low border-outline-variant/10 opacity-60 rounded-2xl p-3.5 flex flex-col items-center text-center">
-              <div className="w-10 h-10 rounded-xl bg-surface-container-high text-on-surface-variant flex items-center justify-center mb-2">
-                <span className="material-symbols-outlined text-xl">
->>>>>>> c9d904fd1bffc7db7316b39b30807c6826653432
+            <div className="bg-surface-container-high/30 border border-outline-variant/5 rounded-3xl p-5 flex flex-col items-center text-center grayscale opacity-50 cursor-not-allowed">
+              <div className="w-10 h-10 rounded-xl bg-surface-dim/50 border border-surface-variant flex items-center justify-center mb-2">
+                <span className="material-symbols-outlined text-on-surface-variant text-xl">
                   lock
                 </span>
               </div>
@@ -452,11 +427,7 @@ export default async function PerformancePage() {
                     <span className="font-headline font-bold text-xs sm:text-sm text-on-surface truncate">
                       {review.customer?.full_name || "Customer"}
                     </span>
-<<<<<<< HEAD
-                    <div className="flex gap-1">
-=======
                     <div className="flex gap-1 shrink-0">
->>>>>>> c9d904fd1bffc7db7316b39b30807c6826653432
                       {[1, 2, 3, 4, 5].map((i) => (
                         <span
                           key={i}

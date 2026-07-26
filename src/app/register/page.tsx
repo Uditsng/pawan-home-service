@@ -185,11 +185,7 @@ export default function RegisterPage() {
             <div className="absolute top-[40%] right-[10%] text-6xl animate-float-2 z-10 opacity-80" style={{ animationDelay: "1s" }}>🤝</div>
             <div className="absolute bottom-[40%] left-[20%] text-5xl animate-float-1 z-10 opacity-90" style={{ animationDelay: "2s" }}>🌟</div>
             <div className="absolute inset-x-8 bottom-12 p-8 rounded-3xl bg-white/10 backdrop-blur-md border border-white/20 shadow-[0_20px_40px_rgba(0,0,0,0.3)] transform-3d group-hover:rotate-y-2 group-hover:rotate-x-2 group-hover:-translate-y-2 transition-transform duration-700 ease-out will-change-transform z-20">
-<<<<<<< HEAD
               <div className="transform translate-z-8">
-=======
-              <div className="transform translate-z-7.5">
->>>>>>> c9d904fd1bffc7db7316b39b30807c6826653432
                 <div className="inline-flex items-center gap-2 bg-secondary/20 border border-secondary/40 rounded-full px-3 py-1.5 text-xs font-bold text-secondary uppercase tracking-wider mb-4 shadow-sm">
                   <div className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
                   Verified Network

@@ -24,13 +24,8 @@ export default function PartnerBottomNav() {
             key={item.label}
             href={item.href}
             prefetch={false}
-<<<<<<< HEAD
-            className={`flex flex-col items-center justify-center min-h-12 px-3 py-1.5 transition-colors duration-300 hover:text-emerald-600 ${isActive
-              ? "text-emerald-600 bg-emerald-500/10 rounded-2xl px-4 py-1.5"
-=======
             className={`flex flex-col items-center justify-center min-h-12 px-3 py-1.5 transition-colors duration-200 hover:text-primary ${isActive
               ? "text-primary bg-primary/10 rounded-2xl px-4 py-1.5"
->>>>>>> c9d904fd1bffc7db7316b39b30807c6826653432
               : "text-on-surface-variant/70"
               }`}
           >

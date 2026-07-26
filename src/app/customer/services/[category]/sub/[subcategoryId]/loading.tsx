@@ -16,11 +16,7 @@ export default function Loading() {
           {Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
-<<<<<<< HEAD
-              className="bg-surface-container-low p-3 sm:p-4 md:p-5 rounded-xl flex flex-col items-center justify-start text-center border border-outline-variant/10 shadow-xs h-auto min-h-35 sm:min-h-38 md:min-h-43 w-full animate-pulse"
-=======
-              className="bg-surface-container-low p-3 sm:p-4 md:p-5 rounded-xl flex flex-col items-center justify-start text-center border border-outline-variant/10 shadow-xs h-auto min-h-35 sm:min-h-39 md:min-h-44 w-full animate-pulse"
->>>>>>> c9d904fd1bffc7db7316b39b30807c6826653432
+              className="bg-surface-container-low p-3 sm:p-4 md:p-5 rounded-xl flex flex-col items-center justify-start text-center border border-outline-variant/10 shadow-xs h-auto min-h-32 sm:min-h-36 md:min-h-40 w-full animate-pulse"
             >
               <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-xl bg-surface-container-high mb-3 flex items-center justify-center shrink-0" />
               

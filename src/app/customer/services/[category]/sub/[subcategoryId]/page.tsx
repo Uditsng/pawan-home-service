@@ -60,11 +60,7 @@ export default async function SubcategoryServiceListingPage({
                 {/* z-10 pointer-events-none Card Content */}
                 <div className="z-10 pointer-events-none flex flex-col items-center w-full pt-1">
                   {/* Icon: 48px phones → 56px sm → 64px md → 72px lg */}
-<<<<<<< HEAD
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 lg:w-16 lg:h-16 rounded-xl bg-green-500/10 mb-2 sm:mb-2.5 md:mb-3 flex items-center justify-center shrink-0">
-=======
                   <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 lg:w-18 lg:h-18 rounded-xl bg-green-500/10 mb-2 sm:mb-2.5 md:mb-3 flex items-center justify-center shrink-0">
->>>>>>> c9d904fd1bffc7db7316b39b30807c6826653432
                     <ServiceIconComponent
                       iconName={iconName}
                       className="w-6 h-6 sm:w-7 sm:h-7 md:w-9 md:h-9 lg:w-10 lg:h-10 text-emerald-600 drop-shadow-sm"

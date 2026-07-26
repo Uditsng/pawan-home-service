@@ -92,8 +92,8 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
           <div className="flex-1 w-full">
             {/* Icon + Title */}
             <div className="flex items-center gap-4 mb-4">
-              <div className="w-14 h-14 md:w-16 md:h-16 bg-green-500/10 rounded-2xl flex items-center justify-center shrink-0">
-                <ServiceIconComponent iconName={iconName} className="w-7 h-7 md:w-8 md:h-8 text-emerald-600 drop-shadow-sm" />
+              <div className="w-14 h-14 md:w-16 md:h-16 bg-secondary/10 rounded-2xl flex items-center justify-center shrink-0">
+                <ServiceIconComponent iconName={iconName} className="w-7 h-7 md:w-8 md:h-8 text-secondary drop-shadow-sm" />
               </div>
               <div>
                 <h1 className="text-2xl md:text-4xl lg:text-5xl font-extrabold text-on-surface font-headline tracking-tight">{service.title}</h1>
@@ -198,8 +198,8 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {content.why_choose_us.map((item, i) => (
                 <div key={i} className="flex items-start gap-4 p-4 md:p-6 bg-surface-container-lowest rounded-xl border border-outline-variant/10">
-                  <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
-                    <span className="material-symbols-outlined text-[#059669] drop-shadow-sm">{item.icon}</span>
+                  <div className="w-12 h-12 bg-secondary/10 rounded-xl flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-secondary drop-shadow-sm">{item.icon}</span>
                   </div>
                   <div>
                     <h4 className="font-bold text-on-surface text-sm md:text-base mb-1">{item.title}</h4>

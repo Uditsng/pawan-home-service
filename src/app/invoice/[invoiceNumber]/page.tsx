@@ -217,9 +217,6 @@ export default async function InvoiceVerificationPage({ params }: InvoiceVerific
         {/* Invoice Container (styled for paper/A4) */}
         <div className="bg-white text-slate-800 p-6 md:p-12 rounded-3xl border border-slate-100 shadow-sm print-card relative overflow-hidden">
           
-          {/* Top Decorative Border */}
-          <div className="absolute top-0 left-0 right-0 h-1.5 bg-primary"></div>
-
           {/* 1. Header Section */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-8 border-b border-slate-100">
             <div className="flex items-center gap-3">

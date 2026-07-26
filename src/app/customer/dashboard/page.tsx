@@ -115,11 +115,11 @@ export default async function CustomerDashboard() {
           {/* Clean Home, Zero Stress Tagline */}
           <div className="my-12 md:my-16 flex flex-col items-center text-center">
             <h2 className="font-headline text-3xl md:text-5xl font-extrabold tracking-tight leading-tight">
-              <span className="text-[#059669]">Clean Home.</span>
+              <span className="text-secondary">Clean Home.</span>
               <br />
               <span className="text-on-surface">Zero Stress.</span>
             </h2>
-            <h1 className="font-headline text-4xl md:text-6xl font-black text-[#059669] mt-8 tracking-tight leading-none">
+            <h1 className="font-headline text-4xl md:text-6xl font-black text-secondary mt-8 tracking-tight leading-none">
               PHS
             </h1>
             <p className="text-on-surface-variant text-xs md:text-sm font-semibold mt-2">
@@ -130,7 +130,7 @@ export default async function CustomerDashboard() {
           {/* Footer Pills Container */}
           <div className="flex items-center justify-center gap-4 bg-surface-container-low/75 border border-outline-variant/10 py-3 px-5 rounded-2xl max-w-xs md:max-w-sm mx-auto shadow-2xs">
             <div className="flex items-center gap-1.5 text-xs font-bold text-on-surface">
-              <svg className="w-4 h-4 text-[#059669]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg className="w-4 h-4 text-secondary" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 22C12 22 20 18 20 12V5L12 2L4 5V12C4 18 12 22 12 22Z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                 <path d="M9 11L11 13L15 9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -138,7 +138,7 @@ export default async function CustomerDashboard() {
             </div>
             <div className="h-4 w-px bg-outline-variant/30" />
             <div className="flex items-center gap-1.5 text-xs font-bold text-on-surface">
-              <svg className="w-4 h-4 text-[#059669]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg className="w-4 h-4 text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M10 18V5a2 2 0 014 0v13" fill="currentColor" fillOpacity="0.2" />
                 <path d="M6 18v-7a2 2 0 014 0v7" />
                 <path d="M14 18v-9a2 2 0 014 0v9" />

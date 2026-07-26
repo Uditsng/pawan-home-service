@@ -271,8 +271,8 @@ export function ServiceDataGrid({ services, categories }: { services: ServiceIte
                   return (
                     <tr key={service.id} className="hover:bg-surface-container-low/30 transition-colors group">
                       <td className="px-4 py-1.5 whitespace-nowrap">
-                        <div className="w-8 h-8 bg-green-500/10 rounded-lg flex items-center justify-center">
-                          <ServiceIconComponent iconName={iconName} className="w-4 h-4 text-emerald-600 drop-shadow-sm" />
+                        <div className="w-8 h-8 bg-secondary/10 rounded-lg flex items-center justify-center">
+                          <ServiceIconComponent iconName={iconName} className="w-4 h-4 text-secondary drop-shadow-sm" />
                         </div>
                       </td>
                       <td className="px-4 py-1.5">

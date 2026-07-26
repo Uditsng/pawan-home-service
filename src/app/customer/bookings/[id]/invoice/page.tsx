@@ -361,9 +361,6 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
             }
           `}} />
 
-          {/* Top Decorative Border (Design system flare - hidden in print) */}
-          <div className="absolute top-0 left-0 right-0 h-1.5 bg-primary no-print"></div>
-
           {/* 1. Header Section */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-8 border-b border-slate-100">
             <div className="flex items-center gap-3">

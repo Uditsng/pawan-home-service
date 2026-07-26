@@ -38,9 +38,11 @@ interface CreateServiceFormProps {
 
 // Add Category Modal Component
 function AddCategoryModal({
+  error,
   onClose,
   onSave,
 }: {
+  error?: string | null;
   onClose: () => void;
   onSave: (name: string) => Promise<void>;
 }) {
@@ -61,6 +63,12 @@ function AddCategoryModal({
           <span className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-xs font-black">+</span>
           New Category
         </h3>
+        {error && (
+          <div className="mb-4 bg-error/10 border border-error/20 text-error px-3 py-2 rounded-lg flex items-center gap-2 text-xs font-bold animate-fade-in">
+            <span className="material-symbols-outlined text-sm">error</span>
+            <span>{error}</span>
+          </div>
+        )}
         <div className="mb-4">
           <label className="block text-sm font-bold text-on-surface-variant mb-1.5">Category Name</label>
           <input
@@ -87,10 +95,12 @@ function AddCategoryModal({
 // Add Subcategory Modal Component
 function AddSubcategoryModal({
   categories,
+  error,
   onClose,
   onSave,
 }: {
   categories: Category[];
+  error?: string | null;
   onClose: () => void;
   onSave: (categoryId: string, name: string, iconName: string) => Promise<void>;
 }) {
@@ -116,6 +126,12 @@ function AddSubcategoryModal({
           <span className="w-7 h-7 rounded-lg bg-secondary/15 flex items-center justify-center text-secondary text-xs font-black">+</span>
           New Sub-category
         </h3>
+        {error && (
+          <div className="mb-4 bg-error/10 border border-error/20 text-error px-3 py-2 rounded-lg flex items-center gap-2 text-xs font-bold animate-fade-in">
+            <span className="material-symbols-outlined text-sm">error</span>
+            <span>{error}</span>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
@@ -322,6 +338,7 @@ export function CreateServiceForm({
   const [catError, setCatError] = useState<string | null>(null);
 
   const handleSaveCategory = async (name: string) => {
+    setCatError(null);
     const result = await addCategoryAction(name);
     if ("error" in result) { setCatError(result.error); setTimeout(() => setCatError(null), 3000); return; }
     setLocalCategories((prev) => [...prev, { id: result.id, category_name: result.category_name, subcategories: [] }]);
@@ -330,6 +347,7 @@ export function CreateServiceForm({
 
   // Save new subcategory
   const handleSaveSubcategory = async (categoryId: string, name: string, iconName: string) => {
+    setCatError(null);
     const result = await addSubcategoryAction(categoryId, name, iconName);
     if ("error" in result) { setCatError(result.error); setTimeout(() => setCatError(null), 3000); return; }
     setLocalCategories((prev) =>
@@ -422,8 +440,8 @@ export function CreateServiceForm({
 
   return (
     <>
-      {showAddCategory && <AddCategoryModal onClose={() => setShowAddCategory(false)} onSave={handleSaveCategory} />}
-      {showAddSubcategory && <AddSubcategoryModal categories={localCategories} onClose={() => setShowAddSubcategory(false)} onSave={handleSaveSubcategory} />}
+      {showAddCategory && <AddCategoryModal error={catError} onClose={() => { setShowAddCategory(false); setCatError(null); }} onSave={handleSaveCategory} />}
+      {showAddSubcategory && <AddSubcategoryModal categories={localCategories} error={catError} onClose={() => { setShowAddSubcategory(false); setCatError(null); }} onSave={handleSaveSubcategory} />}
 
       <form action={formAction} className="space-y-6">
         {state?.type === "error" && (

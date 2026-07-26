@@ -35,7 +35,7 @@ export default async function EarningsPage() {
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const now = new Date();
   const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - now.getDay());
+  weekStart.setDate(now.getDate() - 6);
   weekStart.setHours(0, 0, 0, 0);
 
   const dailyEarnings: number[] = [0, 0, 0, 0, 0, 0, 0];
@@ -229,7 +229,6 @@ export default async function EarningsPage() {
                     key={job.id}
                     className="flex items-center p-3 sm:p-3.5 bg-surface-container-lowest border border-outline-variant/15 shadow-xs rounded-2xl relative overflow-hidden group hover:border-primary/40 transition-colors"
                   >
-                    <div className="w-1 absolute left-0 top-0 bottom-0 bg-primary"></div>
                     <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center mr-3 shrink-0">
                       <span
                         className="material-symbols-outlined text-primary text-lg"

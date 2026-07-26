@@ -48,6 +48,14 @@
   --color-error: #ef4444;
   --color-on-error: #ffffff;
 
+  --color-info: #3B82F6;
+  --color-on-info: #ffffff;
+  --color-info-container: #EFF6FF;
+  --color-on-info-container: #1E40AF;
+
+  --color-star: #F59E0B;
+  --color-on-star: #ffffff;
+
   /* Fonts */
   --font-headline: var(--font-bricolage), sans-serif;
   --font-body: var(--font-bricolage), sans-serif;
@@ -164,10 +172,16 @@ body {
 
   .glass-panel {
     background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--color-outline-variant);
     box-shadow: var(--shadow-tactile);
+  }
+  @media (min-width: 768px) {
+    .glass-panel {
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
   }
 
   .no-scrollbar::-webkit-scrollbar {

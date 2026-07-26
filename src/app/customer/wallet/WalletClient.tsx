@@ -75,7 +75,7 @@ export default function WalletClient({
     .reduce((sum, t) => sum + Number(t.amount), 0);
 
   return (
-    <div className="bg-[#f5f6f8] text-on-surface antialiased min-h-screen pb-24 font-body">
+    <div className="bg-surface-dim text-on-surface antialiased min-h-screen pb-24 font-body">
       <main className="max-w-xl mx-auto px-4 md:px-5 pt-4 pb-8 space-y-4">
         {/* ── BALANCE HERO ──────────────────────────────────────── */}
         <div className="bg-primary rounded-[24px] p-6 relative overflow-hidden">
@@ -110,30 +110,30 @@ export default function WalletClient({
         </div>
 
         {/* ── HOW TO EARN MORE ─────────────────────────────────── */}
-        <div className="bg-white rounded-[20px] shadow-sm p-5">
+        <div className="bg-surface-container-lowest rounded-2xl shadow-sm p-5">
           <div className="flex items-center gap-2 pb-3 border-b border-outline-variant/10 mb-4">
-            <span className="material-symbols-outlined text-primary text-[18px]">tips_and_updates</span>
-            <h2 className="font-bold text-[14px] text-primary tracking-tight">Earn More Credits</h2>
+            <span className="material-symbols-outlined text-primary text-lg">tips_and_updates</span>
+            <h2 className="font-bold text-sm text-primary tracking-tight">Earn More Credits</h2>
           </div>
           <div className="flex items-center gap-4 p-4 bg-secondary/5 border border-secondary/15 rounded-xl">
-            <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-[#059669] drop-shadow-sm" style={{ fontVariationSettings: "'FILL' 1" }}>card_giftcard</span>
+            <div className="w-10 h-10 bg-secondary/10 rounded-xl flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-secondary drop-shadow-sm" style={{ fontVariationSettings: "'FILL' 1" }}>card_giftcard</span>
             </div>
             <div className="flex-1">
-              <p className="text-[13px] font-bold text-on-surface">Refer friends &amp; earn ₹{referralReward}</p>
-              <p className="text-[11px] text-on-surface-variant mt-0.5">For every friend who completes their first booking.</p>
+              <p className="text-sm font-bold text-on-surface">Refer friends &amp; earn ₹{referralReward}</p>
+              <p className="text-xs text-on-surface-variant mt-0.5">For every friend who completes their first booking.</p>
             </div>
-            <a href="/customer/profile/referral" className="px-3 py-1.5 bg-primary text-white text-[10px] font-extrabold uppercase tracking-widest rounded-lg shrink-0 hover:bg-primary/90 transition-colors">
+            <a href="/customer/profile/referral" className="px-3 py-1.5 bg-primary text-on-primary text-[10px] font-extrabold uppercase tracking-widest rounded-lg shrink-0 hover:bg-primary/90 transition-colors">
               Refer
             </a>
           </div>
         </div>
 
         {/* ── TRANSACTION HISTORY ──────────────────────────────── */}
-        <div className="bg-white rounded-[20px] shadow-sm overflow-hidden">
+        <div className="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-outline-variant/10 flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-[18px]">receipt_long</span>
-            <h2 className="font-bold text-[14px] text-primary tracking-tight">Transaction History</h2>
+            <span className="material-symbols-outlined text-primary text-lg">receipt_long</span>
+            <h2 className="font-bold text-sm text-primary tracking-tight">Transaction History</h2>
             {transactions.length > 0 && (
               <span className="ml-auto text-[9px] font-black uppercase tracking-widest text-on-surface-variant/40">
                 {transactions.length} records
@@ -143,8 +143,8 @@ export default function WalletClient({
 
           {transactions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 px-6 text-center gap-3">
-              <div className="w-14 h-14 bg-green-500/10 rounded-2xl flex items-center justify-center">
-                <span className="material-symbols-outlined text-3xl text-[#059669] drop-shadow-sm" style={{ fontVariationSettings: "'FILL' 1" }}>receipt_long</span>
+              <div className="w-14 h-14 bg-secondary/10 rounded-2xl flex items-center justify-center">
+                <span className="material-symbols-outlined text-3xl text-secondary drop-shadow-sm" style={{ fontVariationSettings: "'FILL' 1" }}>receipt_long</span>
               </div>
               <div>
                 <p className="font-bold text-sm text-on-surface">No transactions yet</p>
@@ -165,11 +165,11 @@ export default function WalletClient({
                 return (
                   <div key={tx.id} className="flex items-center gap-4 px-5 py-3.5">
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                      isCredit ? "bg-green-500/10" : "bg-primary/5"
+                      isCredit ? "bg-secondary/10" : "bg-primary/5"
                     }`}>
                       <span
-                        className={`material-symbols-outlined text-[20px] ${
-                          isCredit ? "text-[#059669]" : "text-primary"
+                        className={`material-symbols-outlined text-xl ${
+                          isCredit ? "text-secondary" : "text-primary"
                         }`}
                         style={{ fontVariationSettings: "'FILL' 1" }}
                       >
@@ -188,7 +188,7 @@ export default function WalletClient({
                       </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className={`text-[15px] font-black ${isCredit ? "text-[#059669]" : "text-on-surface"}`}>
+                      <p className={`text-sm font-black ${isCredit ? "text-secondary" : "text-on-surface"}`}>
                         {isCredit ? "+" : "-"}₹{Number(tx.amount).toLocaleString("en-IN")}
                       </p>
                       <p className="text-[9px] text-on-surface-variant/50 font-bold mt-0.5">

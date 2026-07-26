@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
+import SkipToContent from "@/components/SkipToContent";
 import MobileSetup from "@/components/MobileSetup";
 import SplashLoader from "@/components/SplashLoader";
 import { RefreshProvider } from "@/lib/refresh/RefreshContext";
@@ -24,8 +25,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: "cover",
 };
 
@@ -43,6 +42,7 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-background font-body text-on-surface antialiased" suppressHydrationWarning>
+        <SkipToContent />
         <RefreshProvider>
           <MobileSetup />
           <SplashLoader />

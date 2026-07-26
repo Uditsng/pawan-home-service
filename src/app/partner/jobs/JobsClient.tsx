@@ -684,7 +684,7 @@ export default function JobsClient({
     return (
       <div
         key={offer.id}
-        className="relative bg-white rounded-3xl p-5 shadow-[0_4px_24px_rgba(0,34,97,0.08)] border border-primary/10 overflow-hidden"
+        className="relative bg-white rounded-3xl p-4 shadow-[0_4px_24px_rgba(0,34,97,0.08)] border border-primary/10 overflow-hidden"
       >
         {/* Tier badge */}
         <div className="absolute top-4 right-4 bg-primary/8 px-2 py-1 rounded-full">
@@ -694,7 +694,7 @@ export default function JobsClient({
         </div>
 
         {/* Live pulse indicator */}
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-2.5">
           <div className="relative">
             <div className="w-2.5 h-2.5 rounded-full bg-secondary" />
             <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-secondary animate-ping opacity-60" />
@@ -705,7 +705,7 @@ export default function JobsClient({
         </div>
 
         {/* Service info */}
-        <div className="flex items-start gap-3 mb-4">
+        <div className="flex items-start gap-2.5 mb-3">
           <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-[#059669] drop-shadow-sm">
               home_repair_service
@@ -723,8 +723,8 @@ export default function JobsClient({
         </div>
 
         {/* Details row */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-surface-container-lowest rounded-xl p-3 border border-outline-variant/15">
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div className="bg-surface-container-lowest rounded-xl p-2.5 border border-outline-variant/15">
             <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant mb-1">Schedule</p>
             <p className="text-xs font-bold text-on-surface">
               {b.scheduled_date
@@ -732,15 +732,15 @@ export default function JobsClient({
                 : "TBD"}
             </p>
           </div>
-          <div className="bg-surface-container-lowest rounded-xl p-3 border border-outline-variant/15">
+          <div className="bg-surface-container-lowest rounded-xl p-2.5 border border-outline-variant/15">
             <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant mb-1">Pincode</p>
             <p className="text-xs font-bold text-on-surface">{b.pincode || "—"}</p>
           </div>
         </div>
 
         {/* CarryBuddy Details (Offers tab) */}
-        {(b.meeting_location || b.expected_bags) && (
-          <div className="mb-4 p-3 bg-surface-container-lowest rounded-xl border border-outline-variant/15 space-y-1">
+        {Boolean(b.meeting_location || b.expected_bags) && (
+          <div className="mb-3 p-2.5 bg-surface-container-lowest rounded-xl border border-outline-variant/15 space-y-1">
             <div className="flex items-center gap-1.5 text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
               <span className="material-symbols-outlined text-secondary text-base">directions_walk</span>
               CarryBuddy Details
@@ -760,7 +760,7 @@ export default function JobsClient({
         )}
 
         {/* Payout + Accept */}
-        <div className="flex items-center justify-between pt-3 border-t border-outline-variant/15">
+        <div className="flex items-center justify-between pt-2.5 border-t border-outline-variant/15">
           <div>
             <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant">Your Payout</p>
             <p className="text-2xl font-black text-primary tracking-tighter">₹{payout}</p>
@@ -943,12 +943,12 @@ export default function JobsClient({
       )}
 
       {/* ─── Tab Bar ────────────────────────────────────────── */}
-      <div className="px-4 sm:px-6 lg:px-8 mt-4 sm:mt-6 flex gap-2 overflow-x-auto no-scrollbar max-w-7xl mx-auto">
+      <div className="px-4 sm:px-6 lg:px-8 mt-3 flex gap-1.5 overflow-x-auto no-scrollbar max-w-7xl mx-auto">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`relative whitespace-nowrap px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all active:scale-[0.98] ${
+            className={`relative whitespace-nowrap px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all active:scale-[0.98] ${
               activeTab === tab.key
                 ? "bg-primary text-on-primary shadow-sm"
                 : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high"
@@ -973,7 +973,7 @@ export default function JobsClient({
       </div>
 
       {/* ─── Tab Content ────────────────────────────────────── */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24 lg:pb-12">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-24 lg:pb-12">
 
         {/* Job Offers Tab */}
         {activeTab === "offers" && (
@@ -989,7 +989,7 @@ export default function JobsClient({
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {offeredJobs.map((offer) => renderOfferCard(offer))}
               </div>
             )}
@@ -1020,32 +1020,32 @@ export default function JobsClient({
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {currentJobs.map((job) => {
                   const jobPayout = calculateCommissionBreakdown(Number(job.total_amount || 0), commissionPercent).partnerPayoutAmount;
                   return (
                     <div
                       key={job.id}
-                      className="bg-surface-container-lowest rounded-3xl p-5 shadow-xs border border-outline-variant/15 relative group hover:shadow-md hover:-translate-y-0.5 transition-all flex flex-col justify-between"
+                      className="bg-surface-container-lowest rounded-3xl p-4 shadow-xs border border-outline-variant/15 relative group hover:shadow-md hover:-translate-y-0.5 transition-all flex flex-col justify-between"
                     >
                     <div>
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex items-center gap-2.5">
-                          <div className={`w-10 h-10 rounded-xl ${getStatusColor(job.status)} flex items-center justify-center border border-white/40 shadow-xs`}>
-                            <span className="material-symbols-outlined font-bold">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-9 h-9 rounded-xl ${getStatusColor(job.status)} flex items-center justify-center border border-white/40 shadow-xs`}>
+                            <span className="material-symbols-outlined font-bold text-base">
                               {getStatusIcon(job.status)}
                             </span>
                           </div>
                           <div>
-                            <h3 className="font-headline font-bold text-[15px] leading-tight text-on-surface">
+                            <h3 className="font-headline font-bold text-sm leading-tight text-on-surface">
                               {job.services?.title || "Untitled Service"}
                             </h3>
-                            <p className="text-xs font-medium text-on-surface-variant mt-0.5">
+                            <p className="text-[10px] font-bold text-on-surface-variant/70 mt-0.5">
                               Booking #{job.id.substring(0, 8).toUpperCase()}
                             </p>
                           </div>
                         </div>
-                        <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md flex items-center gap-1 ${getStatusColor(job.status)}`}>
+                        <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md flex items-center gap-1 ${getStatusColor(job.status)}`}>
                           {(job.status === "in_progress" || job.status === "confirmed") && (
                             <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
                           )}
@@ -1053,13 +1053,13 @@ export default function JobsClient({
                         </span>
                       </div>
 
-                <div className="space-y-2 mb-5 pl-1">
-                  <div className="flex items-center gap-3 text-[13px] text-on-surface-variant font-medium">
-                    <span className="material-symbols-outlined text-[16px] text-on-surface-variant/50">calendar_clock</span>
+                <div className="space-y-1.5 mb-3.5 pl-0.5">
+                  <div className="flex items-center gap-2 text-xs text-on-surface-variant font-semibold">
+                    <span className="material-symbols-outlined text-[15px] text-on-surface-variant/50">calendar_clock</span>
                     {job.scheduled_date ? new Date(job.scheduled_date).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "Date TBD"}
                   </div>
-                  <div className="flex items-start gap-3 text-[13px] text-on-surface-variant font-medium">
-                    <span className="material-symbols-outlined text-[16px] text-on-surface-variant/50 mt-0.5 shrink-0">location_on</span>
+                  <div className="flex items-start gap-2 text-xs text-on-surface-variant font-semibold">
+                    <span className="material-symbols-outlined text-[15px] text-on-surface-variant/50 mt-0.5 shrink-0">location_on</span>
                     <span className="leading-tight">
                       {job.address || 
                         (job.area
@@ -1069,48 +1069,48 @@ export default function JobsClient({
                     </span>
                   </div>
                   {job.customer?.full_name && (
-                    <div className="flex items-center gap-3 text-[13px] text-on-surface-variant font-medium">
-                      <span className="material-symbols-outlined text-[16px] text-on-surface-variant/50">person</span>
+                    <div className="flex items-center gap-2 text-xs text-on-surface-variant font-semibold">
+                      <span className="material-symbols-outlined text-[15px] text-on-surface-variant/50">person</span>
                       {job.customer.full_name}
                     </div>
                   )}
 
                   {/* CarryBuddy Details */}
-                  {(job.meeting_location || job.expected_bags) && (
-                    <div className="flex flex-col gap-1.5 p-3 bg-surface-container-low rounded-2xl border border-outline-variant/10 mt-3">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-on-surface">
+                  {Boolean(job.meeting_location || job.expected_bags) && (
+                    <div className="flex flex-col gap-1 p-2.5 bg-surface-container-low rounded-xl border border-outline-variant/10 mt-2">
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-on-surface">
                         <span className="material-symbols-outlined text-secondary text-base">directions_walk</span>
                         CarryBuddy Details
                       </div>
-                      <p className="text-xs text-on-surface-variant font-medium mt-0.5 leading-relaxed">
+                      <p className="text-[11px] text-on-surface-variant font-semibold leading-relaxed">
                         <span className="font-bold text-on-surface-variant/80">Meet At:</span> {job.meeting_location}
                       </p>
                       {job.destination && (
-                        <p className="text-xs text-on-surface-variant font-medium leading-relaxed">
+                        <p className="text-[11px] text-on-surface-variant font-semibold leading-relaxed">
                           <span className="font-bold text-on-surface-variant/80">Drop At:</span> {job.destination}
                         </p>
                       )}
-                      <p className="text-xs text-on-surface-variant font-medium leading-relaxed">
-                        <span className="font-bold text-on-surface-variant/80">Expected Bags/Items:</span> {job.expected_bags || 1}
+                      <p className="text-[11px] text-on-surface-variant font-semibold leading-relaxed">
+                        <span className="font-bold text-on-surface-variant/80">Bags/Items:</span> {job.expected_bags || 1}
                       </p>
                     </div>
                   )}
                   
                   {/* Hourly Job Countdown Timer */}
                   {job.pricing_model === "hourly" && (
-                    <div className="flex items-center justify-between p-3 bg-primary/5 rounded-xl border border-primary/10 mt-3 font-body">
+                    <div className="flex items-center justify-between p-2.5 bg-primary/5 rounded-xl border border-primary/10 mt-2 font-body">
                       <div>
-                        <p className="text-[9px] uppercase font-bold text-primary/70 tracking-wider">Booked Duration</p>
-                        <p className="text-xs font-extrabold text-primary">{job.selected_duration_minutes} Mins</p>
+                        <p className="text-[8px] uppercase font-bold text-primary/70 tracking-wider">Booked Duration</p>
+                        <p className="text-[11px] font-extrabold text-primary">{job.selected_duration_minutes} Mins</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[9px] uppercase font-bold text-primary/70 tracking-wider">Time Remaining</p>
+                        <p className="text-[8px] uppercase font-bold text-primary/70 tracking-wider">Time Remaining</p>
                         {job.status === "in_progress" && job.started_at ? (
-                          <p className={`text-xs font-black tracking-tight ${getHourlyTimeRemaining(job) < 600 && getHourlyTimeRemaining(job) > 0 ? "text-red-600 animate-pulse font-extrabold" : "text-primary"}`}>
+                          <p className={`text-[11px] font-black tracking-tight ${getHourlyTimeRemaining(job) < 600 && getHourlyTimeRemaining(job) > 0 ? "text-red-600 animate-pulse font-extrabold" : "text-primary"}`}>
                             {formatSecondsLeft(getHourlyTimeRemaining(job))}
                           </p>
                         ) : (
-                          <p className="text-xs font-bold text-on-surface-variant/70">Awaiting Start</p>
+                          <p className="text-[11px] font-bold text-on-surface-variant/70">Awaiting Start</p>
                         )}
                       </div>
                     </div>
@@ -1118,7 +1118,7 @@ export default function JobsClient({
 
                   {/* Hourly Extension Status Check */}
                   {job.pricing_model === "hourly" && extensionsMap[job.id]?.length > 0 && (
-                    <div className="mt-3 p-3 bg-surface-container-low rounded-xl border border-outline-variant/15 text-[11px] font-semibold text-on-surface-variant font-body">
+                    <div className="mt-2 p-2.5 bg-surface-container-low rounded-xl border border-outline-variant/15 text-[10px] font-semibold text-on-surface-variant font-body">
                       {(() => {
                         const latest = extensionsMap[job.id][0];
                         const durationStr = latest.additional_minutes >= 60
@@ -1127,7 +1127,7 @@ export default function JobsClient({
                         if (latest.status === "requested") {
                           return (
                             <span className="text-amber-600 flex items-center gap-1.5 animate-pulse">
-                              <span className="material-symbols-outlined text-[14px]">hourglass_empty</span>
+                              <span className="material-symbols-outlined text-[13px]">hourglass_empty</span>
                               Requested +{durationStr} (₹{latest.additional_amount}) &middot; Awaiting approval
                             </span>
                           );
@@ -1135,7 +1135,7 @@ export default function JobsClient({
                         if (latest.status === "payment_pending") {
                           return (
                             <span className="text-blue-600 flex items-center gap-1.5 animate-pulse">
-                              <span className="material-symbols-outlined text-[14px]">pending_payment</span>
+                              <span className="material-symbols-outlined text-[13px]">pending_payment</span>
                               Approved &middot; Awaiting customer payment (₹{latest.additional_amount})
                             </span>
                           );
@@ -1143,7 +1143,7 @@ export default function JobsClient({
                         if (latest.status === "rejected") {
                           return (
                             <span className="text-red-600 flex items-center gap-1.5">
-                              <span className="material-symbols-outlined text-[14px]">cancel</span>
+                              <span className="material-symbols-outlined text-[13px]">cancel</span>
                               Extension Rejected by Customer
                             </span>
                           );
@@ -1151,7 +1151,7 @@ export default function JobsClient({
                         if (latest.status === "paid" || latest.status === "active") {
                           return (
                             <span className="text-[#059669] flex items-center gap-1.5">
-                              <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                              <span className="material-symbols-outlined text-[13px]">check_circle</span>
                               Extension Activated +{durationStr}
                             </span>
                           );
@@ -1163,15 +1163,15 @@ export default function JobsClient({
 
                   {/* Inspection Quote Creation & Info Section */}
                   {job.pricing_model === "inspection" && (
-                    <div className="mt-3 p-3 bg-surface-container-low rounded-xl border border-outline-variant/15 text-[11px] font-semibold text-on-surface-variant font-body">
+                    <div className="mt-2 p-2.5 bg-surface-container-low rounded-xl border border-outline-variant/15 text-[10px] font-semibold text-on-surface-variant font-body">
                       {(() => {
                         const quote = quotesMap[job.id];
                         if (!quote) {
                           return (
-                            <div className="space-y-3">
-                              <p className="text-xs text-on-surface-variant font-medium">No quotation submitted yet for this inspection job.</p>
+                            <div className="space-y-2">
+                              <p className="text-[11px] text-on-surface-variant font-medium">No quotation submitted yet for this inspection job.</p>
                               {activeQuoteFormId === job.id ? (
-                                <div className="border border-outline-variant/10 rounded-2xl p-4 bg-white">
+                                <div className="border border-outline-variant/10 rounded-xl p-3 bg-white">
                                   <QuotationWorkflow
                                     bookingId={job.id}
                                     role="partner"
@@ -1183,7 +1183,7 @@ export default function JobsClient({
                                   <button
                                     type="button"
                                     onClick={() => setActiveQuoteFormId(null)}
-                                    className="mt-3 text-xs font-bold text-on-surface-variant hover:underline"
+                                    className="mt-2 text-[11px] font-bold text-on-surface-variant hover:underline"
                                   >
                                     Cancel
                                   </button>
@@ -1192,7 +1192,7 @@ export default function JobsClient({
                                 <button
                                   type="button"
                                   onClick={() => setActiveQuoteFormId(job.id)}
-                                  className="w-full py-2 bg-primary text-white text-xs font-bold rounded-xl hover:opacity-90 transition-opacity"
+                                  className="w-full py-2 bg-primary text-white text-[11px] font-bold rounded-xl hover:opacity-90 transition-opacity"
                                 >
                                   Create Quotation
                                 </button>
@@ -1203,34 +1203,34 @@ export default function JobsClient({
                         
                         if (quote.status === "pending_customer_approval") {
                           return (
-                            <div className="space-y-1.5">
-                              <p className="text-xs font-bold text-amber-600 flex items-center gap-1.5">
-                                <span className="material-symbols-outlined text-[14px]">hourglass_empty</span>
-                                Quotation Pending Customer Approval: ₹{quote.total_amount}
+                            <div className="space-y-1">
+                              <p className="text-[11px] font-bold text-amber-600 flex items-center gap-1.5">
+                                <span className="material-symbols-outlined text-[13px]">hourglass_empty</span>
+                                Quotation Pending Approval: ₹{quote.total_amount}
                               </p>
-                              <p className="text-[10px] text-on-surface-variant/65">Work should begin only after the customer approves this quote.</p>
+                              <p className="text-[9px] text-on-surface-variant/65">Work should begin only after the customer approves this quote.</p>
                             </div>
                           );
                         }
 
                         if (quote.status === "approved") {
                           return (
-                            <p className="text-xs font-bold text-green-600 flex items-center gap-1.5">
-                              <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                              Customer Approved Quotation: ₹{quote.total_amount} (Work authorized)
+                            <p className="text-[11px] font-bold text-green-600 flex items-center gap-1.5">
+                              <span className="material-symbols-outlined text-[13px]">check_circle</span>
+                              Customer Approved Quote: ₹{quote.total_amount}
                             </p>
                           );
                         }
 
                         if (quote.status === "declined") {
                           return (
-                            <div className="space-y-3">
-                              <p className="text-xs font-bold text-red-600 flex items-center gap-1.5">
-                                <span className="material-symbols-outlined text-[14px]">cancel</span>
-                                Customer Declined Quotation: ₹{quote.total_amount}
+                            <div className="space-y-2">
+                              <p className="text-[11px] font-bold text-red-600 flex items-center gap-1.5">
+                                <span className="material-symbols-outlined text-[13px]">cancel</span>
+                                Customer Declined Quote: ₹{quote.total_amount}
                               </p>
                               {activeQuoteFormId === job.id ? (
-                                <div className="border border-outline-variant/10 rounded-2xl p-4 bg-white">
+                                <div className="border border-outline-variant/10 rounded-xl p-3 bg-white">
                                   <QuotationWorkflow
                                     bookingId={job.id}
                                     role="partner"
@@ -1242,7 +1242,7 @@ export default function JobsClient({
                                   <button
                                     type="button"
                                     onClick={() => setActiveQuoteFormId(null)}
-                                    className="mt-3 text-xs font-bold text-on-surface-variant hover:underline"
+                                    className="mt-2 text-[11px] font-bold text-on-surface-variant hover:underline"
                                   >
                                     Cancel
                                   </button>
@@ -1251,7 +1251,7 @@ export default function JobsClient({
                                 <button
                                   type="button"
                                   onClick={() => setActiveQuoteFormId(job.id)}
-                                  className="w-full py-2 bg-primary text-white text-xs font-bold rounded-xl hover:opacity-90 transition-opacity"
+                                  className="w-full py-2 bg-primary text-white text-[11px] font-bold rounded-xl hover:opacity-90 transition-opacity"
                                 >
                                   Submit New Quotation
                                 </button>
@@ -1267,7 +1267,7 @@ export default function JobsClient({
                 </div>
               </div>
 
-                <div className="pt-4 border-t border-surface-variant/30 flex justify-between items-center bg-white/40 -mx-5 -mb-5 px-5 py-4 rounded-b-3xl">
+                <div className="pt-3 border-t border-surface-variant/30 flex justify-between items-center bg-white/40 -mx-4 -mb-4 px-4 py-3 rounded-b-3xl">
                   <div className="flex flex-col">
                     <span className="text-[9px] uppercase font-bold text-on-surface-variant tracking-wider">
                       {activeTab === "completed" ? "Earned" : "Est Payout"}

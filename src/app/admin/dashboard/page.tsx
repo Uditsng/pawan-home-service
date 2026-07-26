@@ -154,13 +154,13 @@ export default async function AdminDashboardPage() {
           <h2 className="text-2xl font-bold font-headline tracking-tighter">₹{monthlyGMV.toLocaleString()}</h2>
           <div className="mt-2 flex items-center gap-2">
             <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg ${
-              momGrowth >= 0 ? "text-secondary bg-secondary/15" : "text-red-300 bg-red-500/15"
+              momGrowth >= 0 ? "text-secondary bg-secondary/15" : "text-error bg-error/15"
             }`}>
               {momGrowthStr}
             </span>
-            <span className="text-[8px] text-white/35 font-bold uppercase tracking-widest">vs Last Month</span>
+            <span className="text-[10px] text-white/35 font-bold uppercase tracking-widest">vs Last Month</span>
           </div>
-          <div className="flex items-center gap-3 mt-2.5 text-[8px] font-bold text-white/40 uppercase tracking-wider">
+          <div className="flex items-center gap-3 mt-2.5 text-[10px] font-bold text-white/40 uppercase tracking-wider">
             <span>Today: ₹{dailyGMV.toLocaleString()}</span>
             <span className="w-px h-3 bg-white/15"></span>
             <span>Week: ₹{weeklyGMV.toLocaleString()}</span>
@@ -176,16 +176,16 @@ export default async function AdminDashboardPage() {
           </div>
           <div className="flex flex-wrap gap-1.5 mt-2.5">
             {pendingCount > 0 && (
-              <span className="text-[7px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-700 border border-amber-500/15">{pendingCount} Pending</span>
+              <span className="text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-warning/10 text-warning border border-warning/15">{pendingCount} Pending</span>
             )}
             {confirmedCount > 0 && (
-              <span className="text-[7px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 border border-emerald-500/15">{confirmedCount} Confirmed</span>
+              <span className="text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-success/10 text-success border border-success/15">{confirmedCount} Confirmed</span>
             )}
             {inProgressCount > 0 && (
-              <span className="text-[7px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-700 border border-blue-500/15">{inProgressCount} Active</span>
+              <span className="text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-info/10 text-info border border-info/15">{inProgressCount} Active</span>
             )}
             {activeBookings === 0 && pendingCount === 0 && (
-              <span className="text-[7px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-surface-container text-on-surface-variant">No Active</span>
+              <span className="text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-surface-container text-on-surface-variant">No Active</span>
             )}
           </div>
         </Link>
@@ -199,7 +199,7 @@ export default async function AdminDashboardPage() {
             </h2>
             <div className="flex items-center gap-1 mb-0.5">
               <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
-              <span className="text-[8px] font-black text-secondary uppercase tracking-widest">Active</span>
+              <span className="text-[10px] font-black text-secondary uppercase tracking-widest">Active</span>
             </div>
           </div>
           {/* Capacity bar */}
@@ -208,13 +208,13 @@ export default async function AdminDashboardPage() {
           </div>
           <div className="flex flex-wrap gap-1.5 mt-2">
             {offlinePartnerCount > 0 && (
-              <span className="text-[7px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-surface-container text-on-surface-variant">{offlinePartnerCount} Offline</span>
+              <span className="text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-surface-container text-on-surface-variant">{offlinePartnerCount} Offline</span>
             )}
             {busyPartnerCount > 0 && (
-              <span className="text-[7px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-700">{busyPartnerCount} Busy</span>
+              <span className="text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-info/10 text-info">{busyPartnerCount} Busy</span>
             )}
             {suspendedPartnerCount > 0 && (
-              <span className="text-[7px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-red-500/10 text-red-600">{suspendedPartnerCount} Suspended</span>
+              <span className="text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-error/10 text-error">{suspendedPartnerCount} Suspended</span>
             )}
           </div>
         </Link>
@@ -224,7 +224,7 @@ export default async function AdminDashboardPage() {
           <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/60 mb-2">Success Rate</p>
           <div className="flex items-end justify-between">
             <h2 className={`text-2xl font-bold font-headline tracking-tighter ${
-              successRate >= 90 ? "text-primary" : successRate >= 70 ? "text-amber-700" : "text-red-600"
+              successRate >= 90 ? "text-primary" : successRate >= 70 ? "text-warning" : "text-red-600"
             }`}>
               {successRate.toFixed(1)}%
             </h2>
@@ -245,12 +245,12 @@ export default async function AdminDashboardPage() {
                   strokeWidth="3"
                   strokeDasharray={`${successRate}, 100`}
                   strokeLinecap="round"
-                  className={successRate >= 90 ? "text-secondary" : successRate >= 70 ? "text-amber-500" : "text-red-500"}
+                  className={successRate >= 90 ? "text-secondary" : successRate >= 70 ? "text-warning" : "text-error"}
                 />
               </svg>
             </div>
           </div>
-          <div className="flex items-center gap-3 mt-2 text-[8px] font-bold text-on-surface-variant/50 uppercase tracking-wider">
+          <div className="flex items-center gap-3 mt-2 text-[10px] font-bold text-on-surface-variant/50 uppercase tracking-wider">
             <span>{completedCount} Done</span>
             <span className="w-px h-3 bg-outline-variant/20"></span>
             <span>{cancelledCount} Cancelled</span>
@@ -264,31 +264,31 @@ export default async function AdminDashboardPage() {
       <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 p-5 shadow-sm space-y-4">
         <div>
           <h3 className="text-sm font-bold text-primary font-headline tracking-tight">Hourly Services & Extensions Report</h3>
-          <p className="text-[8px] font-black uppercase tracking-widest text-on-surface-variant/40 mt-0.5">Real-time stats for duration-based bookings</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/40 mt-0.5">Real-time stats for duration-based bookings</p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           <div className="bg-surface p-4 rounded-xl border border-outline-variant/10">
-            <span className="text-[8px] font-black uppercase tracking-widest text-on-surface-variant/50 block mb-1">Total Hourly Bookings</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/50 block mb-1">Total Hourly Bookings</span>
             <span className="text-lg font-black text-primary">{totalHourlyBookings || 0}</span>
           </div>
           <div className="bg-surface p-4 rounded-xl border border-outline-variant/10">
-            <span className="text-[8px] font-black uppercase tracking-widest text-on-surface-variant/50 block mb-1">Extension Requests</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/50 block mb-1">Extension Requests</span>
             <span className="text-lg font-black text-primary">{totalExtensions || 0}</span>
           </div>
           <div className="bg-surface p-4 rounded-xl border border-outline-variant/10">
-            <span className="text-[8px] font-black uppercase tracking-widest text-on-surface-variant/50 block mb-1">Extension Revenue</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/50 block mb-1">Extension Revenue</span>
             <span className="text-lg font-black text-secondary">₹{extensionRevenue.toLocaleString()}</span>
           </div>
           <div className="bg-surface p-4 rounded-xl border border-outline-variant/10">
-            <span className="text-[8px] font-black uppercase tracking-widest text-on-surface-variant/50 block mb-1">Extension Approval Rate</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/50 block mb-1">Extension Approval Rate</span>
             <span className="text-lg font-black text-primary">{approvalRate.toFixed(1)}%</span>
           </div>
           <div className="bg-surface p-4 rounded-xl border border-outline-variant/10">
-            <span className="text-[8px] font-black uppercase tracking-widest text-on-surface-variant/50 block mb-1">Avg Booking Duration</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/50 block mb-1">Avg Booking Duration</span>
             <span className="text-lg font-black text-primary">{(avgBookingDuration / 60).toFixed(1)} hrs</span>
           </div>
           <div className="bg-surface p-4 rounded-xl border border-outline-variant/10">
-            <span className="text-[8px] font-black uppercase tracking-widest text-on-surface-variant/50 block mb-1">Avg Extended Duration</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/50 block mb-1">Avg Extended Duration</span>
             <span className="text-lg font-black text-primary">{avgExtendedDuration.toFixed(1)} mins</span>
           </div>
         </div>
@@ -299,7 +299,7 @@ export default async function AdminDashboardPage() {
         <div className="px-5 py-3.5 border-b border-outline-variant/10 flex justify-between items-center">
           <div>
             <h3 className="text-sm font-bold text-primary font-headline tracking-tight">Recent Bookings</h3>
-            <p className="text-[8px] font-black uppercase tracking-widest text-on-surface-variant/40 mt-0.5">Latest booking activity</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/40 mt-0.5">Latest booking activity</p>
           </div>
           <Link href="/admin/bookings" className="px-4 py-2 bg-primary text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md shadow-primary/15 hover:bg-primary/90 transition-all">
             View All →
@@ -311,12 +311,12 @@ export default async function AdminDashboardPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-surface-dim/30 border-b border-outline-variant/10">
-                <th className="px-5 py-3 text-[8px] font-black uppercase tracking-widest text-on-surface-variant/40">Booking ID</th>
-                <th className="px-4 py-3 text-[8px] font-black uppercase tracking-widest text-on-surface-variant/40">Service · City</th>
-                <th className="px-4 py-3 text-[8px] font-black uppercase tracking-widest text-on-surface-variant/40">Customer</th>
-                <th className="px-4 py-3 text-[8px] font-black uppercase tracking-widest text-on-surface-variant/40 text-right">Amount</th>
-                <th className="px-4 py-3 text-[8px] font-black uppercase tracking-widest text-on-surface-variant/40 text-center">Status</th>
-                <th className="px-5 py-3 text-[8px] font-black uppercase tracking-widest text-on-surface-variant/40 text-right">Time</th>
+                <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-on-surface-variant/40">Booking ID</th>
+                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-on-surface-variant/40">Service · City</th>
+                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-on-surface-variant/40">Customer</th>
+                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-on-surface-variant/40 text-right">Amount</th>
+                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-on-surface-variant/40 text-center">Status</th>
+                <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-on-surface-variant/40 text-right">Time</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/10">
@@ -345,7 +345,7 @@ export default async function AdminDashboardPage() {
                       </td>
                       <td className="px-4 py-3.5">
                         <p className="text-[10px] font-bold text-primary tracking-tight truncate max-w-[160px]">{booking.services?.title || "Service"}</p>
-                        <p className="text-[8px] font-bold text-on-surface-variant/40 uppercase tracking-wider mt-0.5 flex items-center gap-0.5">
+                        <p className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-wider mt-0.5 flex items-center gap-0.5">
                           <span className="material-symbols-outlined text-[10px] text-secondary">location_on</span>
                           {booking.city || "N/A"}
                         </p>
@@ -396,7 +396,7 @@ export default async function AdminDashboardPage() {
                 <Link key={booking.id} href="/admin/bookings" className="flex items-center gap-3 px-5 py-3 hover:bg-surface-container-low/30 transition-colors">
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                     booking.status === "completed" ? "bg-secondary/10 text-secondary" :
-                    booking.status === "cancelled" ? "bg-red-50 text-red-500" : "bg-primary/5 text-primary"
+                    booking.status === "cancelled" ? "bg-error/10 text-error" : "bg-primary/5 text-primary"
                   }`}>
                     <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>
                       {booking.status === "completed" ? "verified" : booking.status === "cancelled" ? "error" : "schedule"}

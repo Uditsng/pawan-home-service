@@ -1,10 +1,9 @@
-import type { Metadata } from "next";
-import Footer from "@/components/Footer";
+"use client";
 
-export const metadata: Metadata = {
-  title: "Contact Us | PHS Cleaning Company",
-  description: "Get in touch with PHS Cleaning Company support desk. Find helpline numbers, email addresses, registered office location, and grievance officer details.",
-};
+import { useState } from "react";
+import Footer from "@/components/Footer";
+import Header from "@/components/Header";
+import { handleEmailClick, handlePhoneClick } from "@/utils/contact";
 
 const faqs = [
   { 
@@ -34,138 +33,233 @@ const faqs = [
 ];
 
 const supportServices = [
-  { title: "Booking Coordination", desc: "Assistance with placing new bookings, service scheduling, technician check-in status, and appointment rescheduling." },
-  { title: "Billing & Refund Disputes", desc: "Verification of payment statuses, processing invoice copies, GST breakdowns, duplicate charges, and refund credit tracking." },
-  { title: "Grievances & Quality Feedback", desc: "Submitting quality compliance reports, requesting re-service sessions, reporting professional conduct issues, and rating feedback." },
-  { title: "Account & Profile Queries", desc: "Assistance with customer profile editing, registered address changes, notification settings, and data erasure requests." },
+  { title: "Booking Coordination", desc: "Assistance with placing bookings, scheduling, technician status, and rescheduling.", icon: "calendar_month" },
+  { title: "Billing & Refund Disputes", desc: "Verification of payment status, invoices, GST breakdowns, and refund credits.", icon: "receipt_long" },
+  { title: "Grievances & Quality", desc: "Submitting compliance reports, requesting re-service, and conduct feedback.", icon: "rate_review" },
+  { title: "Account & Profile Queries", desc: "Assistance with customer profile editing, addresses, and data requests.", icon: "manage_accounts" },
 ];
 
 export default function ContactUsPage() {
-  return (
-    <div className="min-h-screen bg-surface font-body text-on-surface">
-      {/* Centered Minimal Header */}
-      <header className="max-w-4xl mx-auto px-4 pt-12 pb-8 border-b border-outline-variant/15">
-        <h1 className="text-3xl font-extrabold tracking-tight font-headline">Contact Us</h1>
-        <p className="text-sm text-on-surface-variant font-medium mt-1">
-          We are committed to delivering premium home services. Reach out to our team for assistance.
-        </p>
-      </header>
+  const helplinePhone = "+917408702019";
+  const helplineEmail = "phscustomercare15@gmail.com";
+  
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-      <main className="max-w-4xl mx-auto px-4 py-12 space-y-12">
-        {/* Contact Info Channels */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-          <div className="space-y-1">
-            <h3 className="text-sm font-bold text-on-surface-variant/70 uppercase tracking-wider">Email Support Desk</h3>
-            <a href="mailto:phscustomercare15@gmail.com" className="text-base font-bold text-primary hover:text-secondary font-mono">
-              phscustomercare15@gmail.com
-            </a>
-            <p className="text-[10px] text-on-surface-variant/40 font-bold uppercase tracking-wide">Response window: 12-24 hours</p>
-          </div>
-          <div className="space-y-1">
-            <h3 className="text-sm font-bold text-on-surface-variant/70 uppercase tracking-wider">Helpline Number</h3>
-            <a href="tel:+917408702019" className="text-base font-bold text-primary hover:text-secondary font-mono">
-              +91 7408702019
-            </a>
-            <p className="text-[10px] text-on-surface-variant/40 font-bold uppercase tracking-wide">Available: 9:00 AM - 8:00 PM (IST)</p>
-          </div>
+  const toggleFaq = (index: number) => {
+    setOpenFaq(openFaq === index ? null : index);
+  };
+
+  return (
+    <div className="min-h-screen bg-surface font-body text-on-surface relative overflow-hidden flex flex-col">
+      <Header />
+
+      {/* Background Decorative Ambient Blobs */}
+      <div className="absolute top-24 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute bottom-24 left-1/4 w-96 h-96 bg-secondary/5 rounded-full blur-3xl pointer-events-none -z-10" />
+
+      <main className="grow max-w-3xl w-full mx-auto px-4 py-8 md:py-12 space-y-8 z-10">
+        
+        {/* Minimal Header */}
+        <section className="pb-6 border-b border-outline-variant/10">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight font-headline text-primary">
+            Contact Us
+          </h1>
+          <p className="text-xs md:text-sm text-on-surface-variant font-medium mt-1">
+            Have questions or need assistance? Reach out to our dedicated support desk.
+          </p>
         </section>
 
-        {/* Business Details */}
-        <section className="pt-6 border-t border-outline-variant/10 space-y-4">
-          <h2 className="text-xl font-bold font-headline tracking-tight">Business Identification</h2>
-          <div className="space-y-3 text-sm">
-            <div className="flex flex-col sm:flex-row justify-between sm:border-b border-outline-variant/5 pb-2">
-              <span className="text-on-surface-variant font-medium text-xs uppercase tracking-wider">Entity Name</span>
-              <span className="font-bold text-on-surface text-xs mt-0.5 sm:mt-0">PHS Cleaning Company (Sole Proprietorship)</span>
+        {/* Contact Info Channels Grid */}
+        <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Email Support Card */}
+          <a
+            href={`mailto:${helplineEmail}`}
+            onClick={(e) => handleEmailClick(e, helplineEmail)}
+            className="glass-panel rounded-3xl p-6 space-y-3 hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 group block"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[#059669] text-xl drop-shadow-sm">mail</span>
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-on-surface-variant/80 uppercase tracking-wider">Email Support</h3>
+                <span className="text-sm font-bold text-primary font-mono group-hover:text-secondary transition-colors block mt-0.5">
+                  {helplineEmail}
+                </span>
+              </div>
             </div>
-            <div className="flex flex-col sm:flex-row justify-between sm:border-b border-outline-variant/5 pb-2">
-              <span className="text-on-surface-variant font-medium text-xs uppercase tracking-wider">Proprietor Name</span>
-              <span className="font-bold text-on-surface text-xs mt-0.5 sm:mt-0">Pavan Kumar</span>
+            <p className="text-[10px] text-on-surface-variant/50 font-bold uppercase tracking-wider pl-13">
+              Response window: 12-24 hours
+            </p>
+          </a>
+
+          {/* Helpline Phone Card */}
+          <a
+            href={`tel:${helplinePhone}`}
+            onClick={(e) => handlePhoneClick(e, helplinePhone)}
+            className="glass-panel rounded-3xl p-6 space-y-3 hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 group block"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[#059669] text-xl drop-shadow-sm">call</span>
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-on-surface-variant/80 uppercase tracking-wider">Helpline Phone</h3>
+                <span className="text-sm font-bold text-primary font-mono group-hover:text-secondary transition-colors block mt-0.5">
+                  +91 74087 02019
+                </span>
+              </div>
             </div>
-            <div className="flex flex-col sm:flex-row justify-between sm:border-b border-outline-variant/5 pb-2">
-              <span className="text-on-surface-variant font-medium text-xs uppercase tracking-wider">Registered Address</span>
-              <span className="font-bold text-on-surface text-xs mt-0.5 sm:mt-0 text-left sm:text-right max-w-md">C1-40, Gulmohar Vihar, Near Shivaji Pulia, Naubasta, Kanpur Nagar, Uttar Pradesh – 208014, India</span>
+            <p className="text-[10px] text-on-surface-variant/50 font-bold uppercase tracking-wider pl-13">
+              Available: 9:00 AM - 8:00 PM (IST)
+            </p>
+          </a>
+        </section>
+
+        {/* Business Identification */}
+        <section className="glass-panel rounded-3xl p-6 space-y-4">
+          <h2 className="text-sm font-bold font-headline text-primary flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#059669]">domain</span>
+            Business Identification
+          </h2>
+          <div className="grid grid-cols-1 gap-3 text-xs md:text-sm">
+            <div className="flex justify-between items-center border-b border-outline-variant/10 pb-2">
+              <span className="text-on-surface-variant font-semibold text-[11px] uppercase tracking-wider">Entity Name</span>
+              <span className="font-bold text-primary text-xs">PHS Cleaning Company (Sole Proprietorship)</span>
             </div>
-            <div className="flex flex-col sm:flex-row justify-between pb-2">
-              <span className="text-on-surface-variant font-medium text-xs uppercase tracking-wider">Active Jurisdiction</span>
-              <span className="font-bold text-on-surface text-xs mt-0.5 sm:mt-0">Kanpur Nagar, Uttar Pradesh, India</span>
+            <div className="flex justify-between items-center border-b border-outline-variant/10 pb-2">
+              <span className="text-on-surface-variant font-semibold text-[11px] uppercase tracking-wider">Proprietor Name</span>
+              <span className="font-bold text-primary text-xs">Pavan Kumar</span>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b border-outline-variant/10 pb-2 gap-1 sm:gap-4">
+              <span className="text-on-surface-variant font-semibold text-[11px] uppercase tracking-wider shrink-0">Registered Office</span>
+              <span className="font-semibold text-primary text-xs text-left sm:text-right max-w-md">
+                C1-40, Gulmohar Vihar, Near Shivaji Pulia, Naubasta, Kanpur, UP – 208014, India
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-on-surface-variant font-semibold text-[11px] uppercase tracking-wider">Active Jurisdiction</span>
+              <span className="font-bold text-primary text-xs">Kanpur Nagar, Uttar Pradesh, India</span>
             </div>
           </div>
         </section>
 
         {/* Grievance Officer details */}
-        <section className="p-6 bg-surface-container/30 rounded-xl border border-outline-variant/10 space-y-4">
-          <h2 className="text-base font-bold font-headline text-on-surface">Grievance Redressal Officer</h2>
-          <p className="text-xs text-on-surface-variant font-medium leading-relaxed">
-            In compliance with the Information Technology Act, 2000 and the Consumer Protection (E-Commerce) Rules, 2020, the designated Grievance Officer is details below:
+        <section className="glass-panel rounded-3xl p-6 space-y-3 bg-linear-to-br from-primary/5 to-secondary/5">
+          <h2 className="text-sm font-bold font-headline text-primary flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#059669]">shield_person</span>
+            Grievance Redressal Officer
+          </h2>
+          <p className="text-[11px] md:text-xs text-on-surface-variant font-semibold leading-relaxed">
+            In compliance with the Information Technology Act, 2000 and the Consumer Protection (E-Commerce) Rules, 2020, the designated Grievance Officer details are listed below:
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-            <div>
-              <p className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Name</p>
-              <p className="font-bold text-on-surface">Pavan Kumar</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 text-xs">
+            <div className="bg-surface-container-lowest/60 p-3 rounded-xl border border-outline-variant/10">
+              <p className="text-[9px] font-bold text-on-surface-variant/50 uppercase tracking-widest">Name & Designation</p>
+              <p className="font-bold text-primary mt-0.5">Pavan Kumar</p>
+              <p className="text-[10px] text-on-surface-variant font-semibold">Grievance & Compliance Officer</p>
             </div>
-            <div>
-              <p className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Designation</p>
-              <p className="font-bold text-on-surface">Grievance & Compliance Officer</p>
-            </div>
-            <div className="sm:col-span-2">
-              <p className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Address</p>
-              <p className="font-bold text-on-surface">C1-40, Gulmohar Vihar, Near Shivaji Pulia, Naubasta, Kanpur Nagar, Uttar Pradesh – 208014, India</p>
-            </div>
-            <div>
-              <p className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Contact Email</p>
-              <a href="mailto:phscustomercare15@gmail.com" className="font-bold text-primary font-mono">phscustomercare15@gmail.com</a>
+            <div className="bg-surface-container-lowest/60 p-3 rounded-xl border border-outline-variant/10">
+              <p className="text-[9px] font-bold text-on-surface-variant/50 uppercase tracking-widest">Contact Details</p>
+              <a
+                href={`mailto:${helplineEmail}`}
+                onClick={(e) => handleEmailClick(e, helplineEmail)}
+                className="font-bold text-primary hover:text-secondary font-mono mt-0.5 block transition-colors"
+              >
+                {helplineEmail}
+              </a>
+              <p className="text-[10px] text-on-surface-variant font-semibold">C1-40, Gulmohar Vihar, Naubasta, Kanpur</p>
             </div>
           </div>
         </section>
 
-        {/* Support categories */}
-        <section className="pt-6 border-t border-outline-variant/10 space-y-4">
-          <h2 className="text-xl font-bold font-headline tracking-tight">Structured Support Desks</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {supportServices.map((service) => (
-              <div key={service.title} className="space-y-1">
-                <h3 className="text-sm font-bold text-on-surface font-headline">{service.title}</h3>
-                <p className="text-xs md:text-sm text-on-surface-variant leading-relaxed font-medium">{service.desc}</p>
+        {/* Support Categories */}
+        <section className="space-y-4">
+          <h2 className="text-sm font-bold font-headline text-primary flex items-center gap-2 px-2">
+            <span className="material-symbols-outlined text-[#059669]">support</span>
+            Structured Support Desks
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {supportServices.map((service, idx) => (
+              <div key={idx} className="glass-panel rounded-3xl p-5 space-y-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-[#059669] text-base drop-shadow-sm">{service.icon}</span>
+                  </div>
+                  <h3 className="text-xs font-bold text-primary font-headline">{service.title}</h3>
+                </div>
+                <p className="text-[11px] md:text-xs text-on-surface-variant leading-relaxed font-semibold">{service.desc}</p>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Preparation checklist */}
-        <section className="pt-6 border-t border-outline-variant/10 space-y-3">
-          <h2 className="text-xl font-bold font-headline tracking-tight">Information Required for Resolution</h2>
-          <p className="text-sm text-on-surface-variant leading-relaxed font-medium">
-            To help us resolve your query efficiently, please maintain the following records when contacting us:
+        {/* Info Required Checklist */}
+        <section className="glass-panel rounded-3xl p-6 space-y-3">
+          <h2 className="text-sm font-bold font-headline text-primary flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#059669]">rule</span>
+            Information Required for Resolution
+          </h2>
+          <p className="text-xs text-on-surface-variant font-semibold leading-relaxed">
+            Please maintain the following records when contacting us to help resolve your query efficiently:
           </p>
-          <ul className="space-y-2 text-sm text-on-surface-variant font-medium">
-            <li className="flex items-start gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0 mt-2"></span>
-              <span><strong>For Booking Concerns:</strong> 16-character Booking ID, service address, and registered user mobile number.</span>
+          <ul className="space-y-2.5 text-xs text-on-surface-variant font-semibold">
+            <li className="flex items-start gap-2 bg-surface-container/20 p-2 rounded-xl border border-outline-variant/10">
+              <span className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0 mt-1.5"></span>
+              <span><strong>Booking:</strong> 16-character Booking ID, service address, and registered mobile number.</span>
             </li>
-            <li className="flex items-start gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0 mt-2"></span>
-              <span><strong>For Billing & Refunds:</strong> UPI/Bank transaction reference ID, timestamp of payment, and payment confirmation status.</span>
+            <li className="flex items-start gap-2 bg-surface-container/20 p-2 rounded-xl border border-outline-variant/10">
+              <span className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0 mt-1.5"></span>
+              <span><strong>Billing & Refunds:</strong> UPI/Bank transaction reference ID, timestamp, and payment status.</span>
             </li>
-            <li className="flex items-start gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0 mt-2"></span>
-              <span><strong>For Quality Compliance:</strong> Specific areas of dissatisfaction, time of service completion, and photographic proof of issues.</span>
+            <li className="flex items-start gap-2 bg-surface-container/20 p-2 rounded-xl border border-outline-variant/10">
+              <span className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0 mt-1.5"></span>
+              <span><strong>Quality Compliance:</strong> Specific dissatisfaction, time of service, and photos of issues.</span>
             </li>
           </ul>
         </section>
 
-        {/* FAQs */}
-        <section className="pt-6 border-t border-outline-variant/10 space-y-6">
-          <h2 className="text-xl font-bold text-on-surface font-headline text-center">Customer FAQs</h2>
-          <div className="space-y-6">
-            {faqs.map((faq, i) => (
-              <div key={i} className="space-y-1">
-                <h3 className="text-sm font-bold text-on-surface font-headline leading-snug">{faq.q}</h3>
-                <p className="text-xs md:text-sm text-on-surface-variant leading-relaxed font-medium">{faq.a}</p>
-              </div>
-            ))}
+        {/* FAQs - Collapsible Accordion (Shrinked styling) */}
+        <section className="space-y-4 pt-4 border-t border-outline-variant/10">
+          <h2 className="text-base font-bold text-primary font-headline text-center flex items-center justify-center gap-2">
+            <span className="material-symbols-outlined text-[#059669]">quiz</span>
+            Frequently Asked Questions
+          </h2>
+          
+          <div className="space-y-3 max-w-2xl mx-auto">
+            {faqs.map((faq, i) => {
+              const isOpen = openFaq === i;
+              return (
+                <div
+                  key={i}
+                  className="glass-panel rounded-2xl overflow-hidden transition-all duration-300 border border-outline-variant/20 shadow-sm"
+                >
+                  <button
+                    onClick={() => toggleFaq(i)}
+                    className="w-full flex items-center justify-between p-4 text-left font-semibold text-xs md:text-sm text-primary font-headline hover:bg-surface-container-low transition-colors"
+                  >
+                    <span className="pr-4 leading-snug">{faq.q}</span>
+                    <span className={`material-symbols-outlined text-on-surface-variant transition-transform duration-300 text-lg ${isOpen ? 'rotate-180' : ''}`}>
+                      expand_more
+                    </span>
+                  </button>
+                  
+                  {/* Expanded Content Area with smooth transition */}
+                  <div
+                    className={`transition-all duration-300 ease-in-out ${
+                      isOpen ? 'max-h-48 border-t border-outline-variant/5' : 'max-h-0'
+                    } overflow-hidden`}
+                  >
+                    <div className="p-4 text-[11px] md:text-xs text-on-surface-variant font-semibold leading-relaxed bg-surface-container-lowest/30">
+                      {faq.a}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </section>
+
       </main>
 
       <Footer />

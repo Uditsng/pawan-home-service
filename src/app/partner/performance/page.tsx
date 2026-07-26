@@ -158,7 +158,6 @@ export default async function PerformancePage() {
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Rating Card */}
           <div className="sm:col-span-2 bg-surface-container-lowest border border-outline-variant/15 rounded-2xl p-4 sm:p-5 relative overflow-hidden shadow-xs">
-            <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
             <div className="flex items-center justify-between mb-3 pl-1">
               <span className="font-label text-[10px] sm:text-xs font-bold uppercase tracking-widest text-on-surface-variant">
                 Rating Breakdown
@@ -220,7 +219,6 @@ export default async function PerformancePage() {
 
           {/* Job Completion */}
           <div className="bg-surface-container-lowest border border-outline-variant/15 rounded-2xl p-4 sm:p-5 relative overflow-hidden shadow-xs flex flex-col justify-between">
-            <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary"></div>
             <div className="pl-1">
               <span className="font-label text-[10px] sm:text-xs font-bold uppercase tracking-widest text-on-surface-variant block mb-1">
                 Completion Rate
@@ -239,7 +237,6 @@ export default async function PerformancePage() {
 
           {/* On-time Arrival */}
           <div className="bg-surface-container-lowest border border-outline-variant/15 rounded-2xl p-4 sm:p-5 relative overflow-hidden shadow-xs flex flex-col justify-between">
-            <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
             <div className="pl-1">
               <span className="font-label text-[10px] sm:text-xs font-bold uppercase tracking-widest text-on-surface-variant block mb-1">
                 On-Time Rate
@@ -264,7 +261,6 @@ export default async function PerformancePage() {
 
           {/* Cancellation Rate */}
           <div className="sm:col-span-2 lg:col-span-4 bg-surface-container-lowest border border-outline-variant/15 rounded-2xl p-3.5 sm:p-4 relative overflow-hidden shadow-xs flex items-center justify-between">
-            <div className="absolute left-0 top-0 bottom-0 w-1 bg-error"></div>
             <div className="pl-2">
               <span className="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant block">
                 Job Cancellation Rate

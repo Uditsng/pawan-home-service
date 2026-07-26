@@ -92,7 +92,7 @@ export default async function PartnerJobsPage() {
 
   return (
     <div className="bg-surface font-body text-on-surface antialiased min-h-screen pb-24">
-      <main className="max-w-7xl mx-auto px-5 pt-6 space-y-6">
+      <main className="max-w-7xl mx-auto px-4 pt-4 space-y-4">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-xl font-black font-headline tracking-tighter text-on-surface">

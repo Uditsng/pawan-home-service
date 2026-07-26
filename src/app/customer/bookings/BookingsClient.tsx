@@ -187,8 +187,8 @@ export default function BookingsClient({
               <div key={booking.id} className="glass-panel rounded-2xl p-3 md:p-4 transition-all duration-300">
                 <div className="flex justify-between items-start mb-3 md:mb-4">
                   <div className="flex gap-2">
-                    <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl bg-green-500/10 flex items-center justify-center text-primary-container shrink-0">
-                      <span className="material-symbols-outlined text-[#059669] drop-shadow-sm">
+                    <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl bg-secondary/10 flex items-center justify-center text-primary-container shrink-0">
+                      <span className="material-symbols-outlined text-secondary drop-shadow-sm">
                         {booking.services?.category === "cleaning" ? "cleaning_services" : "home_repair_service"}
                       </span>
                     </div>

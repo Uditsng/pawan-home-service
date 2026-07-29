@@ -15,7 +15,6 @@ import {
 import type { BookingWithDetails, BookingExtension, BookingQuote } from "@/lib/types";
 import { requestExtensionAction } from "@/app/actions/extensions";
 import QuotationWorkflow from "@/components/QuotationWorkflow";
-import { calculateCommissionBreakdown } from "@/lib/engines/commissionEngine";
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -85,7 +84,6 @@ export default function JobsClient({
   completedJobs,
   offeredJobs: initialOfferedJobs,
   partnerId,
-  commissionPercent = 20,
 }: JobsClientProps) {
   const [activeTab, setActiveTab]     = useState<TabKey>("offers");
   const [isPending, startTransition]  = useTransition();
@@ -664,7 +662,7 @@ export default function JobsClient({
     if (activeTab === "completed") {
       return (
         <span className="text-[10px] font-black uppercase tracking-widest text-green-600 bg-green-500/10 px-3 py-1.5 rounded-lg">
-          ✓ Settled
+          Completed
         </span>
       );
     }
@@ -677,8 +675,7 @@ export default function JobsClient({
     const b = offer.bookings;
     if (!b) return null;
     const isClaiming = claimingId === b.id;
-    const cb = calculateCommissionBreakdown(Number(b.total_amount || 0), commissionPercent);
-    const payout = cb.partnerPayoutAmount;
+    const servicePrice = Number(b.total_amount || 0);
     const location = b.address || (b.area ? `${b.area}, ${b.city || ""}` : b.city || "Kanpur Nagar");
 
     return (
@@ -762,8 +759,8 @@ export default function JobsClient({
         {/* Payout + Accept */}
         <div className="flex items-center justify-between pt-2.5 border-t border-outline-variant/15">
           <div>
-            <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant">Your Payout</p>
-            <p className="text-2xl font-black text-primary tracking-tighter">₹{payout}</p>
+            <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant">Service Price</p>
+            <p className="text-2xl font-black text-primary tracking-tighter">₹{servicePrice}</p>
           </div>
 
           <button
@@ -1022,7 +1019,7 @@ export default function JobsClient({
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {currentJobs.map((job) => {
-                  const jobPayout = calculateCommissionBreakdown(Number(job.total_amount || 0), commissionPercent).partnerPayoutAmount;
+                  const jobPrice = Number(job.total_amount || 0);
                   return (
                     <div
                       key={job.id}
@@ -1270,10 +1267,10 @@ export default function JobsClient({
                 <div className="pt-3 border-t border-surface-variant/30 flex justify-between items-center bg-white/40 -mx-4 -mb-4 px-4 py-3 rounded-b-3xl">
                   <div className="flex flex-col">
                     <span className="text-[9px] uppercase font-bold text-on-surface-variant tracking-wider">
-                      {activeTab === "completed" ? "Earned" : "Est Payout"}
+                      Service Price
                     </span>
                     <span className="text-xl font-black text-on-surface tracking-tight">
-                      ₹{jobPayout.toFixed(0)}
+                      ₹{jobPrice}
                     </span>
                   </div>
                   {getActionButton(job)}

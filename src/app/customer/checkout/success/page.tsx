@@ -41,114 +41,81 @@ export default async function CheckoutSuccessPage({
   searchParams: Promise<{ bookingId?: string, orderId?: string }>
 }) {
   const resolvedParams = await searchParams;
-  const { bookingId, orderId } = resolvedParams;
+  let { orderId } = resolvedParams;
+  const { bookingId } = resolvedParams;
 
-  if (!bookingId && !orderId) {
+  const supabase = await createClient();
+
+  // Backward compat: resolve bookingId -> orderId
+  if (!orderId && bookingId) {
+    const { data: bk } = await supabase
+      .from('bookings')
+      .select('order_id')
+      .eq('id', bookingId)
+      .maybeSingle();
+    if (bk?.order_id) orderId = bk.order_id;
+  }
+
+  if (!orderId) {
     redirect('/customer/dashboard');
   }
 
-  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
     redirect('/login');
   }
 
-  let isOrder = false;
   let displayDate = "";
   let displayTime = "";
   let overallAmount = 0;
   let bookingsList: BookingRow[] = [];
 
-  if (orderId) {
-    isOrder = true;
-    const { data: orderData } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('id', orderId)
-      .single();
+  const { data: orderData } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('id', orderId)
+    .single();
 
-    if (!orderData) redirect('/customer/dashboard');
+  if (!orderData) redirect('/customer/dashboard');
 
-    overallAmount = orderData.total_amount;
-    const scheduledDate = orderData.scheduled_date ? new Date(orderData.scheduled_date) : new Date();
-    displayDate = scheduledDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'Asia/Kolkata' });
-    displayTime = scheduledDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' });
+  overallAmount = orderData.total_amount;
+  const scheduledDate = orderData.scheduled_date ? new Date(orderData.scheduled_date) : new Date();
+  displayDate = scheduledDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'Asia/Kolkata' });
+  displayTime = scheduledDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' });
 
-    // Fetch all child bookings in order with services and partner profile relations
-    const { data: bookingsData } = await supabase
-      .from('bookings')
-      .select(`
-        *,
-        services (
-          id,
-          title,
-          category,
-          subcategories (
-            icon_name
-          )
-        ),
-        partner:partner_id (
-          full_name,
-          avatar_url,
-          phone,
-          rating_avg
+  const { data: bookingsData } = await supabase
+    .from('bookings')
+    .select(`
+      *,
+      services (
+        id,
+        title,
+        category,
+        subcategories (
+          icon_name
         )
-      `)
-      .eq('order_id', orderId);
+      ),
+      partner:partner_id (
+        full_name,
+        avatar_url,
+        phone,
+        rating_avg
+      )
+    `)
+    .eq('order_id', orderId);
 
-    bookingsList = (bookingsData || []) as unknown as BookingRow[];
-  } else if (bookingId) {
-    const { data: bookingData } = await supabase
-      .from('bookings')
-      .select(`
-        *,
-        services (
-          id,
-          title,
-          category,
-          subcategories (
-            icon_name
-          )
-        )
-      `)
-      .eq('id', bookingId)
-      .single();
-
-    if (!bookingData) redirect('/customer/dashboard');
-
-    overallAmount = bookingData.total_amount;
-    const scheduledDate = bookingData.scheduled_date ? new Date(bookingData.scheduled_date) : new Date();
-    displayDate = scheduledDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'Asia/Kolkata' });
-    displayTime = scheduledDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' });
-
-    let partnerInfo: ProfilePartner | null = null;
-    if (bookingData.partner_id) {
-      const { data: partnerData } = await supabase
-        .from('profiles')
-        .select('full_name, avatar_url, phone, rating_avg')
-        .eq('id', bookingData.partner_id)
-        .single();
-      partnerInfo = partnerData as ProfilePartner | null;
-    }
-
-    bookingsList = [{
-      ...bookingData,
-      partner: partnerInfo
-    }] as unknown as BookingRow[];
-  }
+  bookingsList = (bookingsData || []) as unknown as BookingRow[];
 
   if (bookingsList.length === 0) {
     redirect('/customer/dashboard');
   }
 
-  // Check if any booking is confirmed
   const anyConfirmed = bookingsList.some(b => b.status === 'confirmed' && b.partner);
 
   return (
     <div className="bg-background text-on-background font-body min-h-screen flex flex-col relative">
-      {/* Clear the cart on mount if checking out an order */}
-      {isOrder && <CartClearer />}
+      <CartClearer />
 
       <main className="grow flex flex-col items-center justify-center px-4 md:px-6 py-8 md:py-12 max-w-2xl mx-auto w-full z-10">
 
@@ -161,21 +128,13 @@ export default async function CheckoutSuccessPage({
             {anyConfirmed ? 'Booking Confirmed!' : 'Booking Received!'}
           </h1>
           <p className="text-on-surface-variant font-medium max-w-md mx-auto leading-relaxed text-sm md:text-base">
-            {isOrder ? (
+            {anyConfirmed ? (
               <>
-                Your order of <span className="text-on-surface font-bold">{bookingsList.length} services</span> has been placed for <span className="text-on-surface font-bold">{displayDate}</span> at <span className="text-on-surface font-bold">{displayTime}</span>.
+                <span className="text-on-surface font-bold">{bookingsList[0].partner?.full_name}</span> has been assigned to your booking on <span className="text-on-surface font-bold">{displayDate}</span> at <span className="text-on-surface font-bold">{displayTime}</span>.
               </>
             ) : (
               <>
-                {anyConfirmed ? (
-                  <>
-                    <span className="text-on-surface font-bold">{bookingsList[0].partner?.full_name}</span> has been assigned to your booking on <span className="text-on-surface font-bold">{displayDate}</span> at <span className="text-on-surface font-bold">{displayTime}</span>.
-                  </>
-                ) : (
-                  <>
-                    Your booking is being processed. A technician will be assigned shortly for <span className="text-on-surface font-bold">{displayDate}</span> at <span className="text-on-surface font-bold">{displayTime}</span>.
-                  </>
-                )}
+                Your order of <span className="text-on-surface font-bold">{bookingsList.length} services</span> has been placed for <span className="text-on-surface font-bold">{displayDate}</span> at <span className="text-on-surface font-bold">{displayTime}</span>. We are matching a professional.
               </>
             )}
           </p>
@@ -189,11 +148,9 @@ export default async function CheckoutSuccessPage({
 
             <div className="flex justify-between items-start border-b border-outline-variant/10 pb-4 mb-6">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-outline mb-1">
-                  {isOrder ? 'Order Reference' : 'Booking Reference'}
-                </p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-outline mb-1">Order Reference</p>
                 <h2 className="font-headline text-base md:text-lg font-bold text-on-surface">
-                  {isOrder ? `#ORD-${orderId?.substring(0, 6).toUpperCase()}` : `#BK-${bookingId?.substring(0, 6).toUpperCase()}`}
+                  #ORD-{orderId.substring(0, 6).toUpperCase()}
                 </h2>
               </div>
               <div className="text-right">

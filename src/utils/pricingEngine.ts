@@ -1,4 +1,4 @@
-import { BookingPricing, PricingModel, MembershipPlan } from "@/lib/types";
+import { BookingPricing, PricingModel } from "@/lib/types";
 import { calculateGstBreakdown } from "@/lib/engines/gstEngine";
 
 export interface PricingInput {
@@ -79,9 +79,6 @@ export interface PricingInput {
     min_booking_amount?: number | null;
     max_discount?: number | null;
   } | null;
-
-  isMember?: boolean;
-  memberBenefit?: MembershipPlan["benefits"] | null;
 
   walletBalanceToUse?: number;
   gstRate?: number; // default 18
@@ -301,17 +298,9 @@ export function calculatePricingBreakdown(input: PricingInput): Omit<BookingPric
     }
   }
 
-  // 4. Calculate Membership Discounts
-  let discountAmount = 0;
-  if (input.isMember && input.memberBenefit) {
-    const pct = input.memberBenefit.discount_percent || 0;
-    if (pct > 0) {
-      discountAmount = Math.round(subtotal * (pct / 100));
-      subtotal = Math.max(0, subtotal - discountAmount);
-    }
-  }
+  const discountAmount = 0;
 
-  // 5. Calculate GST Amount using gstEngine
+  // 4. Calculate GST Amount using gstEngine
   const gstBreakdown = calculateGstBreakdown({
     subtotal,
     taxRatePercent: input.gstRate !== undefined ? input.gstRate : 18,

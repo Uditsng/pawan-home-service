@@ -10,22 +10,27 @@ export default function SplashLoader() {
   const [isFading, setIsFading] = useState(false);
 
   useEffect(() => {
-    if (hasShownSplash) {
-      return;
-    }
+    if (hasShownSplash) return;
 
-    const fadeTimer = setTimeout(() => {
+    const displayTimer = setTimeout(() => {
       setIsFading(true);
-      
-      const removeTimer = setTimeout(() => {
+
+      const removeTimer = setTimeout(async () => {
         setShow(false);
         hasShownSplash = true;
+
+        try {
+          const { SplashScreen } = await import("@capacitor/splash-screen");
+          await SplashScreen.hide();
+        } catch {
+          // Not on native or plugin unavailable — safe to ignore
+        }
       }, 500);
 
       return () => clearTimeout(removeTimer);
-    }, 0); // Start fade-out immediately on mount
+    }, 2500);
 
-    return () => clearTimeout(fadeTimer);
+    return () => clearTimeout(displayTimer);
   }, []);
 
   if (!show) return null;

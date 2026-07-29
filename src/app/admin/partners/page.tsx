@@ -337,6 +337,13 @@ export default async function AdminPartnersPage() {
       <PartnersConsole 
         initialPartners={processedPartners} 
         allServices={allServices}
+        fleetCounts={{
+          total: processedPartners.length,
+          active: processedPartners.filter((p) => p.status === 'active').length,
+          busy: processedPartners.filter((p) => p.status === 'busy').length,
+          offline: processedPartners.filter((p) => p.status === 'offline').length,
+          suspended: processedPartners.filter((p) => p.status === 'suspended').length,
+        }}
       />
     </div>
   );

@@ -47,9 +47,4 @@ export function calculateGstBreakdown(input: GstInput): GstBreakdown {
   };
 }
 
-/**
- * Quick helper to format tax percentage for UI display.
- */
-export function formatGstRate(rate: number): string {
-  return `${rate}%`;
-}
+

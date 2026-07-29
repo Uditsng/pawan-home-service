@@ -36,7 +36,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com",
       "img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com https://i.pravatar.cc",
       "font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com",
-      "connect-src 'self' https://*.supabase.co https://api.razorpay.com https://*.vercel.app wss://*.supabase.co",
+      "connect-src 'self' https://*.supabase.co https://api.razorpay.com wss://*.supabase.co",
       "frame-src 'self' https://checkout.razorpay.com https://api.razorpay.com",
       "media-src 'self'",
       "worker-src 'self' blob:",
@@ -78,7 +78,7 @@ const nextConfig: NextConfig = {
           ...securityHeaders,
           {
             key: "Access-Control-Allow-Origin",
-            value: process.env.CORS_ORIGIN || "http://localhost:3000",
+            value: process.env.CORS_ORIGIN || "https://www.phscleaningcompany.com",
           },
           {
             key: "Access-Control-Allow-Methods",

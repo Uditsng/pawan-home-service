@@ -2,13 +2,48 @@
 
 import { useCart } from "@/lib/cart/CartContext";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
+import { getCartPricesAction, CartPricesResult } from "@/app/actions/cart";
 
 export default function CartDrawer() {
-  const { items, isDrawerOpen, closeDrawer, removeItem, subtotal, itemCount } =
+  const { items, isDrawerOpen, closeDrawer, removeItem, itemCount } =
     useCart();
   const router = useRouter();
+  const [prices, setPrices] = useState<CartPricesResult | null>(null);
+  const [isLoadingPrices, setIsLoadingPrices] = useState(false);
+  const prevItemsRef = useRef<string>("");
+
+  const fetchPrices = useCallback(async () => {
+    if (items.length === 0) {
+      setPrices(null);
+      return;
+    }
+    setIsLoadingPrices(true);
+    try {
+      const result = await getCartPricesAction(items);
+      setPrices(result);
+    } catch {
+      setPrices(null);
+    } finally {
+      setIsLoadingPrices(false);
+    }
+  }, [items]);
+
+  useEffect(() => {
+    const key = items.map(i => i.serviceId).join(",");
+    if (key !== prevItemsRef.current) {
+      prevItemsRef.current = key;
+      fetchPrices();
+    }
+  }, [items, fetchPrices]);
+
+  // Re-fetch on drawer open in case items changed while closed
+  useEffect(() => {
+    if (isDrawerOpen && items.length > 0) {
+      fetchPrices();
+    }
+  }, [isDrawerOpen, fetchPrices, items.length]);
 
   // Prevent body scroll when drawer is open
   useEffect(() => {
@@ -98,48 +133,55 @@ export default function CartDrawer() {
               </button>
             </div>
           ) : (
-            items.map((item) => (
-              <div
-                key={item.serviceId}
-                className="flex items-center gap-3 p-3 bg-surface-container-low rounded-xl border border-outline-variant/10 group hover:border-primary/20 transition-all"
-              >
-                {/* Icon */}
-                <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
-                  <ServiceIconComponent
-                    iconName={item.iconName}
-                    width={24}
-                    height={24}
-                    className="w-6 h-6 text-emerald-600 drop-shadow-sm"
-                  />
-                </div>
+            items.map((item) => {
+              const itemPrice = prices?.prices[item.serviceId];
+              return (
+                <div
+                  key={item.serviceId}
+                  className="flex items-center gap-3 p-3 bg-surface-container-low rounded-xl border border-outline-variant/10 group hover:border-primary/20 transition-all"
+                >
+                  {/* Icon */}
+                  <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
+                    <ServiceIconComponent
+                      iconName={item.iconName}
+                      width={24}
+                      height={24}
+                      className="w-6 h-6 text-emerald-600 drop-shadow-sm"
+                    />
+                  </div>
 
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <p className="font-headline font-bold text-sm text-on-surface truncate leading-tight">
-                    {item.title}
-                  </p>
-                  <p className="text-[11px] text-on-surface-variant font-medium mt-0.5">
-                    {item.subcategoryName}
-                  </p>
-                </div>
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-headline font-bold text-sm text-on-surface truncate leading-tight">
+                      {item.title}
+                    </p>
+                    <p className="text-[11px] text-on-surface-variant font-medium mt-0.5">
+                      {item.subcategoryName}
+                    </p>
+                  </div>
 
-                {/* Price + Remove */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="font-black text-sm text-primary">
-                    ₹{item.basePrice}
-                  </span>
-                  <button
-                    onClick={() => removeItem(item.serviceId)}
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-red-500/10 hover:text-red-500 transition-colors"
-                    aria-label={`Remove ${item.title} from cart`}
-                  >
-                    <span className="material-symbols-outlined text-base">
-                      delete
-                    </span>
-                  </button>
+                  {/* Price + Remove */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {isLoadingPrices && !itemPrice ? (
+                      <div className="w-14 h-4 bg-surface-container-high rounded animate-pulse" />
+                    ) : itemPrice ? (
+                      <span className="font-black text-sm text-primary">
+                        ₹{itemPrice.priceWithoutGst}
+                      </span>
+                    ) : null}
+                    <button
+                      onClick={() => removeItem(item.serviceId)}
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-red-500/10 hover:text-red-500 transition-colors"
+                      aria-label={`Remove ${item.title} from cart`}
+                    >
+                      <span className="material-symbols-outlined text-base">
+                        delete
+                      </span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
@@ -152,16 +194,28 @@ export default function CartDrawer() {
                 <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
                   Subtotal ({itemCount} services)
                 </p>
-                <p className="font-black text-xl text-on-surface mt-0.5">
-                  ₹{subtotal}
-                </p>
+                {isLoadingPrices ? (
+                  <div className="w-20 h-6 bg-surface-container-high rounded animate-pulse mt-1" />
+                ) : prices ? (
+                  <p className="font-black text-xl text-on-surface mt-0.5">
+                    ₹{prices.subtotal}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-on-surface-variant font-medium mt-0.5">
+                    Calculating...
+                  </p>
+                )}
               </div>
               <div className="text-right">
                 <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
                   + GST & Taxes
                 </p>
                 <p className="text-[11px] text-on-surface-variant font-medium mt-0.5">
-                  Calculated at checkout
+                  {isLoadingPrices
+                    ? "Calculating..."
+                    : prices
+                    ? `₹${prices.totalGst}`
+                    : "—"}
                 </p>
               </div>
             </div>

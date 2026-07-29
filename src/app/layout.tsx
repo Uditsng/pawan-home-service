@@ -20,6 +20,20 @@ export const metadata: Metadata = {
   title: "PHS Cleaning Company",
   description: "Premium Home Services at Your Doorstep",
   manifest: "/manifest.json",
+  metadataBase: new URL("https://www.phscleaningcompany.com"),
+  openGraph: {
+    title: "PHS Cleaning Company",
+    description: "Premium Home Services at Your Doorstep",
+    url: "https://www.phscleaningcompany.com",
+    siteName: "PHS Cleaning Company",
+    locale: "en_IN",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "PHS Cleaning Company",
+    description: "Premium Home Services at Your Doorstep",
+  },
 };
 
 export const viewport: Viewport = {

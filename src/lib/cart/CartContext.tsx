@@ -47,8 +47,6 @@ function cartReducer(state: CartState, action: CartAction): CartState {
 interface CartContextValue {
   items: CartItem[];
   itemCount: number;
-  totalPrice: number;
-  subtotal: number;
   isOpen: boolean;
   isDrawerOpen: boolean;
   isInCart: (serviceId: string) => boolean;
@@ -98,7 +96,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.items]);
 
-  const totalPrice = state.items.reduce((sum, item) => sum + item.basePrice, 0);
   const itemCount = state.items.length;
 
   const isInCart = useCallback((serviceId: string) => {
@@ -124,8 +121,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     <CartContext.Provider value={{
       items: state.items,
       itemCount,
-      totalPrice,
-      subtotal: totalPrice,
       isOpen: state.isOpen,
       isDrawerOpen: state.isOpen,
       isInCart,

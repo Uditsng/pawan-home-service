@@ -336,3 +336,94 @@ export async function getPartnerReviewsAction(partnerId: string) {
 
   return data;
 }
+
+export interface PartnerEarningsSummary {
+  totalEarnings: number;
+  thisMonthEarnings: number;
+  avgPerJob: number;
+  totalCommission: number;
+  totalServiceRevenue: number;
+  totalGst: number;
+  jobsCount: number;
+  monthlyTrend: { month: string; payout: number; jobs: number }[];
+}
+
+export async function getPartnerEarningsAction(partnerId: string): Promise<PartnerEarningsSummary> {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const [settingsResult, bookingsResult] = await Promise.all([
+    supabase.from("platform_settings").select("value").eq("key", "platform_commission").single(),
+    supabase
+      .from("bookings")
+      .select("id, total_amount, created_at")
+      .eq("partner_id", partnerId)
+      .eq("status", "completed")
+      .order("created_at", { ascending: false }),
+  ]);
+
+  const commissionPercent = Number(settingsResult.data?.value ?? 20);
+  const bookings = (bookingsResult.data || []) as { id: string; total_amount: number; created_at: string }[];
+
+  const bookingIds = bookings.map((b) => b.id);
+  let pricingMap = new Map<string, number>();
+  if (bookingIds.length > 0) {
+    const { data: pricingData } = await supabase
+      .from("booking_pricing")
+      .select("booking_id, gst_amount")
+      .in("booking_id", bookingIds);
+    pricingMap = new Map((pricingData || []).map((p: { booking_id: string; gst_amount: number }) => [p.booking_id, p.gst_amount]));
+  }
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  let totalAmount = 0, totalGst = 0, monthAmount = 0, monthGst = 0;
+  const monthGroups = new Map<string, { total: number; gst: number; count: number }>();
+
+  for (const b of bookings) {
+    const amt = Number(b.total_amount || 0);
+    const gst = Number(pricingMap.get(b.id) || 0);
+    totalAmount += amt;
+    totalGst += gst;
+
+    const d = new Date(b.created_at);
+    if (d >= monthStart) {
+      monthAmount += amt;
+      monthGst += gst;
+    }
+
+    const key = d.toLocaleString("en-IN", { month: "short", year: "2-digit" });
+    if (!monthGroups.has(key)) monthGroups.set(key, { total: 0, gst: 0, count: 0 });
+    const g = monthGroups.get(key)!;
+    g.total += amt;
+    g.gst += gst;
+    g.count++;
+  }
+
+  const calc = (total: number, gst: number) => {
+    const svcRev = Math.max(0, total) - Math.max(0, gst);
+    const comm = Math.round(svcRev * (commissionPercent / 100));
+    return { svcRev, comm, payout: Math.round(svcRev * ((100 - commissionPercent) / 100)) };
+  };
+
+  const lifetime = calc(totalAmount, totalGst);
+  const month = calc(monthAmount, monthGst);
+  const avg = bookings.length > 0 ? Math.round(lifetime.payout / bookings.length) : 0;
+
+  const monthlyTrend = Array.from(monthGroups.entries()).reverse().slice(0, 12).map(([m, g]) => {
+    const e = calc(g.total, g.gst);
+    return { month: m, payout: e.payout, jobs: g.count };
+  });
+
+  return {
+    totalEarnings: lifetime.payout,
+    thisMonthEarnings: month.payout,
+    avgPerJob: avg,
+    totalCommission: lifetime.comm,
+    totalServiceRevenue: lifetime.svcRev,
+    totalGst: totalGst,
+    jobsCount: bookings.length,
+    monthlyTrend,
+  };
+}

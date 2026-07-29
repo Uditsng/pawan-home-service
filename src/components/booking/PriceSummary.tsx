@@ -107,13 +107,6 @@ export default function PriceSummary({
           </div>
         )}
 
-        {breakdown.discount_amount > 0 && (
-          <div className="flex justify-between text-success">
-            <span>Membership Discount</span>
-            <span className="font-black">-₹{breakdown.discount_amount}</span>
-          </div>
-        )}
-
         {breakdown.coupon_discount > 0 && (
           <div className="flex justify-between text-success">
             <span>Coupon Discount</span>

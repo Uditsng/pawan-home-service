@@ -1,6 +1,6 @@
 {
-  "name": "temp-next-app",
-  "version": "0.1.0",
+  "name": "phs-cleaning-company",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",

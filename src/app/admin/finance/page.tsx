@@ -2,62 +2,70 @@ import { createClient } from "@/utils/supabase/server";
 import { FinanceConsole } from "./FinanceConsole";
 import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 
-interface BookingRow {
+interface RawBooking {
   id: string;
-  total_amount: number | null;
+  total_amount: number;
   created_at: string;
   status: string;
-  customer: {
-    full_name: string | null;
-  } | null;
-  partner: {
-    full_name: string | null;
-  } | null;
+  services: { title: string } | null;
+  customer: { full_name: string } | null;
+  partner: { full_name: string } | null;
+}
+
+interface RawPricing {
+  booking_id: string;
+  base_price: number;
+  addons_total: number;
+  gst_amount: number;
+  discount_amount: number;
+  total_price: number;
+}
+
+export interface EnrichedBooking extends RawBooking {
+  booking_pricing: RawPricing | null;
 }
 
 export default async function AdminFinancePage() {
   const supabase = await createClient();
 
-  const [settings, bookingsResult] = await Promise.all([
-    fetchPlatformSettings(supabase),
+  const [bookingsResult, pricingResult, platformSettings] = await Promise.all([
     supabase
-      .from('bookings')
+      .from("bookings")
       .select(`
         id,
         total_amount,
         created_at,
         status,
-        customer:customer_id (full_name),
-        partner:partner_id (full_name)
+        services:service_id(title),
+        customer:customer_id(full_name),
+        partner:partner_id(full_name)
       `)
-      .neq('status', 'pending')
-      .order('created_at', { ascending: false })
+      .neq("status", "pending")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("booking_pricing")
+      .select("booking_id, base_price, addons_total, gst_amount, discount_amount, total_price"),
+    fetchPlatformSettings(supabase),
   ]);
 
-  const bookingRows = (bookingsResult.data as unknown as BookingRow[]) || [];
+  const bookings = (bookingsResult.data as unknown as RawBooking[]) || [];
+  const pricingData = (pricingResult.data as unknown as RawPricing[]) || [];
+  const pricingMap = new Map(pricingData.map((p) => [p.booking_id, p]));
 
-  const serializedBookings = bookingRows.map((b) => ({
-    id: b.id,
-    total_amount: Number(b.total_amount || 0),
-    created_at: b.created_at,
-    status: b.status,
-    customer: b.customer ? {
-      full_name: b.customer.full_name || "Guest Customer"
-    } : null,
-    partner: b.partner ? {
-      full_name: b.partner.full_name || "Assigned Pro"
-    } : null
+  const enriched: EnrichedBooking[] = bookings.map((b) => ({
+    ...b,
+    booking_pricing: pricingMap.get(b.id) || null,
   }));
 
   return (
-    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold tracking-tighter text-primary font-headline">Payments</h1>
-        <p className="text-on-surface-variant font-medium mt-1 opacity-60 text-sm">Track payments, active commissions, and professional payouts.</p>
+        <p className="text-on-surface-variant font-medium mt-1 opacity-60 text-sm">
+          Track payments, active commissions, and professional payouts.
+        </p>
       </div>
-
-      {/* Finance Console Ledger */}
-      <FinanceConsole initialBookings={serializedBookings} commissionPercent={settings.platformCommission} />
+      <FinanceConsole initialBookings={enriched} commissionPercent={platformSettings.platformCommission} />
     </div>
   );
 }

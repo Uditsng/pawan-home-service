@@ -18,7 +18,9 @@ import {
   updateBookingStatusAction,
   manualAssignPartnerAction,
   reassignPartnerAction,
+  getBookingPricingAction,
 } from "./actions";
+import type { BookingPricingData } from "./actions";
 
 // ─── Props Interface ─────────────────────────────────────────
 
@@ -93,6 +95,13 @@ export function BookingsCommand({
     booking: SerializedBooking;
   } | null>(null);
 
+  // Pricing data loaded on-demand for detail drawer
+  const [bookingPricing, setBookingPricing] = useState<BookingPricingData | null>(null);
+  const [loadingPricing, setLoadingPricing] = useState(false);
+
+  // Quick time-period filter
+  const [timePeriod, setTimePeriod] = useState<"all" | "today" | "week" | "month">("all");
+
   useEffect(() => {
     const handleClose = () => {
       setDropdownMenu(null);
@@ -151,6 +160,18 @@ export function BookingsCommand({
     fetchLogs();
   }, [selectedBooking?.id, isDetailDrawerOpen]);
 
+  // Fetch booking pricing when the details tab is opened
+  useEffect(() => {
+    if (isDetailDrawerOpen && selectedBooking && activeDrawerTab === "details") {
+      setLoadingPricing(true);
+      setBookingPricing(null);
+      getBookingPricingAction(selectedBooking.id)
+        .then((result) => setBookingPricing(result))
+        .catch(() => setBookingPricing(null))
+        .finally(() => setLoadingPricing(false));
+    }
+  }, [isDetailDrawerOpen, selectedBooking?.id, activeDrawerTab]);
+
   // Manual Assign Drawer
   const [isAssignDrawerOpen, setIsAssignDrawerOpen] = useState(false);
   const [assignTargetBooking, setAssignTargetBooking] = useState<SerializedBooking | null>(null);
@@ -179,11 +200,46 @@ export function BookingsCommand({
 
   const currentGmv = bookings.reduce((acc, b) => acc + b.total_amount, 0);
 
+  // Avg completion time across all bookings (in minutes)
+  const avgCompletionTime = (() => {
+    const completedBookings = bookings.filter(
+      (b) => b.completed_at && b.created_at
+    );
+    if (completedBookings.length === 0) return 0;
+    const totalMinutes = completedBookings.reduce((acc, b) => {
+      return acc + (new Date(b.completed_at!).getTime() - new Date(b.created_at).getTime()) / 60000;
+    }, 0);
+    return Math.round(totalMinutes / completedBookings.length);
+  })();
+
+  // GMV this month
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const thisMonthGmv = bookings
+    .filter((b) => new Date(b.created_at) >= monthStart)
+    .reduce((acc, b) => acc + b.total_amount, 0);
+
   // ─── Filtering Logic ──────────────────────────────────────
 
   const filteredBookings = bookings.filter((booking) => {
     // Status filter
     if (activeStatus !== "all" && booking.status !== activeStatus) return false;
+
+    // Time period filter
+    if (timePeriod !== "all") {
+      const created = new Date(booking.created_at);
+      const now = new Date();
+      if (timePeriod === "today") {
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        if (created < todayStart) return false;
+      } else if (timePeriod === "week") {
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        if (created < weekAgo) return false;
+      } else if (timePeriod === "month") {
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        if (created < monthStart) return false;
+      }
+    }
 
     // Search: Booking ID, customer name, partner name, phone
     if (searchTerm) {
@@ -209,6 +265,43 @@ export function BookingsCommand({
 
     return true;
   });
+
+  // CSV Export Utility
+  const handleExportCSV = () => {
+    if (filteredBookings.length === 0) {
+      setActionError("No bookings to export.");
+      return;
+    }
+    const headers = [
+      "Booking ID", "Status", "Service", "Category", "Customer", "Phone",
+      "Partner", "City", "Amount", "Payment", "Created", "Scheduled", "Completed"
+    ];
+    const rows = filteredBookings.map((b) => [
+      `BK-${b.id.slice(0, 8).toUpperCase()}`,
+      b.status,
+      b.service?.title || "",
+      b.service?.category || "",
+      b.customer?.full_name || "",
+      b.customer?.phone || "",
+      b.partner?.full_name || "Unassigned",
+      b.city || "",
+      `₹${b.total_amount.toLocaleString()}`,
+      b.payment_method || "UPI",
+      b.created_at ? format(new Date(b.created_at), "yyyy-MM-dd") : "",
+      b.scheduled_date ? format(new Date(b.scheduled_date), "yyyy-MM-dd") : "",
+      b.completed_at ? format(new Date(b.completed_at), "yyyy-MM-dd") : b.cancelled_at ? format(new Date(b.cancelled_at), "yyyy-MM-dd") : "",
+    ]);
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      [headers.join(","), ...rows.map((r) => r.map((v) => `"${v}"`).join(","))].join("\n");
+    const encoded = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encoded);
+    link.setAttribute("download", `bookings_export_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // ─── Pagination ────────────────────────────────────────────
 
@@ -408,19 +501,19 @@ export function BookingsCommand({
       )}
 
       {/* ─── 1. OPERATIONAL METRIC CARDS ─────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm relative overflow-hidden group">
           <div className="absolute right-0 top-0 w-20 h-20 bg-primary/5 rounded-bl-[48px] transition-transform group-hover:scale-105"></div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">
             Total Operations
           </p>
           <h2 className="text-2xl font-bold text-primary font-headline mt-1.5">
-            {statusCounts.all} Bookings
+            {statusCounts.all}
           </h2>
           <div className="flex gap-3 mt-1.5 text-xs text-on-surface-variant/80 font-normal">
             <span className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-              {statusCounts.completed} Completed
+              {statusCounts.completed} Done
             </span>
             <span className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
@@ -438,7 +531,7 @@ export function BookingsCommand({
             ₹{currentGmv.toLocaleString()}
           </h2>
           <p className="text-[11px] text-on-surface-variant/85 mt-1 font-normal">
-            Accumulated across all booking operations
+            ₹{thisMonthGmv.toLocaleString()} this month
           </p>
         </div>
 
@@ -466,6 +559,18 @@ export function BookingsCommand({
               All bookings assigned
             </p>
           )}
+        </div>
+
+        <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm relative overflow-hidden group">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">
+            Avg Completion Time
+          </p>
+          <h2 className="text-2xl font-bold text-primary font-headline mt-1.5">
+            {avgCompletionTime > 0 ? `${avgCompletionTime}m` : "—"}
+          </h2>
+          <p className="text-[11px] text-on-surface-variant/85 mt-1 font-normal">
+            From creation to completion
+          </p>
         </div>
       </div>
 
@@ -529,6 +634,39 @@ export function BookingsCommand({
               className="w-full bg-surface-container-low text-primary text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-2 rounded-lg border border-outline-variant/40 focus:border-secondary/60 focus:outline-none transition-all cursor-pointer"
             />
           </div>
+        </div>
+
+        {/* Time Period + CSV Export Row */}
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 bg-surface-container p-0.5 rounded-xl border border-outline-variant/10">
+            {[
+              { key: "all" as const, label: "All Time" },
+              { key: "today" as const, label: "Today" },
+              { key: "week" as const, label: "This Week" },
+              { key: "month" as const, label: "This Month" },
+            ].map((p) => (
+              <button
+                key={p.key}
+                onClick={() => { setTimePeriod(p.key); setCurrentPage(1); }}
+                className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
+                  timePeriod === p.key
+                    ? "bg-primary text-white shadow-md shadow-primary/20"
+                    : "text-on-surface-variant hover:text-primary"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={handleExportCSV}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest border border-outline-variant/20 rounded-xl hover:bg-surface-container transition-all"
+            disabled={filteredBookings.length === 0}
+          >
+            <span className="material-symbols-outlined text-sm">download</span>
+            Export CSV
+          </button>
         </div>
 
         {/* Status Segment Pills */}
@@ -1001,10 +1139,49 @@ export function BookingsCommand({
                     </div>
                   </div>
 
+                  {/* Time Analytics */}
+                  {(() => {
+                    function timeDelta(a: string | null, b: string | null): string | null {
+                      if (!a || !b) return null;
+                      const diff = new Date(a).getTime() - new Date(b).getTime();
+                      if (diff < 0) return null;
+                      const mins = Math.round(diff / 60000);
+                      if (mins < 60) return `${mins}m`;
+                      const hrs = Math.floor(mins / 60);
+                      const rem = mins % 60;
+                      return `${hrs}h ${rem}m`;
+                    }
+                    const deltas: { label: string; value: string | null; color: string }[] = [
+                      { label: "Time to Assign", value: timeDelta(selectedBooking.accepted_at, selectedBooking.created_at), color: "bg-primary" },
+                      { label: "Response Time", value: timeDelta(selectedBooking.started_at, selectedBooking.accepted_at), color: "bg-blue-500" },
+                      { label: "Service Duration", value: timeDelta(selectedBooking.completed_at, selectedBooking.started_at), color: "bg-secondary" },
+                      { label: "Total Lifecycle", value: timeDelta(selectedBooking.completed_at, selectedBooking.created_at), color: "bg-emerald-500" },
+                    ].filter(d => d.value !== null);
+                    if (deltas.length > 0) {
+                      return (
+                        <div className="pt-4 border-t border-outline-variant/10">
+                          <h5 className="text-xs font-bold uppercase tracking-widest text-primary mb-3">Time Analytics</h5>
+                          <div className="grid grid-cols-2 gap-3">
+                            {deltas.map((d) => (
+                              <div key={d.label} className="bg-surface-container p-3 rounded-xl border border-outline-variant/15">
+                                <div className="flex items-center gap-2">
+                                  <span className={`w-2 h-2 rounded-full ${d.color}`} />
+                                  <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70">{d.label}</p>
+                                </div>
+                                <p className="text-sm font-bold text-primary font-headline mt-1">{d.value}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
                   <h5 className="text-xs font-bold uppercase tracking-widest text-primary pt-4 border-t border-outline-variant/10">Operational Audit Trail</h5>
                   {isLoadingLogs ? (
                     <div className="flex items-center gap-2 text-xs text-on-surface-variant/70">
-                      <span className="animate-spin text-sm">rotate_right</span> Loading logs...
+                      <span className="material-symbols-outlined animate-spin text-sm">rotate_right</span> Loading logs...
                     </div>
                   ) : auditTrail.length === 0 ? (
                     <p className="text-xs text-on-surface-variant/50 italic">No audit events logged for this booking yet.</p>
@@ -1037,7 +1214,7 @@ export function BookingsCommand({
                   <h5 className="text-xs font-bold uppercase tracking-widest text-primary pt-4 border-t border-outline-variant/10">Notification Logs</h5>
                   {isLoadingLogs ? (
                     <div className="flex items-center gap-2 text-xs text-on-surface-variant/70">
-                      <span className="animate-spin text-sm">rotate_right</span> Loading logs...
+                      <span className="material-symbols-outlined animate-spin text-sm">rotate_right</span> Loading logs...
                     </div>
                   ) : notificationsLog.length === 0 ? (
                     <p className="text-xs text-on-surface-variant/50 italic">No notifications logged for this booking yet.</p>
@@ -1126,6 +1303,56 @@ export function BookingsCommand({
                         <p className="text-[10px] text-on-surface-variant/50 font-normal">{selectedBooking.customer?.phone || "No phone"}</p>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Pricing Breakdown */}
+                  <h5 className="text-xs font-bold uppercase tracking-widest text-primary">Pricing Breakdown</h5>
+                  <div className="bg-surface-container p-4 rounded-xl border border-outline-variant/15">
+                    {loadingPricing ? (
+                      <div className="flex items-center gap-2 text-xs text-on-surface-variant/70">
+                        <div className="w-4 h-4 rounded-full bg-surface-container-high animate-pulse" />
+                        Loading pricing...
+                      </div>
+                    ) : bookingPricing ? (
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-on-surface-variant/70 font-semibold">Base Price</span>
+                          <span className="font-bold text-primary">₹{Number(bookingPricing.base_price).toLocaleString()}</span>
+                        </div>
+                        {Number(bookingPricing.addons_total) > 0 && (
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-on-surface-variant/70 font-semibold">Add-ons</span>
+                            <span className="font-bold text-primary">+₹{Number(bookingPricing.addons_total).toLocaleString()}</span>
+                          </div>
+                        )}
+                        {Number(bookingPricing.gst_amount) > 0 && (
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-on-surface-variant/70 font-semibold">GST</span>
+                            <span className="font-bold text-primary">+₹{Number(bookingPricing.gst_amount).toLocaleString()}</span>
+                          </div>
+                        )}
+                        {Number(bookingPricing.discount_amount) > 0 && (
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-on-surface-variant/70 font-semibold">Discount</span>
+                            <span className="font-bold text-secondary">-₹{Number(bookingPricing.discount_amount).toLocaleString()}</span>
+                          </div>
+                        )}
+                        {Number(bookingPricing.wallet_discount) > 0 && (
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-on-surface-variant/70 font-semibold">Wallet Discount</span>
+                            <span className="font-bold text-secondary">-₹{Number(bookingPricing.wallet_discount).toLocaleString()}</span>
+                          </div>
+                        )}
+                        <div className="border-t border-outline-variant/10 pt-2 mt-2">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="font-bold text-primary">Total</span>
+                            <span className="font-bold text-primary text-sm">₹{selectedBooking.total_amount.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-on-surface-variant/60 italic">Pricing data not available for this booking.</p>
+                    )}
                   </div>
 
                   {/* OTP Security & Timing */}

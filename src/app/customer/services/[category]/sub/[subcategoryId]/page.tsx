@@ -91,9 +91,16 @@ export default async function SubcategoryServiceListingPage({
                       serviceId: service.id,
                       title: service.title,
                       iconName: iconName,
-                      basePrice: service.base_price,
                       subcategoryName: service.subcategories?.subcategory_name || "Service",
                       categorySlug: categorySlug,
+                      gstApplicable: service.gst_applicable ?? false,
+                      variantId: null,
+                      selectedDuration: null,
+                      areaSqft: null,
+                      quantity: null,
+                      distanceKm: null,
+                      addons: null,
+                      selectedPackages: null,
                     }}
                     compact={true}
                   />

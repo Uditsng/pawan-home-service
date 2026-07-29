@@ -123,7 +123,6 @@ export default function DynamicServiceConfigurator({
       addons: activeAddons,
       scheduledDate: new Date(),
       surchargeRules,
-      isMember: false,
       gstRate,
       gstEnabled,
       gstApplicable: service.gst_applicable,
@@ -175,21 +174,28 @@ export default function DynamicServiceConfigurator({
     return `/customer/checkout/schedule?${params.toString()}`;
   }, [service.id, model, bookingState,]);
 
-  // Cart item compile
+  // Cart item compile (stores config only — server calculates prices)
   const cartItem = useMemo(() => {
-    const priceWithoutGst = breakdown.total_price - breakdown.gst_amount;
+    const chosenAddons = Object.entries(bookingState.selectedAddons)
+      .map(([id, qty]) => `${id}:${qty}`)
+      .join(",");
     return {
       serviceId: service.id,
       title: service.title,
       iconName,
-      basePrice: priceWithoutGst,
       subcategoryName,
       categorySlug,
       pricingModel: model,
-      selectedDuration: model === "hourly" ? (bookingState.durationMinutes || undefined) : undefined,
       gstApplicable: service.gst_applicable,
+      variantId: bookingState.selectedVariantId || null,
+      selectedDuration: model === "hourly" ? (bookingState.durationMinutes || null) : null,
+      areaSqft: model === "area" || model === "hybrid" ? (bookingState.areaSqft || null) : null,
+      quantity: model === "quantity" || model === "hybrid" ? (bookingState.quantity || null) : null,
+      distanceKm: model === "distance" || model === "hybrid" ? (bookingState.distanceKm || null) : null,
+      addons: chosenAddons || null,
+      selectedPackages: null,
     };
-  }, [service, iconName, breakdown.total_price, breakdown.gst_amount, subcategoryName, categorySlug, model, bookingState.durationMinutes]);
+  }, [service, iconName, model, bookingState, subcategoryName, categorySlug]);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 relative">

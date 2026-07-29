@@ -13,7 +13,9 @@ import {
   reviewKycAction,
   savePartnerNoteAction,
   getPartnerBookingsAction,
-  getPartnerReviewsAction
+  getPartnerReviewsAction,
+  getPartnerEarningsAction,
+  type PartnerEarningsSummary,
 } from "./actions";
 
 interface RawBookingFromAction {
@@ -52,9 +54,16 @@ interface RawReviewFromAction {
 interface PartnersConsoleProps {
   initialPartners: SerializedPartner[];
   allServices: { id: string; title: string; category_name: string }[];
+  fleetCounts?: {
+    total: number;
+    active: number;
+    busy: number;
+    offline: number;
+    suspended: number;
+  };
 }
 
-export function PartnersConsole({ initialPartners, allServices = [] }: PartnersConsoleProps) {
+export function PartnersConsole({ initialPartners, allServices = [], fleetCounts }: PartnersConsoleProps) {
   const [partners, setPartners] = useState<SerializedPartner[]>(initialPartners);
   const [isPending, startTransition] = useTransition();
 
@@ -121,7 +130,9 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
   // Profile Drawer States
   const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
   const [selectedProfilePartner, setSelectedProfilePartner] = useState<SerializedPartner | null>(null);
-  const [activeProfileTab, setActiveProfileTab] = useState<"overview" | "bookings" | "reviews" | "notes">("overview");
+  const [activeProfileTab, setActiveProfileTab] = useState<"overview" | "analytics" | "bookings" | "reviews" | "notes">("overview");
+  const [drawerEarnings, setDrawerEarnings] = useState<PartnerEarningsSummary | null>(null);
+  const [isLoadingEarnings, setIsLoadingEarnings] = useState(false);
 
   // Profile Note States
   const [partnerNoteInput, setPartnerNoteInput] = useState("");
@@ -377,6 +388,14 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
       })
       .catch(console.error)
       .finally(() => setIsLoadingDrawerReviews(false));
+
+    // Load earnings on-demand
+    setIsLoadingEarnings(true);
+    setDrawerEarnings(null);
+    getPartnerEarningsAction(partner.id)
+      .then(setDrawerEarnings)
+      .catch(console.error)
+      .finally(() => setIsLoadingEarnings(false));
   };
 
   const openReviewsModal = (partner: SerializedPartner) => {
@@ -520,6 +539,32 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
 
   return (
     <div className="space-y-4">
+
+      {/* ─── 0. FLEET SUMMARY HEADER CARDS ─── */}
+      {fleetCounts && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+          <div className="bg-primary rounded-xl p-3 text-on-primary">
+            <p className="text-[9px] font-black uppercase tracking-widest text-white/50">Total Fleet</p>
+            <p className="text-lg font-black font-headline tracking-tight text-secondary mt-0.5">{fleetCounts.total}</p>
+          </div>
+          <div className="bg-surface-container-lowest border border-outline-variant/15 rounded-xl p-3">
+            <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/60">Active Now</p>
+            <p className="text-lg font-black font-headline tracking-tight text-emerald-600 mt-0.5">{fleetCounts.active}</p>
+          </div>
+          <div className="bg-surface-container-lowest border border-outline-variant/15 rounded-xl p-3">
+            <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/60">On Job</p>
+            <p className="text-lg font-black font-headline tracking-tight text-amber-600 mt-0.5">{fleetCounts.busy}</p>
+          </div>
+          <div className="bg-surface-container-lowest border border-outline-variant/15 rounded-xl p-3">
+            <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/60">Offline</p>
+            <p className="text-lg font-black font-headline tracking-tight text-on-surface-variant/80 mt-0.5">{fleetCounts.offline}</p>
+          </div>
+          <div className="bg-surface-container-lowest border border-outline-variant/15 rounded-xl p-3">
+            <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/60">Suspended</p>
+            <p className="text-lg font-black font-headline tracking-tight text-red-600 mt-0.5">{fleetCounts.suspended}</p>
+          </div>
+        </div>
+      )}
 
       {/* ─── 1. FLEET SEARCH, FILTERS, & ONBOARDING CONTROLS ROW ─── */}
       <Card variant="glass" className="p-3">
@@ -1577,6 +1622,14 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
                 Reviews ({selectedProfilePartner.reviews_count})
               </button>
               <button
+                onClick={() => { setActiveProfileTab("analytics"); if (!drawerEarnings) { setIsLoadingEarnings(true); getPartnerEarningsAction(selectedProfilePartner.id).then(setDrawerEarnings).catch(console.error).finally(() => setIsLoadingEarnings(false)); } }}
+                className={`grow py-3 text-[10px] font-bold uppercase tracking-wider border-b-2 text-center transition-all ${
+                  activeProfileTab === "analytics" ? "border-secondary text-primary" : "border-transparent text-on-surface-variant hover:text-primary"
+                }`}
+              >
+                Analytics
+              </button>
+              <button
                 onClick={() => setActiveProfileTab("notes")}
                 className={`grow py-3 text-[10px] font-bold uppercase tracking-wider border-b-2 text-center transition-all ${
                   activeProfileTab === "notes" ? "border-secondary text-primary" : "border-transparent text-on-surface-variant hover:text-primary"
@@ -1634,7 +1687,7 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
                   </div>
 
                   {/* Territory coverage */}
-                  <div className="space-y-2">
+                  <div className="space-y-2 pb-4 border-b border-outline-variant/10">
                     <h5 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70">Service Areas</h5>
                     {selectedProfilePartner.service_areas && selectedProfilePartner.service_areas.length > 0 ? (
                       <p className="text-xs font-semibold text-primary leading-relaxed">
@@ -1645,6 +1698,82 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
                       </p>
                     ) : (
                       <p className="text-[10px] text-on-surface-variant/60 font-medium italic">No service areas mapped yet.</p>
+                    )}
+                  </div>
+
+                  {/* Financial Summary */}
+                  <div className="space-y-3 pb-4 border-b border-outline-variant/10">
+                    <h5 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70">Financial Summary</h5>
+                    {isLoadingEarnings ? (
+                      <div className="flex items-center gap-2 text-[10px] text-on-surface-variant">
+                        <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                        Loading earnings...
+                      </div>
+                    ) : drawerEarnings ? (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-surface-container-low rounded-lg p-2.5">
+                          <p className="text-[8px] uppercase tracking-wider text-on-surface-variant/60 font-bold">Total Earnings</p>
+                          <p className="text-sm font-black text-primary">₹{drawerEarnings.totalEarnings.toLocaleString()}</p>
+                        </div>
+                        <div className="bg-surface-container-low rounded-lg p-2.5">
+                          <p className="text-[8px] uppercase tracking-wider text-on-surface-variant/60 font-bold">This Month</p>
+                          <p className="text-sm font-black text-secondary">₹{drawerEarnings.thisMonthEarnings.toLocaleString()}</p>
+                        </div>
+                        <div className="bg-surface-container-low rounded-lg p-2.5">
+                          <p className="text-[8px] uppercase tracking-wider text-on-surface-variant/60 font-bold">Avg Per Job</p>
+                          <p className="text-sm font-black text-primary">₹{drawerEarnings.avgPerJob.toLocaleString()}</p>
+                        </div>
+                        <div className="bg-surface-container-low rounded-lg p-2.5">
+                          <p className="text-[8px] uppercase tracking-wider text-on-surface-variant/60 font-bold">Commission Paid</p>
+                          <p className="text-sm font-black text-error">₹{drawerEarnings.totalCommission.toLocaleString()}</p>
+                        </div>
+                        <div className="bg-surface-container-low rounded-lg p-2.5">
+                          <p className="text-[8px] uppercase tracking-wider text-on-surface-variant/60 font-bold">Jobs Done</p>
+                          <p className="text-sm font-black text-primary">{drawerEarnings.jobsCount}</p>
+                        </div>
+                        <div className="bg-surface-container-low rounded-lg p-2.5">
+                          <p className="text-[8px] uppercase tracking-wider text-on-surface-variant/60 font-bold">Service Revenue</p>
+                          <p className="text-sm font-black text-primary">₹{drawerEarnings.totalServiceRevenue.toLocaleString()}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-on-surface-variant/60 font-medium italic">No completed jobs data.</p>
+                    )}
+                  </div>
+
+                  {/* Booking Status Distribution */}
+                  <div className="space-y-2">
+                    <h5 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70">Booking Status</h5>
+                    {drawerBookings ? (
+                      <div className="space-y-1.5">
+                        {[
+                          { label: "Completed", status: "completed", color: "bg-secondary" },
+                          { label: "Cancelled", status: "cancelled", color: "bg-error" },
+                          { label: "In Progress", status: "in_progress", color: "bg-primary/60" },
+                          { label: "Other", status: "other", color: "bg-on-surface-variant/30" },
+                        ].map((item) => {
+                          const count = item.status === "other"
+                            ? drawerBookings.filter((b) => !["completed", "cancelled", "in_progress"].includes(b.status)).length
+                            : drawerBookings.filter((b) => b.status === item.status).length;
+                          const total = drawerBookings.length;
+                          const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                          if (count === 0) return null;
+                          return (
+                            <div key={item.label} className="flex items-center gap-2 text-[11px]">
+                              <div className="w-16 shrink-0 text-on-surface-variant font-bold">{item.label}</div>
+                              <div className="flex-1 h-2.5 bg-surface-container-high rounded-full overflow-hidden">
+                                <div className={`h-full ${item.color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                              </div>
+                              <div className="w-12 text-right font-bold text-on-surface">{count}</div>
+                            </div>
+                          );
+                        })}
+                        {drawerBookings.length === 0 && (
+                          <p className="text-[10px] text-on-surface-variant/60 font-medium italic">No bookings yet.</p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-on-surface-variant/60 font-medium italic">Loading bookings...</p>
                     )}
                   </div>
                 </div>
@@ -1739,6 +1868,106 @@ export function PartnersConsole({ initialPartners, allServices = [] }: PartnersC
                       <p className="text-[11px] font-semibold text-on-surface-variant/70 mt-1">No reviews recorded yet</p>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Analytics Tab */}
+              {activeProfileTab === "analytics" && (
+                <div className="space-y-5">
+                  <h5 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70 mb-2">Performance Analytics</h5>
+
+                  {/* Earnings Trend */}
+                  <div className="space-y-2 pb-4 border-b border-outline-variant/10">
+                    <h6 className="text-[9px] uppercase tracking-wider text-on-surface-variant/50 font-bold">Monthly Earnings Trend</h6>
+                    {isLoadingEarnings ? (
+                      <div className="flex items-center gap-2 text-[10px] text-on-surface-variant py-4">
+                        <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                        Loading analytics...
+                      </div>
+                    ) : drawerEarnings && drawerEarnings.monthlyTrend.length > 0 ? (
+                      <div className="space-y-1.5 pt-2">
+                        {(() => {
+                          const maxVal = Math.max(...drawerEarnings.monthlyTrend.map((m) => m.payout), 1);
+                          return drawerEarnings.monthlyTrend.slice(0, 6).map((m) => {
+                            const pct = (m.payout / maxVal) * 100;
+                            return (
+                              <div key={m.month} className="flex items-center gap-2 text-[10px]">
+                                <span className="w-12 shrink-0 font-bold text-on-surface-variant/80">{m.month}</span>
+                                <div className="flex-1 h-3 bg-surface-container-high rounded-full overflow-hidden">
+                                  <div className="h-full bg-secondary rounded-full transition-all" style={{ width: `${Math.max(pct, 3)}%` }} />
+                                </div>
+                                <span className="w-14 text-right font-bold text-primary">₹{m.payout.toLocaleString()}</span>
+                                <span className="w-8 text-right text-on-surface-variant/60">{m.jobs} jobs</span>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-on-surface-variant/60 font-medium italic py-2">No earnings data yet.</p>
+                    )}
+                  </div>
+
+                  {/* Jobs Trend (Weekly from drawerBookings) */}
+                  <div className="space-y-2 pb-4 border-b border-outline-variant/10">
+                    <h6 className="text-[9px] uppercase tracking-wider text-on-surface-variant/50 font-bold">Recent Job Activity</h6>
+                    {drawerBookings && drawerBookings.length > 0 ? (
+                      <div className="space-y-1.5 pt-2">
+                        {(() => {
+                          const weekly = new Map<string, { jobs: number; completed: number }>();
+                          for (const b of drawerBookings) {
+                            const d = new Date(b.created_at);
+                            const weekStart = new Date(d);
+                            weekStart.setDate(d.getDate() - d.getDay());
+                            const key = weekStart.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+                            if (!weekly.has(key)) weekly.set(key, { jobs: 0, completed: 0 });
+                            const w = weekly.get(key)!;
+                            w.jobs++;
+                            if (b.status === "completed") w.completed++;
+                          }
+                          const entries = Array.from(weekly.entries()).slice(0, 8);
+                          const maxJobs = Math.max(...entries.map(([, w]) => w.jobs), 1);
+                          return entries.map(([week, w]) => {
+                            const pct = (w.jobs / maxJobs) * 100;
+                            return (
+                              <div key={week} className="flex items-center gap-2 text-[10px]">
+                                <span className="w-14 shrink-0 font-bold text-on-surface-variant/80">W/o {week}</span>
+                                <div className="flex-1 h-3 bg-surface-container-high rounded-full overflow-hidden">
+                                  <div className="h-full bg-primary/70 rounded-full transition-all" style={{ width: `${Math.max(pct, 3)}%` }} />
+                                </div>
+                                <span className="w-16 text-right font-bold text-on-surface">{w.jobs} jobs</span>
+                                <span className="w-10 text-right" style={{ color: w.completed === w.jobs ? "var(--color-success)" : "var(--color-warning)" }}>
+                                  {w.completed}/{w.jobs}
+                                </span>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-on-surface-variant/60 font-medium italic py-2">No booking data yet.</p>
+                    )}
+                  </div>
+
+                  {/* Rating & Reliability */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-surface-container-low rounded-lg p-3 text-center">
+                      <p className="text-[20px] font-black text-secondary">{selectedProfilePartner.rating_avg.toFixed(1)}</p>
+                      <p className="text-[9px] uppercase tracking-wider text-on-surface-variant/60 font-bold mt-0.5">Rating</p>
+                    </div>
+                    <div className="bg-surface-container-low rounded-lg p-3 text-center">
+                      <p className="text-[20px] font-black text-primary">{selectedProfilePartner.reliability_rate}%</p>
+                      <p className="text-[9px] uppercase tracking-wider text-on-surface-variant/60 font-bold mt-0.5">Reliability</p>
+                    </div>
+                    <div className="bg-surface-container-low rounded-lg p-3 text-center">
+                      <p className="text-[20px] font-black text-primary">{selectedProfilePartner.jobs_done}</p>
+                      <p className="text-[9px] uppercase tracking-wider text-on-surface-variant/60 font-bold mt-0.5">Jobs Done</p>
+                    </div>
+                    <div className="bg-surface-container-low rounded-lg p-3 text-center">
+                      <p className="text-[20px] font-black text-error">{selectedProfilePartner.jobs_cancelled}</p>
+                      <p className="text-[9px] uppercase tracking-wider text-on-surface-variant/60 font-bold mt-0.5">Cancellations</p>
+                    </div>
+                  </div>
                 </div>
               )}
 

@@ -153,13 +153,17 @@ export interface CartItem {
   serviceId: string;
   title: string;
   iconName: string;
-  basePrice: number;
   subcategoryName: string;
   categorySlug: string;
   pricingModel?: PricingModel;
-  selectedDuration?: number;
-  selectedPackages?: string;
   gstApplicable?: boolean;
+  variantId?: string | null;
+  selectedDuration?: number | null;
+  areaSqft?: number | null;
+  quantity?: number | null;
+  distanceKm?: number | null;
+  addons?: string | null;
+  selectedPackages?: string | null;
 }
 
 export interface Order {
@@ -492,21 +496,4 @@ export interface Coupon {
   created_at: string;
 }
 
-export interface MembershipPlan {
-  id: string;
-  name: string;
-  description: string | null;
-  price: number;
-  duration_days: number;
-  benefits: { discount_percent?: number; free_cancellation?: boolean; priority_booking?: boolean };
-  created_at: string;
-}
 
-export interface UserMembership {
-  id: string;
-  user_id: string;
-  plan_id: string;
-  expires_at: string;
-  status: 'active' | 'expired' | 'cancelled';
-  created_at: string;
-}

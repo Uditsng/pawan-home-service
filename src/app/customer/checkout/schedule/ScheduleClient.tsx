@@ -273,8 +273,9 @@ export default function ScheduleClient({
         date: dateStr,
         time: effectiveSelectedTime,
         addressId: selectedAddressId,
+        cartItems: JSON.stringify(items),
       });
-      router.push(`/customer/checkout/cart/payment?${payload.toString()}`);
+      router.push(`/customer/checkout/payment?${payload.toString()}`);
     }
   };
 

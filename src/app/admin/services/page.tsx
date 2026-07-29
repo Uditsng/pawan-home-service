@@ -34,7 +34,11 @@ export default async function AdminServicesPage() {
   ]);
 
   const categories = categoriesRes.data;
-  const services = servicesRes.data;
+  const services = servicesRes.data || [];
+
+  const publishedCount = services.filter(s => (s.status || 'published') === 'published').length;
+  const draftCount = services.filter(s => s.status === 'draft').length;
+  const categoriesCount = categories?.length || 0;
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-7xl mx-auto">
@@ -52,7 +56,13 @@ export default async function AdminServicesPage() {
         </Link>
       </div>
 
-      <ServiceDataGrid services={services || []} categories={categories || []} />
+      <ServiceDataGrid
+        services={services}
+        categories={categories || []}
+        publishedCount={publishedCount}
+        draftCount={draftCount}
+        categoriesCount={categoriesCount}
+      />
     </div>
   );
 }

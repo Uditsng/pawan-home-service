@@ -5,7 +5,7 @@
  */
 
 import Image from "next/image";
-import type { ComponentType, HTMLAttributes } from "react";
+import type { HTMLAttributes } from "react";
 
 // Normalize database icon_name to clean local SVG filename
 function normalizeIconName(name: string): string {
@@ -162,13 +162,6 @@ export function ServiceIconComponent({
       {...props}
     />
   );
-}
-
-/** Returns a wrapper component for backward compatibility. */
-export function getServiceIcon(iconName: string): ComponentType<{ className?: string }> {
-  return function DummyIcon({ className }: { className?: string }) {
-    return <ServiceIconComponent iconName={iconName} className={className} />;
-  };
 }
 
 /** All available icon entries for the admin picker (new names only). */

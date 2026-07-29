@@ -35,6 +35,22 @@ export default function MobileSetup() {
     }
   }, []);
 
+  // ─── 0. Keep native splash visible while React hydrates ───
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const keepNativeSplash = async () => {
+      try {
+        const { Capacitor } = await import("@capacitor/core");
+        if (!Capacitor.isNativePlatform()) return;
+        const { SplashScreen } = await import("@capacitor/splash-screen");
+        await SplashScreen.show();
+      } catch {
+        // Not on native or plugin unavailable — ignore
+      }
+    };
+    keepNativeSplash();
+  }, []);
+
   // ─── 1. Handle Back Button Listener (Depends on path changes) ───
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -53,12 +69,16 @@ export default function MobileSetup() {
         }
 
         backButtonListener = await App.addListener("backButton", (data) => {
-          const exitPaths = ["/customer/dashboard", "/partner/dashboard", "/admin/dashboard", "/login", "/"];
-          
-          if (exitPaths.includes(pathname) || !data.canGoBack) {
-            App.exitApp();
+          if (pathname === "/login" || pathname === "/register") {
+            routerRef.current.push("/");
           } else {
-            window.history.back();
+            const exitPaths = ["/customer/dashboard", "/partner/dashboard", "/admin/dashboard", "/"];
+            
+            if (exitPaths.includes(pathname) || !data.canGoBack) {
+              App.exitApp();
+            } else {
+              window.history.back();
+            }
           }
         });
       } catch (err) {
@@ -91,8 +111,6 @@ export default function MobileSetup() {
         if (!Capacitor.isNativePlatform()) {
           return;
         }
-
-        const platform = Capacitor.getPlatform();
 
         const { PushNotifications } = await import("@capacitor/push-notifications");
         const { LocalNotifications } = await import("@capacitor/local-notifications");
@@ -172,15 +190,14 @@ export default function MobileSetup() {
         // 2f. Handle foreground notifications (app is active)
         receiveListener = await PushNotifications.addListener("pushNotificationReceived", async (notification) => {
           
-          const type = notification.data?.type;
           const currentPath = window.location.pathname;
           const isPartnerRoute = currentPath.startsWith("/partner");
           // A partner receives new_job_offer and partner_assigned regardless of
           // what screen they are on. extension_requested is also a high-alert type.
           const isPartnerJobAlert =
-            type === "new_job_offer" ||
-            type === "partner_assigned" ||
-            (type === "extension_requested" && isPartnerRoute);
+            notification.data?.type === "new_job_offer" ||
+            notification.data?.type === "partner_assigned" ||
+            (notification.data?.type === "extension_requested" && isPartnerRoute);
 
           // Log structured pipeline stage 6 (OS / foreground client receipt)
           // Invalidate cache immediately on receiving a notification in the foreground
@@ -227,8 +244,6 @@ export default function MobileSetup() {
             }
           }
 
-          const type = data.type as string | undefined;
-
           // Invalidate cache on click/action to make sure the target screens show fresh data
           await invalidateCacheKeys(bookingId ? String(bookingId) : undefined);
 
@@ -272,7 +287,7 @@ export default function MobileSetup() {
       actionListener?.remove();
       localActionListener?.remove();
     };
-  }, []); // Run once on mount only — router is captured in stable closure via handleNotificationClick
+  }, [invalidateCacheKeys]); // Run once on mount only — router is captured in stable closure via handleNotificationClick
 
 
   // ─── 3. Auth Listener for Dynamic Token Setup & Cleanup ───

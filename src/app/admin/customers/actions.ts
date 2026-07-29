@@ -71,3 +71,28 @@ export async function saveCustomerNoteAction(
   revalidatePath('/admin/customers');
   return { success: true };
 }
+
+/**
+ * Fetch Average Rating Given by a Customer
+ */
+export async function getCustomerRatingAction(customerId: string) {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('rating')
+    .eq('customer_id', customerId)
+    .neq('status', 'rejected');
+
+  if (error) {
+    console.error("Error fetching customer ratings:", error);
+    return { avg_rating: 0, total_reviews: 0 };
+  }
+
+  const ratings = data || [];
+  const total = ratings.length;
+  const avg = total > 0 ? ratings.reduce((sum, r) => sum + r.rating, 0) / total : 0;
+
+  return { avg_rating: Math.round(avg * 10) / 10, total_reviews: total };
+}

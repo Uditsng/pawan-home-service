@@ -379,35 +379,4 @@ export async function verifyOtpAndResetPassword(
   }
 }
 
-// ─── LEGACY (kept for backward compatibility) ────────────────
 
-/**
- * @deprecated Use loginWithPhone instead.
- * Kept so existing code still compiles if referenced elsewhere.
- */
-export async function login(formData: FormData) {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return redirect("/login?error=Could not authenticate user");
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, status")
-    .eq("id", data.user.id)
-    .single();
-  if (!profile) redirect("/customer/dashboard");
-  if (profile.status === 'suspended' || profile.status === 'blocked') {
-    return redirect("/login?error=Your account is suspended. Please contact support.");
-  }
-  if (profile.role === "partner" && profile.status === "pending") redirect("/partner/pending");
-  const routes: Record<string, string> = { admin: "/admin/dashboard", partner: "/partner/dashboard", customer: "/customer/dashboard" };
-  redirect(routes[profile.role] || "/customer/dashboard");
-}
-
-/**
- * @deprecated Use verifyOtpAndRegister instead.
- */
-export async function signup() {
-  buildError("/register", "Please use the new registration flow with phone verification.");
-}

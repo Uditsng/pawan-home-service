@@ -380,3 +380,38 @@ export async function reassignPartnerAction(
   revalidatePath("/admin/partners");
   return { success: true, newPartnerId: null };
 }
+
+/**
+ * Fetch Pricing Breakdown for a Booking (on-demand in detail drawer)
+ */
+export interface BookingPricingData {
+  base_price: number;
+  addons_total: number;
+  gst_amount: number;
+  discount_amount: number;
+  wallet_discount: number;
+  surcharges?: Record<string, unknown> | null;
+  total_amount?: number;
+  pricing_config?: Record<string, unknown> | null;
+}
+
+export async function getBookingPricingAction(bookingId: string) {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('booking_pricing')
+    .select('*')
+    .eq('booking_id', bookingId)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null;
+    }
+    console.error("Error fetching booking pricing:", error);
+    return null;
+  }
+
+  return data as unknown as BookingPricingData;
+}

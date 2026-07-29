@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { format, formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { updateCustomerStatusAction, saveCustomerNoteAction } from "./actions";
+import { updateCustomerStatusAction, saveCustomerNoteAction, getCustomerRatingAction } from "./actions";
 
 interface Booking {
   id: string;
@@ -48,12 +48,13 @@ export function CustomerCRM({
   const [riskFilter, setRiskFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState(""); // YYYY-MM-DD or range
-  const [activeSegment, setActiveSegment] = useState<"All" | "HighValue">("All");
+  type Segment = "All" | "HighValue" | "AtRisk" | "VIP" | "New" | "Dormant";
+  const [activeSegment, setActiveSegment] = useState<Segment>("All");
 
   // Selection & Details Drawer States
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [activeDrawerTab, setActiveDrawerTab] = useState<"timeline" | "bookings" | "risk" | "notes">("timeline");
+  const [activeDrawerTab, setActiveDrawerTab] = useState<"overview" | "timeline" | "bookings" | "risk" | "notes">("overview");
   
   // Note Text Area State
   const [noteInput, setNoteInput] = useState("");
@@ -74,6 +75,10 @@ export function CustomerCRM({
     customer: Customer;
   } | null>(null);
 
+  // On-demand customer rating data
+  const [customerRating, setCustomerRating] = useState<{ avg_rating: number; total_reviews: number } | null>(null);
+  const [loadingRating, setLoadingRating] = useState(false);
+
   useEffect(() => {
     const handleClose = () => {
       setDropdownMenu(null);
@@ -86,12 +91,43 @@ export function CustomerCRM({
     };
   }, []);
 
+  // Load customer rating when Overview tab is opened
+  useEffect(() => {
+    if (isDrawerOpen && selectedCustomer && activeDrawerTab === "overview") {
+      setLoadingRating(true);
+      setCustomerRating(null);
+      getCustomerRatingAction(selectedCustomer.id)
+        .then((result) => setCustomerRating(result))
+        .catch(() => setCustomerRating({ avg_rating: 0, total_reviews: 0 }))
+        .finally(() => setLoadingRating(false));
+    }
+  }, [isDrawerOpen, selectedCustomer?.id, activeDrawerTab]);
+
   // Filter Logic
   const filteredCustomers = customers.filter(customer => {
     // 1. Segment Filtering
     if (activeSegment === "HighValue") {
       const isHighValue = customer.spent >= 3000 || customer.totalBookings >= 5;
       if (!isHighValue) return false;
+    }
+    if (activeSegment === "AtRisk") {
+      if (customer.cancelRate <= 30) return false;
+    }
+    if (activeSegment === "VIP") {
+      if (customer.spent < 10000) return false;
+    }
+    if (activeSegment === "New") {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      if (new Date(customer.created_at) < thirtyDaysAgo) return false;
+    }
+    if (activeSegment === "Dormant") {
+      const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+      if (customer.bookings.length > 0) {
+        const sorted = [...customer.bookings].sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        if (new Date(sorted[0].created_at) >= ninetyDaysAgo) return false;
+      } else {
+        if (new Date(customer.created_at) >= ninetyDaysAgo) return false;
+      }
     }
 
     // 2. Multi-parameter Search (Name, Email, Phone, Booking ID)
@@ -222,6 +258,56 @@ export function CustomerCRM({
   const activeCount = customers.filter(c => c.status === "active").length;
   const highRiskCount = customers.filter(c => c.riskLevel === "High").length;
 
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const newCustomerCount = customers.filter(c => new Date(c.created_at) >= thirtyDaysAgo).length;
+  const customersWithBookings = customers.filter(c => c.totalBookings > 0).length;
+  const stickinessRate = customers.length > 0 ? (customersWithBookings / customers.length) * 100 : 0;
+  const repeatRate = customers.length > 0 ? (customers.filter(c => c.totalBookings >= 2).length / customers.length) * 100 : 0;
+
+  // CSV Export Utility
+  const handleExportCSV = () => {
+    if (filteredCustomers.length === 0) {
+      setActionError("No customers to export.");
+      return;
+    }
+    const headers = [
+      "Name", "Email", "Phone", "Total Bookings", "Total Spent",
+      "Avg / Booking", "Cancellation Rate", "Risk Level", "Status",
+      "Last Active", "Joined"
+    ];
+    const rows = filteredCustomers.map((c) => {
+      let lastActive = "Never";
+      if (c.bookings.length > 0) {
+        const sorted = [...c.bookings].sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        lastActive = new Date(sorted[0].created_at).toISOString().slice(0, 10);
+      }
+      const avgSpend = c.totalBookings > 0 ? c.spent / c.totalBookings : 0;
+      return [
+        c.full_name || "Unknown",
+        c.email || "",
+        c.phone || "",
+        String(c.totalBookings),
+        `₹${c.spent.toLocaleString()}`,
+        `₹${Math.round(avgSpend).toLocaleString()}`,
+        `${Math.round(c.cancelRate)}%`,
+        c.riskLevel,
+        c.status,
+        lastActive,
+        new Date(c.created_at).toISOString().slice(0, 10)
+      ];
+    });
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      [headers.join(","), ...rows.map((r) => r.map((v) => `"${v}"`).join(","))].join("\n");
+    const encoded = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encoded);
+    link.setAttribute("download", `customers_export_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-4">
       {/* Dynamic Action Error Banner */}
@@ -242,11 +328,11 @@ export function CustomerCRM({
       )}
       
       {/* Dynamic Operational Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm relative overflow-hidden group">
           <div className="absolute right-0 top-0 w-20 h-20 bg-primary/5 rounded-bl-[48px] transition-transform group-hover:scale-105"></div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">Total Monitored Users</p>
-          <h2 className="text-2xl font-bold text-primary font-headline mt-1.5">{customers.length} Customers</h2>
+          <h2 className="text-2xl font-bold text-primary font-headline mt-1.5">{customers.length}</h2>
           <div className="flex gap-3 mt-1.5 text-xs text-on-surface-variant/80 font-normal">
             <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>{activeCount} Active</span>
             <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>{highRiskCount} High Risk</span>
@@ -255,15 +341,27 @@ export function CustomerCRM({
 
         <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm relative overflow-hidden group">
           <div className="absolute right-0 top-0 w-20 h-20 bg-secondary/5 rounded-bl-[48px] transition-transform group-hover:scale-105"></div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">Avg. Life-Time Value</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">Avg. LTV</p>
           <h2 className="text-2xl font-bold text-primary font-headline mt-1.5">₹{Math.round(avgLtv).toLocaleString()}</h2>
-          <p className="text-[11px] text-on-surface-variant/85 mt-1 font-normal">Accumulated spend across booking catalog</p>
+          <p className="text-[11px] text-on-surface-variant/85 mt-1 font-normal">Per customer lifetime</p>
         </div>
 
         <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm relative overflow-hidden group">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">CRM Stickiness Rate</p>
-          <h2 className="text-2xl font-bold text-secondary font-headline mt-1.5">78.5%</h2>
-          <p className="text-[11px] text-on-surface-variant/85 mt-1 font-normal">Percent of customers returning within 45 days</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">Stickiness Rate</p>
+          <h2 className="text-2xl font-bold text-secondary font-headline mt-1.5">{stickinessRate.toFixed(1)}%</h2>
+          <p className="text-[11px] text-on-surface-variant/85 mt-1 font-normal">Customers with 1+ booking</p>
+        </div>
+
+        <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm relative overflow-hidden group">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">New This Month</p>
+          <h2 className="text-2xl font-bold text-primary font-headline mt-1.5">{newCustomerCount}</h2>
+          <p className="text-[11px] text-on-surface-variant/85 mt-1 font-normal">Registered in last 30 days</p>
+        </div>
+
+        <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm relative overflow-hidden group">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">Repeat Rate</p>
+          <h2 className="text-2xl font-bold text-primary font-headline mt-1.5">{repeatRate.toFixed(1)}%</h2>
+          <p className="text-[11px] text-on-surface-variant/85 mt-1 font-normal">Customers with 2+ bookings</p>
         </div>
       </div>
 
@@ -274,26 +372,66 @@ export function CustomerCRM({
             <span className="material-symbols-outlined text-secondary text-lg">tune</span>
             Operational Filter Console
           </h3>
-          <div className="flex bg-surface-container p-1 rounded-xl border border-outline-variant/10 shadow-inner w-full md:w-auto">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setActiveSegment("All")}
-              className={`grow md:grow-0 px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
-                activeSegment === "All" 
-                  ? "bg-primary text-white shadow-md shadow-primary/20" 
-                  : "text-on-surface-variant hover:text-primary"
+              className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
+                activeSegment === "All"
+                  ? "bg-primary text-white shadow-md shadow-primary/20"
+                  : "bg-surface-container text-on-surface-variant hover:text-primary"
               }`}
             >
-              All Users
+              All
             </button>
             <button
               onClick={() => setActiveSegment("HighValue")}
-              className={`grow md:grow-0 px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
-                activeSegment === "HighValue" 
-                  ? "bg-primary text-white shadow-md shadow-primary/20" 
-                  : "text-on-surface-variant hover:text-primary"
+              className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
+                activeSegment === "HighValue"
+                  ? "bg-primary text-white shadow-md shadow-primary/20"
+                  : "bg-surface-container text-on-surface-variant hover:text-primary"
               }`}
             >
               ⭐ High Value
+            </button>
+            <button
+              onClick={() => setActiveSegment("AtRisk")}
+              className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
+                activeSegment === "AtRisk"
+                  ? "bg-red-600 text-white shadow-md shadow-red-600/20"
+                  : "bg-surface-container text-on-surface-variant hover:text-red-600"
+              }`}
+            >
+              🔴 At Risk
+            </button>
+            <button
+              onClick={() => setActiveSegment("VIP")}
+              className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
+                activeSegment === "VIP"
+                  ? "bg-primary text-white shadow-md shadow-primary/20"
+                  : "bg-surface-container text-on-surface-variant hover:text-primary"
+              }`}
+            >
+              👑 VIP
+            </button>
+            <button
+              onClick={() => setActiveSegment("New")}
+              className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
+                activeSegment === "New"
+                  ? "bg-secondary text-white shadow-md shadow-secondary/20"
+                  : "bg-surface-container text-on-surface-variant hover:text-secondary"
+              }`}
+            >
+              🆕 New
+            </button>
+            <button
+              onClick={() => setActiveSegment("Dormant")}
+              className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
+                activeSegment === "Dormant"
+                  ? "bg-amber-600 text-white shadow-md shadow-amber-600/20"
+                  : "bg-surface-container text-on-surface-variant hover:text-amber-600"
+              }`}
+            >
+              💤 Dormant
             </button>
           </div>
         </div>
@@ -352,6 +490,17 @@ export function CustomerCRM({
               className="w-full border border-outline-variant/20 rounded-lg py-2 px-3 bg-surface-container focus:ring-1 focus:ring-primary/50 outline-none text-xs text-on-surface-variant transition-all cursor-pointer"
             />
           </div>
+        </div>
+        <div className="flex justify-end border-t border-outline-variant/10 pt-3">
+          <button
+            type="button"
+            onClick={handleExportCSV}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest border border-outline-variant/20 rounded-xl hover:bg-surface-container transition-all"
+            disabled={filteredCustomers.length === 0}
+          >
+            <span className="material-symbols-outlined text-sm">download</span>
+            Export CSV
+          </button>
         </div>
       </div>
 
@@ -568,6 +717,14 @@ export function CustomerCRM({
             {/* Tab Selectors */}
             <div className="flex border-b border-outline-variant/10 bg-surface-container-low/50 px-4">
               <button
+                onClick={() => setActiveDrawerTab("overview")}
+                className={`py-3 text-xs font-bold uppercase tracking-wider border-b-2 text-center transition-all ${
+                  activeDrawerTab === "overview" ? "border-secondary text-primary" : "border-transparent text-on-surface-variant hover:text-primary"
+                }`}
+              >
+                Overview
+              </button>
+              <button
                 onClick={() => setActiveDrawerTab("timeline")}
                 className={`grow py-3 text-xs font-bold uppercase tracking-wider border-b-2 text-center transition-all ${
                   activeDrawerTab === "timeline" ? "border-secondary text-primary" : "border-transparent text-on-surface-variant hover:text-primary"
@@ -604,6 +761,82 @@ export function CustomerCRM({
             {/* Drawer Body Scroll Container */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               
+              {/* Overview Tab */}
+              {activeDrawerTab === "overview" && (() => {
+                const avgSpend = selectedCustomer.totalBookings > 0
+                  ? selectedCustomer.spent / selectedCustomer.totalBookings
+                  : 0;
+                const sortedBookings = [...selectedCustomer.bookings].sort(
+                  (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                );
+                const lastBooking = sortedBookings[0];
+                return (
+                  <div className="space-y-4">
+                    <h5 className="text-xs font-bold uppercase tracking-widest text-primary">Customer Financial Overview</h5>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-surface-container p-4 rounded-xl border border-outline-variant/15">
+                        <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70">Total Spent</p>
+                        <p className="text-lg font-bold text-primary font-headline mt-1">₹{selectedCustomer.spent.toLocaleString()}</p>
+                      </div>
+                      <div className="bg-surface-container p-4 rounded-xl border border-outline-variant/15">
+                        <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70">Avg Per Booking</p>
+                        <p className="text-lg font-bold text-primary font-headline mt-1">₹{Math.round(avgSpend).toLocaleString()}</p>
+                      </div>
+                      <div className="bg-surface-container p-4 rounded-xl border border-outline-variant/15">
+                        <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70">Total Bookings</p>
+                        <p className="text-lg font-bold text-primary font-headline mt-1">{selectedCustomer.totalBookings}</p>
+                      </div>
+                      <div className="bg-surface-container p-4 rounded-xl border border-outline-variant/15">
+                        <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70">Cancellation Rate</p>
+                        <p className="text-lg font-bold text-primary font-headline mt-1">{Math.round(selectedCustomer.cancelRate)}%</p>
+                      </div>
+                    </div>
+
+                    {lastBooking && (
+                      <div className="bg-surface-container p-4 rounded-xl border border-outline-variant/15">
+                        <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70">Last Booking</p>
+                        <p className="text-sm font-bold text-primary mt-1">{lastBooking.services?.title || "Service Job"}</p>
+                        <p className="text-[10px] text-on-surface-variant/60 mt-0.5">
+                          {format(new Date(lastBooking.created_at), "MMM dd, yyyy")} · ₹{lastBooking.total_amount}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="bg-surface-container p-4 rounded-xl border border-outline-variant/15">
+                      <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70">Customer Rating</p>
+                      <div className="flex items-center gap-3 mt-2">
+                        {loadingRating ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-surface-container-high animate-pulse" />
+                            <div className="w-20 h-4 rounded bg-surface-container-high animate-pulse" />
+                          </div>
+                        ) : customerRating ? (
+                          <>
+                            <div className="flex items-center gap-1">
+                              {[1,2,3,4,5].map((star) => (
+                                <span key={star} className={`material-symbols-outlined text-sm ${
+                                  star <= Math.round(customerRating.avg_rating)
+                                    ? 'text-amber-500'
+                                    : 'text-outline-variant/30'
+                                }`}>
+                                  {star <= Math.round(customerRating.avg_rating) ? 'star' : 'star'}
+                                </span>
+                              ))}
+                            </div>
+                            <p className="text-sm font-bold text-primary">
+                              {customerRating.avg_rating} <span className="text-[10px] font-normal text-on-surface-variant/60">({customerRating.total_reviews} reviews)</span>
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-xs text-on-surface-variant/60">No ratings yet</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Timeline Tab */}
               {activeDrawerTab === "timeline" && (
                 <div className="space-y-6">
@@ -649,38 +882,158 @@ export function CustomerCRM({
               )}
 
               {/* Bookings Ledger Tab */}
-              {activeDrawerTab === "bookings" && (
-                <div className="space-y-4">
-                  <h5 className="text-xs font-bold uppercase tracking-widest text-primary">Booking Ledger History</h5>
-                  {selectedCustomer.bookings.length > 0 ? (
-                    <div className="space-y-3">
-                      {selectedCustomer.bookings.map(b => (
-                        <div key={b.id} className="bg-surface-container p-4 rounded-xl border border-outline-variant/15 flex justify-between items-center gap-3">
-                          <div>
-                            <p className="text-xs font-bold text-primary uppercase">{b.services?.title || "Service Job"}</p>
-                            <p className="text-[10px] text-on-surface-variant/50 mt-1 font-semibold">ID: {b.id.substring(0, 8)}...</p>
-                            <p className="text-[9px] text-on-surface-variant/40 mt-0.5">{format(new Date(b.created_at), "MMM dd, yyyy")}</p>
+              {activeDrawerTab === "bookings" && (() => {
+                const bookings = selectedCustomer.bookings;
+                const hasBookings = bookings.length > 0;
+
+                // Monthly trend: last 6 months
+                const now = new Date();
+                const monthLabels: string[] = [];
+                const monthCounts: number[] = [];
+                const monthAmounts: number[] = [];
+                for (let i = 5; i >= 0; i--) {
+                  const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                  monthLabels.push(format(d, "MMM"));
+                  const start = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+                  const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59).getTime();
+                  const monthBookings = bookings.filter(b => {
+                    const t = new Date(b.created_at).getTime();
+                    return t >= start && t <= end;
+                  });
+                  monthCounts.push(monthBookings.length);
+                  monthAmounts.push(monthBookings.reduce((s, b) => s + Number(b.total_amount || 0), 0));
+                }
+                const maxCount = Math.max(...monthCounts, 1);
+
+                // Service preferences (top 3)
+                const serviceCounts = bookings.reduce<Record<string, { count: number; total: number }>>((acc, b) => {
+                  const name = b.services?.title || "Other";
+                  if (!acc[name]) acc[name] = { count: 0, total: 0 };
+                  acc[name].count++;
+                  acc[name].total += Number(b.total_amount || 0);
+                  return acc;
+                }, {});
+                const topServices = Object.entries(serviceCounts)
+                  .sort((a, b) => b[1].count - a[1].count)
+                  .slice(0, 3);
+
+                // Status distribution
+                const statusCounts = bookings.reduce<Record<string, number>>((acc, b) => {
+                  acc[b.status] = (acc[b.status] || 0) + 1;
+                  return acc;
+                }, {});
+                const totalStatusCount = Object.values(statusCounts).reduce((a, b) => a + b, 0);
+
+                return (
+                  <div className="space-y-4">
+                    <h5 className="text-xs font-bold uppercase tracking-widest text-primary">Booking Ledger History</h5>
+
+                    {hasBookings ? (
+                      <>
+                        {/* Status Distribution Bar */}
+                        <div className="bg-surface-container p-4 rounded-xl border border-outline-variant/15">
+                          <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70 mb-2">Status Distribution</p>
+                          <div className="flex h-3 rounded-full overflow-hidden">
+                            {Object.entries(statusCounts).map(([status, count], i) => {
+                              const pct = (count / totalStatusCount) * 100;
+                              const color =
+                                status === 'completed' ? 'bg-secondary' :
+                                status === 'cancelled' ? 'bg-red-500' :
+                                status === 'confirmed' ? 'bg-blue-500' :
+                                status === 'in_progress' ? 'bg-cyan-500' : 'bg-amber-500';
+                              return (
+                                <div
+                                  key={status}
+                                  className={`${color} transition-all duration-500`}
+                                  style={{ width: `${pct}%` }}
+                                  title={`${status}: ${count} (${pct.toFixed(0)}%)`}
+                                />
+                              );
+                            })}
                           </div>
-                          <div className="text-right">
-                            <p className="text-xs font-bold text-primary">₹{b.total_amount}</p>
-                            <span className={`text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full inline-block mt-1 ${
-                              b.status === 'completed' ? 'bg-green-100 text-green-700' :
-                              b.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
-                            }`}>
-                              {b.status}
-                            </span>
+                          <div className="flex flex-wrap gap-3 mt-2">
+                            {Object.entries(statusCounts).map(([status, count]) => {
+                              const pct = (count / totalStatusCount) * 100;
+                              const dotColor =
+                                status === 'completed' ? 'bg-secondary' :
+                                status === 'cancelled' ? 'bg-red-500' :
+                                status === 'confirmed' ? 'bg-blue-500' :
+                                status === 'in_progress' ? 'bg-cyan-500' : 'bg-amber-500';
+                              return (
+                                <span key={status} className="flex items-center gap-1 text-[9px] font-bold text-on-surface-variant/70 uppercase tracking-wider">
+                                  <span className={`w-2 h-2 rounded-full ${dotColor}`} />
+                                  {status} ({count})
+                                </span>
+                              );
+                            })}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-10 bg-surface-container/30 rounded-xl">
-                      <span className="material-symbols-outlined text-2xl text-on-surface-variant/40">shopping_cart</span>
-                      <p className="text-xs font-semibold text-on-surface-variant/70 mt-2">No bookings recorded yet</p>
-                    </div>
-                  )}
-                </div>
-              )}
+
+                        {/* Monthly Trend Chart */}
+                        <div className="bg-surface-container p-4 rounded-xl border border-outline-variant/15">
+                          <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70 mb-3">Monthly Bookings (6 months)</p>
+                          <div className="flex items-end gap-2 h-20">
+                            {monthLabels.map((label, i) => (
+                              <div key={label} className="flex-1 flex flex-col items-center gap-1 group relative">
+                                <span className="text-[7px] font-bold text-on-surface-variant/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  ₹{monthAmounts[i].toLocaleString()}
+                                </span>
+                                <div
+                                  className="w-full bg-secondary/60 rounded-t-md transition-all duration-300 group-hover:bg-secondary min-h-[4px]"
+                                  style={{ height: `${(monthCounts[i] / maxCount) * 100}%` }}
+                                />
+                                <span className="text-[8px] font-bold text-on-surface-variant/60">{label}</span>
+                                <span className="text-[7px] text-on-surface-variant/40">{monthCounts[i]}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Service Preference Chips */}
+                        {topServices.length > 0 && (
+                          <div className="bg-surface-container p-4 rounded-xl border border-outline-variant/15">
+                            <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70 mb-2">Service Preferences</p>
+                            <div className="flex flex-wrap gap-2">
+                              {topServices.map(([name, data]) => (
+                                <div key={name} className="flex items-center gap-1.5 bg-surface-container-high px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-primary">
+                                  {name}
+                                  <span className="text-secondary text-[9px]">({data.count})</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Booking List */}
+                        <div className="space-y-2">
+                          {bookings.map(b => (
+                            <div key={b.id} className="bg-surface-container p-3 rounded-xl border border-outline-variant/15 flex justify-between items-center gap-3">
+                              <div>
+                                <p className="text-xs font-bold text-primary uppercase">{b.services?.title || "Service Job"}</p>
+                                <p className="text-[9px] text-on-surface-variant/50 mt-0.5 font-semibold">{format(new Date(b.created_at), "MMM dd, yyyy")}</p>
+                              </div>
+                              <div className="text-right flex items-center gap-2">
+                                <p className="text-xs font-bold text-primary">₹{b.total_amount}</p>
+                                <span className={`text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full inline-block ${
+                                  b.status === 'completed' ? 'bg-green-100 text-green-700' :
+                                  b.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                                }`}>
+                                  {b.status}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-center py-10 bg-surface-container/30 rounded-xl">
+                        <span className="material-symbols-outlined text-2xl text-on-surface-variant/40">shopping_cart</span>
+                        <p className="text-xs font-semibold text-on-surface-variant/70 mt-2">No bookings recorded yet</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Fraud & Risk tab */}
               {activeDrawerTab === "risk" && (

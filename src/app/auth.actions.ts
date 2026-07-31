@@ -10,11 +10,6 @@ import {
 } from "@/lib/twilio";
 import { otpSendLimiter, otpVerifyLimiter, loginLimiter, passwordResetLimiter } from "@/lib/rate-limit";
 
-// ─── Shared helpers ───────────────────────────────────────────
-
-function buildError(path: string, message: string): never {
-  return redirect(`${path}?error=${encodeURIComponent(message)}`);
-}
 
 // ─── REGISTRATION FLOW ────────────────────────────────────────
 
@@ -24,7 +19,8 @@ function buildError(path: string, message: string): never {
  * Returns an object (not a redirect) so the client can show the OTP step.
  */
 export async function sendRegistrationOtp(
-  phone: string
+  phone: string,
+  email?: string
 ): Promise<{ success: boolean; error?: string }> {
   // Validate format
   if (!validateIndianPhone(phone)) {
@@ -38,16 +34,30 @@ export async function sendRegistrationOtp(
     return { success: false, error: "Invalid phone number format." };
   }
 
-  // Check if phone already registered
   const supabase = await createClient();
-  const { data: existing } = await supabase
+
+  // Check if phone already registered
+  const { data: existingPhone } = await supabase
     .from("profiles")
     .select("id")
     .eq("phone", e164)
     .maybeSingle();
 
-  if (existing) {
+  if (existingPhone) {
     return { success: false, error: "This mobile number is already registered. Please login instead." };
+  }
+
+  // Check if email already registered
+  if (email && email.trim().length > 0) {
+    const { data: existingEmail } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("email", email.trim().toLowerCase())
+      .maybeSingle();
+
+    if (existingEmail) {
+      return { success: false, error: "This email address is already registered. Please login instead." };
+    }
   }
 
   // Rate limit per phone
@@ -135,7 +145,7 @@ export async function verifyOtpAndRegister(formData: FormData): Promise<{ succes
 
   if (error) {
     console.error("Account creation error:", error.message);
-    return { success: false, error: "Account creation failed. Please try again later." };
+    return { success: false, error: `Account creation failed: ${error.message}` };
   }
 
   if (!data?.user) {

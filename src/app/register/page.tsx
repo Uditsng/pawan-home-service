@@ -120,7 +120,7 @@ export default function RegisterPage() {
     if (phone.length !== 10) return setError("Enter a valid 10-digit mobile number.");
 
     setLoading(true);
-    const result = await sendRegistrationOtp(phone);
+    const result = await sendRegistrationOtp(phone, email);
     setLoading(false);
 
     if (!result.success) {
@@ -138,14 +138,14 @@ export default function RegisterPage() {
     setCanResend(false);
     setOtp("");
     setLoading(true);
-    const result = await sendRegistrationOtp(phone);
+    const result = await sendRegistrationOtp(phone, email);
     setLoading(false);
     if (!result.success) {
       setError(result.error || "Failed to resend OTP.");
     } else {
       setCountdownKey((k) => k + 1);
     }
-  }, [phone]);
+  }, [phone, email]);
 
   const handleRegister = useCallback(async () => {
     if (otp.length !== 6) return setError("Please enter the 6-digit OTP.");

@@ -765,7 +765,7 @@ export default function TrackingClient({
                   </div>
                 </div>
                 <p className="text-xs text-on-surface-variant mb-6 leading-relaxed">
-                  Your tax invoice is ready. You can view it online, download it as a print-friendly PDF, or share the link.
+                  Your tax invoice is ready. View it online or download the official PDF.
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <Link
@@ -776,7 +776,7 @@ export default function TrackingClient({
                     View Invoice
                   </Link>
                   <Link
-                    href={`/customer/bookings/${booking.id}/invoice?download=true`}
+                    href={`/api/invoice/${booking.id}/pdf?download=1`}
                     className="px-5 py-2.5 bg-surface-container text-on-surface text-xs font-bold rounded-xl border border-outline-variant/15 hover:bg-surface-container-high transition-colors flex items-center gap-1.5"
                   >
                     <span className="material-symbols-outlined text-sm">picture_as_pdf</span>

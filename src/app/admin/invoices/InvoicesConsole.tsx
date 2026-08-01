@@ -3,7 +3,6 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Button } from "@/components/ui/Button";
 import { regenerateInvoiceAction } from "./actions";
 import type { AdminInvoice } from "./page";
 
@@ -144,7 +143,7 @@ export default function InvoicesConsole({
 
   // CSV Export
   const handleExportCSV = () => {
-    const toExport = timePeriod === "all" ? filteredInvoices : filteredInvoices;
+    const toExport = filteredInvoices;
     if (toExport.length === 0) {
       setExportError("No invoices available to export.");
       return;
@@ -423,7 +422,7 @@ export default function InvoicesConsole({
                                   <span className="material-symbols-outlined text-sm">visibility</span>
                                   View
                                 </Link>
-                                <Link href={`/customer/bookings/${inv.booking.id}/invoice?download=true`} target="_blank"
+                                <Link href={`/api/invoice/${inv.booking.id}/pdf?download=1`} target="_blank"
                                   className="px-2.5 py-1.5 bg-primary hover:bg-primary/90 text-white text-[9px] font-black uppercase tracking-widest rounded-lg transition-all flex items-center gap-1 shadow-sm">
                                   <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
                                   PDF
@@ -437,13 +436,7 @@ export default function InvoicesConsole({
                                   ) : "Regen"}
                                 </button>
                               </>
-                            ) : (
-                              <Link href={`/invoice/${inv.invoice_number}`} target="_blank"
-                                className="px-2.5 py-1.5 bg-secondary/10 text-secondary border border-secondary/20 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all flex items-center gap-1">
-                                <span className="material-symbols-outlined text-sm">verified</span>
-                                Verify
-                              </Link>
-                            )}
+                            ) : null}
                           </div>
                         </td>
                       </tr>
@@ -495,7 +488,6 @@ export default function InvoicesConsole({
           {/* Mobile Cards */}
           <div className="block md:hidden space-y-3">
             {paginatedInvoices.map((inv) => {
-              const bkRef = inv.booking ? `BK-${inv.booking.id.substring(0, 6).toUpperCase()}` : "—";
               return (
                 <div key={inv.id} className="bg-surface-container-lowest rounded-xl border border-outline-variant/15 shadow-sm p-3 space-y-3">
                   <div className="flex items-start justify-between gap-3">
@@ -518,7 +510,7 @@ export default function InvoicesConsole({
                           className="flex-1 text-center px-2.5 py-1.5 bg-surface-container text-primary border border-outline-variant/15 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all">
                           View
                         </Link>
-                        <Link href={`/customer/bookings/${inv.booking.id}/invoice?download=true`} target="_blank"
+                        <Link href={`/api/invoice/${inv.booking.id}/pdf?download=1`} target="_blank"
                           className="flex-1 text-center px-2.5 py-1.5 bg-primary text-white text-[9px] font-black uppercase tracking-widest rounded-lg transition-all shadow-sm">
                           PDF
                         </Link>
@@ -527,12 +519,7 @@ export default function InvoicesConsole({
                           {isProcessingId === inv.booking.id ? "..." : "Regen"}
                         </button>
                       </>
-                    ) : (
-                      <Link href={`/invoice/${inv.invoice_number}`} target="_blank"
-                        className="flex-1 text-center px-2.5 py-1.5 bg-secondary/10 text-secondary border border-secondary/20 text-[9px] font-black uppercase tracking-widest rounded-lg">
-                        Verify
-                      </Link>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               );

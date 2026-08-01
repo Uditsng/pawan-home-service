@@ -174,7 +174,9 @@ export async function compileInvoiceSnapshot(supabase: SupabaseClient, bookingId
       destination: booking.destination || null,
       expected_bags: booking.expected_bags || 0,
     },
-    line_items: calculation.lineItems,
+    line_items: calculation.lineItems.map((item, idx) =>
+      idx === 0 ? { ...item, meta: { ...item.meta, category: categoryName } } : item,
+    ),
     payment: {
       method: paymentMethod,
       status: payment?.payment_status || booking.payment_status || "paid",

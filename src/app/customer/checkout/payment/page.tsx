@@ -1,31 +1,30 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import CheckoutPaymentClient from "./CheckoutPaymentClient";
-import { calculatePricingBreakdown, PricingInput } from "@/utils/pricingEngine";
-import { PricingModel, ServiceVariant, ServiceAddon, ServicePricingRule, Coupon, CartItem } from "@/lib/types";
+import { Coupon, CartItem } from "@/lib/types";
+import { buildCartCatalog } from "@/lib/catalog/buildCartCatalog";
 import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
-import { calculateReferralDiscount } from "@/lib/engines/referralEngine";
+import { calculateReferralDiscount } from "@/lib/pricing";
 
-interface ServiceBreakdownData {
+export interface ServiceDisplayLine {
   serviceId: string;
   title: string;
   iconName: string;
   subcategoryName: string;
   categorySlug: string;
   pricingModel: string;
-  breakdown: ReturnType<typeof calculatePricingBreakdown>;
   config: {
-    duration?: number | null;
-    areaSqft?: number | null;
-    quantity?: number | null;
-    distanceKm?: number | null;
-    variantId?: string | null;
-    addons?: string | null;
-    selectedPackages?: string | null;
-    formAnswers?: string | null;
-    meetingLocation?: string | null;
-    destination?: string | null;
-    expectedBags?: string | null;
+    duration: number | null;
+    areaSqft: number | null;
+    quantity: number | null;
+    distanceKm: number | null;
+    variantId: string | null;
+    addons: string | null;
+    selectedPackages: string | null;
+    formAnswers: string | null;
+    meetingLocation: string | null;
+    destination: string | null;
+    expectedBags: string | null;
   };
 }
 
@@ -99,98 +98,25 @@ export default async function UnifiedCheckoutPaymentPage({
     scheduleDateObj = new Date(`${date}T${h.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}:00+05:30`);
   }
 
-  let servicesBreakdowns: ServiceBreakdownData[] = [];
+  let items: CartItem[] = [];
+  let serviceIds: string[] = [];
 
   if (serviceId) {
     // ─── Single-service flow ─────────────────────────────────
-    const { data: service } = await supabase
-      .from("services")
-      .select("id, title, category, base_price, pricing_model, pricing_config, page_content, gst_applicable, subcategories(subcategory_name, icon_name)")
-      .eq("id", serviceId)
-      .eq("status", "published")
-      .single();
-
-    if (!service) redirect("/customer/dashboard");
-
-    const [variantsRes, addonsRes, rulesRes] = await Promise.all([
-      supabase.from("service_variants").select("*").eq("service_id", service.id).eq("is_active", true),
-      supabase.from("service_addons").select("*").eq("service_id", service.id).eq("is_active", true),
-      supabase.from("service_pricing_rules").select("*").or(`service_id.eq.${service.id},service_id.is.null`).eq("is_active", true),
-    ]);
-
-    const variants = (variantsRes.data || []) as ServiceVariant[];
-    const addonsList = (addonsRes.data || []) as ServiceAddon[];
-    const rules = (rulesRes.data || []) as ServicePricingRule[];
-
-    let variantPrice: number | null = null;
-    if (variantId) {
-      const found = variants.find(v => v.id === variantId);
-      if (found) variantPrice = Number(found.price);
-    }
-
-    const parsedAddons: { id: string; title: string; price: number; quantity: number }[] = [];
-    if (addons) {
-      const pairs = addons.split(",");
-      for (const pair of pairs) {
-        const [id, qtyStr] = pair.split(":");
-        const qty = parseInt(qtyStr, 10) || 0;
-        const match = addonsList.find(a => a.id === id);
-        if (match && qty > 0) {
-          parsedAddons.push({ id: match.id, title: match.title, price: Number(match.price), quantity: qty });
-        }
-      }
-    }
-
-    const mappedRules = (rules || []).map((r) => {
-      const cond = (r.conditions || {}) as Record<string, unknown>;
-      return {
-        name: r.name, rule_type: r.rule_type as "surcharge" | "discount",
-        amount_type: r.amount_type as "fixed" | "percentage", amount_value: Number(r.amount_value),
-        is_active: r.is_active,
-        conditions: {
-          days_of_week: Array.isArray(cond.days_of_week) ? (cond.days_of_week as number[]) : undefined,
-          hours_range: Array.isArray(cond.hours_range) && cond.hours_range.length === 2 ? (cond.hours_range as [string, string]) : undefined,
-          dates: Array.isArray(cond.dates) ? (cond.dates as string[]) : undefined,
-          pincodes: Array.isArray(cond.pincodes) ? (cond.pincodes as string[]) : undefined,
-        },
-      };
-    });
-
-    const breakdown = calculatePricingBreakdown({
-      pricingModel: (service.pricing_model || "fixed") as PricingModel,
-      basePrice: Number(service.base_price || 0),
-      pricingConfig: (service.pricing_config as unknown as PricingInput["pricingConfig"]) || {},
-      variantPrice,
-      durationMinutes: duration ? parseInt(duration, 10) : undefined,
-      areaSqft: areaSqft ? parseInt(areaSqft, 10) : undefined,
-      quantity: quantity ? parseInt(quantity, 10) : undefined,
-      distanceKm: distanceKm ? parseInt(distanceKm, 10) : undefined,
-      addons: parsedAddons,
-      scheduledDate: scheduleDateObj,
-      pincode: addressObj.pincode,
-      surchargeRules: mappedRules,
-      coupon: couponObj,
-      walletBalanceToUse: 0,
-      gstRate: taxRatePercent,
-      gstEnabled: platformSettings.gstEnabled,
-      gstApplicable: service.gst_applicable,
-    });
-
-    const subcat = service.subcategories as { subcategory_name?: string; icon_name?: string } | null;
-    servicesBreakdowns.push({
-      serviceId: service.id,
-      title: service.title,
-      iconName: subcat?.icon_name || "home_repair_service",
-      subcategoryName: subcat?.subcategory_name || "",
-      categorySlug: (service.category || "").toLowerCase().replace(/\s+/g, "-").replace(/&/g, "and"),
-      pricingModel: service.pricing_model || "fixed",
-      breakdown,
-      config: {
-        duration: duration ? parseInt(duration, 10) : null,
+    serviceIds = [serviceId];
+    items = [
+      {
+        serviceId,
+        title: "",
+        iconName: "",
+        subcategoryName: "",
+        categorySlug: "",
+        gstApplicable: undefined,
+        variantId: variantId || null,
+        selectedDuration: duration ? parseInt(duration, 10) : null,
         areaSqft: areaSqft ? parseInt(areaSqft, 10) : null,
         quantity: quantity ? parseInt(quantity, 10) : null,
         distanceKm: distanceKm ? parseInt(distanceKm, 10) : null,
-        variantId: variantId || null,
         addons: addons || null,
         selectedPackages: selectedPackages || null,
         formAnswers: formAnswers || null,
@@ -198,128 +124,93 @@ export default async function UnifiedCheckoutPaymentPage({
         destination: destination || null,
         expectedBags: expectedBags || null,
       },
-    });
+    ];
   } else if (cartItems) {
     // ─── Cart flow ────────────────────────────────────────
-    let parsedItems: CartItem[];
     try {
-      parsedItems = JSON.parse(cartItems) as CartItem[];
+      const parsedItems = JSON.parse(cartItems) as CartItem[];
+      if (!Array.isArray(parsedItems) || parsedItems.length === 0) {
+        redirect("/customer/dashboard");
+      }
+      items = parsedItems;
+      serviceIds = parsedItems.map((i) => i.serviceId);
     } catch {
       redirect("/customer/dashboard");
-    }
-
-    if (!Array.isArray(parsedItems) || parsedItems.length === 0) {
-      redirect("/customer/dashboard");
-    }
-
-    const serviceIds = parsedItems.map(i => i.serviceId);
-
-    const [servicesRes, variantsRes, addonsRes, rulesRes] = await Promise.all([
-      supabase.from("services").select("id, title, base_price, pricing_model, pricing_config, gst_applicable, category, subcategories(subcategory_name, icon_name)").in("id", serviceIds).eq("status", "published"),
-      supabase.from("service_variants").select("id, price, service_id").in("service_id", serviceIds).eq("is_active", true),
-      supabase.from("service_addons").select("id, title, price, service_id").in("service_id", serviceIds).eq("is_active", true),
-      supabase.from("service_pricing_rules").select("*").or(`service_id.in.(${serviceIds.join(",")}),service_id.is.null`).eq("is_active", true),
-    ]);
-
-    const dbServices = servicesRes.data || [];
-    const allVariants = (variantsRes.data || []) as ServiceVariant[];
-    const allAddons = (addonsRes.data || []) as ServiceAddon[];
-    const allRules = (rulesRes.data || []) as ServicePricingRule[];
-
-    for (const item of parsedItems) {
-      const svc = dbServices.find(s => s.id === item.serviceId);
-      if (!svc) continue;
-
-      const variantPrice = item.variantId
-        ? (allVariants.find(v => v.id === item.variantId)?.price ?? null)
-        : null;
-
-      const parsedAddons: { id: string; title: string; price: number; quantity: number }[] = [];
-      if (item.addons) {
-        const pairs = item.addons.split(",");
-        for (const pair of pairs) {
-          const [id, qtyStr] = pair.split(":");
-          const qty = parseInt(qtyStr, 10) || 0;
-          const match = allAddons.find(a => a.id === id);
-          if (match && qty > 0) {
-            parsedAddons.push({ id: match.id, title: match.title, price: Number(match.price), quantity: qty });
-          }
-        }
-      }
-
-      const svcRules = allRules.filter(
-        (r: ServicePricingRule) => !r.service_id || r.service_id === item.serviceId
-      );
-      const mappedRules = svcRules.map((r) => {
-        const cond = (r.conditions || {}) as Record<string, unknown>;
-        return {
-          name: r.name, rule_type: r.rule_type as "surcharge" | "discount",
-          amount_type: r.amount_type as "fixed" | "percentage", amount_value: Number(r.amount_value),
-          is_active: r.is_active,
-          conditions: {
-            days_of_week: Array.isArray(cond.days_of_week) ? (cond.days_of_week as number[]) : undefined,
-            hours_range: Array.isArray(cond.hours_range) && cond.hours_range.length === 2 ? (cond.hours_range as [string, string]) : undefined,
-            dates: Array.isArray(cond.dates) ? (cond.dates as string[]) : undefined,
-            pincodes: Array.isArray(cond.pincodes) ? (cond.pincodes as string[]) : undefined,
-          },
-        };
-      });
-
-      const breakdown = calculatePricingBreakdown({
-        pricingModel: (svc.pricing_model || "fixed") as PricingModel,
-        basePrice: Number(svc.base_price || 0),
-        pricingConfig: (svc.pricing_config as unknown as PricingInput["pricingConfig"]) || {},
-        variantPrice: variantPrice !== null ? Number(variantPrice) : null,
-        durationMinutes: item.selectedDuration ?? undefined,
-        areaSqft: item.areaSqft ?? undefined,
-        quantity: item.quantity ?? undefined,
-        distanceKm: item.distanceKm ?? undefined,
-        addons: parsedAddons,
-        scheduledDate: scheduleDateObj,
-        pincode: addressObj.pincode,
-        surchargeRules: mappedRules,
-        coupon: couponObj,
-        walletBalanceToUse: 0,
-        gstRate: taxRatePercent,
-        gstEnabled: platformSettings.gstEnabled,
-        gstApplicable: item.gstApplicable ?? svc.gst_applicable,
-      });
-
-      const subcat = svc.subcategories as { subcategory_name?: string; icon_name?: string } | null;
-      servicesBreakdowns.push({
-        serviceId: svc.id,
-        title: svc.title,
-        iconName: subcat?.icon_name || "home_repair_service",
-        subcategoryName: subcat?.subcategory_name || "",
-        categorySlug: (svc.category || "").toLowerCase().replace(/\s+/g, "-").replace(/&/g, "and"),
-        pricingModel: svc.pricing_model || "fixed",
-        breakdown,
-        config: {
-          duration: item.selectedDuration ?? null,
-          areaSqft: item.areaSqft ?? null,
-          quantity: item.quantity ?? null,
-          distanceKm: item.distanceKm ?? null,
-          variantId: item.variantId ?? null,
-          addons: item.addons ?? null,
-          selectedPackages: item.selectedPackages ?? null,
-        },
-      });
     }
   } else {
     redirect("/customer/dashboard");
   }
 
-  if (servicesBreakdowns.length === 0) {
+  if (serviceIds.length === 0) {
+    redirect("/customer/dashboard");
+  }
+
+  const { catalog, services: serviceSources } = await buildCartCatalog(serviceIds);
+
+  // Single-service flow: enrich the display item from the fetched service source
+  if (serviceId) {
+    const src = serviceSources[serviceId];
+    if (!src) redirect("/customer/dashboard");
+    items[0] = {
+      ...items[0],
+      title: src.title,
+      iconName: src.icon_name || "home_repair_service",
+      subcategoryName: src.subcategory_name || "",
+      categorySlug: (src.category || "").toLowerCase().replace(/\s+/g, "-").replace(/&/g, "and"),
+      gstApplicable: catalog.services[serviceId]?.gst_applicable ?? true,
+      pricingModel: (src.pricing_model || "fixed") as CartItem["pricingModel"],
+    };
+  }
+
+  // Cart flow: drop any items whose service is no longer in the catalog so they
+  // don't silently vanish from the total — the client reports how many were removed.
+  const unavailableItems = items.filter((item) => !catalog.services[item.serviceId]);
+  const availableItems = items.filter((item) => catalog.services[item.serviceId]);
+  const droppedCount = unavailableItems.length;
+
+  // Cart flow: enrich display items from fetched service sources
+  const services: ServiceDisplayLine[] = availableItems.map((item) => {
+    const src = serviceSources[item.serviceId];
+    if (!src) return null;
+    return {
+      serviceId: item.serviceId,
+      title: src.title,
+      iconName: src.icon_name || "home_repair_service",
+      subcategoryName: src.subcategory_name || "",
+      categorySlug: (src.category || "").toLowerCase().replace(/\s+/g, "-").replace(/&/g, "and"),
+      pricingModel: src.pricing_model || "fixed",
+      config: {
+        duration: item.selectedDuration ?? null,
+        areaSqft: item.areaSqft ?? null,
+        quantity: item.quantity ?? null,
+        distanceKm: item.distanceKm ?? null,
+        variantId: item.variantId ?? null,
+        addons: item.addons ?? null,
+        selectedPackages: item.selectedPackages ?? null,
+        formAnswers: item.formAnswers ?? null,
+        meetingLocation: item.meetingLocation ?? null,
+        destination: item.destination ?? null,
+        expectedBags: item.expectedBags ?? null,
+      },
+    };
+  }).filter((s): s is ServiceDisplayLine => s !== null);
+
+  if (services.length === 0) {
     redirect("/customer/dashboard");
   }
 
   return (
     <CheckoutPaymentClient
-      services={servicesBreakdowns}
+      services={services}
+      catalog={catalog}
+      items={availableItems}
+      droppedCount={droppedCount}
       addressObj={addressObj}
       addressId={addressId}
       date={date}
       time={time}
+      scheduleDate={scheduleDateObj.toISOString()}
+      pincode={addressObj.pincode}
       taxRatePercent={taxRatePercent}
       referralDiscount={referralDiscount}
       walletBalance={walletBalance}

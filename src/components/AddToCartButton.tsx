@@ -19,11 +19,10 @@ export default function AddToCartButton({
   const inCart = isInCart(item.serviceId);
 
   const handleClick = () => {
-    if (inCart) {
-      openDrawer();
-    } else {
-      addItem(item);
-    }
+    // Always addItem (upsert): for an item already in the cart this refreshes the
+    // stored config with the latest selected options, then opens the drawer for review.
+    addItem(item);
+    openDrawer();
   };
 
   if (compact) {

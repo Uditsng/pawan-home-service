@@ -1,95 +1,15 @@
-import { BookingPricing, PricingModel } from "@/lib/types";
-import { calculateGstBreakdown } from "@/lib/engines/gstEngine";
-
-export interface PricingInput {
-  pricingModel: PricingModel;
-  basePrice: number;
-  pricingConfig: {
-    // Area-based configs
-    price_per_sqft?: number;
-    min_area?: number;
-    max_area?: number;
-    area_slabs?: { min: number; max?: number; rate: number }[];
-    area_pricing_mode?: "flat" | "progressive";
-
-    // Quantity-based configs
-    price_per_unit?: number;
-    min_qty?: number;
-    max_qty?: number;
-    unit_name?: string;
-
-    // Hourly configs
-    price_per_hour?: number;
-    min_hours?: number;
-    max_hours?: number;
-    extra_hour_price?: number;
-
-    // Distance configs
-    base_distance_fee?: number;
-    price_per_km?: number;
-    free_km?: number;
-
-    // Inspection config
-    inspection_fee?: number;
-
-    // Hybrid configs
-    hybrid_components?: {
-      base_fee?: number;
-      hourly_rate?: number;
-      distance_rate?: number;
-      quantity_rate?: number;
-    };
-
-    // General surcharges
-    travel_fee?: number;
-    platform_fee?: number;
-  };
-
-  // Selected parameters
-  variantPrice?: number | null;
-  durationMinutes?: number; // for hourly
-  areaSqft?: number; // for area-based
-  quantity?: number; // for quantity-based
-  distanceKm?: number; // for distance-based
-  addons?: { id: string; title: string; price: number; quantity: number }[];
-
-  // Dynamic conditions (for surcharge evaluation)
-  scheduledDate?: string | Date; // ISO string or Date
-  pincode?: string;
-
-  // Global discounts/offers
-  surchargeRules?: {
-    name: string;
-    rule_type: "surcharge" | "discount";
-    amount_type: "fixed" | "percentage";
-    amount_value: number;
-    is_active?: boolean;
-    conditions?: {
-      days_of_week?: number[]; // 0=Sunday, 6=Saturday
-      hours_range?: [string, string]; // ["20:00", "06:00"]
-      dates?: string[]; // ["2026-12-25"]
-      pincodes?: string[];
-    } | null;
-  }[];
-
-  coupon?: {
-    code: string;
-    discount_type: "fixed" | "percentage";
-    discount_value: number;
-    min_booking_amount?: number | null;
-    max_discount?: number | null;
-  } | null;
-
-  walletBalanceToUse?: number;
-  gstRate?: number; // default 18
-  gstEnabled?: boolean; // default true
-  gstApplicable?: boolean; // default true
-}
+/**
+ * Pricing Engine — Single Source of Truth for per-service price breakdowns.
+ * Pure functions only: no React, Supabase, Server Actions, or side effects.
+ */
+import { calculateCouponDiscount } from "./discountEngine";
+import { calculateGstBreakdown } from "./taxEngine";
+import type { PricingBreakdown, PricingInput } from "./types";
 
 /**
  * Validates and calculates detailed pricing breakdown for bookings.
  */
-export function calculatePricingBreakdown(input: PricingInput): Omit<BookingPricing, "id" | "booking_id" | "created_at"> {
+export function calculatePricingBreakdown(input: PricingInput): PricingBreakdown {
   const config = input.pricingConfig || {};
 
   let basePrice = Number(input.basePrice || 0);
@@ -109,7 +29,11 @@ export function calculatePricingBreakdown(input: PricingInput): Omit<BookingPric
   // 1. Calculate Core Price Component based on pricing model
   switch (input.pricingModel) {
     case "hourly": {
-      const minutes = input.durationMinutes ?? 60;
+      // Duration is mandatory for hourly services. When omitted (e.g. a grid
+      // Add-to-Cart with no explicit selection), fall back to the service's
+      // configured minimum duration instead of silently assuming 60 minutes.
+      const minHours = Number(config.min_hours ?? 0.5);
+      const minutes = input.durationMinutes ?? minHours * 60;
       const blocks = minutes / 30;
       const rate30Min = basePrice || 0;
       hourlyPrice = blocks * rate30Min;
@@ -182,7 +106,7 @@ export function calculatePricingBreakdown(input: PricingInput): Omit<BookingPric
     case "hybrid": {
       const hConfig = config.hybrid_components || {};
       const base = Number(hConfig.base_fee || basePrice || 0);
-      
+
       const hr = Number(hConfig.hourly_rate || 0);
       const minVal = input.durationMinutes || 0;
       hourlyPrice = Math.ceil(minVal / 60) * hr;
@@ -222,10 +146,10 @@ export function calculatePricingBreakdown(input: PricingInput): Omit<BookingPric
 
   // 3. Resolve Dynamic Surcharge Rules
   const surchargesList: { name: string; amount: number }[] = [];
-  
+
   if (input.scheduledDate && input.surchargeRules && input.surchargeRules.length > 0) {
     const sDate = typeof input.scheduledDate === "string" ? new Date(input.scheduledDate) : input.scheduledDate;
-    
+
     // Convert to IST context (ignoring UTC mismatch)
     const dayOfWeek = sDate.getDay(); // 0-6
     const hours = sDate.getHours();
@@ -255,7 +179,7 @@ export function calculatePricingBreakdown(input: PricingInput): Omit<BookingPric
         const [startStr, endStr] = cond.hours_range;
         const [sh, sm] = startStr.split(":").map(Number);
         const [eh, em] = endStr.split(":").map(Number);
-        
+
         const startMin = sh * 60 + sm;
         const endMin = eh * 60 + em;
 
@@ -300,7 +224,7 @@ export function calculatePricingBreakdown(input: PricingInput): Omit<BookingPric
 
   const discountAmount = 0;
 
-  // 4. Calculate GST Amount using gstEngine
+  // 4. Calculate GST Amount using the shared tax engine
   const gstBreakdown = calculateGstBreakdown({
     subtotal,
     taxRatePercent: input.gstRate !== undefined ? input.gstRate : 18,
@@ -311,23 +235,7 @@ export function calculatePricingBreakdown(input: PricingInput): Omit<BookingPric
   const taxRatePercent = gstBreakdown.taxRatePercent;
 
   // 6. Apply Coupon Codes
-  let couponDiscount = 0;
-  if (input.coupon) {
-    const minAmt = Number(input.coupon.min_booking_amount || 0);
-    // Check if subtotal meets min amount
-    if (subtotal >= minAmt) {
-      if (input.coupon.discount_type === "percentage") {
-        couponDiscount = Math.round(subtotal * (Number(input.coupon.discount_value) / 100));
-      } else {
-        couponDiscount = Number(input.coupon.discount_value);
-      }
-      
-      // Limit max discount
-      if (input.coupon.max_discount !== undefined && input.coupon.max_discount !== null) {
-        couponDiscount = Math.min(couponDiscount, Number(input.coupon.max_discount));
-      }
-    }
-  }
+  const couponDiscount = calculateCouponDiscount(subtotal, input.coupon);
 
   // Calculate price before wallet usage
   let payableAmount = Math.max(0, subtotal + gstAmount + travelFee - couponDiscount);
@@ -380,7 +288,7 @@ export function formatDuration(minutes: number): string {
   if (minutes === 90) return "90mins";
   if (minutes === 120) return "2hours";
   if (minutes === 180) return "3 hours";
-  
+
   if (minutes < 60) return `${minutes}min`;
   const hours = minutes / 60;
   if (hours % 1 === 0) {
@@ -388,4 +296,3 @@ export function formatDuration(minutes: number): string {
   }
   return `${hours} hours`;
 }
-

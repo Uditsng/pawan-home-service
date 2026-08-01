@@ -14,6 +14,7 @@ export interface ServiceWithSubcategory {
   category?: string;
   pricing_model?: "fixed" | "hourly" | "area" | "quantity" | "inspection" | "distance" | "hybrid" | null;
   gst_applicable?: boolean | null;
+  pricing_config?: unknown;
   image_url?: string;
   page_content?: ServicePageContent | null;
   price_breakdown?: string | null;

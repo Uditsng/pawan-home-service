@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import DynamicServiceConfigurator from "@/components/DynamicServiceConfigurator";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
-import { formatStartingPrice } from "@/utils/pricingEngine";
+import { formatStartingPrice } from "@/lib/pricing";
 import { Service } from "@/lib/types";
 import {
   getCachedServiceDetails,

@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { Service, ServiceVariant, ServiceAddon, PricingModel, ServicePricingRule } from "@/lib/types";
-import { calculatePricingBreakdown, formatDuration } from "@/utils/pricingEngine";
+import { calculatePricingBreakdown, formatDuration } from "@/lib/pricing";
 import AddToCartButton from "@/components/AddToCartButton";
 import { BookingState } from "@/utils/bookingValidation";
 import VariantSelector from "./booking/VariantSelector";
@@ -137,6 +137,8 @@ export default function DynamicServiceConfigurator({
     bookingState.distanceKm,
     activeAddons,
     surchargeRules,
+    gstRate,
+    gstEnabled,
   ]);
 
   // Compile schedule/booking URL params

@@ -164,6 +164,10 @@ export interface CartItem {
   distanceKm?: number | null;
   addons?: string | null;
   selectedPackages?: string | null;
+  formAnswers?: string | null;
+  meetingLocation?: string | null;
+  destination?: string | null;
+  expectedBags?: string | null;
 }
 
 export interface Order {

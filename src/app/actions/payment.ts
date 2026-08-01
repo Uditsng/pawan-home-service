@@ -4,9 +4,11 @@ import { createClient } from "@/utils/supabase/server";
 import crypto from "crypto";
 import { notifyCustomer, notifyAdmins } from "@/lib/notifications";
 import { triggerDispatchBatch } from "@/app/actions/dispatch";
-import { calculatePricingBreakdown, PricingInput } from "@/utils/pricingEngine";
-import { PricingModel, ServicePricingRule, Coupon } from "@/lib/types";
-import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
+import { Coupon, CartItem } from "@/lib/types";
+import { calculateFinalPayable } from "@/lib/pricing";
+import { computeCartLineItems } from "@/lib/pricing/cartCatalog";
+import { buildCartCatalog } from "@/lib/catalog/buildCartCatalog";
+import type { PricingBreakdown } from "@/lib/pricing/types";
 import { SupabaseClient } from "@supabase/supabase-js";
 
 export interface ServiceCheckoutInput {
@@ -61,6 +63,8 @@ async function fetchCoupon(supabase: SupabaseClient, couponCode?: string | null)
 
 /**
  * Shared helper: computes pricing breakdowns for all given services.
+ * Prices flow through the single `src/lib/pricing` engine (same math the
+ * client uses), recomputed server-side from the DB as the payment authority.
  * Wallet is NOT applied here — it's handled at the order level.
  */
 async function computeServiceBreakdowns(
@@ -71,29 +75,38 @@ async function computeServiceBreakdowns(
     time: string;
     pincode: string;
     couponCode?: string | null;
-    gstRate: number;
-    gstEnabled: boolean;
   }
 ): Promise<{
-  breakdowns: Record<string, ReturnType<typeof calculatePricingBreakdown>>;
+  breakdowns: Record<string, PricingBreakdown>;
   totalAmount: number;
   coupon: Coupon | null;
   titleMap: Record<string, string>;
 }> {
-  const serviceIds = services.map(s => s.serviceId);
+  const serviceIds = services.map((s) => s.serviceId);
+  const couponObj = await fetchCoupon(supabase, options.couponCode);
 
-  const [dbServicesRes, variantsRes, addonsRes, rulesRes, couponObj] = await Promise.all([
-    supabase.from("services").select("id, title, base_price, pricing_model, pricing_config, gst_applicable").in("id", serviceIds).eq("status", "published"),
-    supabase.from("service_variants").select("id, price, service_id").in("service_id", serviceIds).eq("is_active", true),
-    supabase.from("service_addons").select("id, title, price, service_id").in("service_id", serviceIds).eq("is_active", true),
-    supabase.from("service_pricing_rules").select("*").or(`service_id.in.(${serviceIds.join(",")}),service_id.is.null`).eq("is_active", true),
-    fetchCoupon(supabase, options.couponCode),
-  ]);
+  const { catalog, services: serviceSources } = await buildCartCatalog(serviceIds);
 
-  const dbServices = dbServicesRes.data || [];
-  const allVariants = (variantsRes.data || []) as { id: string; price: number; service_id: string }[];
-  const allAddons = (addonsRes.data || []) as { id: string; title: string; price: number; service_id: string }[];
-  const allRules = (rulesRes.data || []) as ServicePricingRule[];
+  // Normalize checkout inputs to cart items so both client & server price identically
+  const items: CartItem[] = services.map((item) => ({
+    serviceId: item.serviceId,
+    title: serviceSources[item.serviceId]?.title || "",
+    iconName: "",
+    subcategoryName: "",
+    categorySlug: "",
+    gstApplicable: catalog.services[item.serviceId]?.gst_applicable ?? true,
+    variantId: item.variantId ?? null,
+    selectedDuration: item.duration ?? null,
+    areaSqft: item.areaSqft ?? null,
+    quantity: item.quantity ?? null,
+    distanceKm: item.distanceKm ?? null,
+    addons: item.addons ?? null,
+    selectedPackages: item.selectedPackages ?? null,
+    formAnswers: item.formAnswers ?? null,
+    meetingLocation: item.meetingLocation ?? null,
+    destination: item.destination ?? null,
+    expectedBags: item.expectedBags ?? null,
+  }));
 
   const [timePart, modifier] = options.time.split(" ");
   const [rawH, min] = timePart.split(":").map(Number);
@@ -102,73 +115,22 @@ async function computeServiceBreakdowns(
   if (modifier === "AM" && h === 12) h = 0;
   const scheduledDate = new Date(`${options.date}T${h.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}:00+05:30`);
 
-  const breakdowns: Record<string, ReturnType<typeof calculatePricingBreakdown>> = {};
+  const lineItems = computeCartLineItems(items, catalog, {
+    scheduledDate,
+    pincode: options.pincode,
+    coupon: couponObj,
+  });
+
+  const breakdowns: Record<string, PricingBreakdown> = {};
   const titleMap: Record<string, string> = {};
   let totalAmount = 0;
 
-  for (const item of services) {
-    const svc = dbServices.find(s => s.id === item.serviceId);
-    if (!svc) continue;
-
-    titleMap[item.serviceId] = svc.title;
-
-    const variantPrice = item.variantId
-      ? (allVariants.find(v => v.id === item.variantId)?.price ?? null)
-      : null;
-
-    const parsedAddons: { id: string; title: string; price: number; quantity: number }[] = [];
-    if (item.addons) {
-      const pairs = item.addons.split(",");
-      for (const pair of pairs) {
-        const [id, qtyStr] = pair.split(":");
-        const qty = parseInt(qtyStr, 10) || 0;
-        const match = allAddons.find(a => a.id === id);
-        if (match && qty > 0) {
-          parsedAddons.push({ id: match.id, title: match.title, price: Number(match.price), quantity: qty });
-        }
-      }
-    }
-
-    const svcRules = allRules.filter(r => !r.service_id || r.service_id === item.serviceId);
-    const mappedRules = svcRules.map(r => {
-      const cond = (r.conditions || {}) as Record<string, unknown>;
-      return {
-        name: r.name,
-        rule_type: r.rule_type as "surcharge" | "discount",
-        amount_type: r.amount_type as "fixed" | "percentage",
-        amount_value: Number(r.amount_value),
-        is_active: r.is_active,
-        conditions: {
-          days_of_week: Array.isArray(cond.days_of_week) ? (cond.days_of_week as number[]) : undefined,
-          hours_range: Array.isArray(cond.hours_range) && cond.hours_range.length === 2 ? (cond.hours_range as [string, string]) : undefined,
-          dates: Array.isArray(cond.dates) ? (cond.dates as string[]) : undefined,
-          pincodes: Array.isArray(cond.pincodes) ? (cond.pincodes as string[]) : undefined,
-        },
-      };
-    });
-
-    const breakdown = calculatePricingBreakdown({
-      pricingModel: (svc.pricing_model || "fixed") as PricingModel,
-      basePrice: Number(svc.base_price || 0),
-      pricingConfig: (svc.pricing_config as unknown as PricingInput["pricingConfig"]) || {},
-      variantPrice: variantPrice !== null ? Number(variantPrice) : null,
-      durationMinutes: item.duration ?? undefined,
-      areaSqft: item.areaSqft ?? undefined,
-      quantity: item.quantity ?? undefined,
-      distanceKm: item.distanceKm ?? undefined,
-      addons: parsedAddons,
-      scheduledDate,
-      pincode: options.pincode,
-      surchargeRules: mappedRules,
-      coupon: couponObj,
-      walletBalanceToUse: 0,
-      gstRate: options.gstRate,
-      gstEnabled: options.gstEnabled,
-      gstApplicable: svc.gst_applicable,
-    });
-
-    breakdowns[item.serviceId] = breakdown;
-    totalAmount += breakdown.total_price;
+  for (const line of lineItems) {
+    breakdowns[line.serviceId] = line.breakdown;
+    totalAmount += line.breakdown.total_price;
+  }
+  for (const [id, src] of Object.entries(serviceSources)) {
+    titleMap[id] = src.title;
   }
 
   return { breakdowns, totalAmount, coupon: couponObj, titleMap };
@@ -193,10 +155,8 @@ export async function createRazorpayOrderAction(payload: {
     throw new Error("No services specified");
   }
 
-  const [{ data: addr }, platformSettings] = await Promise.all([
-    supabase.from("user_addresses").select("city, pincode").eq("id", payload.addressId).eq("user_id", user.id).single(),
-    fetchPlatformSettings(supabase),
-  ]);
+  const { data: addr } = await supabase
+    .from("user_addresses").select("city, pincode").eq("id", payload.addressId).eq("user_id", user.id).single();
   if (!addr) throw new Error("Address not found");
 
   const { totalAmount } = await computeServiceBreakdowns(supabase, payload.services, {
@@ -204,19 +164,15 @@ export async function createRazorpayOrderAction(payload: {
     time: payload.time,
     pincode: addr.pincode,
     couponCode: payload.couponCode,
-    gstRate: platformSettings.taxRate,
-    gstEnabled: platformSettings.gstEnabled,
   });
 
-  let finalPayable = totalAmount;
-  const walletAmount = Number(payload.walletAmountToUse || 0);
-  if (walletAmount > 0) {
-    finalPayable = Math.max(0, finalPayable - walletAmount);
-  }
-  const referralDiscount = Number(payload.referralDiscount || 0);
-  if (referralDiscount > 0) {
-    finalPayable = Math.max(0, finalPayable - referralDiscount);
-  }
+  // The server is the payment authority: recompute the exact payable the client
+  // displayed (same engine), then create the Razorpay order for that amount.
+  const { finalPayable } = calculateFinalPayable({
+    totalBeforeWallet: totalAmount,
+    walletAmountToUse: payload.walletAmountToUse,
+    referralDiscount: payload.referralDiscount,
+  });
 
   if (finalPayable <= 0) {
     return { freeOrder: true, amount: 0, currency: "INR" };
@@ -312,11 +268,9 @@ export async function verifyRazorpayPaymentAction(payload: {
     }
   }
 
-  // 2. Fetch address & platform settings
-  const [{ data: addr }, platformSettings] = await Promise.all([
-    supabase.from("user_addresses").select("formatted_address, city, area, pincode").eq("id", payload.addressId).eq("user_id", user.id).single(),
-    fetchPlatformSettings(supabase),
-  ]);
+  // 2. Fetch address
+  const { data: addr } = await supabase
+    .from("user_addresses").select("formatted_address, city, area, pincode").eq("id", payload.addressId).eq("user_id", user.id).single();
   if (!addr) return { success: false, error: "Address not found." };
   const typedAddr = addr as unknown as DBAddress;
 
@@ -329,25 +283,23 @@ export async function verifyRazorpayPaymentAction(payload: {
   const isoStr = `${payload.date}T${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:00+05:30`;
   const timestamp = new Date(isoStr);
 
-  // 4. Compute all pricing breakdowns
+  // 4. Compute all pricing breakdowns (shared engine, server-side authority)
   const { breakdowns, totalAmount, titleMap } = await computeServiceBreakdowns(supabase, payload.services, {
     date: payload.date,
     time: payload.time,
     pincode: addr.pincode,
     couponCode: payload.couponCode,
-    gstRate: platformSettings.taxRate,
-    gstEnabled: platformSettings.gstEnabled,
   });
 
-  const walletAmountToUse = Number(payload.walletAmountToUse || 0);
-  const referralDiscount = Number(payload.referralDiscount || 0);
-  let finalOrderAmount = totalAmount;
-  if (walletAmountToUse > 0) {
-    finalOrderAmount = Math.max(0, finalOrderAmount - walletAmountToUse);
-  }
-  if (referralDiscount > 0) {
-    finalOrderAmount = Math.max(0, finalOrderAmount - referralDiscount);
-  }
+  // Wallet is capped at the payable and re-derived here (never trust the client).
+  const payable = calculateFinalPayable({
+    totalBeforeWallet: totalAmount,
+    walletAmountToUse: payload.walletAmountToUse,
+    referralDiscount: payload.referralDiscount,
+  });
+  const walletAmountToUse = payable.walletApplied;
+  const referralDiscount = payable.referralDiscount;
+  const finalOrderAmount = payable.finalPayable;
 
   // Security check: Validate free order bypass
   if (payload.isFree && finalOrderAmount > 0) {

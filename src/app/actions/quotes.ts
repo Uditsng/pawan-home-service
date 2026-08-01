@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { calculateGstBreakdown } from "@/lib/pricing";
 
 export interface QuoteItemInput {
   item_type: "material" | "labour";
@@ -46,8 +47,8 @@ export async function createBookingQuoteAction(
     };
   });
 
-  const gst = Math.round(subtotal * (taxRate / 100));
-  const finalTotal = Math.max(0, subtotal + gst - discount);
+  const gstBreakdown = calculateGstBreakdown({ subtotal, taxRatePercent: taxRate });
+  const finalTotal = Math.max(0, gstBreakdown.totalWithGst - discount);
 
   // Insert quote record
   const { data: quote, error: quoteErr } = await supabase

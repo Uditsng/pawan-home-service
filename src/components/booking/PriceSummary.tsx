@@ -1,5 +1,6 @@
 import React from "react";
 import { BookingPricing } from "@/lib/types";
+import { calculateFinalPayable } from "@/lib/pricing/payableEngine";
 
 interface PriceSummaryProps {
   breakdown: Omit<BookingPricing, "id" | "booking_id" | "created_at">;
@@ -66,8 +67,11 @@ export default function PriceSummary({
   }
 
   // Detailed breakdown table (used in Payment Page)
-  const walletApplied = useWallet ? Math.min(walletBalance, breakdown.total_price) : 0;
-  const payableAmount = Math.max(0, breakdown.total_price - walletApplied);
+  const { walletApplied, finalPayable } = calculateFinalPayable({
+    totalBeforeWallet: breakdown.total_price,
+    walletAmountToUse: useWallet ? walletBalance : 0,
+  });
+  const payableAmount = finalPayable;
 
   return (
     <div className="bg-surface-container-low border border-outline-variant/20 rounded-3xl p-5 md:p-6 shadow-xs space-y-4">

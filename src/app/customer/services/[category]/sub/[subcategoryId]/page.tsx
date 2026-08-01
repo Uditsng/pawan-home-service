@@ -46,6 +46,15 @@ export default async function SubcategoryServiceListingPage({
           {(displayServices || []).map((service) => {
             const iconName = service.subcategories?.icon_name || "sparkles";
 
+            // Hourly services default to their configured minimum duration so the
+            // cart prices the correct number of blocks instead of assuming 60 min.
+            const pricingConfig =
+              (service.pricing_config as { min_hours?: number } | undefined) || {};
+            const selectedDuration =
+              service.pricing_model === "hourly"
+                ? Math.round(Number(pricingConfig.min_hours ?? 0.5) * 60)
+                : null;
+
             return (
               <div
                 key={service.id}
@@ -95,7 +104,7 @@ export default async function SubcategoryServiceListingPage({
                       categorySlug: categorySlug,
                       gstApplicable: service.gst_applicable ?? false,
                       variantId: null,
-                      selectedDuration: null,
+                      selectedDuration,
                       areaSqft: null,
                       quantity: null,
                       distanceKm: null,

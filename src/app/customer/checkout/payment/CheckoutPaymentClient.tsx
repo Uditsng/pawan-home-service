@@ -3,33 +3,15 @@
 import { useState, useTransition, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createRazorpayOrderAction, verifyRazorpayPaymentAction } from "@/app/actions/payment";
-import { BookingPricing, Coupon } from "@/lib/types";
-import { formatDuration } from "@/utils/pricingEngine";
+import { Coupon, CartItem } from "@/lib/types";
+import { formatDuration } from "@/lib/pricing";
+import { calculateCart } from "@/lib/pricing/payableEngine";
+import { computeCartLineItems } from "@/lib/pricing/cartCatalog";
+import type { CartCatalog } from "@/lib/pricing/cartCatalog";
+import type { PricingBreakdown } from "@/lib/pricing/types";
 import { Card } from "@/components/ui/Card";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
-
-interface ServiceBreakdownData {
-  serviceId: string;
-  title: string;
-  iconName: string;
-  subcategoryName: string;
-  categorySlug: string;
-  pricingModel: string;
-  breakdown: Omit<BookingPricing, "id" | "booking_id" | "created_at">;
-  config: {
-    duration?: number | null;
-    areaSqft?: number | null;
-    quantity?: number | null;
-    distanceKm?: number | null;
-    variantId?: string | null;
-    addons?: string | null;
-    selectedPackages?: string | null;
-    formAnswers?: string | null;
-    meetingLocation?: string | null;
-    destination?: string | null;
-    expectedBags?: string | null;
-  };
-}
+import type { ServiceDisplayLine } from "./page";
 
 interface Address {
   formatted_address: string;
@@ -50,11 +32,16 @@ interface CustomWindow {
 }
 
 interface Props {
-  services: ServiceBreakdownData[];
+  services: ServiceDisplayLine[];
+  catalog: CartCatalog;
+  items: CartItem[];
+  droppedCount?: number;
   addressObj: Address;
   addressId: string;
   date: string;
   time: string;
+  scheduleDate: string;
+  pincode: string;
   taxRatePercent: number;
   referralDiscount: number;
   walletBalance: number;
@@ -64,10 +51,15 @@ interface Props {
 
 export default function CheckoutPaymentClient({
   services,
+  catalog,
+  items,
+  droppedCount = 0,
   addressObj,
   addressId,
   date,
   time,
+  scheduleDate,
+  pincode,
   taxRatePercent,
   referralDiscount,
   walletBalance,
@@ -83,24 +75,55 @@ export default function CheckoutPaymentClient({
   const [businessName, setBusinessName] = useState("");
   const [businessGstin, setBusinessGstin] = useState("");
 
-  const totalPriceWithoutGst = useMemo(
-    () => services.reduce((sum, s) => sum + (s.breakdown.total_price - s.breakdown.gst_amount), 0),
-    [services]
+  // Prices are computed entirely client-side through the shared pricing engine.
+  // The server recomputes the same engine at payment time (authority) — no
+  // server pricing calls happen while this screen is open or the wallet toggles.
+  const lineItems = useMemo(
+    () =>
+      computeCartLineItems(items, catalog, {
+        scheduledDate: scheduleDate,
+        pincode,
+        coupon: couponObj,
+      }),
+    [items, catalog, scheduleDate, pincode, couponObj]
   );
-  const totalGst = useMemo(
-    () => services.reduce((sum, s) => sum + s.breakdown.gst_amount, 0),
-    [services]
+
+  const cartResult = useMemo(
+    () =>
+      calculateCart({
+        lineItems,
+        walletBalanceToUse: useWallet ? walletBalance : 0,
+        referralDiscount,
+      }),
+    [lineItems, useWallet, walletBalance, referralDiscount]
   );
-  const totalCouponDiscount = useMemo(
-    () => services.reduce((sum, s) => sum + (s.breakdown.coupon_discount || 0), 0),
-    [services]
-  );
-  const totalBeforeWallet = useMemo(
-    () => services.reduce((sum, s) => sum + s.breakdown.total_price, 0),
-    [services]
-  );
-  const walletApplied = useWallet ? Math.min(walletBalance, totalBeforeWallet) : 0;
-  const finalPrice = Math.max(0, totalBeforeWallet - walletApplied);
+
+  const totalPriceWithoutGst = cartResult.subtotal;
+  const totalGst = cartResult.gstTotal;
+  const totalCouponDiscount = cartResult.couponDiscountTotal;
+  const walletApplied = cartResult.walletApplied;
+  const finalPrice = cartResult.finalPayable;
+
+  const breakdownByService = useMemo(() => {
+    const map: Record<string, PricingBreakdown> = {};
+    for (const l of lineItems) map[l.serviceId] = l.breakdown;
+    return map;
+  }, [lineItems]);
+
+  const checkoutServices = items.map((item) => ({
+    serviceId: item.serviceId,
+    variantId: item.variantId ?? null,
+    addons: item.addons ?? null,
+    duration: item.selectedDuration ?? null,
+    areaSqft: item.areaSqft ?? null,
+    quantity: item.quantity ?? null,
+    distanceKm: item.distanceKm ?? null,
+    selectedPackages: item.selectedPackages ?? null,
+    meetingLocation: item.meetingLocation ?? null,
+    destination: item.destination ?? null,
+    expectedBags: item.expectedBags ?? null,
+    formAnswers: item.formAnswers ?? null,
+  }));
 
   const formattedDisplayDate = useMemo(() => {
     const dateObj = new Date(`${date}T12:00:00`);
@@ -124,21 +147,6 @@ export default function CheckoutPaymentClient({
 
     startTransition(async () => {
       try {
-        const checkoutServices = services.map(s => ({
-          serviceId: s.serviceId,
-          variantId: s.config.variantId ?? null,
-          addons: s.config.addons ?? null,
-          duration: s.config.duration ?? null,
-          areaSqft: s.config.areaSqft ?? null,
-          quantity: s.config.quantity ?? null,
-          distanceKm: s.config.distanceKm ?? null,
-          selectedPackages: s.config.selectedPackages ?? null,
-          meetingLocation: s.config.meetingLocation ?? null,
-          destination: s.config.destination ?? null,
-          expectedBags: s.config.expectedBags ?? null,
-          formAnswers: s.config.formAnswers ?? null,
-        }));
-
         const rzOrder = await createRazorpayOrderAction({
           services: checkoutServices,
           addressId,
@@ -254,6 +262,16 @@ export default function CheckoutPaymentClient({
           <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-on-background">Secure Checkout</h2>
         </div>
 
+        {droppedCount > 0 && (
+          <div className="bg-amber-50 border border-amber-200/60 rounded-2xl p-4 flex items-start gap-3 text-amber-800 animate-in fade-in duration-300">
+            <span className="material-symbols-outlined text-amber-600 shrink-0 mt-0.5">warning</span>
+            <div className="text-xs font-semibold leading-relaxed">
+              {droppedCount} {droppedCount === 1 ? "service was" : "services were"} no longer
+              available and {droppedCount === 1 ? "has" : "have"} been removed from this order.
+            </div>
+          </div>
+        )}
+
         {errorMessage && (
           <div className="bg-red-50 border border-red-200/50 rounded-2xl p-4 flex items-start gap-3 text-red-800 animate-in fade-in duration-300">
             <span className="material-symbols-outlined text-red-600 shrink-0 mt-0.5">error</span>
@@ -278,34 +296,38 @@ export default function CheckoutPaymentClient({
                   {services.length > 1 ? "Services Selected" : "Service"}
                 </p>
                 <div className="space-y-2.5">
-                  {services.map((svc) => (
-                    <div key={svc.serviceId} className="flex items-center justify-between p-3 bg-surface-container-low rounded-xl border border-outline-variant/10">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
-                          <ServiceIconComponent iconName={svc.iconName} width={24} height={24} className="w-6 h-6 text-emerald-600 drop-shadow-sm" />
+                  {services.map((svc) => {
+                    const breakdown = breakdownByService[svc.serviceId];
+                    const itemPrice = breakdown ? breakdown.total_price - breakdown.gst_amount : 0;
+                    return (
+                      <div key={svc.serviceId} className="flex items-center justify-between p-3 bg-surface-container-low rounded-xl border border-outline-variant/10">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
+                            <ServiceIconComponent iconName={svc.iconName} width={24} height={24} className="w-6 h-6 text-emerald-600 drop-shadow-sm" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-sm text-on-surface truncate leading-tight">{svc.title}</p>
+                            <p className="text-[10px] text-on-surface-variant font-medium mt-0.5">{svc.subcategoryName}</p>
+                            {svc.pricingModel === "hourly" && svc.config.duration && (
+                              <p className="text-[10px] text-secondary font-bold mt-0.5">Duration: {formatDuration(svc.config.duration)}</p>
+                            )}
+                            {svc.config.areaSqft && (
+                              <p className="text-[10px] text-secondary font-bold mt-0.5">Area: {svc.config.areaSqft} sqft</p>
+                            )}
+                            {svc.config.quantity && (
+                              <p className="text-[10px] text-secondary font-bold mt-0.5">Qty: {svc.config.quantity}</p>
+                            )}
+                            {svc.config.distanceKm && (
+                              <p className="text-[10px] text-secondary font-bold mt-0.5">Distance: {svc.config.distanceKm} km</p>
+                            )}
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="font-bold text-sm text-on-surface truncate leading-tight">{svc.title}</p>
-                          <p className="text-[10px] text-on-surface-variant font-medium mt-0.5">{svc.subcategoryName}</p>
-                          {svc.pricingModel === "hourly" && svc.config.duration && (
-                            <p className="text-[10px] text-secondary font-bold mt-0.5">Duration: {formatDuration(svc.config.duration)}</p>
-                          )}
-                          {svc.config.areaSqft && (
-                            <p className="text-[10px] text-secondary font-bold mt-0.5">Area: {svc.config.areaSqft} sqft</p>
-                          )}
-                          {svc.config.quantity && (
-                            <p className="text-[10px] text-secondary font-bold mt-0.5">Qty: {svc.config.quantity}</p>
-                          )}
-                          {svc.config.distanceKm && (
-                            <p className="text-[10px] text-secondary font-bold mt-0.5">Distance: {svc.config.distanceKm} km</p>
-                          )}
-                        </div>
+                        <span className="font-black text-sm text-primary shrink-0 ml-2">
+                          ₹{itemPrice}
+                        </span>
                       </div>
-                      <span className="font-black text-sm text-primary shrink-0 ml-2">
-                        ₹{svc.breakdown.total_price - svc.breakdown.gst_amount}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 

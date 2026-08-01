@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { ImageUploadField } from "@/components/ui/ImageUploadField";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
 import { PricingModel, ServiceVariant, ServiceAddon } from "@/lib/types";
-import { calculatePricingBreakdown, formatDuration, PricingInput } from "@/utils/pricingEngine";
+import { calculatePricingBreakdown, formatDuration, PricingInput } from "@/lib/pricing";
 import { FormFieldConfig } from "@/utils/bookingValidation";
 
 type Subcategory = {

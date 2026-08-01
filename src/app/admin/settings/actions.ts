@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/utils/supabase/auth-checks";
+import { revalidatePlatformSettings } from "@/utils/supabase/cacheInvalidators";
 
 /**
  * Save settings to database
@@ -93,6 +94,7 @@ export async function updateSettingsAction(settings: {
   revalidatePath("/partner/dashboard");
   revalidatePath("/customer/checkout/payment");
   revalidatePath("/customer/checkout/cart/payment");
+  revalidatePlatformSettings();
   return { success: true };
 }
 

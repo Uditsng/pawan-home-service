@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { Metadata } from "next";
 import ReferralCodeCopyClient from "@/components/ReferralCodeCopyClient";
 import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
-import { getReferralRewardConfig } from "@/lib/engines/referralEngine";
+import { getReferralRewardConfig } from "@/lib/pricing";
 
 export async function generateMetadata(): Promise<Metadata> {
   const supabase = await createClient();

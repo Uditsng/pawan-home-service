@@ -23,8 +23,18 @@ type CartAction =
 function cartReducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
     case "ADD_ITEM": {
+      // Upsert by serviceId: re-adding from the configurator applies the latest
+      // options (variant, duration, quantity, addons, etc.) instead of being ignored.
       const exists = state.items.some(i => i.serviceId === action.item.serviceId);
-      if (exists) return state;
+      if (exists) {
+        return {
+          ...state,
+          items: state.items.map(i =>
+            i.serviceId === action.item.serviceId ? { ...action.item } : i
+          ),
+          isOpen: true,
+        };
+      }
       return { ...state, items: [...state.items, action.item], isOpen: true };
     }
     case "REMOVE_ITEM":

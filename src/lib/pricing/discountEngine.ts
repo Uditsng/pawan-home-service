@@ -1,18 +1,37 @@
 /**
- * Referral Engine — Single Responsibility Engine for Referral Rewards & Discounts
- * Handles 50-50 referral rewards, checkout discount calculations, and system enable/disable state.
+ * Discount Engine — Single Responsibility Engine for Coupons & Referral Rewards
+ * Handles coupon code math and 50-50 referral checkout discounts.
  */
+import type {
+  CouponInput,
+  ReferralConfig,
+  ReferralDiscountResult,
+} from "./types";
 
-export interface ReferralConfig {
-  referrerReward: number; // e.g. 50 (₹)
-  referredDiscount: number; // e.g. 50 (₹)
-  isEnabled: boolean;     // global admin toggle
-}
+/**
+ * Calculates a coupon discount against a subtotal.
+ * Mirrors the historical inline logic in the pricing engine (percentage/fixed,
+ * minimum booking amount, and max discount cap).
+ */
+export function calculateCouponDiscount(
+  subtotal: number,
+  coupon?: CouponInput | null
+): number {
+  if (!coupon) return 0;
 
-export interface ReferralDiscountResult {
-  discountAmount: number;
-  isApplied: boolean;
-  message?: string;
+  const minAmt = Number(coupon.min_booking_amount || 0);
+  if (subtotal < minAmt) return 0;
+
+  let discount =
+    coupon.discount_type === "percentage"
+      ? Math.round(subtotal * (Number(coupon.discount_value) / 100))
+      : Number(coupon.discount_value);
+
+  if (coupon.max_discount !== undefined && coupon.max_discount !== null) {
+    discount = Math.min(discount, Number(coupon.max_discount));
+  }
+
+  return Math.max(0, discount);
 }
 
 /**

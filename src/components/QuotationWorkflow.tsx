@@ -3,7 +3,7 @@
 import React, { useState, useTransition } from "react";
 import { createBookingQuoteAction, respondToQuoteAction, QuoteItemInput } from "@/app/actions/quotes";
 import type { BookingQuote, BookingQuoteItem } from "@/lib/types";
-import { calculateGstBreakdown } from "@/lib/engines/gstEngine";
+import { calculateGstBreakdown } from "@/lib/pricing";
 
 // DB join returns booking_quote_items under this key; reflect the real shape.
 type ActiveQuote = BookingQuote & { booking_quote_items?: BookingQuoteItem[] };

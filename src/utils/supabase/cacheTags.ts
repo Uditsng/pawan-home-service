@@ -10,3 +10,4 @@ export const TAG_REVIEWS = "reviews";
 export const TAG_VARIANTS = "variants";
 export const TAG_ADDONS = "addons";
 export const TAG_PRICING_RULES = "pricing-rules";
+export const TAG_PLATFORM_SETTINGS = "platform-settings";

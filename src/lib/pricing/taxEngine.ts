@@ -2,22 +2,7 @@
  * GST Engine — Single Responsibility Engine for Platform Tax (GST)
  * Handles global enable/disable checks, rate calculations, and invoice breakdowns.
  */
-
-export interface GstInput {
-  subtotal: number;
-  taxRatePercent: number; // e.g. 18
-  gstEnabled?: boolean;   // global admin toggle (default: true)
-  serviceGstApplicable?: boolean; // individual service flag (default: true)
-}
-
-export interface GstBreakdown {
-  subtotal: number;
-  gstAmount: number;
-  taxRatePercent: number;
-  isGstApplied: boolean;
-  totalWithGst: number;
-  displayLabel: string;
-}
+import type { GstBreakdown, GstInput } from "./types";
 
 /**
  * Calculates GST amount and breakdown based on subtotal and admin settings.
@@ -46,5 +31,3 @@ export function calculateGstBreakdown(input: GstInput): GstBreakdown {
     displayLabel,
   };
 }
-
-

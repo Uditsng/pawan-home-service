@@ -6,7 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import AddAddressModal from "@/components/AddAddressModal";
 import { useCart } from "@/lib/cart/CartContext";
 import DynamicBookingForm from "@/components/DynamicBookingForm";
-import { formatDuration } from "@/utils/pricingEngine";
+import { formatDuration } from "@/lib/pricing";
 import { Service, PricingModel } from "@/lib/types";
 import { validateBooking, BookingState, FormFieldConfig } from "@/utils/bookingValidation";
 import DateSelector from "@/components/booking/DateSelector";

@@ -7,6 +7,7 @@ import {
   TAG_VARIANTS,
   TAG_ADDONS,
   TAG_PRICING_RULES,
+  TAG_PLATFORM_SETTINGS,
 } from "./cacheTags";
 
 /**
@@ -79,4 +80,12 @@ export function revalidatePricingRules(serviceId?: string): void {
   if (serviceId) {
     revalidateTag(`pricing-rules-${serviceId}`, "default");
   }
+}
+
+/**
+ * Revalidates the cached platform settings.
+ * Called whenever platform settings are updated.
+ */
+export function revalidatePlatformSettings(): void {
+  revalidateTag(TAG_PLATFORM_SETTINGS, "default");
 }

@@ -1,4 +1,7 @@
+import { unstable_cache } from "next/cache";
 import { SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@/utils/supabase/server";
+import { TAG_PLATFORM_SETTINGS } from "@/utils/supabase/cacheTags";
 
 export interface PlatformSettings {
   platformCommission: number;    // e.g. 20 (percent)
@@ -81,3 +84,17 @@ export async function fetchPlatformSettings(supabase: SupabaseClient): Promise<P
     return { ...DEFAULT_PLATFORM_SETTINGS };
   }
 }
+
+/**
+ * Cached platform settings for high-frequency read paths (cart, checkout, payment).
+ * Invalidated via TAG_PLATFORM_SETTINGS whenever settings change.
+ */
+export const getCachedPlatformSettings = () =>
+  unstable_cache(
+    async () => {
+      const supabase = await createClient();
+      return fetchPlatformSettings(supabase);
+    },
+    ["platform-settings"],
+    { revalidate: 300, tags: [TAG_PLATFORM_SETTINGS] }
+  )();

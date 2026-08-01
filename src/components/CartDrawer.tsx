@@ -2,48 +2,101 @@
 
 import { useCart } from "@/lib/cart/CartContext";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
-import { getCartPricesAction, CartPricesResult } from "@/app/actions/cart";
+import { getCartCatalogAction } from "@/app/actions/cart";
+import { calculateCart } from "@/lib/pricing/payableEngine";
+import { computeCartLineItems, parseCartAddons } from "@/lib/pricing/cartCatalog";
+import { formatDuration } from "@/lib/pricing";
+import type { CartCatalog } from "@/lib/pricing/cartCatalog";
+import type { CartPricingResult } from "@/lib/pricing/types";
 
 export default function CartDrawer() {
   const { items, isDrawerOpen, closeDrawer, removeItem, itemCount } =
     useCart();
   const router = useRouter();
-  const [prices, setPrices] = useState<CartPricesResult | null>(null);
+  const [prices, setPrices] = useState<CartPricingResult | null>(null);
   const [isLoadingPrices, setIsLoadingPrices] = useState(false);
+  const [catalog, setCatalog] = useState<CartCatalog | null>(null);
   const prevItemsRef = useRef<string>("");
+  const catalogKeyRef = useRef<string>("");
 
-  const fetchPrices = useCallback(async () => {
-    if (items.length === 0) {
-      setPrices(null);
+  useEffect(() => {
+    let active = true;
+
+    if (!isDrawerOpen || items.length === 0) {
+      if (items.length === 0) {
+        Promise.resolve().then(() => {
+          if (active) {
+            setPrices(null);
+            setIsLoadingPrices(false);
+          }
+        });
+      }
       return;
     }
+
+    // Catalog only depends on which services are in the cart.
+    const serviceKey = items.map((i) => i.serviceId).join(",");
+    // Prices depend on the full per-item config, so re-adding an item with
+    // different options triggers a fresh computation.
+    const configKey = JSON.stringify(
+      items.map((i) => ({
+        s: i.serviceId,
+        v: i.variantId ?? null,
+        d: i.selectedDuration ?? null,
+        a: i.areaSqft ?? null,
+        q: i.quantity ?? null,
+        k: i.distanceKm ?? null,
+        o: i.addons ?? null,
+      }))
+    );
+
+    const needsFetch = serviceKey !== catalogKeyRef.current || !catalog;
+    const configChanged = configKey !== prevItemsRef.current;
+    if (!needsFetch && !configChanged && prices !== null) return;
+
+    prevItemsRef.current = configKey;
+    if (needsFetch) catalogKeyRef.current = serviceKey;
     setIsLoadingPrices(true);
-    try {
-      const result = await getCartPricesAction(items);
+
+    const load = async () => {
+      // Defer execution to next tick to avoid synchronous cascading state update in effect body
+      await Promise.resolve();
+      if (!active) return;
+
+      let currentCatalog = catalog;
+      if (needsFetch) {
+        try {
+          const fetched = await getCartCatalogAction(items);
+          if (!active) return;
+          setCatalog(fetched);
+          currentCatalog = fetched;
+        } catch {
+          if (!active) return;
+          setPrices(null);
+          setIsLoadingPrices(false);
+          return;
+        }
+      }
+
+      if (!currentCatalog) return;
+
+      // Compute prices entirely client-side — no server pricing call
+      const result = calculateCart({
+        lineItems: computeCartLineItems(items, currentCatalog),
+      });
+      if (!active) return;
       setPrices(result);
-    } catch {
-      setPrices(null);
-    } finally {
       setIsLoadingPrices(false);
-    }
-  }, [items]);
+    };
 
-  useEffect(() => {
-    const key = items.map(i => i.serviceId).join(",");
-    if (key !== prevItemsRef.current) {
-      prevItemsRef.current = key;
-      fetchPrices();
-    }
-  }, [items, fetchPrices]);
+    load();
 
-  // Re-fetch on drawer open in case items changed while closed
-  useEffect(() => {
-    if (isDrawerOpen && items.length > 0) {
-      fetchPrices();
-    }
-  }, [isDrawerOpen, fetchPrices, items.length]);
+    return () => {
+      active = false;
+    };
+  }, [isDrawerOpen, items, prices, catalog]);
 
   // Prevent body scroll when drawer is open
   useEffect(() => {
@@ -134,19 +187,37 @@ export default function CartDrawer() {
             </div>
           ) : (
             items.map((item) => {
-              const itemPrice = prices?.prices[item.serviceId];
+              const lineItem = prices?.lineItems.find((l) => l.serviceId === item.serviceId);
+              const isUnavailable = prices !== null && !lineItem;
+              const itemPrice = lineItem
+                ? lineItem.breakdown.total_price - lineItem.breakdown.gst_amount
+                : undefined;
+
+              const configParts: string[] = [];
+              if (item.selectedDuration) configParts.push(formatDuration(item.selectedDuration));
+              if (item.areaSqft) configParts.push(`${item.areaSqft} sqft`);
+              if (item.quantity) configParts.push(`Qty ${item.quantity}`);
+              if (item.distanceKm) configParts.push(`${item.distanceKm} km`);
+              const addonCount = parseCartAddons(item.addons, catalog?.addons ?? {})
+                .reduce((n, a) => n + a.quantity, 0);
+              if (addonCount > 0) configParts.push(`${addonCount} add-on${addonCount > 1 ? "s" : ""}`);
+
               return (
                 <div
                   key={item.serviceId}
-                  className="flex items-center gap-3 p-3 bg-surface-container-low rounded-xl border border-outline-variant/10 group hover:border-primary/20 transition-all"
+                  className={`flex items-center gap-3 p-3 rounded-xl border ${
+                    isUnavailable
+                      ? "bg-red-50/60 border-red-200/50"
+                      : "bg-surface-container-low border-outline-variant/10 group hover:border-primary/20 transition-all"
+                  }`}
                 >
                   {/* Icon */}
-                  <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isUnavailable ? "bg-red-500/10" : "bg-green-500/10"}`}>
                     <ServiceIconComponent
                       iconName={item.iconName}
                       width={24}
                       height={24}
-                      className="w-6 h-6 text-emerald-600 drop-shadow-sm"
+                      className={`w-6 h-6 drop-shadow-sm ${isUnavailable ? "text-red-400" : "text-emerald-600"}`}
                     />
                   </div>
 
@@ -155,18 +226,26 @@ export default function CartDrawer() {
                     <p className="font-headline font-bold text-sm text-on-surface truncate leading-tight">
                       {item.title}
                     </p>
-                    <p className="text-[11px] text-on-surface-variant font-medium mt-0.5">
-                      {item.subcategoryName}
-                    </p>
+                    {isUnavailable ? (
+                      <p className="text-[11px] font-bold text-red-500 mt-0.5">
+                        No longer available
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-[11px] text-on-surface-variant font-medium mt-0.5 truncate">
+                          {[item.subcategoryName, ...configParts].filter(Boolean).join(" · ")}
+                        </p>
+                      </>
+                    )}
                   </div>
 
                   {/* Price + Remove */}
                   <div className="flex items-center gap-2 shrink-0">
-                    {isLoadingPrices && !itemPrice ? (
+                    {isLoadingPrices && itemPrice === undefined ? (
                       <div className="w-14 h-4 bg-surface-container-high rounded animate-pulse" />
-                    ) : itemPrice ? (
+                    ) : !isUnavailable && itemPrice !== undefined ? (
                       <span className="font-black text-sm text-primary">
-                        ₹{itemPrice.priceWithoutGst}
+                        ₹{itemPrice}
                       </span>
                     ) : null}
                     <button
@@ -214,7 +293,7 @@ export default function CartDrawer() {
                   {isLoadingPrices
                     ? "Calculating..."
                     : prices
-                    ? `₹${prices.totalGst}`
+                    ? `₹${prices.gstTotal}`
                     : "—"}
                 </p>
               </div>
@@ -235,6 +314,11 @@ export default function CartDrawer() {
             {/* Or single service note */}
             <p className="text-center text-[11px] text-on-surface-variant">
               All services will be scheduled for the same date &amp; time
+            </p>
+
+            {/* Estimate disclaimer */}
+            <p className="text-center text-[10px] text-on-surface-variant/70">
+              Estimated price — surcharges, coupons &amp; wallet are applied at checkout
             </p>
           </div>
         )}

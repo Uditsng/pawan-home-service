@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, useTransition, useMemo, useCallback } from "react";
+import { useState, useEffect, useTransition, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/utils/supabase/client";
-import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import RatingSection from "@/components/RatingSection";
 import QuotationWorkflow from "@/components/QuotationWorkflow";
@@ -146,7 +145,6 @@ export default function TrackingClient({
     review_images?: string[] | null;
   } | null;
 }) {
-  const router = useRouter();
 
   const fetchBookingDetail = useCallback(async () => {
     const supabase = createClient();
@@ -209,7 +207,7 @@ export default function TrackingClient({
       extensions: (extRes.data || []) as BookingExtension[],
       activeQuote: quoteRes.data || null,
     };
-  }, [initialBooking, initialBooking.id]);
+  }, [initialBooking]);
 
   const { data, refresh } = useRefreshableData(
     `booking_detail_${initialBooking.id}`,
@@ -867,7 +865,7 @@ export default function TrackingClient({
                 <p className="font-headline text-3xl font-extrabold tracking-widest text-success mt-2 drop-shadow-sm">
                   {!booking.arrival_otp_verified ? booking.arrival_otp : booking.completion_otp}
                 </p>
-                <p className="text-[11px] text-success/80 font-medium mt-2 max-w-[220px]">
+                <p className="text-[11px] text-success/80 font-medium mt-2 max-w-55">
                   Share this 6-digit verification code with your Professional to {!booking.arrival_otp_verified ? "start the job" : "complete the job"}.
                 </p>
               </div>
@@ -940,7 +938,7 @@ export default function TrackingClient({
                     <span className="material-symbols-outlined">person_search</span>
                   </div>
                   <h4 className="font-headline text-xs font-bold text-on-surface">Assigning Technician...</h4>
-                  <p className="text-[10px] text-on-surface-variant leading-relaxed mt-1 max-w-[200px]">
+                  <p className="text-[10px] text-on-surface-variant leading-relaxed mt-1 max-w-50">
                     Our administration team is currently assigning the optimal, background-verified technician for your service.
                   </p>
                 </div>

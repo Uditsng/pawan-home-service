@@ -9,7 +9,6 @@ import { getDashboardForRole } from "@/utils/supabase/roles";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 
 export default function Header() {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const [userRole, setUserRole] = useState<string>('customer');
   const [loading, setLoading] = useState(true);
@@ -124,73 +123,33 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Mobile Hamburger */}
-        <button
-          className="md:hidden text-primary p-1"
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Toggle menu"
-        >
-          <span className="material-symbols-outlined text-[28px]">
-            {menuOpen ? "close" : "menu"}
-          </span>
-        </button>
-      </nav>
-
-      {/* Mobile Menu Drawer */}
-      {menuOpen && (
-        <div className="md:hidden absolute top-full left-0 w-full bg-surface-container-lowest/98 backdrop-blur-xl shadow-xl border-t border-outline-variant/50 animate-[slideDown_0.2s_ease-out]">
-          <div className="flex flex-col px-6 py-6 gap-1 max-w-7xl mx-auto">
-            {/* <Link
-              href="/services"
-              onClick={() => setMenuOpen(false)}
-              className="flex items-center gap-3 py-3.5 px-4 rounded-xl text-primary font-bold text-[15px] hover:bg-surface-container-low transition-colors"
-            >
-              <span className="material-symbols-outlined text-[20px] text-on-surface-variant">search</span>
-              Services
-            </Link> */}
+        {/* Mobile Navigation */}
+        <div className="flex md:hidden items-center gap-2">
+          {loading ? (
+            <div className="w-20 h-9 animate-pulse bg-surface-container-highest rounded-xl"></div>
+          ) : user ? (
+            <>
+              <Link
+                href={dashboardHref}
+                className="inline-block bg-primary text-white px-3 py-2 rounded-xl font-bold hover:bg-primary/90 transition-all text-xs"
+              >
+                Dashboard
+              </Link>
+              <LogoutButton
+                variant="button"
+                className="bg-surface-container text-primary hover:bg-surface-container px-3 py-2 text-xs"
+              />
+            </>
+          ) : (
             <Link
-              href="/contact-us"
-              onClick={() => setMenuOpen(false)}
-              className="flex items-center gap-3 py-3.5 px-4 rounded-xl text-primary font-bold text-[15px] hover:bg-surface-container-low transition-colors"
+              href="/login"
+              className="inline-block bg-primary text-white px-4 py-2 rounded-xl font-bold hover:bg-primary/90 transition-all text-xs"
             >
-              <span className="material-symbols-outlined text-[20px] text-on-surface-variant">support_agent</span>
-              Contact Us
+              Login
             </Link>
-            <hr className="my-3 border-outline-variant/50" />
-            <div className="flex flex-col gap-3 pt-2">
-              {loading ? null : user ? (
-                <div className="flex flex-col gap-3">
-                  <Link
-                    href={dashboardHref}
-                    onClick={() => setMenuOpen(false)}
-                    className="text-center py-3 px-6 rounded-xl bg-primary text-white font-bold text-[15px] hover:bg-primary/90 transition-colors"
-                  >
-                    Go to Dashboard
-                  </Link>
-                  <LogoutButton className="w-full py-3" />
-                </div>
-              ) : (
-                <>
-                  <Link
-                    href="/login"
-                    onClick={() => setMenuOpen(false)}
-                    className="text-center py-3 px-6 rounded-xl border-2 border-primary text-primary font-bold text-[15px] hover:bg-surface-container-low transition-colors"
-                  >
-                    Login
-                  </Link>
-                  <Link
-                    href="/register"
-                    onClick={() => setMenuOpen(false)}
-                    className="text-center py-3 px-6 rounded-xl bg-primary text-white font-bold text-[15px] hover:bg-primary/90 transition-colors"
-                  >
-                    Sign Up
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
+          )}
         </div>
-      )}
+      </nav>
     </header>
   );
 }

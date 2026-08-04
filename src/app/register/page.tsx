@@ -178,10 +178,6 @@ export default function RegisterPage() {
       {/* Right — Form Panel */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 lg:p-12 xl:p-16 relative z-10">
 
-        {/* Mobile floating emojis in glass badges */}
-        <div className="lg:hidden absolute top-[12%] left-[8%] p-3.5 bg-white/40 backdrop-blur-md rounded-2xl border border-white/60 shadow-lg text-2xl animate-float-1 z-0 pointer-events-none select-none rotate-12">🚀</div>
-        <div className="lg:hidden absolute bottom-[18%] right-[8%] p-3 bg-white/40 backdrop-blur-md rounded-2xl border border-white/60 shadow-lg text-2xl animate-float-2 z-0 pointer-events-none select-none -rotate-12" style={{ animationDelay: "1s" }}>🤝</div>
-
         {/* Outer Floating Double-Glass Card Halo */}
         <div className="w-full max-w-md p-[1.5px] bg-linear-to-bl from-white/80 via-white/20 to-secondary/40 rounded-4xl shadow-[0_25px_60px_-15px_rgba(0,34,97,0.12)] hover:shadow-[0_35px_70px_-15px_rgba(0,34,97,0.18)] hover:-translate-y-1 relative z-10 transition-all duration-500 group">
 
@@ -255,7 +251,7 @@ export default function RegisterPage() {
                       <input
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        placeholder="Ravi Kumar"
+                        placeholder="Pavan Kumar"
                         className="w-full pl-10 pr-4 py-3.5 bg-white/70 backdrop-blur-md rounded-xl text-sm font-semibold text-primary focus:outline-none focus:ring-4 focus:ring-secondary/20 focus:bg-white/90 transition-all border border-white/80 focus:border-secondary/60 shadow-xs placeholder:text-on-surface-variant/40"
                       />
                     </div>
@@ -438,8 +434,7 @@ export default function RegisterPage() {
                     type="button"
                     onClick={handleRegister}
                     disabled={loading || otp.length !== 6}
-                    variant="gradient"
-                    className="w-full py-4 bg-linear-to-r from-secondary to-success text-primary font-extrabold text-[15px] rounded-xl hover:scale-[1.02] hover:-translate-y-0.5 active:scale-95 shadow-lg shadow-secondary/25 hover:shadow-xl hover:shadow-secondary/40 transition-all duration-300 border-none disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100 cursor-pointer"
+                    className="w-full py-4 bg-primary font-extrabold text-[15px] rounded-xl hover:scale-[1.02] hover:-translate-y-0.5 active:scale-95 shadow-lg shadow-secondary/25 hover:shadow-xl hover:shadow-secondary/40 transition-all duration-300 border-none disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100 cursor-pointer"
                   >
                     {loading ? (
                       <span className="flex items-center justify-center gap-2">

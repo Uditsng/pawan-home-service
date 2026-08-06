@@ -361,7 +361,7 @@ export default function InvoicesConsole({
           {/* Desktop Table */}
           <div className="hidden md:block bg-surface-container-lowest rounded-xl border border-outline-variant/15 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] text-left border-collapse">
+              <table className="w-full min-w-225 text-left border-collapse">
                 <thead>
                   <tr className="bg-surface-dim/30 border-b border-outline-variant/10">
                     <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-on-surface-variant/40">Invoice Detail</th>
@@ -564,7 +564,7 @@ export default function InvoicesConsole({
               Completed bookings without invoices. Generate manually.
             </p>
 
-            <div className="mt-3 space-y-2.5 max-h-[360px] overflow-y-auto no-scrollbar pr-1">
+            <div className="mt-3 space-y-2.5 max-h-90 overflow-y-auto no-scrollbar pr-1">
               {pendingBookings.map((b) => (
                 <div key={b.id} className="p-2.5 bg-surface rounded-xl border border-outline-variant/15 space-y-2">
                   <div className="flex justify-between items-start gap-2">

@@ -127,12 +127,14 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
           </div>
           <div className="flex-1 w-full md:w-auto">
             <div className="relative w-full h-50 md:h-75 lg:h-88 max-w-lg mx-auto md:mx-0">
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={displayImage}
                 alt={service.title}
-                fill
                 loading="lazy"
-                className="rounded-2xl md:rounded-3xl shadow-xl object-cover border border-outline-variant/20"
+                decoding="async"
+                referrerPolicy="no-referrer"
+                className="absolute inset-0 w-full h-full object-cover rounded-2xl md:rounded-3xl shadow-xl border border-outline-variant/20"
               />
             </div>
           </div>

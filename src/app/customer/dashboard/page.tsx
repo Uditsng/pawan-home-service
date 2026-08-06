@@ -11,6 +11,7 @@ interface ServiceWithSubcategory {
   base_price: number;
   original_price?: number | null;
   category?: string;
+  image_url?: string | null;
   subcategory_id: string;
   subcategories: {
     subcategory_name: string;
@@ -31,7 +32,7 @@ export default async function CustomerDashboard() {
     supabase
       .from('services')
       .select(`
-        id, title, base_price, original_price, subcategory_id,
+        id, title, base_price, original_price, subcategory_id, image_url,
         subcategories (
           subcategory_name,
           icon_name,

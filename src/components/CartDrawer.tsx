@@ -3,7 +3,7 @@
 import { useCart } from "@/lib/cart/CartContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
-import { ServiceIconComponent } from "@/utils/serviceIcon";
+import ServiceCardThumbnail from "./ServiceCardThumbnail";
 import { getCartCatalogAction } from "@/app/actions/cart";
 import { calculateCart } from "@/lib/pricing/payableEngine";
 import { computeCartLineItems, parseCartAddons } from "@/lib/pricing/cartCatalog";
@@ -211,15 +211,14 @@ export default function CartDrawer() {
                       : "bg-surface-container-low border-outline-variant/10 group hover:border-primary/20 transition-all"
                   }`}
                 >
-                  {/* Icon */}
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isUnavailable ? "bg-red-500/10" : "bg-green-500/10"}`}>
-                    <ServiceIconComponent
-                      iconName={item.iconName}
-                      width={24}
-                      height={24}
-                      className={`w-6 h-6 drop-shadow-sm ${isUnavailable ? "text-red-400" : "text-emerald-600"}`}
-                    />
-                  </div>
+                  {/* Thumbnail */}
+                  <ServiceCardThumbnail
+                    imageUrl={item.imageUrl}
+                    iconName={item.iconName}
+                    alt={item.title}
+                    containerClassName="w-14 h-10 rounded-lg"
+                    iconClassName="w-6 h-6 drop-shadow-sm text-emerald-600"
+                  />
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">

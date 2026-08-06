@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ServiceIconComponent } from "@/utils/serviceIcon";
+import ServiceCardThumbnail from "@/components/ServiceCardThumbnail";
 
 interface ServiceWithSubcategory {
   id: string;
@@ -11,6 +11,7 @@ interface ServiceWithSubcategory {
   base_price: number;
   original_price?: number | null;
   category?: string;
+  image_url?: string | null;
   subcategory_id: string;
   subcategories: {
     subcategory_name: string;
@@ -151,17 +152,25 @@ export default function DashboardGridClient({ categories, availableServices }: D
               <Link
                 href={`/customer/services/${catSlug}/${service.id}`}
                 key={service.id}
-                className="bg-surface-container-low p-3 md:p-5 rounded-xl flex flex-col items-center justify-center text-center border border-outline-variant/10 shadow-sm cursor-pointer active:bg-surface-container-high transition-colors"
+                className="glass-panel group relative block w-full overflow-hidden rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
               >
-                <div className="w-14 h-14 md:w-16 md:h-16 rounded-xl bg-green-500/10 mb-2 md:mb-3 flex items-center justify-center transition-transform active:scale-105">
-                  <ServiceIconComponent iconName={iconName} className="w-8 h-8 md:w-10 md:h-10 text-emerald-600 drop-shadow-sm" />
+                <div className="relative w-full aspect-[4/3] bg-surface-container-low">
+                  <ServiceCardThumbnail
+                    imageUrl={service.image_url}
+                    iconName={iconName}
+                    alt={service.title}
+                    containerClassName="absolute inset-0 w-full h-full"
+                    iconClassName="w-10 h-10 md:w-12 md:h-12 text-emerald-600 drop-shadow-sm"
+                  />
                 </div>
-                <span className="font-headline font-bold text-xs md:text-sm text-on-surface line-clamp-2 leading-tight">{service.title}</span>
-                <div className="flex items-center gap-1.5 mt-1 md:mt-1.5">
-                  {service.original_price && (
-                    <span className="text-[9px] md:text-[10px] text-on-surface-variant/50 line-through">₹{service.original_price}</span>
-                  )}
-                  <span className="text-[10px] md:text-[11px] text-primary font-bold tracking-tight">₹{service.base_price}</span>
+                <div className="p-2.5 sm:p-3 text-center">
+                  <span className="block font-headline font-bold text-xs md:text-sm text-on-surface line-clamp-2 leading-tight min-h-9 flex items-center justify-center">{service.title}</span>
+                  <div className="flex items-center justify-center gap-1.5 mt-1">
+                    {service.original_price && (
+                      <span className="text-[9px] md:text-[10px] text-on-surface-variant/50 line-through">₹{service.original_price}</span>
+                    )}
+                    <span className="text-[10px] md:text-[11px] text-primary font-bold tracking-tight">₹{service.base_price}</span>
+                  </div>
                 </div>
               </Link>
             );

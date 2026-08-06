@@ -1,7 +1,7 @@
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import AddToCartButton from "@/components/AddToCartButton";
-import { ServiceIconComponent } from "@/utils/serviceIcon";
+import ServiceCardThumbnail from "@/components/ServiceCardThumbnail";
 import { getCachedServicesBySubcategory } from "@/utils/supabase/cachedServiceQueries";
 import { getCachedAllSubcategories } from "@/utils/supabase/cachedSubcategoryQueries";
 
@@ -58,48 +58,53 @@ export default async function SubcategoryServiceListingPage({
             return (
               <div
                 key={service.id}
-                className="relative group bg-surface-container-low p-3 sm:p-4 md:p-5 rounded-xl flex flex-col items-center justify-start text-center border border-outline-variant/10 shadow-xs transition-all h-auto min-h-32 sm:min-h-36 md:min-h-40 w-full"
+                className="glass-panel group relative w-full overflow-hidden rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md"
               >
                 {/* z-0 absolute Link covering the card */}
                 <Link
                   href={`/customer/services/${categorySlug}/${service.id}`}
                   className="absolute inset-0 z-0 rounded-xl"
+                  aria-label={service.title}
                 />
 
                 {/* z-10 pointer-events-none Card Content */}
-                <div className="z-10 pointer-events-none flex flex-col items-center w-full pt-1">
-                  {/* Icon: 48px phones → 56px sm → 64px md → 72px lg */}
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 lg:w-18 lg:h-18 rounded-xl bg-green-500/10 mb-2 sm:mb-2.5 md:mb-3 flex items-center justify-center shrink-0">
-                    <ServiceIconComponent
+                <div className="z-10 pointer-events-none relative flex flex-col w-full">
+                  {/* Rectangular banner thumbnail */}
+                  <div className="relative w-full aspect-[4/3] bg-surface-container-low">
+                    <ServiceCardThumbnail
+                      imageUrl={service.image_url}
                       iconName={iconName}
-                      className="w-6 h-6 sm:w-7 sm:h-7 md:w-9 md:h-9 lg:w-10 lg:h-10 text-emerald-600 drop-shadow-sm"
+                      alt={service.title}
+                      containerClassName="absolute inset-0 w-full h-full"
+                      iconClassName="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 text-emerald-600 drop-shadow-sm"
                     />
                   </div>
-                  {/* Title: reserved min-height so cards in a row stay aligned */}
-                  <div className="min-h-10 flex items-center justify-center w-full px-1 mb-1.5">
-                    <span className="font-headline font-bold text-[11px] sm:text-xs md:text-sm text-on-surface line-clamp-2 leading-tight w-full">
+
+                  <div className="p-2.5 sm:p-3 text-center">
+                    <span className="block font-headline font-bold text-[11px] sm:text-xs md:text-sm text-on-surface line-clamp-2 leading-tight min-h-9 flex items-center justify-center">
                       {service.title}
                     </span>
-                  </div>
-                  <div className="flex flex-col items-center gap-0.5 shrink-0">
-                    <span className="text-[13px] sm:text-[15px] md:text-[17px] text-primary font-black tracking-tight leading-none">
-                      ₹{service.base_price}
-                    </span>
-                    {service.original_price && (
-                      <span className="text-[10px] md:text-xs text-on-surface-variant/60 line-through font-medium">
-                        ₹{service.original_price}
+                    <div className="flex flex-col items-center gap-0.5 shrink-0 mt-1">
+                      <span className="text-[13px] sm:text-[15px] md:text-[17px] text-primary font-black tracking-tight leading-none">
+                        ₹{service.base_price}
                       </span>
-                    )}
+                      {service.original_price && (
+                        <span className="text-[10px] md:text-xs text-on-surface-variant/60 line-through font-medium">
+                          ₹{service.original_price}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
                 {/* z-20 clickable Add to Cart button */}
-                <div className="absolute bottom-1 right-1 z-20">
+                <div className="absolute bottom-1.5 right-1.5 z-20">
                   <AddToCartButton
                     item={{
                       serviceId: service.id,
                       title: service.title,
                       iconName: iconName,
+                      imageUrl: service.image_url,
                       subcategoryName: service.subcategories?.subcategory_name || "Service",
                       categorySlug: categorySlug,
                       gstApplicable: service.gst_applicable ?? false,

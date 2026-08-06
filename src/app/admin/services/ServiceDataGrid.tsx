@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
-import { ServiceIconComponent } from "@/utils/serviceIcon";
+import ServiceCardThumbnail from "@/components/ServiceCardThumbnail";
 import { deleteService, duplicateService, toggleServiceStatus } from "@/app/admin/actions";
 import { getServiceStatusDetails } from "@/utils/statusConfig";
 
@@ -15,6 +15,7 @@ interface ServiceItem {
   original_price?: number | null;
   category?: string | null;
   status?: string | null;
+  image_url?: string | null;
   subcategories?: {
     subcategory_name: string;
     icon_name: string | null;
@@ -245,7 +246,7 @@ export function ServiceDataGrid({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-outline-variant/20 bg-surface-container-low/50">
-                <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-on-surface-variant/80">Icon</th>
+                <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-on-surface-variant/80">Image</th>
                 <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-on-surface-variant/80">Title</th>
                 <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-on-surface-variant/80">Category / Sub-category</th>
                 <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-on-surface-variant/80">Status</th>
@@ -272,11 +273,14 @@ export function ServiceDataGrid({
 
                   return (
                     <tr key={service.id} className="hover:bg-surface-container-low/30 transition-colors group">
-                      {/* Icon */}
+                      {/* Image / Thumbnail */}
                       <td className="px-4 py-1.5 whitespace-nowrap">
-                        <div className="w-8 h-8 bg-green-500/10 rounded-lg flex items-center justify-center">
-                          <ServiceIconComponent iconName={iconName} className="w-4 h-4 text-[#059669] drop-shadow-sm" />
-                        </div>
+                        <ServiceCardThumbnail
+                          imageUrl={service.image_url}
+                          iconName={iconName}
+                          containerClassName="w-12 h-12 rounded-lg"
+                          iconClassName="w-5 h-5 text-[#059669] drop-shadow-sm"
+                        />
                       </td>
                       {/* Title */}
                       <td className="px-4 py-1.5">

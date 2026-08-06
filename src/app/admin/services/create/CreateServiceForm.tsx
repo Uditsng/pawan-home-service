@@ -3,6 +3,7 @@
 import { useState, useActionState, useTransition, useMemo } from "react";
 import { Button } from "@/components/ui/Button";
 import { ImageUploadField } from "@/components/ui/ImageUploadField";
+import ServiceCardThumbnail from "@/components/ServiceCardThumbnail";
 import { ServiceIconComponent, SERVICE_ICON_OPTIONS, ICON_GROUPS } from "@/utils/serviceIcon";
 import { PricingModel } from "@/lib/types";
 import { calculatePricingBreakdown, formatDuration, PricingInput } from "@/lib/pricing";
@@ -307,6 +308,9 @@ export function CreateServiceForm({
   const [prevDistanceKm, setPrevDistanceKm] = useState(1);
   const [prevDurationMins, setPrevDurationMins] = useState(60);
 
+  // Live image URL surfaced from ImageUploadField for the preview tab
+  const [previewImageUrl, setPreviewImageUrl] = useState<string>("");
+
   // Subcategory select change
   const handleSubcategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const subcatId = e.target.value;
@@ -539,7 +543,7 @@ export function CreateServiceForm({
 
             <div className="pt-2">
               <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Service Image</label>
-              <ImageUploadField />
+              <ImageUploadField onValueChange={setPreviewImageUrl} />
             </div>
           </div>
 
@@ -1261,9 +1265,12 @@ export function CreateServiceForm({
               {/* Visual Preview Render */}
               <div className="border border-outline-variant/25 rounded-3xl p-5 md:p-6 bg-surface shadow-xs space-y-6 max-w-md mx-auto w-full">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[#059669] drop-shadow-sm">{selectedIcon}</span>
-                  </div>
+                  <ServiceCardThumbnail
+                    imageUrl={previewImageUrl}
+                    iconName={selectedIcon}
+                    containerClassName="w-12 h-12 rounded-xl shrink-0"
+                    iconClassName="w-6 h-6 text-[#059669] drop-shadow-sm"
+                  />
                   <div>
                     <h3 className="text-base font-extrabold text-primary font-headline leading-tight">{title || "New Service"}</h3>
                     <p className="text-[10px] text-on-surface-variant/70 font-semibold uppercase tracking-wider">Kanpur Service Center</p>

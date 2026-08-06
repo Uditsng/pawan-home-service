@@ -3,6 +3,7 @@
 import { useState, useActionState, useMemo } from "react";
 import { Button } from "@/components/ui/Button";
 import { ImageUploadField } from "@/components/ui/ImageUploadField";
+import ServiceCardThumbnail from "@/components/ServiceCardThumbnail";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
 import { PricingModel, ServiceVariant, ServiceAddon } from "@/lib/types";
 import { calculatePricingBreakdown, formatDuration, PricingInput } from "@/lib/pricing";
@@ -81,6 +82,9 @@ export function EditServiceForm({
   const initialIcon = categories.flatMap(c => c.subcategories).find(s => s.id === initialData.subcategory_id)?.icon_name || "sparkles";
   const [selectedIcon, setSelectedIcon] = useState<string>(initialIcon);
   const [selectedSubcatId, setSelectedSubcatId] = useState<string>(initialData.subcategory_id || "");
+
+  // Live image URL surfaced from ImageUploadField for the preview tab
+  const [previewImageUrl, setPreviewImageUrl] = useState<string>(initialData.image_url || "");
 
   // Page Content Lists
   const pageContent = initialData.page_content || {};
@@ -351,7 +355,7 @@ export function EditServiceForm({
 
           <div className="pt-2">
             <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Service Image</label>
-            <ImageUploadField defaultValue={initialData.image_url || ""} />
+            <ImageUploadField defaultValue={initialData.image_url || ""} onValueChange={setPreviewImageUrl} />
           </div>
         </div>
 
@@ -1073,9 +1077,12 @@ export function EditServiceForm({
               {/* Visual Preview Render */}
               <div className="border border-outline-variant/25 rounded-3xl p-5 md:p-6 bg-surface shadow-xs space-y-6 max-w-md mx-auto w-full">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[#059669] drop-shadow-sm">{selectedIcon}</span>
-                  </div>
+                  <ServiceCardThumbnail
+                    imageUrl={previewImageUrl}
+                    iconName={selectedIcon}
+                    containerClassName="w-12 h-12 rounded-xl shrink-0"
+                    iconClassName="w-6 h-6 text-[#059669] drop-shadow-sm"
+                  />
                   <div>
                     <h3 className="text-base font-extrabold text-primary font-headline leading-tight">{title || "Service"}</h3>
                     <p className="text-[10px] text-on-surface-variant/70 font-semibold uppercase tracking-wider">Kanpur Service Center</p>

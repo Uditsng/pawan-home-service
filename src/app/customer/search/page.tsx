@@ -2,6 +2,7 @@ import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/utils/supabase/server";
 import SearchInput from "@/components/SearchInput";
 import Link from "next/link";
+import ServiceCardThumbnail from "@/components/ServiceCardThumbnail";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
 
 interface CategoryResult {
@@ -25,6 +26,7 @@ interface ServiceResult {
   base_price: number;
   original_price?: number | null;
   category?: string;
+  image_url?: string | null;
   subcategory_id: string;
   subcategories: {
     subcategory_name: string;
@@ -57,9 +59,17 @@ export default async function SearchPage({
   let categoriesResults: CategoryResult[] = [];
   let subcategoriesResults: SubcategoryResult[] = [];
   let servicesResults: ServiceResult[] = [];
+  let popularSearchTerms: string[] = [];
 
   if (q) {
     const searchQuery = q.trim();
+
+    // Record this real search for the dynamic "Popular Searches" feed
+    try {
+      await supabase.rpc("record_search", { p_term: searchQuery });
+    } catch {
+      // Best-effort: analytics must never block the search page
+    }
 
     // Perform queries in parallel for better performance
     const [servicesRes, subcategoriesRes, categoriesRes] = await Promise.all([
@@ -111,6 +121,21 @@ export default async function SearchPage({
     }
     if (categoriesRes.data) {
       categoriesResults = categoriesRes.data as CategoryResult[];
+    }
+  }
+
+  if (!q) {
+    // Load real popular search terms ranked by actual search volume
+    try {
+      const { data: popularData } = await supabase.rpc("get_popular_search_terms", {
+        p_limit: 10,
+      });
+      const popularRows = popularData as { term: string }[] | null;
+      if (popularRows) {
+        popularSearchTerms = popularRows.map((row) => row.term).filter((t) => t.length > 0);
+      }
+    } catch {
+      // Keep the section empty on failure rather than blocking the page
     }
   }
 
@@ -240,12 +265,13 @@ export default async function SearchPage({
                             key={service.id}
                             className="bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant/10 shadow-xs flex items-center gap-3 md:gap-4 hover:border-primary/20 transition-colors"
                           >
-                            <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
-                              <ServiceIconComponent
-                                iconName={iconName}
-                                className="w-5 h-5 md:w-6 md:h-6 text-[#059669] drop-shadow-sm"
-                              />
-                            </div>
+                            <ServiceCardThumbnail
+                              imageUrl={service.image_url}
+                              iconName={iconName}
+                              alt={service.title}
+                              containerClassName="w-16 h-12 md:w-20 md:h-14 rounded-xl"
+                              iconClassName="w-5 h-5 md:w-6 md:h-6 text-[#059669] drop-shadow-sm"
+                            />
                             <div className="flex-1 min-w-0">
                               <h3 className="font-bold text-on-surface leading-tight text-sm md:text-base truncate">
                                 {service.title}
@@ -286,17 +312,23 @@ export default async function SearchPage({
         ) : (
           <div className="mt-6 md:mt-8">
             <h2 className="font-bold text-base md:text-lg mb-3 md:mb-4 text-on-surface-variant">Popular Searches</h2>
-            <div className="flex flex-wrap gap-2">
-              {["Deep Cleaning", "AC Service", "Electrician", "Plumber", "Fan"].map((term) => (
-                <Link
-                  key={term}
-                  href={`/customer/search?q=${term}`}
-                  className="px-3 md:px-4 py-1.5 md:py-2 bg-surface-container-low rounded-full text-xs md:text-sm font-medium text-on-surface-variant border border-outline-variant/10 hover:border-primary/50 transition-colors"
-                >
-                  {term}
-                </Link>
-              ))}
-            </div>
+            {popularSearchTerms.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {popularSearchTerms.map((term) => (
+                  <Link
+                    key={term}
+                    href={`/customer/search?q=${encodeURIComponent(term)}`}
+                    className="px-3 md:px-4 py-1.5 md:py-2 bg-surface-container-low rounded-full text-xs md:text-sm font-medium text-on-surface-variant border border-outline-variant/10 hover:border-primary/50 transition-colors"
+                  >
+                    {term}
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="text-on-surface-variant text-sm">
+                No searches recorded yet — start typing above to find a service.
+              </p>
+            )}
           </div>
         )}
       </main>

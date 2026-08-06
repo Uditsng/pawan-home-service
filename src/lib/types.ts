@@ -98,6 +98,7 @@ export interface Service {
   gst_applicable?: boolean;
   tags?: string[];
   keywords?: string[];
+  image_url?: string | null;
   preparation_instructions?: string | null;
   warranty?: string | null;
   revisit_policy?: string | null;
@@ -153,6 +154,7 @@ export interface CartItem {
   serviceId: string;
   title: string;
   iconName: string;
+  imageUrl?: string | null;
   subcategoryName: string;
   categorySlug: string;
   pricingModel?: PricingModel;

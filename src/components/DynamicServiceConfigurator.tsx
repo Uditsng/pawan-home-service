@@ -185,6 +185,7 @@ export default function DynamicServiceConfigurator({
       serviceId: service.id,
       title: service.title,
       iconName,
+      imageUrl: service.image_url,
       subcategoryName,
       categorySlug,
       pricingModel: model,

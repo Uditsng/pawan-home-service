@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { createClient } from "@/utils/supabase/client";
 import { ensureServicesBucketAction } from "@/app/admin/actions";
+import { ImageCropper } from "@/components/ui/ImageCropper";
 
 interface ImageUploadFieldProps {
   name?: string;
@@ -15,7 +17,9 @@ export function ImageUploadField({
   defaultValue = "",
   onValueChange,
 }: ImageUploadFieldProps) {
-  const [activeTab, setActiveTab] = useState<"upload" | "url">("upload");
+  const [activeTab, setActiveTab] = useState<"upload" | "url">(() => {
+    return defaultValue && !defaultValue.startsWith("/assets/") ? "url" : "upload";
+  });
   const [imageUrl, setImageUrl] = useState<string>(defaultValue);
   const [previewUrl, setPreviewUrl] = useState<string>(defaultValue);
   const [uploadState, setUploadState] = useState<"idle" | "compressing" | "uploading" | "success" | "error">("idle");
@@ -29,17 +33,13 @@ export function ImageUploadField({
   }>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingFileNameRef = useRef<string>("service");
   const supabase = createClient();
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
 
   // Load metadata for default value on mount
   useEffect(() => {
     if (defaultValue) {
-      // Determine tab based on URL format
-      if (defaultValue.startsWith("/assets/")) {
-        setActiveTab("upload"); // Treated as uploaded/local asset
-      } else {
-        setActiveTab("url");
-      }
       validateImageUrl(defaultValue);
     }
   }, [defaultValue]);
@@ -53,7 +53,7 @@ export function ImageUploadField({
   };
 
   // Helper to validate and load dimensions of any URL
-  const validateImageUrl = (url: string) => {
+  function validateImageUrl(url: string) {
     if (!url) {
       setPreviewUrl("");
       setValidationWarnings([]);
@@ -115,58 +115,30 @@ export function ImageUploadField({
     };
 
     img.src = url;
-  };
+  }
 
-  // HTML5 Canvas client-side Resizer and WebP compressor
-  const resizeAndCompressImage = (file: File): Promise<{ blob: Blob; originalSize: number }> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          
-          // Enforce 1024x1024 design standard by cropping to center square
-          canvas.width = 1024;
-          canvas.height = 1024;
-          const ctx = canvas.getContext("2d");
-          if (!ctx) {
-            reject(new Error("Failed to get 2D canvas context."));
-            return;
-          }
-
-          const size = Math.min(img.width, img.height);
-          const sx = (img.width - size) / 2;
-          const sy = (img.height - size) / 2;
-
-          ctx.drawImage(img, sx, sy, size, size, 0, 0, 1024, 1024);
-
-          canvas.toBlob(
-            (blob) => {
-              if (blob) {
-                resolve({ blob, originalSize: file.size });
-              } else {
-                reject(new Error("Canvas to webp blob conversion failed."));
-              }
-            },
-            "image/webp",
-            0.82 // 82% WebP quality compression
-          );
-        };
-        img.onerror = () => reject(new Error("Failed to decode image file."));
-        img.src = e.target?.result as string;
-      };
-      reader.onerror = () => reject(new Error("Failed to read file contents."));
-      reader.readAsDataURL(file);
-    });
-  };
-
-  // Upload processed image to Supabase storage bucket
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Open the interactive crop modal for a locally picked image.
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploadState("compressing");
+    setValidationWarnings([]);
+    setImageMeta({});
+    setUploadState("idle");
+    pendingFileNameRef.current = file.name;
+
+    const reader = new FileReader();
+    reader.onload = () => setCropImageSrc(reader.result as string);
+    reader.onerror = () => {
+      setUploadState("error");
+      setValidationWarnings(["Failed to read the selected image file."]);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Upload a cropped, fixed-dimension WebP blob to Supabase storage bucket
+  const uploadCroppedImage = async (blob: Blob, originalName: string) => {
+    setUploadState("uploading");
     setValidationWarnings([]);
     setImageMeta({});
 
@@ -174,16 +146,9 @@ export function ImageUploadField({
       // Ensure the services storage bucket exists on Supabase Storage first
       await ensureServicesBucketAction();
 
-      // 1. Process client-side: crop to square + convert to compressed WebP
-      const { blob, originalSize } = await resizeAndCompressImage(file);
-      const originalKb = Math.round(originalSize / 1024);
-      const compressedKb = Math.round(blob.size / 1024);
-
-      setUploadState("uploading");
-
-      // 2. Generate clean filename for storage
+      // 1. Generate clean filename for storage
       const timestamp = Date.now();
-      const cleanName = file.name
+      const cleanName = originalName
         .toLowerCase()
         .replace(/\.[^/.]+$/, "") // Remove original extension
         .replace(/[^a-z0-9]/g, "-")
@@ -191,8 +156,8 @@ export function ImageUploadField({
         .replace(/^-|-$/g, "");
       const fileName = `${cleanName}-${timestamp}.webp`;
 
-      // 3. Upload to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      // 2. Upload cropped WebP to Supabase Storage
+      const { error: uploadError } = await supabase.storage
         .from("services")
         .upload(fileName, blob, {
           contentType: "image/webp",
@@ -203,11 +168,12 @@ export function ImageUploadField({
         throw new Error(uploadError.message);
       }
 
-      // 4. Retrieve public URL
+      // 3. Retrieve public URL
       const { data: { publicUrl } } = supabase.storage
         .from("services")
         .getPublicUrl(fileName);
 
+      const compressedKb = Math.round(blob.size / 1024);
       updateUrl(publicUrl);
       setPreviewUrl(publicUrl);
       setUploadState("success");
@@ -215,8 +181,8 @@ export function ImageUploadField({
         width: 1024,
         height: 1024,
         sizeKb: compressedKb,
-        originalSizeKb: originalKb,
-        format: "WebP (Auto-optimized)",
+        originalSizeKb: compressedKb,
+        format: "WebP (Crop-optimized)",
       });
 
       // Clear any temporary inputs in files
@@ -226,7 +192,7 @@ export function ImageUploadField({
     } catch (err) {
       console.error(err);
       setUploadState("error");
-      setValidationWarnings([`Compression/Upload failed: ${(err as Error).message}`]);
+      setValidationWarnings([`Crop/Upload failed: ${(err as Error).message}`]);
     }
   };
 
@@ -312,16 +278,10 @@ export function ImageUploadField({
               </button>
             )}
           </div>
-          {uploadState === "compressing" && (
-            <p className="text-xs text-secondary font-bold flex items-center gap-1.5">
-              <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
-              Optimizing image (cropping center 1:1, converting to WebP)...
-            </p>
-          )}
           {uploadState === "uploading" && (
             <p className="text-xs text-primary font-bold flex items-center gap-1.5">
               <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
-              Uploading WebP to Supabase storage CDN...
+              Uploading cropped WebP to Supabase storage CDN...
             </p>
           )}
         </div>
@@ -428,7 +388,7 @@ export function ImageUploadField({
           </div>
           <div className="flex gap-1.5 items-start">
             <span className="material-symbols-outlined text-[14px] text-secondary mt-0.5">check_circle</span>
-            <span><strong>Dimensions:</strong> 1024 x 1024 px standard</span>
+            <span><strong>Dimensions:</strong> Fixed 1024 x 1024 px — crop tool lets you pick the exact frame shown to customers</span>
           </div>
           <div className="flex gap-1.5 items-start">
             <span className="material-symbols-outlined text-[14px] text-secondary mt-0.5">check_circle</span>
@@ -440,6 +400,24 @@ export function ImageUploadField({
           </div>
         </div>
       </div>
+
+      {/* Interactive crop modal for local uploads */}
+      {cropImageSrc && typeof document !== "undefined" &&
+        createPortal(
+          <ImageCropper
+            imageSrc={cropImageSrc}
+            onCropComplete={(blob) => {
+              const originalName = pendingFileNameRef.current;
+              setCropImageSrc(null);
+              void uploadCroppedImage(blob, originalName);
+            }}
+            onCancel={() => {
+              setCropImageSrc(null);
+              if (fileInputRef.current) fileInputRef.current.value = "";
+            }}
+          />,
+          document.body
+        )}
     </div>
   );
 }

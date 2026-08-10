@@ -307,6 +307,7 @@ export type NotificationType =
   | 'service_started'
   | 'service_completed'
   | 'booking_cancelled'
+  | 'booking_rescheduled'
   | 'review_received'
   | 'general'
   | 'extension_requested'

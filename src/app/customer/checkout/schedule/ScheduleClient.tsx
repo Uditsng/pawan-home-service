@@ -11,6 +11,7 @@ import { Service, PricingModel } from "@/lib/types";
 import { validateBooking, BookingState, FormFieldConfig } from "@/utils/bookingValidation";
 import DateSelector from "@/components/booking/DateSelector";
 import TimeSelector from "@/components/booking/TimeSelector";
+import { AVAILABLE_MORNING_SLOTS, AVAILABLE_AFTERNOON_SLOTS, filterTimeSlots } from "@/utils/schedule";
 
 interface Address {
   id: string;
@@ -131,56 +132,18 @@ export default function ScheduleClient({
   const selectedDateNum = selectedFullDate.getDate();
 
   // Pre-determined time slots (7:00 AM to 9:00 PM, 30-min intervals)
-  const availableMorningSlots = [
-    '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM'
-  ];
-  const availableAfternoonSlots = [
-    '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM', '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM', '5:00 PM', '5:30 PM', '6:00 PM', '6:30 PM', '7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM', '9:00 PM'
-  ];
-
-  const today = new Date();
-  const isToday = selectedFullDate.getFullYear() === today.getFullYear() &&
-    selectedFullDate.getMonth() === today.getMonth() &&
-    selectedFullDate.getDate() === today.getDate();
-  const currentHour = today.getHours();
-  const currentMinute = today.getMinutes();
-
-  // Helper to parse slot e.g. "7:30 AM" to minutes since midnight
-  const getMinutesFromSlot = (slot: string) => {
-    const [timeVal, modifier] = slot.split(' ');
-    const [h, m] = timeVal.split(':');
-    let hours = parseInt(h, 10);
-    const minutes = parseInt(m, 10);
-
-    if (modifier === 'PM' && hours !== 12) {
-      hours += 12;
-    }
-    if (modifier === 'AM' && hours === 12) {
-      hours = 0;
-    }
-    return hours * 60 + minutes;
-  };
+  const today = useMemo(() => new Date(), []);
 
   // Filter slots based on date and time
-  const filteredMorningSlots = useMemo(() => {
-    if (!isToday) return availableMorningSlots;
-    const nowMinutes = currentHour * 60 + currentMinute;
-    return availableMorningSlots.filter(slot => {
-      const slotMinutes = getMinutesFromSlot(slot);
-      return slotMinutes >= nowMinutes;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isToday, currentHour, currentMinute]);
+  const filteredMorningSlots = useMemo(
+    () => filterTimeSlots(AVAILABLE_MORNING_SLOTS, selectedFullDate, today),
+    [selectedFullDate, today]
+  );
 
-  const filteredAfternoonSlots = useMemo(() => {
-    if (!isToday) return availableAfternoonSlots;
-    const nowMinutes = currentHour * 60 + currentMinute;
-    return availableAfternoonSlots.filter(slot => {
-      const slotMinutes = getMinutesFromSlot(slot);
-      return slotMinutes >= nowMinutes;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isToday, currentHour, currentMinute]);
+  const filteredAfternoonSlots = useMemo(
+    () => filterTimeSlots(AVAILABLE_AFTERNOON_SLOTS, selectedFullDate, today),
+    [selectedFullDate, today]
+  );
 
   const allSlots = useMemo(() => {
     return [...filteredMorningSlots, ...filteredAfternoonSlots];

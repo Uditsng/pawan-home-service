@@ -2,13 +2,16 @@
 
 import { useState, useEffect, useTransition, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { createClient } from "@/utils/supabase/client";
 import BottomNav from "@/components/BottomNav";
 import RatingSection from "@/components/RatingSection";
 import QuotationWorkflow from "@/components/QuotationWorkflow";
 import ServiceCardThumbnail from "@/components/ServiceCardThumbnail";
-import { useRefreshableData } from "@/lib/refresh/RefreshContext";
+import CancelBookingDialog from "@/components/booking/CancelBookingDialog";
+import { useRefreshableData, useRefresh } from "@/lib/refresh/RefreshContext";
+import { isCancellableStatus, isReschedulableStatus } from "@/utils/bookingPolicy";
 import {
   rejectExtensionAction,
   createRazorpayOrderForExtensionAction,
@@ -133,6 +136,7 @@ export default function TrackingClient({
   initialBooking,
   initialExtensions = [],
   existingReview,
+  cancellationWindowMinutes,
 }: {
   initialBooking: BookingDetails;
   initialExtensions?: BookingExtension[];
@@ -146,6 +150,7 @@ export default function TrackingClient({
     review_tags?: string[] | null;
     review_images?: string[] | null;
   } | null;
+  cancellationWindowMinutes: number;
 }) {
 
   const fetchBookingDetail = useCallback(async () => {
@@ -228,6 +233,10 @@ export default function TrackingClient({
 
   const [isPending, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showCancelDialog, setShowCancelDialog] = useState<boolean>(false);
+
+  const { invalidate } = useRefresh();
+  const router = useRouter();
 
   // Helper to calculate seconds left
   const getTimerSecondsLeft = () => {
@@ -511,6 +520,30 @@ export default function TrackingClient({
             Refresh Status
           </button>
         </section>
+
+        {/* Cancel / Reschedule actions (pre-dispatch statuses only) */}
+        {(isCancellableStatus(booking.status) || isReschedulableStatus(booking.status)) && (
+          <section className="mb-6 flex flex-col sm:flex-row gap-2.5">
+            {isReschedulableStatus(booking.status) && (
+              <Link
+                href={`/customer/bookings/${booking.id}/reschedule`}
+                className="flex-1 py-3 rounded-xl bg-surface-container-low border border-outline-variant/20 text-on-surface font-bold font-headline text-sm flex items-center justify-center gap-2 transition-all hover:bg-surface-container-high active:scale-95"
+              >
+                <span className="material-symbols-outlined text-base">update</span>
+                Reschedule Booking
+              </Link>
+            )}
+            {isCancellableStatus(booking.status) && (
+              <button
+                onClick={() => setShowCancelDialog(true)}
+                className="flex-1 py-3 rounded-xl border border-error/20 bg-surface-container-low text-error font-bold font-headline text-sm flex items-center justify-center gap-2 transition-all hover:bg-error/10 active:scale-95 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-base">cancel</span>
+                Cancel Booking
+              </button>
+            )}
+          </section>
+        )}
 
         {/* Error alert banner */}
         {errorMessage && (
@@ -973,6 +1006,21 @@ export default function TrackingClient({
       </main>
 
       <BottomNav />
+
+      {showCancelDialog && (
+        <CancelBookingDialog
+          bookingId={booking.id}
+          createdAt={booking.created_at}
+          cancellationWindowMinutes={cancellationWindowMinutes}
+          onClose={() => setShowCancelDialog(false)}
+          onSuccess={() => {
+            setShowCancelDialog(false);
+            void invalidate("bookings");
+            void refresh();
+            router.push("/customer/bookings");
+          }}
+        />
+      )}
     </div>
   );
 }

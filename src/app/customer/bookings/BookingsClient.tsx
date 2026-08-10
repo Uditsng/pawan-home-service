@@ -6,7 +6,9 @@ import Image from "next/image";
 import { useRefreshableData } from "@/lib/refresh/RefreshContext";
 import PullToRefresh from "@/components/PullToRefresh";
 import ServiceCardThumbnail from "@/components/ServiceCardThumbnail";
+import CancelBookingDialog from "@/components/booking/CancelBookingDialog";
 import { createClient } from "@/utils/supabase/client";
+import { isCancellableStatus, isReschedulableStatus } from "@/utils/bookingPolicy";
 
 type Booking = {
   id: string;
@@ -93,11 +95,14 @@ const getStatusLabel = (status: string) => {
 export default function BookingsClient({
   bookings: initialBookings,
   userId,
+  cancellationWindowMinutes,
 }: {
   bookings: Booking[];
   userId: string;
+  cancellationWindowMinutes: number;
 }) {
   const [activeTab, setActiveTab] = useState("Upcoming");
+  const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
 
   const tabs = ["Upcoming", "Ongoing", "Completed", "Cancelled"];
 
@@ -283,11 +288,25 @@ export default function BookingsClient({
                       <span>{booking.reviews[0].rating} ★ Rated</span>
                     </div>
                   )}
-                  {/* Reschedule logic placeholder */}
+                  {/* Reschedule / Cancel actions (only on pre-dispatch statuses) */}
                   {activeTab === "Upcoming" && (
-                    <button className="px-4 md:px-6 py-2.5 md:py-3 rounded-xl bg-surface-container-low text-on-surface font-bold font-headline text-xs md:text-sm transition-all hover:bg-surface-container-high active:scale-95">
-                      Reschedule
-                    </button>
+                    <div className="flex gap-2">
+                      {isReschedulableStatus(booking.status) && (
+                        <Link href={`/customer/bookings/${booking.id}/reschedule`} className="px-4 md:px-6 py-2.5 md:py-3 rounded-xl bg-surface-container-low text-on-surface font-bold font-headline text-xs md:text-sm transition-all hover:bg-surface-container-high active:scale-95 flex items-center justify-center gap-1.5">
+                          <span className="material-symbols-outlined text-sm md:text-base">update</span>
+                          Reschedule
+                        </Link>
+                      )}
+                      {isCancellableStatus(booking.status) && (
+                        <button
+                          onClick={() => setCancelTarget(booking)}
+                          className="px-4 md:px-6 py-2.5 md:py-3 rounded-xl border border-error/20 bg-surface-container-low text-error font-bold font-headline text-xs md:text-sm transition-all hover:bg-error/10 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-sm md:text-base">cancel</span>
+                          Cancel
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -305,6 +324,19 @@ export default function BookingsClient({
           <span className="material-symbols-outlined absolute top-5 md:top-6 right-5 md:right-6 text-4xl md:text-5xl opacity-20">verified_user</span>
         </div>
       </div>
+
+      {cancelTarget && (
+        <CancelBookingDialog
+          bookingId={cancelTarget.id}
+          createdAt={cancelTarget.created_at}
+          cancellationWindowMinutes={cancellationWindowMinutes}
+          onClose={() => setCancelTarget(null)}
+          onSuccess={() => {
+            setCancelTarget(null);
+            void refresh();
+          }}
+        />
+      )}
     </PullToRefresh>
   );
 }

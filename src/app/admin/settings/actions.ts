@@ -14,6 +14,7 @@ export async function updateSettingsAction(settings: {
   gst_enabled?: boolean;
   referral_enabled?: boolean;
   free_cancellation_window?: string;
+  free_cancellation_window_minutes?: number;
   partner_penalty_rate?: string;
   service_areas?: string[];
   referral_reward_referrer?: string;
@@ -50,7 +51,14 @@ export async function updateSettingsAction(settings: {
       .upsert({ key: "referral_enabled", value: settings.referral_enabled, updated_at: new Date().toISOString() });
   }
 
-  // Update free_cancellation_window
+  // Update free_cancellation_window_minutes (authoritative numeric value)
+  if (settings.free_cancellation_window_minutes !== undefined) {
+    await supabase
+      .from("platform_settings")
+      .upsert({ key: "free_cancellation_window_minutes", value: settings.free_cancellation_window_minutes, updated_at: new Date().toISOString() });
+  }
+
+  // Update free_cancellation_window (legacy display-only label)
   if (settings.free_cancellation_window !== undefined) {
     await supabase
       .from("platform_settings")

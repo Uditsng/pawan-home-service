@@ -10,7 +10,8 @@ export interface PlatformSettings {
   referralEnabled: boolean;      // e.g. true/false
   referralRewardReferrer: number;// e.g. 50 (₹)
   referralRewardReferred: number;// e.g. 50 (₹)
-  freeCancellationWindow: string;// e.g. "2 Hours"
+  freeCancellationWindow: string;// legacy display label, e.g. "15 Minutes"
+  freeCancellationWindowMinutes: number;// authoritative numeric value, e.g. 15
   partnerPenaltyRate: number;   // e.g. 10 (percent)
   serviceAreas: string[];
 }
@@ -22,7 +23,8 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   referralEnabled: true,
   referralRewardReferrer: 50,
   referralRewardReferred: 50,
-  freeCancellationWindow: "2 Hours",
+  freeCancellationWindow: "15 Minutes",
+  freeCancellationWindowMinutes: 15,
   partnerPenaltyRate: 10,
   serviceAreas: ["Roorkee", "Chandigarh", "Dehradun", "Haridwar"],
 };
@@ -75,7 +77,8 @@ export async function fetchPlatformSettings(supabase: SupabaseClient): Promise<P
       referralEnabled: parseBool(settingsMap["referral_enabled"], DEFAULT_PLATFORM_SETTINGS.referralEnabled),
       referralRewardReferrer: parseNum(settingsMap["referral_reward_referrer"], DEFAULT_PLATFORM_SETTINGS.referralRewardReferrer),
       referralRewardReferred: parseNum(settingsMap["referral_reward_referred"], DEFAULT_PLATFORM_SETTINGS.referralRewardReferred),
-      freeCancellationWindow: String(settingsMap["free_cancellation_window"] || DEFAULT_PLATFORM_SETTINGS.freeCancellationWindow),
+      freeCancellationWindow: String(settingsMap["free_cancellation_window"] || "15 Minutes"),
+      freeCancellationWindowMinutes: parseNum(settingsMap["free_cancellation_window_minutes"], DEFAULT_PLATFORM_SETTINGS.freeCancellationWindowMinutes),
       partnerPenaltyRate: parseNum(settingsMap["partner_penalty_rate"], DEFAULT_PLATFORM_SETTINGS.partnerPenaltyRate),
       serviceAreas: parseStringArray(settingsMap["service_areas"], DEFAULT_PLATFORM_SETTINGS.serviceAreas),
     };

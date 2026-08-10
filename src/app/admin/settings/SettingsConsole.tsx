@@ -4,13 +4,14 @@ import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { updateSettingsAction } from "./actions";
+import { formatFreeWindowLabel } from "@/utils/bookingPolicy";
 
 interface SettingsConsoleProps {
   initialPlatformCommission: string;
   initialTaxRate: string;
   initialGstEnabled: boolean;
   initialReferralEnabled: boolean;
-  initialCancellationWindow: string;
+  initialCancellationWindowMinutes: number;
   initialPenaltyRate: string;
   initialServiceAreas: string[];
   initialReferralRewardReferrer: string;
@@ -22,7 +23,7 @@ export function SettingsConsole({
   initialTaxRate,
   initialGstEnabled,
   initialReferralEnabled,
-  initialCancellationWindow,
+  initialCancellationWindowMinutes,
   initialPenaltyRate,
   initialServiceAreas,
   initialReferralRewardReferrer,
@@ -32,7 +33,7 @@ export function SettingsConsole({
   const [taxRate, setTaxRate] = useState(initialTaxRate);
   const [gstEnabled, setGstEnabled] = useState(initialGstEnabled);
   const [referralEnabled, setReferralEnabled] = useState(initialReferralEnabled);
-  const [cancellationWindow, setCancellationWindow] = useState(initialCancellationWindow);
+  const [cancellationWindowMinutes, setCancellationWindowMinutes] = useState(initialCancellationWindowMinutes);
   const [penaltyRate, setPenaltyRate] = useState(initialPenaltyRate);
   const [serviceAreas, setServiceAreas] = useState<string[]>(initialServiceAreas);
   const [referralRewardReferrer, setReferralRewardReferrer] = useState(initialReferralRewardReferrer);
@@ -68,7 +69,8 @@ export function SettingsConsole({
         tax_rate: taxRate,
         gst_enabled: gstEnabled,
         referral_enabled: referralEnabled,
-        free_cancellation_window: cancellationWindow,
+        free_cancellation_window_minutes: cancellationWindowMinutes,
+        free_cancellation_window: formatFreeWindowLabel(cancellationWindowMinutes),
         partner_penalty_rate: penaltyRate,
         service_areas: serviceAreas,
         referral_reward_referrer: referralRewardReferrer,
@@ -204,11 +206,13 @@ export function SettingsConsole({
             </div>
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60">Free Cancellation Window</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60">Free Cancellation Window (minutes)</label>
+                <label className="text-[10px] font-semibold text-on-surface-variant/40 -mt-1 block">Full auto-refund for cancellations within this window ({formatFreeWindowLabel(cancellationWindowMinutes)}).</label>
                 <input
-                  type="text"
-                  value={cancellationWindow}
-                  onChange={(e) => setCancellationWindow(e.target.value)}
+                  type="number"
+                  min="1"
+                  value={cancellationWindowMinutes}
+                  onChange={(e) => setCancellationWindowMinutes(Math.max(1, parseInt(e.target.value, 10) || 15))}
                   className="w-full p-3.5 rounded-xl bg-surface border border-outline-variant/20 text-sm font-bold text-primary outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary transition-all"
                 />
               </div>

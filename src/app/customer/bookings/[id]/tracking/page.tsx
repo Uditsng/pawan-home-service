@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import type { BookingExtension } from "@/lib/types";
+import { getCachedPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 import TrackingClient from "./TrackingClient";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -164,11 +165,14 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
 
   const extensions: BookingExtension[] = (extensionsData || []) as BookingExtension[];
 
+  const settings = await getCachedPlatformSettings();
+
   return (
     <TrackingClient
       initialBooking={booking}
       initialExtensions={extensions}
       existingReview={existingReview}
+      cancellationWindowMinutes={settings.freeCancellationWindowMinutes}
     />
   );
 }

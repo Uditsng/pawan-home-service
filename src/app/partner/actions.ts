@@ -404,6 +404,7 @@ export async function cancelJob(
       cancelled_at: new Date().toISOString(),
       cancelled_by: "PARTNER",
       cancellation_reason: reason,
+      refund_eligible: true,
     })
     .eq("id", bookingId);
 

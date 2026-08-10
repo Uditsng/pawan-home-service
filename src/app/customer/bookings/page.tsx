@@ -1,6 +1,7 @@
 import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
+import { getCachedPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 import BookingsClient from "./BookingsClient";
 
 export default async function BookingsPage() {
@@ -18,6 +19,8 @@ export default async function BookingsPage() {
     .eq('customer_id', user.id)
     .order('scheduled_date', { ascending: false });
 
+  const settings = await getCachedPlatformSettings();
+
   return (
     <div className="bg-surface text-on-surface antialiased min-h-screen pb-24">
 
@@ -28,7 +31,11 @@ export default async function BookingsPage() {
           <p className="text-on-surface-variant font-medium mt-1 text-sm md:text-base">Manage your professional services</p>
         </section>
 
-        <BookingsClient bookings={bookings || []} userId={user.id} />
+        <BookingsClient
+          bookings={bookings || []}
+          userId={user.id}
+          cancellationWindowMinutes={settings.freeCancellationWindowMinutes}
+        />
       </main>
 
       <BottomNav />

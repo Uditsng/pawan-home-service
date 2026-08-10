@@ -47,7 +47,7 @@ export default async function AdminSettingsPage() {
         initialTaxRate={String(settings.taxRate)}
         initialGstEnabled={settings.gstEnabled}
         initialReferralEnabled={settings.referralEnabled}
-        initialCancellationWindow={settings.freeCancellationWindow}
+        initialCancellationWindowMinutes={settings.freeCancellationWindowMinutes}
         initialPenaltyRate={String(settings.partnerPenaltyRate)}
         initialServiceAreas={settings.serviceAreas}
         initialReferralRewardReferrer={String(settings.referralRewardReferrer)}

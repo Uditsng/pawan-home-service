@@ -10,6 +10,7 @@ import { computeCartLineItems } from "@/lib/pricing/cartCatalog";
 import { buildCartCatalog } from "@/lib/catalog/buildCartCatalog";
 import type { PricingBreakdown } from "@/lib/pricing/types";
 import { SupabaseClient } from "@supabase/supabase-js";
+import { combineDateTimeToISO } from "@/utils/schedule";
 
 export interface ServiceCheckoutInput {
   serviceId: string;
@@ -108,12 +109,7 @@ async function computeServiceBreakdowns(
     expectedBags: item.expectedBags ?? null,
   }));
 
-  const [timePart, modifier] = options.time.split(" ");
-  const [rawH, min] = timePart.split(":").map(Number);
-  let h = rawH;
-  if (modifier === "PM" && h !== 12) h += 12;
-  if (modifier === "AM" && h === 12) h = 0;
-  const scheduledDate = new Date(`${options.date}T${h.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}:00+05:30`);
+  const scheduledDate = new Date(combineDateTimeToISO(options.date, options.time));
 
   const lineItems = computeCartLineItems(items, catalog, {
     scheduledDate,

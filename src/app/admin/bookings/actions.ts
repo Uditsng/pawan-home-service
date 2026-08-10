@@ -37,6 +37,7 @@ export async function updateBookingStatusAction(
   if (status === "cancelled") {
     updateData.cancelled_at = new Date().toISOString();
     updateData.cancelled_by = "SYSTEM";
+    updateData.refund_eligible = true;
     if (cancellationReason) {
       updateData.cancellation_reason = cancellationReason;
     }

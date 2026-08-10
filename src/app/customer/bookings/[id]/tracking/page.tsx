@@ -19,6 +19,7 @@ interface SubcategoryInfo {
 interface ServiceInfo {
   title: string;
   category: string;
+  image_url: string | null;
   subcategories: SubcategoryInfo | null;
 }
 
@@ -89,6 +90,7 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
       services (
         title,
         category,
+        image_url,
         subcategories (
           subcategory_name,
           icon_name

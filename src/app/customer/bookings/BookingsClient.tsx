@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRefreshableData } from "@/lib/refresh/RefreshContext";
 import PullToRefresh from "@/components/PullToRefresh";
+import ServiceCardThumbnail from "@/components/ServiceCardThumbnail";
 import { createClient } from "@/utils/supabase/client";
 
 type Booking = {
@@ -15,6 +16,10 @@ type Booking = {
   services: {
     title: string;
     category: string;
+    image_url: string | null;
+    subcategories: {
+      icon_name: string;
+    } | null;
   } | null;
   partner: {
     full_name: string;
@@ -100,7 +105,7 @@ export default function BookingsClient({
     const supabase = createClient();
     const { data, error } = await supabase
       .from("bookings")
-      .select("*, services(title, category), partner:partner_id(full_name, avatar_url), reviews:reviews(id, rating, comment)")
+      .select("*, services(title, category, image_url, subcategories(icon_name)), partner:partner_id(full_name, avatar_url), reviews:reviews(id, rating, comment)")
       .eq("customer_id", userId)
       .order("scheduled_date", { ascending: false });
 
@@ -187,11 +192,12 @@ export default function BookingsClient({
               <div key={booking.id} className="glass-panel rounded-2xl p-3 md:p-4 transition-all duration-300">
                 <div className="flex justify-between items-start mb-3 md:mb-4">
                   <div className="flex gap-2">
-                    <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl bg-secondary/10 flex items-center justify-center text-primary-container shrink-0">
-                      <span className="material-symbols-outlined text-secondary drop-shadow-sm">
-                        {booking.services?.category === "cleaning" ? "cleaning_services" : "home_repair_service"}
-                      </span>
-                    </div>
+                    <ServiceCardThumbnail
+                      imageUrl={booking.services?.image_url}
+                      iconName={booking.services?.subcategories?.icon_name || "home_repair_service"}
+                      containerClassName="w-12 h-12 md:w-16 md:h-16 rounded-xl"
+                      iconClassName="w-6 h-6 md:w-7 md:h-7 text-[#059669] drop-shadow-sm"
+                    />
                     <div>
                       <h3 className="font-headline text-base md:text-lg font-bold text-on-surface leading-none">
                         {booking.services?.title || "Service"}

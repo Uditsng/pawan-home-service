@@ -204,7 +204,7 @@ export function ImageCropper({
   const size = drawSize();
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-primary/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-primary/60 backdrop-blur-sm p-4">
       <div className="bg-surface-container-lowest w-full max-w-md rounded-3xl border border-outline-variant/20 shadow-2xl p-5 space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>

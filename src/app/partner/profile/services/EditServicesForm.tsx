@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import ServiceSelectionDrawer from "@/components/ServiceSelectionDrawer";
+import ServiceCardThumbnail from "@/components/ServiceCardThumbnail";
 import { savePartnerServices } from "../../actions";
 
 interface Service {
@@ -10,6 +11,7 @@ interface Service {
   subcategoryName: string;
   categoryName: string;
   iconName: string;
+  imageUrl?: string | null;
 }
 
 interface EditServicesFormProps {
@@ -79,11 +81,12 @@ export default function EditServicesForm({ allServices, initialSelectedServices 
             activeServices.map((service) => (
               <div key={service.id} className="p-4 sm:p-5 flex items-center justify-between hover:bg-surface-container-low transition-colors">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary/10 rounded-2xl flex items-center justify-center shrink-0">
-                    <span className="material-symbols-outlined text-primary text-[20px]">
-                      {service.iconName}
-                    </span>
-                  </div>
+                  <ServiceCardThumbnail
+                    imageUrl={service.imageUrl}
+                    iconName={service.iconName}
+                    containerClassName="w-10 h-10 rounded-2xl"
+                    iconClassName="w-5 h-5 text-[#059669] drop-shadow-sm"
+                  />
                   <div>
                     <span className="font-bold text-sm text-on-surface block">
                       {service.title}

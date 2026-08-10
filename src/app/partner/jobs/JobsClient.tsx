@@ -15,12 +15,15 @@ import {
 import type { BookingWithDetails, BookingExtension, BookingQuote } from "@/lib/types";
 import { requestExtensionAction } from "@/app/actions/extensions";
 import QuotationWorkflow from "@/components/QuotationWorkflow";
+import ServiceCardThumbnail from "@/components/ServiceCardThumbnail";
 
 // ─── Types ────────────────────────────────────────────────────
 
 export interface RawService {
   title: string;
   category?: string;
+  image_url?: string | null;
+  subcategories?: { icon_name: string } | null;
 }
 
 export interface RawBooking {
@@ -63,7 +66,7 @@ interface JobOffer {
     meeting_location?: string | null;
     destination?: string | null;
     expected_bags?: number | null;
-    services: { title: string; category?: string } | null;
+    services: { title: string; category?: string; image_url?: string | null; subcategories?: { icon_name: string } | null } | null;
   } | null;
 }
 
@@ -146,7 +149,7 @@ export default function JobsClient({
         id, booking_id, broadcast_tier, created_at,
         bookings:booking_id (
           id, service_id, city, area, pincode, scheduled_date, total_amount, address,
-          services:service_id ( title, category )
+          services:service_id ( title, category, image_url, subcategories ( icon_name ) )
         )
       `)
       .eq("status", "offered")
@@ -177,6 +180,8 @@ export default function JobsClient({
                 ? {
                     title: rawService.title,
                     category: rawService.category,
+                    image_url: rawService.image_url,
+                    subcategories: rawService.subcategories,
                   }
                 : null,
             }
@@ -219,19 +224,19 @@ export default function JobsClient({
     const [assignedRes, activeRes, completedRes] = await Promise.all([
       supabase
         .from("bookings")
-        .select("*, services:service_id(title, category), customer:customer_id(full_name)")
+        .select("*, services:service_id(title, category, image_url, subcategories(icon_name)), customer:customer_id(full_name)")
         .eq("partner_id", partnerId)
         .in("status", ["assigned", "confirmed"])
         .order("scheduled_date", { ascending: true }),
       supabase
         .from("bookings")
-        .select("*, services:service_id(title, category), customer:customer_id(full_name)")
+        .select("*, services:service_id(title, category, image_url, subcategories(icon_name)), customer:customer_id(full_name)")
         .eq("partner_id", partnerId)
         .in("status", ["accepted", "professional_en_route", "professional_arrived", "otp_pending", "in_progress"])
         .order("scheduled_date", { ascending: true }),
       supabase
         .from("bookings")
-        .select("*, services:service_id(title, category), customer:customer_id(full_name)")
+        .select("*, services:service_id(title, category, image_url, subcategories(icon_name)), customer:customer_id(full_name)")
         .eq("partner_id", partnerId)
         .eq("status", "completed")
         .order("completed_at", { ascending: false })
@@ -459,19 +464,6 @@ export default function JobsClient({
     "Equipment not available",
     "Schedule conflict",
   ];
-
-  function getStatusIcon(status: string) {
-    switch (status) {
-      case "in_progress":             return "build";
-      case "assigned":
-      case "confirmed":               return "assignment_ind";
-      case "professional_en_route":   return "motorcycle";
-      case "professional_arrived":
-      case "otp_pending":             return "lock";
-      case "completed":               return "task_alt";
-      default:                        return "help";
-    }
-  }
 
   function getStatusColor(status: string) {
     switch (status) {
@@ -703,11 +695,13 @@ export default function JobsClient({
 
         {/* Service info */}
         <div className="flex items-start gap-2.5 mb-3">
-          <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-[#059669] drop-shadow-sm">
-              home_repair_service
-            </span>
-          </div>
+          <ServiceCardThumbnail
+            imageUrl={b.services?.image_url}
+            iconName={b.services?.subcategories?.icon_name || "home_repair_service"}
+            containerClassName="w-12 h-12 rounded-xl"
+            iconClassName="w-6 h-6 text-[#059669] drop-shadow-sm"
+            alt={b.services?.title || "Service"}
+          />
           <div className="min-w-0">
             <h3 className="font-headline font-bold text-[16px] text-on-surface leading-tight">
               {b.services?.title ?? "Service"}
@@ -1028,11 +1022,13 @@ export default function JobsClient({
                     <div>
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center gap-2">
-                          <div className={`w-9 h-9 rounded-xl ${getStatusColor(job.status)} flex items-center justify-center border border-white/40 shadow-xs`}>
-                            <span className="material-symbols-outlined font-bold text-base">
-                              {getStatusIcon(job.status)}
-                            </span>
-                          </div>
+                          <ServiceCardThumbnail
+                            imageUrl={job.services?.image_url}
+                            iconName={job.services?.subcategories?.icon_name || "home_repair_service"}
+                            containerClassName="w-9 h-9 rounded-xl"
+                            iconClassName="w-4 h-4 text-[#059669] drop-shadow-sm"
+                            alt={job.services?.title || "Service"}
+                          />
                           <div>
                             <h3 className="font-headline font-bold text-sm leading-tight text-on-surface">
                               {job.services?.title || "Untitled Service"}

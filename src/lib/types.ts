@@ -193,7 +193,7 @@ export interface OrderWithBookings extends Order {
 // ─── Joined / Enriched Models ────────────────────────────────
 
 export interface BookingWithDetails extends Booking {
-  services: { title: string; category?: string; pricing_model?: PricingModel } | null;
+  services: { title: string; category?: string; pricing_model?: PricingModel; image_url?: string | null; subcategories?: { icon_name: string } | null } | null;
   customer: { full_name: string } | null;
   partner: { full_name: string; avatar_url: string | null; phone: string | null } | null;
 }

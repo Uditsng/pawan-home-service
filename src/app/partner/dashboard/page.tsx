@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import type { BookingWithDetails, PartnerProfile } from "@/lib/types";
 import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 import { calculateCommissionBreakdown } from "@/lib/engines/commissionEngine";
+import ServiceCardThumbnail from "@/components/ServiceCardThumbnail";
 
 export default async function PartnerDashboardPage() {
   const supabase = await createClient();
@@ -40,7 +41,7 @@ export default async function PartnerDashboardPage() {
     // Current active job (in_progress)
     supabase
       .from("bookings")
-      .select("*, services:service_id(title, category), customer:customer_id(full_name)")
+      .select("*, services:service_id(title, category, image_url, subcategories(icon_name)), customer:customer_id(full_name)")
       .eq("partner_id", user.id)
       .eq("status", "in_progress")
       .limit(1)
@@ -55,7 +56,7 @@ export default async function PartnerDashboardPage() {
     // Next auto-assigned job (confirmed)
     supabase
       .from("bookings")
-      .select("*, services:service_id(title, category), customer:customer_id(full_name)")
+      .select("*, services:service_id(title, category, image_url, subcategories(icon_name)), customer:customer_id(full_name)")
       .eq("partner_id", user.id)
       .eq("status", "confirmed")
       .order("scheduled_date", { ascending: true })
@@ -64,7 +65,7 @@ export default async function PartnerDashboardPage() {
     // Upcoming scheduled jobs
     supabase
       .from("bookings")
-      .select("*, services:service_id(title, category)")
+      .select("*, services:service_id(title, category, image_url, subcategories(icon_name))")
       .eq("partner_id", user.id)
       .in("status", ["confirmed", "accepted", "in_progress"])
       .order("scheduled_date", { ascending: true })
@@ -93,22 +94,6 @@ export default async function PartnerDashboardPage() {
   const dailyEarnings = calculateCommissionBreakdown(todayRawTotal, commissionPercent).partnerPayoutAmount;
   const todayJobsCompleted = todayCompleted?.length || 0;
   const activeHours = todayJobsCompleted * 1.5 + (activeJob ? 0.5 : 0);
-
-  // ─── Service icon mapping ──────────────────────────────────
-  function getServiceIcon(category?: string) {
-    switch (category?.toLowerCase()) {
-      case "cleaning":
-        return "cleaning_services";
-      case "pest control":
-        return "pest_control";
-      case "electrical":
-        return "electrical_services";
-      case "plumbing":
-        return "plumbing";
-      default:
-        return "home_repair_service";
-    }
-  }
 
   return (
     <div className="bg-surface font-body text-on-surface min-h-screen pb-24 lg:pb-12">
@@ -354,14 +339,12 @@ export default async function PartnerDashboardPage() {
                   className={`bg-surface-container-lowest border border-outline-variant/15 rounded-3xl p-4 sm:p-5 flex items-center justify-between group hover:border-primary/40 hover:shadow-xs transition-all cursor-pointer ${idx > 1 ? "opacity-80 hover:opacity-100" : ""}`}
                 >
                   <div className="flex items-center gap-3.5 min-w-0 pr-2">
-                    <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
-                      <span
-                        className="material-symbols-outlined text-2xl text-primary"
-                        style={{ fontVariationSettings: "'FILL' 1" }}
-                      >
-                        {getServiceIcon(job.services?.category)}
-                      </span>
-                    </div>
+                    <ServiceCardThumbnail
+                      imageUrl={job.services?.image_url}
+                      iconName={job.services?.subcategories?.icon_name || "home_repair_service"}
+                      containerClassName="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl"
+                      iconClassName="w-6 h-6 text-[#059669] drop-shadow-sm"
+                    />
                     <div className="min-w-0">
                       <p className="font-bold text-sm sm:text-base font-headline text-on-surface truncate">
                         {job.services?.title || "Service"}

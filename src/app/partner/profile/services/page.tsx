@@ -6,6 +6,7 @@ import EditServicesForm from "./EditServicesForm";
 interface RawService {
   id: string;
   title: string;
+  image_url: string | null;
   subcategories: {
     subcategory_name: string;
     icon_name: string;
@@ -30,6 +31,7 @@ export default async function PartnerServicesPage() {
       .select(`
         id,
         title,
+        image_url,
         subcategory_id,
         subcategories (
           id,
@@ -62,6 +64,7 @@ export default async function PartnerServicesPage() {
   const availableServices = rawServices.map((s) => ({
     id: s.id,
     title: s.title,
+    imageUrl: s.image_url,
     subcategoryName: s.subcategories?.subcategory_name || "General",
     categoryName: s.subcategories?.categories?.category_name || "Other",
     iconName: s.subcategories?.icon_name || "sparkles",

@@ -7,6 +7,7 @@ import { createClient } from "@/utils/supabase/client";
 import BottomNav from "@/components/BottomNav";
 import RatingSection from "@/components/RatingSection";
 import QuotationWorkflow from "@/components/QuotationWorkflow";
+import ServiceCardThumbnail from "@/components/ServiceCardThumbnail";
 import { useRefreshableData } from "@/lib/refresh/RefreshContext";
 import {
   rejectExtensionAction,
@@ -23,6 +24,7 @@ interface SubcategoryInfo {
 interface ServiceInfo {
   title: string;
   category: string;
+  image_url: string | null;
   subcategories: SubcategoryInfo | null;
 }
 
@@ -171,6 +173,7 @@ export default function TrackingClient({
           services (
             title,
             category,
+            image_url,
             subcategories (
               subcategory_name,
               icon_name
@@ -445,8 +448,7 @@ export default function TrackingClient({
   const displayDate = scheduledDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Kolkata" });
   const displayTime = scheduledDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 
-  const iconName = booking.services?.subcategories?.icon_name ||
-    (booking.services?.category === "cleaning" ? "cleaning_services" : "home_repair_service");
+  const iconName = booking.services?.subcategories?.icon_name || "home_repair_service";
 
   const isAssigned = !!booking.partner;
   const partnerName = booking.partner?.full_name || "Assigning soon...";
@@ -792,9 +794,12 @@ export default function TrackingClient({
             <div className="glass-panel rounded-3xl p-6 md:p-8">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-outline-variant/30">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-green-500/10 rounded-2xl flex items-center justify-center shrink-0">
-                    <span className="material-symbols-outlined text-2xl text-[#059669] drop-shadow-sm">{iconName}</span>
-                  </div>
+                  <ServiceCardThumbnail
+                    imageUrl={booking.services?.image_url}
+                    iconName={iconName}
+                    containerClassName="w-14 h-14 rounded-2xl"
+                    iconClassName="w-6 h-6 text-[#059669] drop-shadow-sm"
+                  />
                   <div>
                     <span className="text-[10px] uppercase font-bold text-on-surface-variant/70 tracking-wider">
                       Booked Service

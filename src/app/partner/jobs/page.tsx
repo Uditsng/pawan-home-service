@@ -17,19 +17,19 @@ export default async function PartnerJobsPage() {
     supabase.from("profiles").select("status").eq("id", user.id).single(),
     supabase
       .from("bookings")
-      .select("*, services:service_id(title, category), customer:customer_id(full_name)")
+      .select("*, services:service_id(title, category, image_url, subcategories(icon_name)), customer:customer_id(full_name)")
       .eq("partner_id", user.id)
       .in("status", ["assigned", "confirmed"])
       .order("scheduled_date", { ascending: true }),
     supabase
       .from("bookings")
-      .select("*, services:service_id(title, category), customer:customer_id(full_name)")
+      .select("*, services:service_id(title, category, image_url, subcategories(icon_name)), customer:customer_id(full_name)")
       .eq("partner_id", user.id)
       .in("status", ["accepted", "professional_en_route", "professional_arrived", "otp_pending", "in_progress"])
       .order("scheduled_date", { ascending: true }),
     supabase
       .from("bookings")
-      .select("*, services:service_id(title, category), customer:customer_id(full_name)")
+      .select("*, services:service_id(title, category, image_url, subcategories(icon_name)), customer:customer_id(full_name)")
       .eq("partner_id", user.id)
       .eq("status", "completed")
       .order("completed_at", { ascending: false })
@@ -42,7 +42,7 @@ export default async function PartnerJobsPage() {
         bookings:booking_id (
           id, service_id, city, area, pincode, scheduled_date, total_amount, address,
           meeting_location, destination, expected_bags,
-          services:service_id ( title, category )
+          services:service_id ( title, category, image_url, subcategories ( icon_name ) )
         )
       `)
       .eq("partner_id", user.id)
@@ -83,6 +83,8 @@ export default async function PartnerJobsPage() {
               ? {
                   title: rawService.title,
                   category: rawService.category,
+                  image_url: rawService.image_url,
+                  subcategories: rawService.subcategories,
                 }
               : null,
           }

@@ -79,7 +79,7 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
   const displayImage = service.image_url || catImageMap[service.category || ''] || '/assets/hero_cleaning_1773410829223.png';
 
   return (
-    <div className="bg-surface font-body text-on-surface antialiased min-h-screen pb-28 md:pb-32">
+    <div className="bg-surface font-body text-on-surface antialiased min-h-screen pb-[calc(9rem+env(safe-area-inset-bottom,0))] md:pb-40">
       {/* Top Banner & Header */}
       <div className="bg-surface-container pt-4 md:pt-6 px-4 md:px-6 relative overflow-hidden">
         <div className="max-w-7xl mx-auto mb-4">

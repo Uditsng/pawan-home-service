@@ -43,7 +43,7 @@ export default function PriceSummary({
 
   if (variant === "sticky") {
     return (
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-surface-container-lowest/80 backdrop-blur-xl border-t border-outline-variant/15 py-4 px-4 md:px-6 shadow-[0_-8px_30px_rgb(0,0,0,0.06)] animate-fade-in">
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-surface-container-lowest/80 backdrop-blur-xl border-t border-outline-variant/15 pt-3.5 md:pt-4 pb-[calc(1rem+env(safe-area-inset-bottom,0))] px-4 md:px-6 shadow-[0_-8px_30px_rgb(0,0,0,0.06)] animate-fade-in">
         <div className="max-w-3xl mx-auto flex items-center justify-between gap-4">
           <div className="flex flex-col">
             <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Estimated Total</span>

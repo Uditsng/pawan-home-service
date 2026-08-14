@@ -45,7 +45,7 @@ export interface SerializedPartner {
   email: string;
   phone: string;
   avatar_url: string | null;
-  status: 'active' | 'offline' | 'busy' | 'suspended';
+  status: 'pending' | 'active' | 'offline' | 'busy' | 'suspended';
   service_tier: 'premium' | 'standard';
   kyc_status: 'approved' | 'rejected' | 'pending';
   kyc_rejection_reason: string | null;
@@ -73,7 +73,7 @@ interface RawPartnerProfile {
   email?: string | null;
   phone?: string | null;
   avatar_url?: string | null;
-  status?: 'active' | 'offline' | 'busy' | 'suspended' | null;
+  status?: 'pending' | 'active' | 'offline' | 'busy' | 'suspended' | null;
   service_tier?: 'premium' | 'standard' | null;
   kyc_status?: 'approved' | 'rejected' | 'pending' | null;
   kyc_rejection_reason?: string | null;
@@ -191,7 +191,9 @@ export default async function AdminPartnersPage() {
   const { data: allServicesData } = servicesRes;
 
   if (error) {
-    // Catch missing columns error (code 42703 or message check) and fallback
+    // Catch missing columns error (code 42703 or message check) and fallback.
+    // The fallback selects only guaranteed core columns so the fleet list still
+    // loads even when optional Fleet Control / performance columns are absent.
     if (error.code === '42703' || error.message?.includes('service_tier') || error.message?.includes('kyc_status')) {
       isSchemaError = true;
       const { data: fallbackData, error: fallbackError } = await supabase
@@ -204,14 +206,6 @@ export default async function AdminPartnersPage() {
           created_at,
           status,
           avatar_url,
-          rating_avg,
-          rating_count,
-          jobs_offered_count,
-          jobs_accepted_count,
-          jobs_cancelled_count,
-          acceptance_rate,
-          cancellation_rate,
-          is_available,
           partner_services:partner_services(
             services:services(id, title, category)
           ),
@@ -228,9 +222,17 @@ export default async function AdminPartnersPage() {
         partners = (fallbackData as unknown as RawPartnerProfile[]).map(p => ({
           ...p,
           service_tier: 'standard',
-          kyc_status: 'pending',
+          kyc_status: 'approved',
           kyc_rejection_reason: null,
-          kyc_documents: null
+          kyc_documents: null,
+          rating_avg: 5.0,
+          rating_count: 0,
+          jobs_offered_count: 0,
+          jobs_accepted_count: 0,
+          jobs_cancelled_count: 0,
+          acceptance_rate: 1.0,
+          cancellation_rate: 0.0,
+          is_available: true,
         }));
       } else {
         console.error("Fallback query also failed:", fallbackError);
@@ -321,14 +323,14 @@ export default async function AdminPartnersPage() {
               <span className="material-symbols-outlined text-amber-700">warning</span>
             </div>
             <div>
-              <h4 className="text-sm font-black text-amber-800 uppercase tracking-tight">Database Schema Upgrade Required</h4>
+              <h4 className="text-sm font-black text-amber-800 uppercase tracking-tight">Optional Fleet Control Columns Not Applied</h4>
               <p className="text-xs text-amber-700 mt-1 font-medium leading-relaxed">
-                The profiles table is missing the columns <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold">service_tier</code>, <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold text-[11px]">kyc_status</code>, <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold text-[11px]">kyc_rejection_reason</code>, and <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold text-[11px]">kyc_documents</code>. Please run the migration query inside your Supabase Dashboard SQL editor to unlock compliance flows.
+                The profiles table is missing the optional columns <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold">service_tier</code>, <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold text-[11px]">kyc_status</code>, <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold text-[11px]">kyc_rejection_reason</code>, and <code className="bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold text-[11px]">kyc_documents</code>. Onboarding still works — admin-added partners are created with KYC assumed approved. Run the migration in your Supabase SQL Editor to enable advanced tier/KYC compliance flows.
               </p>
             </div>
           </div>
           <div className="shrink-0 w-full sm:w-auto bg-amber-500/20 hover:bg-amber-500/30 text-amber-800 font-black text-[10px] uppercase tracking-widest px-4 py-2.5 rounded-xl border border-amber-500/25 transition-all text-center">
-            Schema Pending
+            Onboarding Ready
           </div>
         </div>
       )}

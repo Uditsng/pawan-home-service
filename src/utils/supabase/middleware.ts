@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { getDashboardForRole } from './roles'
+import { createHmac } from 'node:crypto'
 
 interface MiddlewareProfile {
   role: string | null;
@@ -182,16 +183,18 @@ export async function updateSession(request: NextRequest) {
     let profile: MiddlewareProfile | null = null;
 
     const secretKey = process.env.AUTH_HMAC_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'phs-server-only-secret-key';
-    const getSignature = (uid: string, r: string | null, s: string | null) => {
-      const crypto = require('node:crypto');
-      return crypto.createHmac('sha256', secretKey).update(`${uid}:${r ?? ''}:${s ?? ''}`).digest('hex');
+    const getSignature = (uid: string, r: string | null, s: string | null, k: string | null) => {
+      return createHmac('sha256', secretKey).update(`${uid}:${r ?? ''}:${s ?? ''}:${k ?? ''}`).digest('hex');
     };
 
-    if (cachedCookie) {
+    // Partner KYC/onboarding gating depends on live status/kyc_status, which
+    // change frequently (onboarding completion, admin KYC approval). Never
+    // trust the cached cookie for partner routes — always fetch fresh.
+    if (cachedCookie && requiredRole !== 'partner') {
       try {
         const parsed = JSON.parse(cachedCookie);
         if (parsed && parsed.userId === user.id && parsed.profile && parsed.sig) {
-          const expectedSig = getSignature(user.id, parsed.profile.role, parsed.profile.status);
+          const expectedSig = getSignature(user.id, parsed.profile.role, parsed.profile.status, parsed.profile.kyc_status ?? null);
           if (parsed.sig === expectedSig) {
             profile = parsed.profile as MiddlewareProfile;
           }
@@ -210,7 +213,7 @@ export async function updateSession(request: NextRequest) {
       
       if (rawProfile) {
         profile = rawProfile as MiddlewareProfile;
-        const sig = getSignature(user.id, profile.role, profile.status);
+        const sig = getSignature(user.id, profile.role, profile.status, profile.kyc_status ?? null);
         supabaseResponse.cookies.set(cookieName, JSON.stringify({ userId: user.id, profile, sig }), {
           maxAge: 600, // 10 minutes cache
           path: '/',

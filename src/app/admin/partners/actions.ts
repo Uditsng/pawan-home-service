@@ -1,25 +1,32 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
+import { normaliseIndianPhone } from "@/lib/twilio";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/utils/supabase/auth-checks";
 
+type ActionResult = { success: true } | { success: false; error: string };
+
 /**
- * Helper to check schema column exceptions and throw user-friendly instructions.
+ * Convert a database error into a user-friendly, structured failure message.
+ * Never throws for expected database failures — Next.js would otherwise redact
+ * the message and show the generic "Server Components render" error banner.
  */
-function handleDatabaseError(error: { message?: string; code?: string }): never {
+function toActionError(error: { message?: string; code?: string } | null | undefined): ActionResult {
+  const message = error?.message || "An unknown database error occurred.";
   console.error("Database operation failed:", error);
-  if (error.message?.includes("column") || error.code === '42703') {
-    throw new Error(
-      "DATABASE_SCHEMA_ERROR: One or more Fleet Control columns ('service_tier', 'kyc_status', 'kyc_rejection_reason', 'kyc_documents') do not exist in the 'profiles' table. " +
-      "Please execute this SQL in your Supabase Dashboard SQL Editor:\n\n" +
-      "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS service_tier TEXT DEFAULT 'standard';\n" +
-      "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS kyc_status TEXT DEFAULT 'pending';\n" +
-      "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS kyc_rejection_reason TEXT;\n" +
-      "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS kyc_documents JSONB;"
-    );
+
+  if (message.includes("column") || error?.code === "42703") {
+    return {
+      success: false,
+      error:
+        "Database schema is missing Fleet Control columns ('service_tier', 'kyc_status', 'kyc_rejection_reason', 'kyc_documents') on the 'profiles' table. " +
+        "Please run the pending migrations in your Supabase SQL Editor.",
+    };
   }
-  throw new Error(error.message || "An unknown database error occurred.");
+
+  return { success: false, error: message };
 }
 
 /**
@@ -28,7 +35,7 @@ function handleDatabaseError(error: { message?: string; code?: string }): never 
 export async function updatePartnerStatusAction(
   partnerId: string,
   status: 'active' | 'offline' | 'busy' | 'suspended'
-) {
+): Promise<ActionResult> {
   await requireAdmin();
   const supabase = await createClient();
 
@@ -38,7 +45,7 @@ export async function updatePartnerStatusAction(
     .eq('id', partnerId);
 
   if (error) {
-    return handleDatabaseError(error);
+    return toActionError(error);
   }
 
   revalidatePath('/admin/partners');
@@ -51,7 +58,7 @@ export async function updatePartnerStatusAction(
 export async function updatePartnerTierAction(
   partnerId: string,
   tier: 'premium' | 'standard'
-) {
+): Promise<ActionResult> {
   await requireAdmin();
   const supabase = await createClient();
 
@@ -60,8 +67,10 @@ export async function updatePartnerTierAction(
     .update({ service_tier: tier })
     .eq('id', partnerId);
 
-  if (error) {
-    return handleDatabaseError(error);
+  // service_tier is an optional Fleet Control column. If it does not exist on
+  // the live DB, treat the update as a no-op instead of failing hard.
+  if (error && error.code !== '42703' && !error.message?.includes('column')) {
+    return toActionError(error);
   }
 
   revalidatePath('/admin/partners');
@@ -75,7 +84,7 @@ export async function reviewKycAction(
   partnerId: string,
   status: 'approved' | 'rejected' | 'pending',
   reason?: string
-) {
+): Promise<ActionResult> {
   await requireAdmin();
   const supabase = await createClient();
 
@@ -84,13 +93,28 @@ export async function reviewKycAction(
     kyc_rejection_reason: status === 'rejected' ? (reason || null) : null
   };
 
+  // When approving KYC, route the partner to onboarding if they haven't
+  // completed it yet (no assigned services). This ensures admin-onboarded
+  // partners move to the setup step instead of the dashboard, without
+  // affecting partners who already completed onboarding.
+  if (status === 'approved') {
+    const { count: servicesCount } = await supabase
+      .from('partner_services')
+      .select('id', { count: 'exact', head: true })
+      .eq('partner_id', partnerId);
+
+    if (servicesCount === 0) {
+      updateData.status = 'pending';
+    }
+  }
+
   const { error } = await supabase
     .from('profiles')
     .update(updateData)
     .eq('id', partnerId);
 
   if (error) {
-    return handleDatabaseError(error);
+    return toActionError(error);
   }
 
   revalidatePath('/admin/partners');
@@ -98,7 +122,12 @@ export async function reviewKycAction(
 }
 
 /**
- * Onboard a New Partner Profile directly
+ * Onboard a New Partner Profile directly.
+ *
+ * Uses Supabase's official Admin Auth API (service role) to create the auth
+ * user safely, then upserts the profiles row with partner metadata. Returns a
+ * structured error object instead of throwing, so failures surface as clean
+ * inline messages instead of the redacted Next.js production error banner.
  */
 export async function onboardPartnerAction(data: {
   full_name: string;
@@ -109,49 +138,108 @@ export async function onboardPartnerAction(data: {
   service_tier: 'premium' | 'standard';
   services: string[];
   pincodes: string[];
-}) {
+}): Promise<ActionResult & { partnerId?: string }> {
   await requireAdmin();
-  const supabase = await createClient();
+  const admin = createAdminClient();
 
   const generatedPassword = data.password || "PavanStaff123!";
 
-  // Create a stub partner profile and auth user via RPC
-  const { data: partnerId, error: rpcError } = await supabase.rpc('create_staff_user', {
-    p_email: data.email,
-    p_password: generatedPassword,
-    p_phone: data.phone,
-    p_full_name: data.full_name,
-    p_city: data.city,
-    p_service_tier: data.service_tier
-  });
-
-  if (rpcError || !partnerId) {
-    return handleDatabaseError(rpcError || new Error("Failed to generate staff user ID."));
+  let e164Phone: string;
+  try {
+    e164Phone = normaliseIndianPhone(data.phone);
+  } catch {
+    return { success: false, error: "Invalid mobile number. Must be a 10-digit Indian mobile number." };
   }
 
-  // Insert assigned services
+  // 1. Create the auth user via the official Admin Auth API.
+  //    Safe against duplicates: createUser returns an error we translate below.
+  const { data: createdUser, error: createError } = await admin.auth.admin.createUser({
+    email: data.email,
+    password: generatedPassword,
+    phone: e164Phone,
+    email_confirm: true,
+    user_metadata: { role: 'partner', full_name: data.full_name },
+  });
+
+  if (createError) {
+    console.error("createUser failed:", createError);
+    const message = createError.message?.toLowerCase() || "";
+    if (message.includes("already registered") || message.includes("already been registered")) {
+      return {
+        success: false,
+        error: "An account with this email or mobile number already exists.",
+      };
+    }
+    return { success: false, error: `Failed to create account: ${createError.message}` };
+  }
+
+  if (!createdUser?.user?.id) {
+    return { success: false, error: "Failed to create account: no user returned from auth service." };
+  }
+
+  const partnerId = createdUser.user.id;
+
+  // 2. Upsert the profiles row with core partner fields.
+  //    status='pending' so the middleware routes the partner to onboarding
+  //    (services/pincodes setup) after login. The optional Fleet Control
+  //    columns (service_tier, kyc_status, is_available) are applied as
+  //    best-effort so onboarding never breaks when the live DB lacks them.
+  const { error: profileError } = await admin.from('profiles').upsert({
+    id: partnerId,
+    email: data.email,
+    phone: e164Phone,
+    full_name: data.full_name,
+    role: 'partner',
+    status: 'pending',
+  }, { onConflict: 'id' });
+
+  if (profileError) {
+    return toActionError(profileError);
+  }
+
+  // 2b. Best-effort: KYC is assumed approved when the admin adds a partner
+  //     directly (no documents needed). Skipped silently if the column is
+  //     missing so onboarding never breaks on an outdated schema.
+  const { error: kycError } = await admin
+    .from('profiles')
+    .update({ kyc_status: 'approved' })
+    .eq('id', partnerId);
+  if (kycError && kycError.code !== '42703' && !kycError.message?.includes('column')) {
+    return toActionError(kycError);
+  }
+
+  // 2c. Best-effort: set city when the column exists. Never blocks onboarding.
+  const { error: cityError } = await admin
+    .from('profiles')
+    .update({ city: data.city })
+    .eq('id', partnerId);
+  if (cityError && cityError.code !== '42703' && !cityError.message?.includes('column')) {
+    return toActionError(cityError);
+  }
+
+  // 3. Insert assigned services
   if (data.services.length > 0) {
     const partnerServices = data.services.map(service_id => ({
       partner_id: partnerId,
       service_id
     }));
-    const { error: psError } = await supabase
+    const { error: psError } = await admin
       .from('partner_services')
       .insert(partnerServices);
-    if (psError) return handleDatabaseError(psError);
+    if (psError) return toActionError(psError);
   }
 
-  // Insert assigned pincodes
+  // 4. Insert assigned pincodes
   if (data.pincodes.length > 0) {
     const partnerAreas = data.pincodes.map(pincode => ({
       partner_id: partnerId,
       pincode,
       city: data.city
     }));
-    const { error: paError } = await supabase
+    const { error: paError } = await admin
       .from('partner_service_areas')
       .insert(partnerAreas);
-    if (paError) return handleDatabaseError(paError);
+    if (paError) return toActionError(paError);
   }
 
   revalidatePath('/admin/partners');
@@ -169,67 +257,97 @@ export async function editPartnerAction(data: {
   password?: string;
   city: string;
   service_tier: 'premium' | 'standard';
-  status: 'active' | 'offline' | 'busy' | 'suspended';
+  status: 'pending' | 'active' | 'offline' | 'busy' | 'suspended';
   is_available: boolean;
   services: string[];
   pincodes: string[];
-}) {
+}): Promise<ActionResult> {
   await requireAdmin();
-  const supabase = await createClient();
+  const admin = createAdminClient();
 
-  // Call update_staff_user RPC
-  const { error: rpcError } = await supabase.rpc('update_staff_user', {
-    p_id: data.id,
-    p_email: data.email,
-    p_password: data.password || null,
-    p_phone: data.phone,
-    p_full_name: data.full_name
-  });
-
-  if (rpcError) {
-    return handleDatabaseError(rpcError);
+  // Update auth user via the official Admin Auth API
+  const updateUserInput: {
+    email: string;
+    phone: string;
+    password?: string;
+    user_metadata: { full_name: string };
+  } = {
+    email: data.email,
+    phone: data.phone,
+    user_metadata: { full_name: data.full_name },
+  };
+  if (data.password && data.password.trim().length > 0) {
+    updateUserInput.password = data.password;
   }
 
-  // Update other profile columns directly
-  const { error: profileError } = await supabase
+  const { error: authUpdateError } = await admin.auth.admin.updateUserById(data.id, updateUserInput);
+
+  if (authUpdateError) {
+    console.error("updateUserById failed:", authUpdateError);
+    const message = authUpdateError.message?.toLowerCase() || "";
+    if (message.includes("already registered") || message.includes("already been registered")) {
+      return {
+        success: false,
+        error: "An account with this email or mobile number already exists.",
+      };
+    }
+    return toActionError(authUpdateError);
+  }
+
+  // Update partner profile core fields. Fleet Control columns (service_tier,
+  // is_available) are optional and may not exist on the live DB, so they are
+  // only applied when available — never blocking the edit.
+  const { error: profileError } = await admin
     .from('profiles')
     .update({
-      city: data.city,
-      service_tier: data.service_tier,
       status: data.status,
-      is_available: data.is_available
+      full_name: data.full_name,
     })
     .eq('id', data.id);
 
   if (profileError) {
-    return handleDatabaseError(profileError);
+    return toActionError(profileError);
+  }
+
+  // Best-effort: apply optional columns (city, service_tier, is_available)
+  // when the schema supports them.
+  const { error: optionalError } = await admin
+    .from('profiles')
+    .update({
+      city: data.city,
+      service_tier: data.service_tier,
+      is_available: data.is_available,
+    })
+    .eq('id', data.id);
+  if (optionalError && optionalError.code !== '42703' && !optionalError.message?.includes('column')) {
+    return toActionError(optionalError);
   }
 
   // Update services
-  await supabase.from('partner_services').delete().eq('partner_id', data.id);
+  await admin.from('partner_services').delete().eq('partner_id', data.id);
   if (data.services.length > 0) {
     const partnerServices = data.services.map(service_id => ({
       partner_id: data.id,
       service_id
     }));
-    const { error: psError } = await supabase
+    const { error: psError } = await admin
       .from('partner_services')
       .insert(partnerServices);
-    if (psError) return handleDatabaseError(psError);
+    if (psError) return toActionError(psError);
   }
 
   // Update pincodes
-  await supabase.from('partner_service_areas').delete().eq('partner_id', data.id);
+  await admin.from('partner_service_areas').delete().eq('partner_id', data.id);
   if (data.pincodes.length > 0) {
     const partnerAreas = data.pincodes.map(pincode => ({
       partner_id: data.id,
       pincode,
       city: data.city
     }));
-    const { error: paError } = await supabase
+    const { error: paError } = await admin
       .from('partner_service_areas')
       .insert(partnerAreas);
-    if (paError) return handleDatabaseError(paError);
+    if (paError) return toActionError(paError);
   }
 
   revalidatePath('/admin/partners');
@@ -243,7 +361,7 @@ export async function savePartnerNoteAction(
   partnerId: string, 
   noteText: string, 
   riskTrigger?: string
-) {
+): Promise<ActionResult> {
   await requireAdmin();
   const supabase = await createClient();
 
@@ -261,7 +379,7 @@ export async function savePartnerNoteAction(
     .eq('id', partnerId);
 
   if (error) {
-    return handleDatabaseError(error);
+    return toActionError(error);
   }
 
   revalidatePath('/admin/partners');

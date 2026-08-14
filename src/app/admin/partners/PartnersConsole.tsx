@@ -105,7 +105,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
     phone: "",
     password: "",
     city: "Roorkee",
-    status: "active" as "active" | "offline" | "busy" | "suspended",
+    status: "active" as "pending" | "active" | "offline" | "busy" | "suspended",
     is_available: true,
     services: [] as string[],
     pincodes: ""
@@ -187,6 +187,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
       if (selectedStatus === "Offline" && partner.status !== "offline") return false;
       if (selectedStatus === "Busy" && partner.status !== "busy") return false;
       if (selectedStatus === "Suspended" && partner.status !== "suspended") return false;
+      if (selectedStatus === "Pending" && partner.status !== "pending") return false;
     }
 
     // 3. Area Covered Filter
@@ -288,6 +289,8 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
             });
             setOnboardSuccess(null);
           }, 1500);
+        } else {
+          setOnboardError(res.error || "Failed to create technician.");
         }
       } catch (err: unknown) {
         setOnboardError((err as Error).message || "Failed to create technician.");
@@ -474,6 +477,8 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
             setIsEditModalOpen(false);
             setEditSuccess(null);
           }, 1500);
+        } else {
+          setEditError(res.error || "Failed to update technician.");
         }
       } catch (err: unknown) {
         setEditError((err as Error).message || "Failed to update technician.");
@@ -530,6 +535,8 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
             setKycRejectReason("");
             setKycSuccess(null);
           }, 1500);
+        } else {
+          setKycError(res.error || "Failed to update KYC status.");
         }
       } catch (err: unknown) {
         setKycError((err as Error).message || "Failed to update KYC status.");
@@ -607,6 +614,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                 className="w-full bg-surface-container-low text-primary text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-2 rounded-lg border border-outline-variant/30 focus:border-secondary/60 focus:outline-none transition-all cursor-pointer"
               >
                 <option value="All">📡 All Statuses</option>
+                <option value="Pending">⏳ Pending Setup</option>
                 <option value="Online">Online / Active</option>
                 <option value="Busy">Busy / On Job</option>
                 <option value="Offline">Offline</option>
@@ -713,6 +721,11 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                     <td className="py-1.5 px-3">
                       <div className="flex flex-wrap gap-1 mb-1">
                         {/* Live status state pill */}
+                        {partner.status === 'pending' && (
+                          <span className="bg-blue-500/10 text-blue-700 border border-blue-500/20 px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider rounded-full inline-flex items-center gap-1">
+                            <span className="w-1 h-1 bg-blue-500 rounded-full animate-pulse"></span> Pending Setup
+                          </span>
+                        )}
                         {partner.status === 'active' && (
                           <span className="bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider rounded-full inline-flex items-center gap-1">
                             <span className="w-1 h-1 bg-emerald-500 rounded-full animate-ping"></span> Online

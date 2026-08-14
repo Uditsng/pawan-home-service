@@ -70,13 +70,17 @@ export async function completeOnboarding(formData: FormData) {
   // 3. Update profile status to active
   const { error: profileError } = await supabase
     .from('profiles')
-    .update({ status: 'active', is_available: true })
+    .update({ status: 'active' })
     .eq('id', user.id);
 
   if (profileError) {
     console.error(profileError);
     redirect("/partner/onboarding?error=Failed to update profile status.");
   }
+
+  // Best-effort: mark partner available for dispatch. The column may not
+  // exist on the live DB, so never block onboarding if this update fails.
+  void supabase.from('profiles').update({ is_available: true }).eq('id', user.id);
 
   redirect("/partner/dashboard");
 }

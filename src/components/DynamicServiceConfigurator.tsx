@@ -219,11 +219,11 @@ export default function DynamicServiceConfigurator({
         </h3>
 
         {/* Fixed Price (No Inputs) */}
-        {model === "fixed" && (
+        {/* {model === "fixed" && (
           <p className="text-xs text-on-surface-variant font-medium leading-relaxed">
             This service has a standard flat fee. Simply select any required add-ons and proceed to check out.
           </p>
-        )}
+        )} */}
 
         {/* Inspection Fee */}
         {model === "inspection" && (

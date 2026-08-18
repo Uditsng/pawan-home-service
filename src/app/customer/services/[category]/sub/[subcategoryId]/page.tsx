@@ -70,7 +70,7 @@ export default async function SubcategoryServiceListingPage({
                 {/* z-10 pointer-events-none Card Content */}
                 <div className="z-10 pointer-events-none relative flex flex-col w-full">
                   {/* Rectangular banner thumbnail */}
-                  <div className="relative w-full aspect-[4/3] bg-surface-container-low">
+                  <div className="relative w-full aspect-4/3 bg-surface-container-low">
                     <ServiceCardThumbnail
                       imageUrl={service.image_url}
                       iconName={iconName}
@@ -78,10 +78,18 @@ export default async function SubcategoryServiceListingPage({
                       containerClassName="absolute inset-0 w-full h-full"
                       iconClassName="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 text-emerald-600 drop-shadow-sm"
                     />
+                    {service.warranty && (
+                      <div className="absolute top-1.5 left-1.5 z-10 bg-surface/90 backdrop-blur-xs text-primary border border-outline-variant/30 text-[9px] sm:text-[10px] font-black px-1.5 py-0.5 rounded-md shadow-xs flex items-center gap-0.5 max-w-[90%] truncate">
+                        <span className="material-symbols-outlined text-secondary text-[11px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                          verified_user
+                        </span>
+                        <span className="truncate">{service.warranty}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="p-2.5 sm:p-3 text-center">
-                    <span className="block font-headline font-bold text-[11px] sm:text-xs md:text-sm text-on-surface line-clamp-2 leading-tight min-h-9 flex items-center justify-center">
+                    <span className=" font-headline font-bold text-[11px] sm:text-xs md:text-sm text-on-surface line-clamp-2 leading-tight min-h-9 flex items-center justify-center">
                       {service.title}
                     </span>
                     <div className="flex flex-col items-center gap-0.5 shrink-0 mt-1">

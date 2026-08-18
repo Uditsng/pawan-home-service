@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
@@ -81,7 +81,7 @@ export function NotificationsConsole({
   // Data States
   const [notifications, setNotifications] = useState<AdminNotificationCampaign[]>(initialNotifications);
   const [totalCount, setTotalCount] = useState(initialTotalCount);
-  const [stats, setStats] = useState<Stats>(initialStats);
+  const [stats] = useState<Stats>(initialStats);
   const [loading, setLoading] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
@@ -89,6 +89,8 @@ export function NotificationsConsole({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkConfirmOpen, setIsBulkConfirmOpen] = useState(false);
   const [bulkActionType, setBulkActionType] = useState<"archive" | "delete" | "restore" | null>(null);
+
+  const isFirstRender = useRef(true);
 
   // Load and refresh notifications from server
   const loadNotifications = useCallback(async () => {
@@ -117,10 +119,49 @@ export function NotificationsConsole({
     }
   }, [search, category, priority, status, audience, sortBy, sortOrder, page]);
 
-  // Trigger reload on filter changes
+  // Trigger reload on filter changes (skip initial mount to avoid cascading renders)
   useEffect(() => {
-    loadNotifications();
-  }, [loadNotifications]);
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    let isMounted = true;
+
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const result = await getAdminNotifications({
+          search,
+          category,
+          priority,
+          status,
+          audience,
+          sortBy,
+          sortOrder,
+          page,
+          pageSize,
+        });
+
+        if (isMounted && !result.isSchemaError) {
+          setNotifications(result.notifications);
+          setTotalCount(result.totalCount);
+        }
+      } catch (err) {
+        console.error("Failed to load notifications:", err);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void fetchData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [search, category, priority, status, audience, sortBy, sortOrder, page]);
 
   // Bulk select toggles
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {

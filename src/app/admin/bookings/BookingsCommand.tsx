@@ -124,10 +124,14 @@ export function BookingsCommand({
   const [notificationsLog, setNotificationsLog] = useState<NotificationLog[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
+  const selectedBookingId = selectedBooking?.id;
+
   useEffect(() => {
-    if (!selectedBooking?.id || !isDetailDrawerOpen) {
+    if (!selectedBookingId || !isDetailDrawerOpen) {
       return;
     }
+
+    let isMounted = true;
 
     const fetchLogs = async () => {
       setIsLoadingLogs(true);
@@ -138,39 +142,69 @@ export function BookingsCommand({
         const { data: auditData } = await supabase
           .from("booking_audit_trail")
           .select("*")
-          .eq("booking_id", selectedBooking.id)
+          .eq("booking_id", selectedBookingId)
           .order("timestamp", { ascending: false });
 
         // Fetch notifications logs
         const { data: notifData } = await supabase
           .from("notifications")
           .select("*")
-          .eq("booking_id", selectedBooking.id)
+          .eq("booking_id", selectedBookingId)
           .order("created_at", { ascending: false });
 
-        setAuditTrail(auditData || []);
-        setNotificationsLog(notifData || []);
+        if (isMounted) {
+          setAuditTrail(auditData || []);
+          setNotificationsLog(notifData || []);
+        }
       } catch (err) {
         console.error("Failed to fetch booking details logs:", err);
       } finally {
-        setIsLoadingLogs(false);
+        if (isMounted) {
+          setIsLoadingLogs(false);
+        }
       }
     };
 
-    fetchLogs();
-  }, [selectedBooking?.id, isDetailDrawerOpen]);
+    void fetchLogs();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedBookingId, isDetailDrawerOpen]);
 
   // Fetch booking pricing when the details tab is opened
   useEffect(() => {
-    if (isDetailDrawerOpen && selectedBooking && activeDrawerTab === "details") {
+    if (!isDetailDrawerOpen || !selectedBookingId || activeDrawerTab !== "details") {
+      return;
+    }
+
+    let isMounted = true;
+
+    const fetchPricing = async () => {
       setLoadingPricing(true);
       setBookingPricing(null);
-      getBookingPricingAction(selectedBooking.id)
-        .then((result) => setBookingPricing(result))
-        .catch(() => setBookingPricing(null))
-        .finally(() => setLoadingPricing(false));
-    }
-  }, [isDetailDrawerOpen, selectedBooking?.id, activeDrawerTab]);
+      try {
+        const result = await getBookingPricingAction(selectedBookingId);
+        if (isMounted) {
+          setBookingPricing(result);
+        }
+      } catch {
+        if (isMounted) {
+          setBookingPricing(null);
+        }
+      } finally {
+        if (isMounted) {
+          setLoadingPricing(false);
+        }
+      }
+    };
+
+    void fetchPricing();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isDetailDrawerOpen, selectedBookingId, activeDrawerTab]);
 
   // Manual Assign Drawer
   const [isAssignDrawerOpen, setIsAssignDrawerOpen] = useState(false);
@@ -610,7 +644,7 @@ export function BookingsCommand({
               onChange={(e) => handleFilterChange(setCategoryFilter, e.target.value)}
               className="w-full bg-surface-container-low text-primary text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-2 rounded-lg border border-outline-variant/40 focus:border-secondary/60 focus:outline-none transition-all cursor-pointer"
             >
-              <option value="All">🔧 All Services</option>
+              <option value="All">All Services</option>
               {serviceCategories.map((cat) => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
@@ -621,7 +655,7 @@ export function BookingsCommand({
               onChange={(e) => handleFilterChange(setCityFilter, e.target.value)}
               className="w-full bg-surface-container-low text-primary text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-2 rounded-lg border border-outline-variant/40 focus:border-secondary/60 focus:outline-none transition-all cursor-pointer"
             >
-              <option value="All">📍 All Cities</option>
+              <option value="All">All Cities</option>
               {cities.map((city) => (
                 <option key={city} value={city}>{city}</option>
               ))}
@@ -1642,7 +1676,7 @@ export function BookingsCommand({
       {/* ─── 6. CONFIRMATION MODALS ──────────────────────────── */}
       {modalAction && modalTargetBooking && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-55">
-          <div className="bg-surface-container-lowest p-6 rounded-[24px] border border-outline-variant/20 shadow-2xl max-w-sm w-full mx-4 animate-in zoom-in-95 duration-200">
+          <div className="bg-surface-container-lowest p-6 rounded-3xl border border-outline-variant/20 shadow-2xl max-w-sm w-full mx-4 animate-in zoom-in-95 duration-200">
             <h4 className="text-base font-bold text-primary font-headline flex items-center gap-2">
               <span className="material-symbols-outlined text-error">warning</span>
               {modalAction === "cancel"

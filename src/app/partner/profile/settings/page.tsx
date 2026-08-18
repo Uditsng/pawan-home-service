@@ -8,12 +8,6 @@ export default async function PartnerSettingsPage() {
 
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("status")
-    .eq("id", user.id)
-    .single();
-
   return (
     <div className="bg-surface text-on-surface min-h-screen pb-24 lg:pb-12 flex flex-col font-body">
 

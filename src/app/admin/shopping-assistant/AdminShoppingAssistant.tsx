@@ -17,7 +17,7 @@ export default function AdminShoppingAssistant({
   initialBookings,
 }: AdminShoppingAssistantProps) {
   const [packages, setPackages] = useState<AdminPackage[]>(initialPackages);
-  const [bookings, setBookings] = useState<AdminBooking[]>(initialBookings);
+  const [bookings] = useState<AdminBooking[]>(initialBookings);
   const [activeTab, setActiveTab] = useState<"packages" | "bookings">("packages");
   const [searchQuery, setSearchQuery] = useState("");
   

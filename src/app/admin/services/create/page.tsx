@@ -138,6 +138,9 @@ export default async function AdminCreateServicePage() {
       ]
     };
 
+    const warranty_raw = (formData.get("warranty") as string)?.trim();
+    const warranty = warranty_raw ? warranty_raw : null;
+
     const { data: newService, error } = await db.from("services").insert({
       title,
       subcategory_id,
@@ -153,6 +156,7 @@ export default async function AdminCreateServicePage() {
       form_fields,
       gst_applicable,
       status,
+      warranty,
     }).select("id").single();
 
     if (error) {

@@ -134,6 +134,8 @@ export default async function AdminEditServicePage({ params }: { params: Promise
     };
 
     const status = (formData.get("status") as string) || serviceData.status || "published";
+    const warranty_raw = (formData.get("warranty") as string)?.trim();
+    const warranty = warranty_raw ? warranty_raw : null;
 
     const { error } = await db.from("services").update({
       title,
@@ -149,6 +151,7 @@ export default async function AdminEditServicePage({ params }: { params: Promise
       form_fields,
       gst_applicable,
       status,
+      warranty,
       is_active: true, // Reactivate on save/update
     }).eq("id", id);
 

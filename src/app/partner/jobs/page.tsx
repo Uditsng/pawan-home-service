@@ -12,9 +12,8 @@ export default async function PartnerJobsPage() {
 
   if (!user) redirect("/login");
 
-  // ─── Fetch partner status + all job lists + platform settings in parallel ───
-  const [profileResult, assignedResult, activeResult, completedResult, offersResult, platformSettings] = await Promise.all([
-    supabase.from("profiles").select("status").eq("id", user.id).single(),
+  // ─── Fetch all job lists + platform settings in parallel ───
+  const [assignedResult, activeResult, completedResult, offersResult, platformSettings] = await Promise.all([
     supabase
       .from("bookings")
       .select("*, services:service_id(title, category, image_url, subcategories(icon_name)), customer:customer_id(full_name)")
@@ -51,7 +50,6 @@ export default async function PartnerJobsPage() {
     fetchPlatformSettings(supabase),
   ]);
 
-  const partnerStatus = profileResult.data?.status ?? "offline";
   const assignedJobs  = (assignedResult.data  || []) as BookingWithDetails[];
   const activeJobs    = (activeResult.data    || []) as BookingWithDetails[];
   const completedJobs = (completedResult.data || []) as BookingWithDetails[];

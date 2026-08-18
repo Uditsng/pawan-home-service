@@ -614,7 +614,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                 className="w-full bg-surface-container-low text-primary text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-2 rounded-lg border border-outline-variant/30 focus:border-secondary/60 focus:outline-none transition-all cursor-pointer"
               >
                 <option value="All">📡 All Statuses</option>
-                <option value="Pending">⏳ Pending Setup</option>
+                <option value="Pending">Pending Setup</option>
                 <option value="Online">Online / Active</option>
                 <option value="Busy">Busy / On Job</option>
                 <option value="Offline">Offline</option>
@@ -629,7 +629,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                 onChange={(e) => handleFilterChange(setSelectedArea, e.target.value)}
                 className="w-full bg-surface-container-low text-primary text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-2 rounded-lg border border-outline-variant/30 focus:border-secondary/60 focus:outline-none transition-all cursor-pointer"
               >
-                <option value="All">📍 All Areas</option>
+                <option value="All">All Areas</option>
                 {allAreas.map(area => (
                   <option key={area} value={area}>{area}</option>
                 ))}

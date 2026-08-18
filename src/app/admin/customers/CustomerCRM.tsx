@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition, useEffect } from "react";
+import React, { useState, useTransition, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { format, formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/Button";
@@ -42,6 +42,7 @@ export function CustomerCRM({
   const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
   const [isPending, startTransition] = useTransition();
   const [actionError, setActionError] = useState<string | null>(null);
+  const [referenceTime] = useState(() => Date.now());
 
   // Search & Filter States
   const [searchTerm, setSearchTerm] = useState("");
@@ -91,68 +92,96 @@ export function CustomerCRM({
     };
   }, []);
 
+  const selectedCustomerId = selectedCustomer?.id;
+
   // Load customer rating when Overview tab is opened
   useEffect(() => {
-    if (isDrawerOpen && selectedCustomer && activeDrawerTab === "overview") {
+    if (!isDrawerOpen || !selectedCustomerId || activeDrawerTab !== "overview") {
+      return;
+    }
+
+    let isMounted = true;
+
+    const fetchRating = async () => {
       setLoadingRating(true);
       setCustomerRating(null);
-      getCustomerRatingAction(selectedCustomer.id)
-        .then((result) => setCustomerRating(result))
-        .catch(() => setCustomerRating({ avg_rating: 0, total_reviews: 0 }))
-        .finally(() => setLoadingRating(false));
-    }
-  }, [isDrawerOpen, selectedCustomer?.id, activeDrawerTab]);
+      try {
+        const result = await getCustomerRatingAction(selectedCustomerId);
+        if (isMounted) {
+          setCustomerRating(result);
+        }
+      } catch {
+        if (isMounted) {
+          setCustomerRating({ avg_rating: 0, total_reviews: 0 });
+        }
+      } finally {
+        if (isMounted) {
+          setLoadingRating(false);
+        }
+      }
+    };
+
+    void fetchRating();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isDrawerOpen, selectedCustomerId, activeDrawerTab]);
 
   // Filter Logic
-  const filteredCustomers = customers.filter(customer => {
-    // 1. Segment Filtering
-    if (activeSegment === "HighValue") {
-      const isHighValue = customer.spent >= 3000 || customer.totalBookings >= 5;
-      if (!isHighValue) return false;
-    }
-    if (activeSegment === "AtRisk") {
-      if (customer.cancelRate <= 30) return false;
-    }
-    if (activeSegment === "VIP") {
-      if (customer.spent < 10000) return false;
-    }
-    if (activeSegment === "New") {
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      if (new Date(customer.created_at) < thirtyDaysAgo) return false;
-    }
-    if (activeSegment === "Dormant") {
-      const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-      if (customer.bookings.length > 0) {
-        const sorted = [...customer.bookings].sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        if (new Date(sorted[0].created_at) >= ninetyDaysAgo) return false;
-      } else {
-        if (new Date(customer.created_at) >= ninetyDaysAgo) return false;
+  const filteredCustomers = useMemo(() => {
+    const thirtyDaysAgo = new Date(referenceTime - 30 * 24 * 60 * 60 * 1000);
+    const ninetyDaysAgo = new Date(referenceTime - 90 * 24 * 60 * 60 * 1000);
+
+    return customers.filter(customer => {
+      // 1. Segment Filtering
+      if (activeSegment === "HighValue") {
+        const isHighValue = customer.spent >= 3000 || customer.totalBookings >= 5;
+        if (!isHighValue) return false;
       }
-    }
+      if (activeSegment === "AtRisk") {
+        if (customer.cancelRate <= 30) return false;
+      }
+      if (activeSegment === "VIP") {
+        if (customer.spent < 10000) return false;
+      }
+      if (activeSegment === "New") {
+        if (new Date(customer.created_at) < thirtyDaysAgo) return false;
+      }
+      if (activeSegment === "Dormant") {
+        if (customer.bookings.length > 0) {
+          const sorted = [...customer.bookings].sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          if (new Date(sorted[0].created_at) >= ninetyDaysAgo) return false;
+        } else {
+          if (new Date(customer.created_at) >= ninetyDaysAgo) return false;
+        }
+      }
 
-    // 2. Multi-parameter Search (Name, Email, Phone, Booking ID)
-    const matchesSearch = 
-      (customer.full_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (customer.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (customer.phone || "").includes(searchTerm) ||
-      customer.bookings.some(b => (b.id || "").toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    if (!matchesSearch) return false;
+      // 2. Multi-parameter Search (Name, Email, Phone, Booking ID)
+      const query = searchTerm.toLowerCase();
+      const matchesSearch = 
+        (customer.full_name || "").toLowerCase().includes(query) ||
+        (customer.email || "").toLowerCase().includes(query) ||
+        (customer.phone || "").includes(searchTerm) ||
+        customer.bookings.some(b => (b.id || "").toLowerCase().includes(query));
+      
+      if (!matchesSearch) return false;
 
-    // 3. Risk Level Filter
-    if (riskFilter !== "All" && customer.riskLevel !== riskFilter) return false;
+      // 3. Risk Level Filter
+      if (riskFilter !== "All" && customer.riskLevel !== riskFilter) return false;
 
-    // 4. Account Status Filter
-    if (statusFilter !== "All" && customer.status !== statusFilter.toLowerCase()) return false;
+      // 4. Account Status Filter
+      if (statusFilter !== "All" && customer.status !== statusFilter.toLowerCase()) return false;
 
-    // 5. Date Filter (Registration date checking)
-    if (dateFilter) {
-      const regDate = format(new Date(customer.created_at), "yyyy-MM-dd");
-      if (regDate !== dateFilter) return false;
-    }
+      // 5. Date Filter (Registration date checking)
+      if (dateFilter) {
+        const regDate = format(new Date(customer.created_at), "yyyy-MM-dd");
+        if (regDate !== dateFilter) return false;
+      }
 
-    return true;
-  });
+      return true;
+    });
+  }, [customers, activeSegment, searchTerm, riskFilter, statusFilter, dateFilter, referenceTime]);
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
@@ -258,7 +287,7 @@ export function CustomerCRM({
   const activeCount = customers.filter(c => c.status === "active").length;
   const highRiskCount = customers.filter(c => c.riskLevel === "High").length;
 
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const thirtyDaysAgo = new Date(referenceTime - 30 * 24 * 60 * 60 * 1000);
   const newCustomerCount = customers.filter(c => new Date(c.created_at) >= thirtyDaysAgo).length;
   const customersWithBookings = customers.filter(c => c.totalBookings > 0).length;
   const stickinessRate = customers.length > 0 ? (customersWithBookings / customers.length) * 100 : 0;
@@ -474,7 +503,7 @@ export function CustomerCRM({
               onChange={(e) => handleFilterChange(setStatusFilter, e.target.value)}
               className="w-full border border-outline-variant/20 rounded-lg py-2 px-3 bg-surface-container focus:ring-1 focus:ring-primary/50 outline-none text-xs text-on-surface-variant transition-all cursor-pointer"
             >
-              <option value="All">🔒 All Account Statuses</option>
+              <option value="All">All Account Statuses</option>
               <option value="Active">Active Accounts</option>
               <option value="Suspended">Suspended Accounts</option>
               <option value="Flagged">Flagged Accounts</option>
@@ -887,7 +916,7 @@ export function CustomerCRM({
                 const hasBookings = bookings.length > 0;
 
                 // Monthly trend: last 6 months
-                const now = new Date();
+                const now = new Date(referenceTime);
                 const monthLabels: string[] = [];
                 const monthCounts: number[] = [];
                 const monthAmounts: number[] = [];
@@ -934,7 +963,7 @@ export function CustomerCRM({
                         <div className="bg-surface-container p-4 rounded-xl border border-outline-variant/15">
                           <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70 mb-2">Status Distribution</p>
                           <div className="flex h-3 rounded-full overflow-hidden">
-                            {Object.entries(statusCounts).map(([status, count], i) => {
+                            {Object.entries(statusCounts).map(([status, count]) => {
                               const pct = (count / totalStatusCount) * 100;
                               const color =
                                 status === 'completed' ? 'bg-secondary' :
@@ -953,7 +982,6 @@ export function CustomerCRM({
                           </div>
                           <div className="flex flex-wrap gap-3 mt-2">
                             {Object.entries(statusCounts).map(([status, count]) => {
-                              const pct = (count / totalStatusCount) * 100;
                               const dotColor =
                                 status === 'completed' ? 'bg-secondary' :
                                 status === 'cancelled' ? 'bg-red-500' :
@@ -979,7 +1007,7 @@ export function CustomerCRM({
                                   ₹{monthAmounts[i].toLocaleString()}
                                 </span>
                                 <div
-                                  className="w-full bg-secondary/60 rounded-t-md transition-all duration-300 group-hover:bg-secondary min-h-[4px]"
+                                  className="w-full bg-secondary/60 rounded-t-md transition-all duration-300 group-hover:bg-secondary min-h-1"
                                   style={{ height: `${(monthCounts[i] / maxCount) * 100}%` }}
                                 />
                                 <span className="text-[8px] font-bold text-on-surface-variant/60">{label}</span>

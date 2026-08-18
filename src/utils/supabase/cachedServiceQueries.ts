@@ -20,6 +20,7 @@ export interface ServiceWithSubcategory {
   price_breakdown?: string | null;
   duration_minutes?: number | null;
   estimated_duration?: number | null;
+  warranty?: string | null;
   subcategories: {
     subcategory_name: string;
     icon_name: string;

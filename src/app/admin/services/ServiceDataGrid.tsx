@@ -16,6 +16,7 @@ interface ServiceItem {
   category?: string | null;
   status?: string | null;
   image_url?: string | null;
+  warranty?: string | null;
   subcategories?: {
     subcategory_name: string;
     icon_name: string | null;
@@ -284,7 +285,15 @@ export function ServiceDataGrid({
                       </td>
                       {/* Title */}
                       <td className="px-4 py-1.5">
-                        <span className="font-bold text-primary text-xs leading-tight">{service.title}</span>
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="font-bold text-primary text-xs leading-tight">{service.title}</span>
+                          {service.warranty && (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-bold text-secondary bg-secondary/10 border border-secondary/20 px-1.5 py-0.5 rounded-md leading-none">
+                              <span className="material-symbols-outlined text-[10px]" style={{ fontVariationSettings: "'FILL' 1" }}>verified_user</span>
+                              {service.warranty}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       {/* Category / Sub-category */}
                       <td className="px-4 py-1.5">

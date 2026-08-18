@@ -40,12 +40,23 @@ type ServiceInitialData = {
   form_fields?: FormFieldConfig[];
   gst_applicable?: boolean;
   status?: string | null;
+  warranty?: string | null;
   page_content?: {
     included_features?: string[] | null;
     excluded_features?: string[] | null;
     faqs?: { question: string; answer: string }[] | null;
   } | null;
 };
+
+const WARRANTY_PRESETS = [
+  "30 Days Warranty",
+  "60 Days Warranty",
+  "90 Days Warranty",
+  "6 Months Warranty",
+  "1 Year Warranty",
+  "2 Years Warranty",
+  "PHS Service Promise",
+];
 
 export function EditServiceForm({
   categories,
@@ -77,6 +88,7 @@ export function EditServiceForm({
   const [description, setDescription] = useState(initialData.description);
   const [gstApplicable, setGstApplicable] = useState(initialData.gst_applicable !== false);
   const [pricingModel, setPricingModel] = useState(initialData.pricing_model || "fixed");
+  const [warranty, setWarranty] = useState(initialData.warranty || "");
 
   // Selected Icon Preview
   const initialIcon = categories.flatMap(c => c.subcategories).find(s => s.id === initialData.subcategory_id)?.icon_name || "sparkles";
@@ -356,6 +368,58 @@ export function EditServiceForm({
           <div className="pt-2">
             <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Service Image</label>
             <ImageUploadField defaultValue={initialData.image_url || ""} onValueChange={setPreviewImageUrl} />
+          </div>
+
+          {/* Warranty / Guarantee Tag */}
+          <div className="p-4 bg-surface rounded-2xl border border-outline-variant/15 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+              <div>
+                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+                  Warranty / Guarantee Tag <span className="text-[10px] font-normal text-on-surface-variant/70 normal-case">(Optional)</span>
+                </label>
+                <p className="text-[11px] text-on-surface-variant font-medium">
+                  Showcase a service promise or warranty badge on the service details page.
+                </p>
+              </div>
+              {warranty && (
+                <button
+                  type="button"
+                  onClick={() => setWarranty("")}
+                  className="text-[11px] font-bold text-error hover:underline self-start sm:self-auto cursor-pointer"
+                >
+                  Clear Warranty Tag
+                </button>
+              )}
+            </div>
+
+            <input
+              name="warranty"
+              type="text"
+              value={warranty}
+              onChange={(e) => setWarranty(e.target.value)}
+              className="w-full border border-outline-variant/20 rounded-lg p-3 bg-surface-container-lowest focus:ring-2 focus:ring-primary/20 outline-none text-xs font-bold text-primary"
+              placeholder="e.g. 1 Year Warranty, 30 Days Warranty, PHS Service Promise..."
+            />
+
+            <div className="space-y-1.5 pt-1">
+              <span className="text-[10px] font-bold text-on-surface-variant/80 uppercase tracking-wider">Quick Presets:</span>
+              <div className="flex flex-wrap gap-1.5">
+                {WARRANTY_PRESETS.map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setWarranty(preset)}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all cursor-pointer ${
+                      warranty === preset
+                        ? "bg-secondary text-primary border-secondary shadow-xs font-black"
+                        : "bg-surface-container-lowest text-on-surface-variant border-outline-variant/25 hover:border-primary/40 hover:text-primary"
+                    }`}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1088,6 +1152,15 @@ export function EditServiceForm({
                     <p className="text-[10px] text-on-surface-variant/70 font-semibold uppercase tracking-wider">Kanpur Service Center</p>
                   </div>
                 </div>
+
+                {warranty && (
+                  <div className="flex items-center gap-1.5 bg-surface border border-outline-variant/30 px-3 py-1.5 rounded-full text-xs font-bold text-primary shadow-xs self-start w-fit">
+                    <span className="material-symbols-outlined text-secondary text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
+                      verified_user
+                    </span>
+                    <span>{warranty}</span>
+                  </div>
+                )}
 
                 {/* Variants List Mock */}
                 {variantsList.length > 0 && (

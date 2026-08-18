@@ -111,6 +111,12 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
               <span className="inline-flex items-center gap-1 bg-surface px-2 py-1.5 md:py-2 rounded-full font-bold shadow-sm text-xs md:text-sm border border-outline-variant/30">
                 <span className="material-symbols-outlined text-primary text-xs md:text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span> Verified
               </span>
+              {service.warranty && (
+                <span className="inline-flex items-center gap-1 bg-surface px-2.5 py-1.5 md:py-2 rounded-full font-bold shadow-sm text-xs md:text-sm border border-outline-variant/30 text-primary">
+                  <span className="material-symbols-outlined text-secondary text-xs md:text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>verified_user</span>
+                  {service.warranty}
+                </span>
+              )}
               <span className="inline-flex items-center gap-1.5 bg-surface px-2 py-1.5 md:py-2 rounded-full font-bold shadow-sm text-xs md:text-sm border border-outline-variant/30">
                 {service.original_price ? (
                   <>

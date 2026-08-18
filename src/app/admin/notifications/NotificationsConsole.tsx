@@ -298,7 +298,7 @@ export function NotificationsConsole({
       {/* ─── STATISTICS CARDS ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
         <Card variant="solid" className="p-4 flex flex-col justify-between">
-          <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/60">Total Campaigns</p>
+          <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/60">Total Notifications</p>
           <h2 className="text-xl font-bold font-headline text-primary mt-2">{stats.total}</h2>
         </Card>
         <Card variant="solid" className="p-4 flex flex-col justify-between">
@@ -476,7 +476,7 @@ export function NotificationsConsole({
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-secondary">check_box</span>
             <span className="text-xs font-bold text-primary">
-              {selectedIds.length} campaign{selectedIds.length > 1 ? "s" : ""} selected for bulk action
+              {selectedIds.length} notification{selectedIds.length > 1 ? "s" : ""} selected for bulk action
             </span>
           </div>
 
@@ -533,7 +533,7 @@ export function NotificationsConsole({
       {/* ─── DATA TABLE ─── */}
       <Card variant="solid" className="overflow-hidden p-0 shadow-sm border border-outline-variant/15">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[1000px]">
+          <table className="w-full text-left border-collapse min-w-250">
             <thead>
               <tr className="bg-surface-dim/30 border-b border-outline-variant/10">
                 <th className="p-4 w-12 text-center">
@@ -544,13 +544,13 @@ export function NotificationsConsole({
                     className="w-4 h-4 rounded text-secondary focus:ring-secondary border-outline-variant"
                   />
                 </th>
-                <th className="p-4 text-[9px] font-black uppercase tracking-widest text-on-surface-variant/40">Campaign</th>
+                <th className="p-4 text-[9px] font-black uppercase tracking-widest text-on-surface-variant/40">Notification</th>
                 <th className="p-4 text-[9px] font-black uppercase tracking-widest text-on-surface-variant/40">Audience</th>
                 <th className="p-4 text-[9px] font-black uppercase tracking-widest text-on-surface-variant/40 text-center">Priority</th>
                 <th className="p-4 text-[9px] font-black uppercase tracking-widest text-on-surface-variant/40 text-center">Status</th>
                 <th className="p-4 text-[9px] font-black uppercase tracking-widest text-on-surface-variant/40">Timestamps</th>
-                <th className="p-4 text-[9px] font-black uppercase tracking-widest text-on-surface-variant/40 text-right">Delivery Stats</th>
-                <th className="p-4 text-[9px] font-black uppercase tracking-widest text-on-surface-variant/40 text-center">Actions</th>
+                <th className="p-4 text-[9px] font-black uppercase tracking-widest text-on-surface-variant/40 text-right">Sent Stats</th>
+                <th className="p-4 text-[9px] font-black uppercase tracking-widest text-on-surface-variant/40 text-center">Manage</th>
               </tr>
             </thead>
 
@@ -571,9 +571,9 @@ export function NotificationsConsole({
                       <div className="w-14 h-14 rounded-full bg-surface-container flex items-center justify-center mb-4">
                         <span className="material-symbols-outlined text-3xl text-on-surface-variant/30">campaign</span>
                       </div>
-                      <p className="text-sm font-bold text-primary mb-1">No campaigns found</p>
+                      <p className="text-sm font-bold text-primary mb-1">No notifications found</p>
                       <p className="text-xs text-on-surface-variant/60 leading-normal">
-                        No notification broadcasts match your current selection filters.
+                        No notifications match your current filters.
                       </p>
                     </div>
                   </td>
@@ -604,7 +604,7 @@ export function NotificationsConsole({
                       </td>
 
                       {/* Title & Category */}
-                      <td className="p-4 max-w-[280px]">
+                      <td className="p-4 max-w-70">
                         <div className="flex flex-col">
                           <Link
                             href={`/admin/notifications/${notif.id}`}
@@ -699,7 +699,7 @@ export function NotificationsConsole({
                             <Link href={`/admin/notifications/${notif.id}`}>
                               <button
                                 className="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-lg transition-all"
-                                title="Inspect Details"
+                                title="View Details"
                               >
                                 <span className="material-symbols-outlined text-[16px]">visibility</span>
                               </button>
@@ -709,7 +709,7 @@ export function NotificationsConsole({
                               <Link href={`/admin/notifications/${notif.id}/edit`}>
                                 <button
                                   className="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-lg transition-all"
-                                  title="Edit Campaign"
+                                  title="Edit Notification"
                                 >
                                   <span className="material-symbols-outlined text-[16px]">edit</span>
                                 </button>
@@ -719,7 +719,7 @@ export function NotificationsConsole({
                             <button
                               onClick={() => handleDuplicate(notif.id)}
                               className="p-1.5 text-on-surface-variant hover:text-secondary hover:bg-surface-container rounded-lg transition-all"
-                              title="Duplicate Campaign"
+                              title="Duplicate Notification"
                             >
                               <span className="material-symbols-outlined text-[16px]">content_copy</span>
                             </button>
@@ -728,7 +728,7 @@ export function NotificationsConsole({
                               <button
                                 onClick={() => handleResend(notif.id)}
                                 className="p-1.5 text-secondary hover:text-primary hover:bg-surface-container rounded-lg transition-all"
-                                title="Resend Broadcast"
+                                title="Resend Notification"
                               >
                                 <span className="material-symbols-outlined text-[16px]">replay</span>
                               </button>
@@ -746,7 +746,7 @@ export function NotificationsConsole({
                               <button
                                 onClick={() => handleArchive(notif.id)}
                                 className="p-1.5 text-on-surface-variant hover:text-amber-700 hover:bg-surface-container rounded-lg transition-all"
-                                title="Archive Campaign"
+                                title="Archive Notification"
                               >
                                 <span className="material-symbols-outlined text-[16px]">archive</span>
                               </button>
@@ -755,7 +755,7 @@ export function NotificationsConsole({
                             <button
                               onClick={() => handleDelete(notif.id)}
                               className="p-1.5 text-on-surface-variant hover:text-error hover:bg-surface-container rounded-lg transition-all"
-                              title="Delete Campaign"
+                              title="Delete Notification"
                             >
                               <span className="material-symbols-outlined text-[16px]">delete</span>
                             </button>
@@ -774,7 +774,7 @@ export function NotificationsConsole({
         {totalPages > 1 && (
           <div className="px-5 py-4 bg-surface-dim/20 border-t border-outline-variant/10 flex justify-between items-center">
             <span className="text-xs text-on-surface-variant font-semibold">
-              Showing page {page} of {totalPages} ({totalCount} campaigns)
+              Showing page {page} of {totalPages} ({totalCount} notifications)
             </span>
             <div className="flex gap-2">
               <Button

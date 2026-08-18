@@ -97,9 +97,9 @@ export default async function AdminNotificationsPage() {
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tighter text-primary font-headline">Notification Center</h1>
+          <h1 className="text-2xl font-bold tracking-tighter text-primary font-headline">Notifications</h1>
           <p className="text-on-surface-variant font-medium mt-1 opacity-60 text-sm">
-            Create, schedule, target, and monitor push alerts and customer/partner promotions.
+            Send and schedule messages to customers and professionals.
           </p>
         </div>
       </div>

@@ -331,7 +331,7 @@ export function CustomerCRM({
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm relative overflow-hidden group">
           <div className="absolute right-0 top-0 w-20 h-20 bg-primary/5 rounded-bl-[48px] transition-transform group-hover:scale-105"></div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">Total Monitored Users</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">Total Customers</p>
           <h2 className="text-2xl font-bold text-primary font-headline mt-1.5">{customers.length}</h2>
           <div className="flex gap-3 mt-1.5 text-xs text-on-surface-variant/80 font-normal">
             <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>{activeCount} Active</span>
@@ -341,13 +341,13 @@ export function CustomerCRM({
 
         <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm relative overflow-hidden group">
           <div className="absolute right-0 top-0 w-20 h-20 bg-secondary/5 rounded-bl-[48px] transition-transform group-hover:scale-105"></div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">Avg. LTV</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">Avg Lifetime Spend</p>
           <h2 className="text-2xl font-bold text-primary font-headline mt-1.5">₹{Math.round(avgLtv).toLocaleString()}</h2>
           <p className="text-[11px] text-on-surface-variant/85 mt-1 font-normal">Per customer lifetime</p>
         </div>
 
         <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm relative overflow-hidden group">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">Stickiness Rate</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">Active Customers (%)</p>
           <h2 className="text-2xl font-bold text-secondary font-headline mt-1.5">{stickinessRate.toFixed(1)}%</h2>
           <p className="text-[11px] text-on-surface-variant/85 mt-1 font-normal">Customers with 1+ booking</p>
         </div>
@@ -359,7 +359,7 @@ export function CustomerCRM({
         </div>
 
         <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm relative overflow-hidden group">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">Repeat Rate</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">Repeat Customers (%)</p>
           <h2 className="text-2xl font-bold text-primary font-headline mt-1.5">{repeatRate.toFixed(1)}%</h2>
           <p className="text-[11px] text-on-surface-variant/85 mt-1 font-normal">Customers with 2+ bookings</p>
         </div>
@@ -370,7 +370,7 @@ export function CustomerCRM({
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
           <h3 className="font-bold text-sm text-primary font-headline flex items-center gap-2">
             <span className="material-symbols-outlined text-secondary text-lg">tune</span>
-            Operational Filter Console
+            Filter Customers
           </h3>
           <div className="flex items-center gap-2 flex-wrap">
             <button
@@ -507,14 +507,14 @@ export function CustomerCRM({
       {/* OPERATIONAL CUSTOMER DATA TABLE */}
       <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/15 shadow-sm overflow-hidden">
         <div className="overflow-x-auto w-full">
-          <table className="w-full min-w-[1000px] text-left border-collapse">
+          <table className="w-full min-w-250 text-left border-collapse">
             <thead>
               <tr className="bg-surface-container-low/50 border-b border-outline-variant/10">
-                <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/80">Customer Details</th>
-                <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/80">Engagement Details</th>
-                <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/80">LTV / Average Spend</th>
-                <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/80">Risk Assessment</th>
-                <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/80">Status & Actions</th>
+                <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/80">Customer</th>
+                <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/80">Activity</th>
+                <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/80">Total Spent / Avg</th>
+                <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/80">Risk Level</th>
+                <th className="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/80">Status & Manage</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/10">
@@ -551,14 +551,14 @@ export function CustomerCRM({
 
                       {/* Engagement Column */}
                       <td className="px-4 py-2">
-                        <p className="text-xs font-semibold text-primary">{customer.totalBookings} Completed Jobs</p>
+                        <p className="text-xs font-semibold text-primary">{customer.totalBookings} Completed Bookings</p>
                         <p className="text-[9px] text-on-surface-variant/70 mt-0.5">{lastActiveText}</p>
                       </td>
 
                       {/* LTV & Spend Column */}
                       <td className="px-4 py-2">
                         <p className="text-sm font-bold text-primary font-headline">₹{customer.spent.toLocaleString()}</p>
-                        <p className="text-[9px] font-semibold text-secondary mt-0.5">Avg: ₹{Math.round(avgSpend).toLocaleString()} / job</p>
+                        <p className="text-[9px] font-semibold text-secondary mt-0.5">Avg: ₹{Math.round(avgSpend).toLocaleString()} / booking</p>
                       </td>
 
                       {/* Risk Indicators Column */}
@@ -631,7 +631,7 @@ export function CustomerCRM({
                 <tr>
                   <td colSpan={5} className="px-10 py-12 text-center">
                     <span className="material-symbols-outlined text-3xl text-on-surface-variant/40 animate-bounce">search_off</span>
-                    <p className="text-sm font-semibold text-on-surface-variant/70 mt-2">No matching customers found</p>
+                    <p className="text-sm font-semibold text-on-surface-variant/70 mt-2">No customers found.</p>
                     <p className="text-xs text-on-surface-variant/40 mt-1">Refine your filters or queries and try again.</p>
                   </td>
                 </tr>
@@ -746,7 +746,7 @@ export function CustomerCRM({
                   activeDrawerTab === "risk" ? "border-secondary text-primary" : "border-transparent text-on-surface-variant hover:text-primary"
                 }`}
               >
-                Fraud/Risk
+                Risk
               </button>
               <button
                 onClick={() => setActiveDrawerTab("notes")}
@@ -772,7 +772,7 @@ export function CustomerCRM({
                 const lastBooking = sortedBookings[0];
                 return (
                   <div className="space-y-4">
-                    <h5 className="text-xs font-bold uppercase tracking-widest text-primary">Customer Financial Overview</h5>
+                    <h5 className="text-xs font-bold uppercase tracking-widest text-primary">Customer Spending Overview</h5>
 
                     <div className="grid grid-cols-2 gap-3">
                       <div className="bg-surface-container p-4 rounded-xl border border-outline-variant/15">
@@ -840,13 +840,13 @@ export function CustomerCRM({
               {/* Timeline Tab */}
               {activeDrawerTab === "timeline" && (
                 <div className="space-y-6">
-                  <h5 className="text-xs font-bold uppercase tracking-widest text-primary">CRM Operational Timeline</h5>
+                  <h5 className="text-xs font-bold uppercase tracking-widest text-primary">Activity Timeline</h5>
                   <div className="relative border-l-2 border-outline-variant/30 pl-6 ml-3 space-y-6">
                     {/* Note creation event */}
                     {selectedCustomer.internal_note && (
                       <div className="relative">
-                        <span className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-secondary border-2 border-white"></span>
-                        <p className="text-xs font-bold text-primary">CRM Note Logged</p>
+                        <span className="absolute -left-8 top-0 w-4 h-4 rounded-full bg-secondary border-2 border-white"></span>
+                        <p className="text-xs font-bold text-primary">Admin Note Added</p>
                         <p className="text-[11px] text-on-surface-variant/70 italic mt-1 font-normal bg-surface-container p-3 rounded-lg border border-outline-variant/10">
                           &quot;{selectedCustomer.internal_note}&quot;
                         </p>
@@ -856,7 +856,7 @@ export function CustomerCRM({
                     {/* Bookings events */}
                     {selectedCustomer.bookings.map((booking) => (
                       <div key={booking.id} className="relative">
-                        <span className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-primary border-2 border-white"></span>
+                        <span className="absolute -left-8 top-0 w-4 h-4 rounded-full bg-primary border-2 border-white"></span>
                         <p className="text-xs font-bold text-primary">
                           Service Booked: {booking.services?.title || "Home Service"}
                         </p>
@@ -871,7 +871,7 @@ export function CustomerCRM({
 
                     {/* Registration event */}
                     <div className="relative">
-                      <span className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-[#cbd5e1] border-2 border-white"></span>
+                      <span className="absolute -left-8 top-0 w-4 h-4 rounded-full bg-[#cbd5e1] border-2 border-white"></span>
                       <p className="text-xs font-bold text-primary">Customer Registered</p>
                       <p className="text-[10px] text-on-surface-variant/60 mt-0.5">
                         Account created at: {format(new Date(selectedCustomer.created_at), "PPP")}
@@ -926,7 +926,7 @@ export function CustomerCRM({
 
                 return (
                   <div className="space-y-4">
-                    <h5 className="text-xs font-bold uppercase tracking-widest text-primary">Booking Ledger History</h5>
+                    <h5 className="text-xs font-bold uppercase tracking-widest text-primary">Booking History</h5>
 
                     {hasBookings ? (
                       <>
@@ -1038,7 +1038,7 @@ export function CustomerCRM({
               {/* Fraud & Risk tab */}
               {activeDrawerTab === "risk" && (
                 <div className="space-y-4">
-                  <h5 className="text-xs font-bold uppercase tracking-widest text-primary">Fraud Profile & Risk Assessment</h5>
+                  <h5 className="text-xs font-bold uppercase tracking-widest text-primary">Risk Details</h5>
                   <div className="bg-surface-container p-4 rounded-xl border border-outline-variant/15 space-y-4">
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-wider text-on-surface-variant/70">Calculated Cancellation Rate</p>
@@ -1071,10 +1071,10 @@ export function CustomerCRM({
                   <div className="bg-error/5 p-4 rounded-xl border border-error/20 space-y-2">
                     <p className="text-xs font-bold text-error flex items-center gap-1">
                       <span className="material-symbols-outlined text-sm">security_alert</span>
-                      Manual Risk Override Trigger
+                      Update Risk Reason
                     </p>
                     <p className="text-[10px] text-on-surface-variant/75 font-normal">
-                      Update the current risk trigger identifier below to flag specific behavior types (e.g. Device Switch, Payment Dispute).
+                      Enter a reason to flag this account (e.g. Payment Dispute, Multiple Cancellations).
                     </p>
                   </div>
                 </div>
@@ -1083,7 +1083,7 @@ export function CustomerCRM({
               {/* Internal Notes Tab */}
               {activeDrawerTab === "notes" && (
                 <div className="space-y-4">
-                  <h5 className="text-xs font-bold uppercase tracking-widest text-primary">CRM Admin Notes logs</h5>
+                  <h5 className="text-xs font-bold uppercase tracking-widest text-primary">Admin Notes</h5>
                   
                   {selectedCustomer.internal_note ? (
                     <div className="bg-surface-container p-4 rounded-xl border border-outline-variant/15 relative">
@@ -1092,7 +1092,7 @@ export function CustomerCRM({
                         &quot;{selectedCustomer.internal_note}&quot;
                       </p>
                       <div className="text-[9px] text-on-surface-variant/40 mt-3 text-right">
-                        Permanently stored in database profile ledger
+                        Saved in customer profile
                       </div>
                     </div>
                   ) : (
@@ -1132,7 +1132,7 @@ export function CustomerCRM({
                       className="w-full rounded-xl py-3 font-bold text-xs"
                       disabled={isPending}
                     >
-                      {isPending ? "Saving changes..." : "Save CRM Profile Metadata"}
+                      {isPending ? "Saving changes..." : "Save Notes & Risk Reason"}
                     </Button>
                   </form>
                 </div>
@@ -1146,10 +1146,10 @@ export function CustomerCRM({
       {/* DENSE CONFIRMATION MODALS */}
       {modalType && targetCustomer && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-55">
-          <div className="bg-surface-container-lowest p-6 rounded-[24px] border border-outline-variant/20 shadow-2xl max-w-sm w-full mx-4 animate-in zoom-in-95 duration-200">
+          <div className="bg-surface-container-lowest p-6 rounded-3xl border border-outline-variant/20 shadow-2xl max-w-sm w-full mx-4 animate-in zoom-in-95 duration-200">
             <h4 className="text-base font-bold text-primary font-headline flex items-center gap-2">
               <span className="material-symbols-outlined text-error">warning</span>
-              Confirm Operational Override
+              Confirm Status Change
             </h4>
             <p className="text-xs text-on-surface-variant/80 font-normal mt-3">
               Are you sure you want to update <span className="font-bold text-primary">{targetCustomer.full_name || "this customer"}</span>&apos;s account status to{" "}

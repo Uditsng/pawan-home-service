@@ -247,10 +247,10 @@ export default function AdminShoppingAssistant({
             <div className="flex items-start gap-3">
               <span className="material-symbols-outlined text-primary text-2xl">info</span>
               <div className="space-y-1.5 text-xs text-on-surface-variant leading-relaxed">
-                <p className="font-bold text-primary text-sm">Hourly Packages & Extensions System</p>
+                <p className="font-bold text-primary text-sm">Hourly Packages & Extensions</p>
                 <p>
                   CarryBuddy works as a duration-based service. Customers choose from these packages during checkout.
-                  Additionally, these durations act as <strong>Extension Options</strong>. If a partner requests more time mid-trip (e.g. +30 Minutes or +1 Hour), the pricing is automatically loaded from the active values configured below.
+                  Additionally, these durations act as <strong>Extension Options</strong>. If a professional requests more time mid-trip (e.g. +30 Minutes or +1 Hour), the pricing is automatically loaded from the active values configured below.
                 </p>
               </div>
             </div>
@@ -384,7 +384,7 @@ export default function AdminShoppingAssistant({
                     <th className="py-4 px-6">Customer & Schedule</th>
                     <th className="py-4 px-4">Locations</th>
                     <th className="py-4 px-4">Duration & Bags</th>
-                    <th className="py-4 px-4">Assigned Pro</th>
+                    <th className="py-4 px-4">Professional</th>
                     <th className="py-4 px-4">Status & Total</th>
                     <th className="py-4 px-6 text-center">Invoice</th>
                   </tr>
@@ -460,11 +460,11 @@ export default function AdminShoppingAssistant({
                               </p>
                             </div>
                           ) : b.status === "cancelled" ? (
-                            <span className="text-slate-400 font-normal">No Pro assigned</span>
+                            <span className="text-slate-400 font-normal">No Professional assigned</span>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-[10px] font-bold uppercase tracking-wider animate-pulse">
                               <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
-                              Broadcasting
+                              Searching
                             </span>
                           )}
                         </td>
@@ -501,7 +501,7 @@ export default function AdminShoppingAssistant({
                         <span className="material-symbols-outlined text-3xl block mb-2 text-slate-300">
                           inbox
                         </span>
-                        No CarryBuddy bookings match the search criteria.
+                        No CarryBuddy bookings found.
                       </td>
                     </tr>
                   )}

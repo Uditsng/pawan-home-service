@@ -251,7 +251,7 @@ export function ServiceDataGrid({
                 <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-on-surface-variant/80">Category / Sub-category</th>
                 <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-on-surface-variant/80">Status</th>
                 <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-on-surface-variant/80">Starting Price</th>
-                <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-on-surface-variant/80 text-right">Actions</th>
+                <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-on-surface-variant/80 text-right">Manage</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/10">
@@ -260,7 +260,7 @@ export function ServiceDataGrid({
                   <td colSpan={6} className="px-4 py-8 text-center text-on-surface-variant">
                     <div className="flex flex-col items-center gap-2">
                       <span className="material-symbols-outlined text-3xl opacity-20">search_off</span>
-                      <p className="text-xs font-medium">No services found matching your filters.</p>
+                      <p className="text-xs font-medium">No services found.</p>
                     </div>
                   </td>
                 </tr>

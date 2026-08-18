@@ -1459,7 +1459,7 @@ export function CreateServiceForm({
                   {JSON.stringify(pricingConfigObj, null, 2)}
                 </pre>
                 <p className="text-[10px] text-on-surface-variant/70 leading-normal">
-                  This JSON config reflects the dynamic structure that will be serialized and saved to the database. It is evaluated at checkout by the PHS Pricing Engine.
+                  This price summary will be saved with the service and used during customer checkout.
                 </p>
               </div>
             </div>

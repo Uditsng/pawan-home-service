@@ -331,7 +331,7 @@ export function FinanceConsole({ initialBookings, commissionPercent = 20 }: Prop
           </p>
         </div>
         <div className="bg-surface-container-lowest border border-outline-variant/15 rounded-2xl p-4">
-          <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/60">Partner Payouts</p>
+          <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/60">Professional Payouts</p>
           <p className="text-lg sm:text-xl font-black font-headline tracking-tight text-primary mt-1">
             ₹{metrics.totalPayout.toLocaleString()}
           </p>
@@ -571,7 +571,7 @@ export function FinanceConsole({ initialBookings, commissionPercent = 20 }: Prop
                   <p className="font-bold text-error">-₹{breakdown.platformCommissionAmount.toFixed(2)}</p>
                 </div>
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/50">Partner Payout</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/50">Professional Payout</p>
                   <p className="font-black text-secondary">₹{breakdown.partnerPayoutAmount.toFixed(2)}</p>
                 </div>
               </div>
@@ -637,7 +637,7 @@ export function FinanceConsole({ initialBookings, commissionPercent = 20 }: Prop
                 <span className="material-symbols-outlined text-2xl">account_balance_wallet</span>
               </div>
               <div>
-                <h3 className="text-xl font-bold tracking-tight text-primary font-headline">Disburse Payouts</h3>
+                <h3 className="text-xl font-bold tracking-tight text-primary font-headline">Process Payouts</h3>
                 <p className="text-xs text-on-surface-variant font-medium mt-1 leading-relaxed">
                   Settle all outstanding professional payments for the current period.
                 </p>
@@ -668,12 +668,12 @@ export function FinanceConsole({ initialBookings, commissionPercent = 20 }: Prop
                 {isProcessingPayout ? (
                   <span className="flex items-center gap-2">
                     <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                    Wiring...
+                    Processing...
                   </span>
                 ) : payoutSuccess ? (
                   "Settled!"
                 ) : (
-                  "Disburse Funds"
+                  "Pay Out Funds"
                 )}
               </Button>
             </div>

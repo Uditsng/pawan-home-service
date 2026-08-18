@@ -368,7 +368,7 @@ export default function InvoicesConsole({
                     <th className="px-3 py-3 text-[10px] font-black uppercase tracking-widest text-on-surface-variant/40">Booking</th>
                     <th className="px-3 py-3 text-[10px] font-black uppercase tracking-widest text-on-surface-variant/40">Customer &amp; Pro</th>
                     <th className="px-3 py-3 text-[10px] font-black uppercase tracking-widest text-on-surface-variant/40 text-right">Amount</th>
-                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-on-surface-variant/40 text-center">Actions</th>
+                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-on-surface-variant/40 text-center">Manage</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/10">
@@ -401,7 +401,7 @@ export default function InvoicesConsole({
                           )}
                           <p className="text-[9px] font-bold text-secondary uppercase tracking-widest mt-1 flex items-center gap-1">
                             <span className="material-symbols-outlined text-sm">engineering</span>
-                            {inv.partner?.full_name || "Unassigned"}
+                            {inv.partner?.full_name || "Not Assigned"}
                           </p>
                         </td>
                         <td className="px-3 py-3 text-right">
@@ -433,7 +433,7 @@ export default function InvoicesConsole({
                                   className="px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest border border-outline-variant/15 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-all disabled:opacity-50">
                                   {isProcessingId === inv.booking.id ? (
                                     <span className="w-3 h-3 rounded-full border border-outline-variant border-t-primary animate-spin inline-block" />
-                                  ) : "Regen"}
+                                  ) : "Regenerate"}
                                 </button>
                               </>
                             ) : null}
@@ -501,7 +501,7 @@ export default function InvoicesConsole({
                   </div>
                   <div className="flex items-center justify-between text-[10px] font-bold">
                     <span className="text-on-surface-variant/60">{inv.customer?.full_name || "Unknown"}</span>
-                    <span className="text-secondary">{inv.partner?.full_name || "Unassigned"}</span>
+                    <span className="text-secondary">{inv.partner?.full_name || "Not Assigned"}</span>
                   </div>
                   <div className="flex items-center justify-between gap-1.5 pt-1 border-t border-outline-variant/10">
                     {inv.booking?.id ? (
@@ -516,7 +516,7 @@ export default function InvoicesConsole({
                         </Link>
                         <button onClick={() => handleRegenerate(inv.booking!.id)} disabled={isProcessingId === inv.booking.id}
                           className="flex-1 text-center px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest border border-outline-variant/15 rounded-lg text-on-surface-variant disabled:opacity-50">
-                          {isProcessingId === inv.booking.id ? "..." : "Regen"}
+                          {isProcessingId === inv.booking.id ? "..." : "Regenerate"}
                         </button>
                       </>
                     ) : null}
@@ -558,7 +558,7 @@ export default function InvoicesConsole({
           <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/15 p-4 shadow-sm">
             <h3 className="text-sm font-bold text-primary font-headline flex items-center gap-2">
               <span className="material-symbols-outlined text-[#059669]">pending_actions</span>
-              Completion Backlog
+              Unbilled Bookings
             </h3>
             <p className="text-[10px] text-on-surface-variant/60 mt-1 font-medium leading-relaxed">
               Completed bookings without invoices. Generate manually.

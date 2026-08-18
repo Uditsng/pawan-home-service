@@ -310,8 +310,8 @@ export default async function AdminPartnersPage() {
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tighter text-primary font-headline">Technicians</h1>
-          <p className="text-on-surface-variant font-medium mt-1 opacity-60 text-sm">Manage technician profiles, assignments, and onboarding.</p>
+          <h1 className="text-2xl font-bold tracking-tighter text-primary font-headline">Professionals</h1>
+          <p className="text-on-surface-variant font-medium mt-1 opacity-60 text-sm">Manage professional profiles, bookings, and onboarding.</p>
         </div>
       </div>
 

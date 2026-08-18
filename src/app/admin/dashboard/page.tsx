@@ -192,7 +192,7 @@ export default async function AdminDashboardPage() {
 
         {/* KPI 3: Fleet Capacity */}
         <Link href="/admin/partners" className="bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant/15 shadow-sm hover:shadow-ambient transition-all group">
-          <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/60 mb-2">Partner Team</p>
+          <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/60 mb-2">Professionals</p>
           <div className="flex items-end justify-between">
             <h2 className="text-2xl font-bold font-headline tracking-tighter text-primary">
               {activePartnerCount}<span className="text-sm text-on-surface-variant/40 font-bold ml-1">/ {totalPartners}</span>
@@ -323,7 +323,7 @@ export default async function AdminDashboardPage() {
               {recentBookings.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-5 py-10 text-center text-on-surface-variant/40 text-xs font-semibold">
-                    No booking transactions recorded this month.
+                    No bookings recorded this month.
                   </td>
                 </tr>
               ) : (
@@ -344,14 +344,14 @@ export default async function AdminDashboardPage() {
                         </Link>
                       </td>
                       <td className="px-4 py-3.5">
-                        <p className="text-[10px] font-bold text-primary tracking-tight truncate max-w-[160px]">{booking.services?.title || "Service"}</p>
+                        <p className="text-[10px] font-bold text-primary tracking-tight truncate max-w-40">{booking.services?.title || "Service"}</p>
                         <p className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-wider mt-0.5 flex items-center gap-0.5">
                           <span className="material-symbols-outlined text-[10px] text-secondary">location_on</span>
                           {booking.city || "N/A"}
                         </p>
                       </td>
                       <td className="px-4 py-3.5">
-                        <Link href="/admin/customers" className="text-[10px] font-bold text-primary hover:text-secondary transition-colors uppercase tracking-tight truncate block max-w-[120px]">
+                        <Link href="/admin/customers" className="text-[10px] font-bold text-primary hover:text-secondary transition-colors uppercase tracking-tight truncate block max-w-30">
                           {booking.customer?.full_name || "Customer"}
                         </Link>
                       </td>
@@ -380,7 +380,7 @@ export default async function AdminDashboardPage() {
         <div className="block md:hidden divide-y divide-outline-variant/10">
           {recentBookings.length === 0 ? (
             <div className="px-5 py-10 text-center text-on-surface-variant/40 text-xs font-semibold">
-              No booking transactions recorded this month.
+              No bookings recorded this month.
             </div>
           ) : (
             recentBookings.map((booking) => {

@@ -505,7 +505,7 @@ export function BookingsCommand({
         <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm relative overflow-hidden group">
           <div className="absolute right-0 top-0 w-20 h-20 bg-primary/5 rounded-bl-[48px] transition-transform group-hover:scale-105"></div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">
-            Total Operations
+            Total Bookings
           </p>
           <h2 className="text-2xl font-bold text-primary font-headline mt-1.5">
             {statusCounts.all}
@@ -525,7 +525,7 @@ export function BookingsCommand({
         <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm relative overflow-hidden group">
           <div className="absolute right-0 top-0 w-20 h-20 bg-secondary/5 rounded-bl-[48px] transition-transform group-hover:scale-105"></div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">
-            Gross Merchandise Value
+            Total Booking Value
           </p>
           <h2 className="text-2xl font-bold text-primary font-headline mt-1.5">
             ₹{currentGmv.toLocaleString()}
@@ -541,7 +541,7 @@ export function BookingsCommand({
             : "bg-surface-container-lowest border-outline-variant/15"
         }`}>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">
-            Unassigned Queue
+            Unassigned Bookings
           </p>
           <h2 className={`text-2xl font-bold font-headline mt-1.5 ${
             unassignedCount > 0 ? "text-amber-700" : "text-primary"
@@ -563,7 +563,7 @@ export function BookingsCommand({
 
         <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm relative overflow-hidden group">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">
-            Avg Completion Time
+            Average Service Time
           </p>
           <h2 className="text-2xl font-bold text-primary font-headline mt-1.5">
             {avgCompletionTime > 0 ? `${avgCompletionTime}m` : "—"}
@@ -584,7 +584,7 @@ export function BookingsCommand({
             </span>
             <input
               type="text"
-              placeholder="Search Booking ID, Customer, Technician, Phone..."
+              placeholder="Search Booking ID, Customer, Professional, Phone..."
               value={searchTerm}
               onChange={(e) => handleFilterChange(setSearchTerm, e.target.value)}
               autoComplete="off"
@@ -695,13 +695,13 @@ export function BookingsCommand({
           <table className="w-full border-collapse text-left">
             <thead>
               <tr className="bg-surface-dim/40 border-b border-outline-variant/20 uppercase text-[9px] font-black text-on-surface-variant tracking-widest">
-                <th className="py-2.5 px-4">Operational ID</th>
-                <th className="py-2.5 px-4">Client / Zone</th>
-                <th className="py-2.5 px-4">Service Engine</th>
-                <th className="py-2.5 px-4">Deployment</th>
-                <th className="py-2.5 px-4 text-center">Lifecycle State</th>
-                <th className="py-2.5 px-4 text-right">Volume</th>
-                <th className="py-2.5 px-4 text-right">Actions</th>
+                <th className="py-2.5 px-4">Booking ID</th>
+                <th className="py-2.5 px-4">Customer / Area</th>
+                <th className="py-2.5 px-4">Service</th>
+                <th className="py-2.5 px-4">Professional</th>
+                <th className="py-2.5 px-4 text-center">Status</th>
+                <th className="py-2.5 px-4 text-right">Amount</th>
+                <th className="py-2.5 px-4 text-right">Manage</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/15">
@@ -925,9 +925,9 @@ export function BookingsCommand({
                       <p className="text-primary font-black text-xs mt-0.5">{booking.payment_method || "UPI"}</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-[8px] font-black uppercase text-on-surface-variant/40 tracking-wider">Technician</p>
+                      <p className="text-[8px] font-black uppercase text-on-surface-variant/40 tracking-wider">Professional</p>
                       <p className="text-primary font-black text-[9px] mt-0.5 truncate">
-                        {booking.partner?.full_name || "Unassigned"}
+                        {booking.partner?.full_name || "Not Assigned"}
                       </p>
                     </div>
                   </div>
@@ -938,7 +938,7 @@ export function BookingsCommand({
                       <button
                         onClick={() => openAssignDrawer(booking)}
                         className="p-1.5 bg-surface-container rounded-lg text-on-surface-variant hover:bg-secondary/15 hover:text-primary transition-colors"
-                        title="Assign Technician"
+                        title="Assign Professional"
                       >
                         <span className="material-symbols-outlined text-sm">person_add</span>
                       </button>
@@ -1039,7 +1039,7 @@ export function BookingsCommand({
             <div className="p-6 bg-primary text-white flex justify-between items-start">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-white/50">
-                  Operational ID
+                  Booking ID
                 </p>
                 <h4 className="text-lg font-bold font-mono tracking-tighter mt-1">
                   BK-{selectedBooking.id.slice(0, 8).toUpperCase()}
@@ -1076,7 +1076,7 @@ export function BookingsCommand({
                       : "border-transparent text-on-surface-variant hover:text-primary"
                   }`}
                 >
-                  {tab}
+                  {tab === "partner" ? "Professional" : tab === "details" ? "Details" : tab === "actions" ? "Manage" : "Timeline"}
                 </button>
               ))}
             </div>
@@ -1087,11 +1087,11 @@ export function BookingsCommand({
               {/* Timeline Tab */}
               {activeDrawerTab === "timeline" && (
                 <div className="space-y-6">
-                  <h5 className="text-xs font-bold uppercase tracking-widest text-primary">Booking Lifecycle Timeline</h5>
+                  <h5 className="text-xs font-bold uppercase tracking-widest text-primary">Booking Timeline</h5>
                   <div className="relative border-l-2 border-outline-variant/30 pl-6 ml-3 space-y-6">
                     {selectedBooking.completed_at && (
                       <div className="relative">
-                        <span className="absolute left-[-31px] top-0 w-4 h-4 rounded-full bg-secondary border-2 border-white"></span>
+                        <span className="absolute -left-8 top-0 w-4 h-4 rounded-full bg-secondary border-2 border-white"></span>
                         <p className="text-xs font-bold text-primary">Service Completed</p>
                         <p className="text-[10px] text-on-surface-variant/60 mt-0.5">
                           {format(new Date(selectedBooking.completed_at), "PPP · p")}
@@ -1100,7 +1100,7 @@ export function BookingsCommand({
                     )}
                     {selectedBooking.cancelled_at && (
                       <div className="relative">
-                        <span className="absolute left-[-31px] top-0 w-4 h-4 rounded-full bg-red-500 border-2 border-white"></span>
+                        <span className="absolute -left-7.75 top-0 w-4 h-4 rounded-full bg-red-500 border-2 border-white"></span>
                         <p className="text-xs font-bold text-red-600">Booking Cancelled</p>
                         <p className="text-[10px] text-on-surface-variant/60 mt-0.5">
                           By: {selectedBooking.cancelled_by || "System"} · {format(new Date(selectedBooking.cancelled_at), "PPP · p")}
@@ -1114,7 +1114,7 @@ export function BookingsCommand({
                     )}
                     {selectedBooking.started_at && (
                       <div className="relative">
-                        <span className="absolute left-[-31px] top-0 w-4 h-4 rounded-full bg-blue-500 border-2 border-white"></span>
+                        <span className="absolute -left-7.75 top-0 w-4 h-4 rounded-full bg-blue-500 border-2 border-white"></span>
                         <p className="text-xs font-bold text-primary">Service In Progress</p>
                         <p className="text-[10px] text-on-surface-variant/60 mt-0.5">
                           {format(new Date(selectedBooking.started_at), "PPP · p")}
@@ -1123,15 +1123,15 @@ export function BookingsCommand({
                     )}
                     {selectedBooking.accepted_at && (
                       <div className="relative">
-                        <span className="absolute left-[-31px] top-0 w-4 h-4 rounded-full bg-primary border-2 border-white"></span>
-                        <p className="text-xs font-bold text-primary">Technician Assigned</p>
+                        <span className="absolute -left-7.75 top-0 w-4 h-4 rounded-full bg-primary border-2 border-white"></span>
+                        <p className="text-xs font-bold text-primary">Professional Assigned</p>
                         <p className="text-[10px] text-on-surface-variant/60 mt-0.5">
-                          {selectedBooking.partner?.full_name || "Technician"} confirmed · {format(new Date(selectedBooking.accepted_at), "PPP · p")}
+                          {selectedBooking.partner?.full_name || "Professional"} confirmed · {format(new Date(selectedBooking.accepted_at), "PPP · p")}
                         </p>
                       </div>
                     )}
                     <div className="relative">
-                      <span className="absolute left-[-31px] top-0 w-4 h-4 rounded-full bg-on-surface-variant/30 border-2 border-white"></span>
+                      <span className="absolute -left-7.75 top-0 w-4 h-4 rounded-full bg-on-surface-variant/30 border-2 border-white"></span>
                       <p className="text-xs font-bold text-primary">Booking Created</p>
                       <p className="text-[10px] text-on-surface-variant/60 mt-0.5">
                         {selectedBooking.created_at ? format(new Date(selectedBooking.created_at), "PPP · p") : "N/A"}
@@ -1155,7 +1155,7 @@ export function BookingsCommand({
                       { label: "Time to Assign", value: timeDelta(selectedBooking.accepted_at, selectedBooking.created_at), color: "bg-primary" },
                       { label: "Response Time", value: timeDelta(selectedBooking.started_at, selectedBooking.accepted_at), color: "bg-blue-500" },
                       { label: "Service Duration", value: timeDelta(selectedBooking.completed_at, selectedBooking.started_at), color: "bg-secondary" },
-                      { label: "Total Lifecycle", value: timeDelta(selectedBooking.completed_at, selectedBooking.created_at), color: "bg-emerald-500" },
+                      { label: "Total Time", value: timeDelta(selectedBooking.completed_at, selectedBooking.created_at), color: "bg-emerald-500" },
                     ].filter(d => d.value !== null);
                     if (deltas.length > 0) {
                       return (
@@ -1178,18 +1178,18 @@ export function BookingsCommand({
                     return null;
                   })()}
 
-                  <h5 className="text-xs font-bold uppercase tracking-widest text-primary pt-4 border-t border-outline-variant/10">Operational Audit Trail</h5>
+                  <h5 className="text-xs font-bold uppercase tracking-widest text-primary pt-4 border-t border-outline-variant/10">Booking History</h5>
                   {isLoadingLogs ? (
                     <div className="flex items-center gap-2 text-xs text-on-surface-variant/70">
                       <span className="material-symbols-outlined animate-spin text-sm">rotate_right</span> Loading logs...
                     </div>
                   ) : auditTrail.length === 0 ? (
-                    <p className="text-xs text-on-surface-variant/50 italic">No audit events logged for this booking yet.</p>
+                    <p className="text-xs text-on-surface-variant/50 italic">No booking history yet.</p>
                   ) : (
                     <div className="relative border-l-2 border-outline-variant/30 pl-6 ml-3 space-y-4">
                       {auditTrail.map((log) => (
                         <div key={log.id} className="relative">
-                          <span className="absolute left-[-31px] top-0.5 w-4 h-4 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center">
+                          <span className="absolute -left-7.75 top-0.5 w-4 h-4 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center">
                             <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                           </span>
                           <div className="flex justify-between items-start">
@@ -1245,7 +1245,7 @@ export function BookingsCommand({
               {/* Details Tab */}
               {activeDrawerTab === "details" && (
                 <div className="space-y-4">
-                  <h5 className="text-xs font-bold uppercase tracking-widest text-primary">Booking Metadata</h5>
+                  <h5 className="text-xs font-bold uppercase tracking-widest text-primary">Booking Details</h5>
                   <div className="bg-surface-container p-4 rounded-xl border border-outline-variant/15 space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -1351,7 +1351,7 @@ export function BookingsCommand({
                         </div>
                       </div>
                     ) : (
-                      <p className="text-xs text-on-surface-variant/60 italic">Pricing data not available for this booking.</p>
+                      <p className="text-xs text-on-surface-variant/60 italic">Price details not available.</p>
                     )}
                   </div>
 
@@ -1417,7 +1417,7 @@ export function BookingsCommand({
               {/* Partner Tab */}
               {activeDrawerTab === "partner" && (
                 <div className="space-y-4">
-                  <h5 className="text-xs font-bold uppercase tracking-widest text-primary">Assigned Technician</h5>
+                  <h5 className="text-xs font-bold uppercase tracking-widest text-primary">Assigned Professional</h5>
                   {selectedBooking.partner ? (
                     <div className="bg-surface-container p-4 rounded-xl border border-outline-variant/15">
                       <div className="flex items-center gap-4">
@@ -1452,7 +1452,7 @@ export function BookingsCommand({
                             className="w-full rounded-xl text-xs font-bold"
                           >
                             <span className="material-symbols-outlined text-sm mr-1">swap_horiz</span>
-                            Reassign to Another Technician
+                            Reassign to Another Professional
                           </Button>
                         </div>
                       )}
@@ -1460,8 +1460,8 @@ export function BookingsCommand({
                   ) : (
                     <div className="bg-amber-500/5 border border-amber-500/20 p-6 rounded-xl text-center space-y-4">
                       <span className="material-symbols-outlined text-4xl text-amber-500">person_search</span>
-                      <p className="text-sm font-bold text-amber-700">No Technician Assigned</p>
-                      <p className="text-xs text-on-surface-variant/70">This booking is waiting for technician assignment.</p>
+                      <p className="text-sm font-bold text-amber-700">No Professional Assigned</p>
+                      <p className="text-xs text-on-surface-variant/70">This booking is waiting for professional assignment.</p>
                       <Button
                         variant="primary"
                         onClick={() => {
@@ -1471,7 +1471,7 @@ export function BookingsCommand({
                         className="bg-secondary hover:brightness-105 text-primary font-black text-[10px] uppercase tracking-widest px-6 py-3 rounded-xl"
                       >
                         <span className="material-symbols-outlined text-sm mr-1">person_add</span>
-                        Assign Technician Now
+                        Assign Professional Now
                       </Button>
                     </div>
                   )}
@@ -1481,7 +1481,7 @@ export function BookingsCommand({
               {/* Actions Tab */}
               {activeDrawerTab === "actions" && (
                 <div className="space-y-4">
-                  <h5 className="text-xs font-bold uppercase tracking-widest text-primary">Administrative Overrides</h5>
+                  <h5 className="text-xs font-bold uppercase tracking-widest text-primary">Manage Booking</h5>
 
                   {selectedBooking.status !== "completed" && selectedBooking.status !== "cancelled" && (
                     <>
@@ -1492,7 +1492,7 @@ export function BookingsCommand({
                         <span className="material-symbols-outlined text-secondary">check_circle</span>
                         <div className="text-left">
                           <p className="text-xs font-bold text-primary">Force Mark as Completed</p>
-                          <p className="text-[10px] text-on-surface-variant/60">Override lifecycle and close this booking.</p>
+                          <p className="text-[10px] text-on-surface-variant/60">Mark service as completed.</p>
                         </div>
                       </button>
 
@@ -1503,7 +1503,7 @@ export function BookingsCommand({
                         <span className="material-symbols-outlined text-red-500">cancel</span>
                         <div className="text-left">
                           <p className="text-xs font-bold text-red-700">Force Cancel Booking</p>
-                          <p className="text-[10px] text-on-surface-variant/60">Terminate this operation permanently.</p>
+                          <p className="text-[10px] text-on-surface-variant/60">Cancel this booking permanently.</p>
                         </div>
                       </button>
 
@@ -1517,8 +1517,8 @@ export function BookingsCommand({
                         >
                           <span className="material-symbols-outlined text-primary">person_add</span>
                           <div className="text-left">
-                            <p className="text-xs font-bold text-primary">Manually Assign Technician</p>
-                            <p className="text-[10px] text-on-surface-variant/60">Select a technician from the active workforce.</p>
+                            <p className="text-xs font-bold text-primary">Manually Assign Professional</p>
+                            <p className="text-[10px] text-on-surface-variant/60">Select a professional from active staff.</p>
                           </div>
                         </button>
                       )}
@@ -1550,7 +1550,7 @@ export function BookingsCommand({
             <div className="p-6 bg-primary text-white">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-white/50">Manual Technician Assignment</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-white/50">Manual Professional Assignment</p>
                   <h4 className="text-base font-bold mt-1">
                     BK-{assignTargetBooking.id.slice(0, 8).toUpperCase()}
                   </h4>
@@ -1573,7 +1573,7 @@ export function BookingsCommand({
                 <span className="material-symbols-outlined absolute left-3 top-3 text-on-surface-variant/40 text-lg">search</span>
                 <input
                   type="text"
-                  placeholder="Search technicians by name, skill, or city..."
+                  placeholder="Search professionals by name, skill, or city..."
                   value={partnerSearchTerm}
                   onChange={(e) => setPartnerSearchTerm(e.target.value)}
                   className="w-full bg-surface-container text-primary text-sm font-semibold pl-10 pr-4 py-3 rounded-xl border border-outline-variant/30 focus:border-secondary/60 focus:outline-none focus:ring-4 focus:ring-secondary/10 transition-all placeholder-on-surface-variant/40"
@@ -1586,7 +1586,7 @@ export function BookingsCommand({
               {filteredPartners.length === 0 ? (
                 <div className="text-center py-12 text-on-surface-variant/50">
                   <span className="material-symbols-outlined text-3xl block mb-2 opacity-40">person_search</span>
-                  <p className="text-xs font-semibold">No eligible partners found.</p>
+                  <p className="text-xs font-semibold">No eligible professionals found.</p>
                 </div>
               ) : (
                 filteredPartners.map((partner) => (
@@ -1649,7 +1649,7 @@ export function BookingsCommand({
                 ? "Force Cancel Booking"
                 : modalAction === "complete"
                 ? "Mark as Completed"
-                : "Reassign Technician"}
+                : "Reassign Professional"}
             </h4>
             <p className="text-xs text-on-surface-variant/80 font-normal mt-3">
               Are you sure you want to{" "}
@@ -1657,7 +1657,7 @@ export function BookingsCommand({
                 ? "permanently cancel"
                 : modalAction === "complete"
                 ? "force-complete"
-                : "unassign/reassign the technician on"}{" "}
+                : "unassign or reassign the professional for"}{" "}
               booking{" "}
               <span className="font-bold text-primary font-mono">
                 BK-{modalTargetBooking.id.slice(0, 8).toUpperCase()}
@@ -1682,7 +1682,7 @@ export function BookingsCommand({
 
             {modalAction === "cancel" && (
               <p className="text-[10px] text-error font-semibold mt-2">
-                ⚠️ This will terminate the booking permanently and notify all parties.
+                ⚠️ This will cancel the booking permanently and notify all parties.
               </p>
             )}
 
@@ -1750,7 +1750,7 @@ export function BookingsCommand({
             }}
           >
             <div className="py-1">
-              <p className="text-[8px] font-black uppercase text-on-surface-variant/40 px-3 py-0.5 tracking-wider">Operations</p>
+              <p className="text-[8px] font-black uppercase text-on-surface-variant/40 px-3 py-0.5 tracking-wider">Actions</p>
               <button
                 onClick={() => {
                   openDetailDrawer(dropdownMenu.booking);
@@ -1770,7 +1770,7 @@ export function BookingsCommand({
                   className="w-full text-left px-3 py-1.5 text-xs font-bold text-secondary hover:bg-secondary/10 rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-sm">person_add</span>
-                  Assign Technician
+                  Assign Professional
                 </button>
               )}
               {dropdownMenu.booking.partner_id && dropdownMenu.booking.status !== "completed" && dropdownMenu.booking.status !== "cancelled" && (
@@ -1782,13 +1782,13 @@ export function BookingsCommand({
                   className="w-full text-left px-3 py-1.5 text-xs font-bold text-amber-700 hover:bg-amber-500/10 rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-sm">swap_horiz</span>
-                  Reassign Tech
+                  Reassign Professional
                 </button>
               )}
             </div>
 
             <div className="py-1">
-              <p className="text-[8px] font-black uppercase text-on-surface-variant/40 px-3 py-0.5 tracking-wider">Overrides</p>
+              <p className="text-[8px] font-black uppercase text-on-surface-variant/40 px-3 py-0.5 tracking-wider">Status Actions</p>
               {dropdownMenu.booking.status !== "completed" && dropdownMenu.booking.status !== "cancelled" && (
                 <button
                   onClick={() => {

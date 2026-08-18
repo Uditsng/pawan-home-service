@@ -45,7 +45,7 @@ export default function AdminErrorBoundary({ error, reset }: ErrorProps) {
             href="/admin/dashboard"
             className="flex-1 py-3 px-6 rounded-xl font-headline font-bold text-sm bg-surface-container-high text-primary hover:bg-surface-container-highest transition-all border border-outline-variant/20 text-center cursor-pointer"
           >
-            Console
+            Dashboard
           </Link>
         </div>
       </div>

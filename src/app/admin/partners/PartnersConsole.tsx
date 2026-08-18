@@ -278,7 +278,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
             reviews_count: 0
           };
           setPartners(prev => [newPartner, ...prev]);
-          setOnboardSuccess("New Technician onboarded successfully! Edit profile to add skills.");
+          setOnboardSuccess("New Professional added successfully! Edit profile to add skills.");
           setTimeout(() => {
             setIsOnboardingModalOpen(false);
             setOnboardForm({
@@ -290,10 +290,10 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
             setOnboardSuccess(null);
           }, 1500);
         } else {
-          setOnboardError(res.error || "Failed to create technician.");
+          setOnboardError(res.error || "Failed to add professional.");
         }
       } catch (err: unknown) {
-        setOnboardError((err as Error).message || "Failed to create technician.");
+        setOnboardError((err as Error).message || "Failed to add professional.");
       }
     });
   };
@@ -472,16 +472,16 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
             }
             return p;
           }));
-          setEditSuccess("Technician profile updated successfully!");
+          setEditSuccess("Professional profile updated successfully!");
           setTimeout(() => {
             setIsEditModalOpen(false);
             setEditSuccess(null);
           }, 1500);
         } else {
-          setEditError(res.error || "Failed to update technician.");
+          setEditError(res.error || "Failed to update professional.");
         }
       } catch (err: unknown) {
-        setEditError((err as Error).message || "Failed to update technician.");
+        setEditError((err as Error).message || "Failed to update professional.");
       }
     });
   };
@@ -492,7 +492,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
     startTransition(async () => {
       try {
         // Mock a success
-        setEmergencySuccess("Manual dispatch successfully routed! Technician assigned.");
+        setEmergencySuccess("Manual dispatch successfully routed! Professional assigned.");
         // Transition partner status to Busy / On Job
         setPartners(prev => prev.map(p => p.id === emergencyBookingPartnerId ? { ...p, status: 'busy' } : p));
         setTimeout(() => {
@@ -551,7 +551,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
       {fleetCounts && (
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2">
           <div className="bg-primary rounded-xl p-3 text-on-primary">
-            <p className="text-[9px] font-black uppercase tracking-widest text-white/50">Total Fleet</p>
+            <p className="text-[9px] font-black uppercase tracking-widest text-white/50">Total Professionals</p>
             <p className="text-lg font-black font-headline tracking-tight text-secondary mt-0.5">{fleetCounts.total}</p>
           </div>
           <div className="bg-surface-container-lowest border border-outline-variant/15 rounded-xl p-3">
@@ -644,7 +644,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
             onClick={() => setIsOnboardingModalOpen(true)}
             className="bg-secondary hover:brightness-105 hover:scale-[1.01] text-primary font-black text-xs uppercase tracking-widest px-4 py-2 rounded-lg flex items-center justify-center gap-1.5 shrink-0 transition-all shadow-md shadow-secondary/10"
           >
-            <span className="material-symbols-outlined text-base">person_add</span> Onboard Technician
+            <span className="material-symbols-outlined text-base">person_add</span> Add Professional
           </Button>
 
         </div>
@@ -654,15 +654,15 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
       <Card variant="solid" className="p-0 overflow-visible ring-1 ring-outline-variant/10">
 
         {/* Table-based Responsive Compact Operational Data Grid */}
-        <div className="overflow-x-auto min-h-[180px]">
-          <table className="w-full border-collapse text-left min-w-[750px]">
+        <div className="overflow-x-auto min-h-45">
+          <table className="w-full border-collapse text-left min-w-188">
             <thead>
               <tr className="bg-surface-dim/40 border-b border-outline-variant/20 uppercase text-[9px] font-black text-on-surface-variant tracking-widest">
-                <th className="py-2 px-3">Identity</th>
-                <th className="py-2 px-3 text-center w-28">Performance</th>
-                <th className="py-2 px-3 text-center w-36">Reliability & Cancel</th>
+                <th className="py-2 px-3">Professional</th>
+                <th className="py-2 px-3 text-center w-28">Rating & Jobs</th>
+                <th className="py-2 px-3 text-center w-36">Reliability</th>
                 <th className="py-2 px-3 w-40">Status</th>
-                <th className="py-2 px-3 text-right w-16">Actions</th>
+                <th className="py-2 px-3 text-right w-16">Manage</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/10">
@@ -670,7 +670,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                 <tr>
                   <td colSpan={5} className="py-8 text-center text-on-surface-variant/50">
                     <span className="material-symbols-outlined text-2xl block mb-1 opacity-40">query_stats</span>
-                    <p className="text-[11px] font-semibold">No matches found for search query or filtering parameters.</p>
+                    <p className="text-[11px] font-semibold">No professionals found.</p>
                   </td>
                 </tr>
               ) : (
@@ -811,7 +811,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
           <div className="text-[11px] font-bold text-on-surface-variant/60">
             Showing <span className="text-primary">{Math.min(totalItems, indexOfFirstItem + 1)}</span> to{" "}
             <span className="text-primary">{Math.min(totalItems, indexOfLastItem)}</span> of{" "}
-            <span className="text-primary">{totalItems}</span> registered technicians
+            <span className="text-primary">{totalItems}</span> registered professionals
           </div>
 
           {/* Controls Paginator buttons */}
@@ -883,12 +883,12 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
           <div className="absolute inset-0 cursor-pointer" onClick={() => setIsOnboardingModalOpen(false)} />
 
           {/* Form Modal Box container */}
-          <div className="relative w-full max-w-md bg-white rounded-[32px] overflow-hidden shadow-2xl p-6 border border-outline-variant/30 animate-in zoom-in-95 duration-200">
+          <div className="relative w-full max-w-md bg-white rounded-4xl overflow-hidden shadow-2xl p-6 border border-outline-variant/30 animate-in zoom-in-95 duration-200">
 
             <div className="flex justify-between items-start mb-6">
               <div>
-                <span className="text-[10px] font-black text-secondary uppercase tracking-[0.2em]">New technician setup</span>
-                <h3 className="text-xl font-bold font-headline text-primary uppercase mt-1">Onboard Technician</h3>
+                <span className="text-[10px] font-black text-secondary uppercase tracking-[0.2em]">New professional setup</span>
+                <h3 className="text-xl font-bold font-headline text-primary uppercase mt-1">Add Professional</h3>
               </div>
               <button
                 onClick={() => setIsOnboardingModalOpen(false)}
@@ -981,7 +981,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                   disabled={isPending}
                   className="flex-1 py-3 bg-secondary hover:brightness-105 text-primary rounded-xl"
                 >
-                  Onboard Pro
+                  Add Professional
                 </Button>
               </div>
 
@@ -1000,12 +1000,12 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
           <div className="absolute inset-0 cursor-pointer" onClick={() => setIsEditModalOpen(false)} />
 
           {/* Form Modal Box container */}
-          <div className="relative w-full max-w-md bg-white rounded-[32px] overflow-hidden shadow-2xl p-6 border border-outline-variant/30 animate-in zoom-in-95 duration-200">
+          <div className="relative w-full max-w-md bg-white rounded-4xl overflow-hidden shadow-2xl p-6 border border-outline-variant/30 animate-in zoom-in-95 duration-200">
 
             <div className="flex justify-between items-start mb-6">
               <div>
-                <span className="text-[10px] font-black text-secondary uppercase tracking-[0.2em]">Technician profile updates</span>
-                <h3 className="text-xl font-bold font-headline text-primary uppercase mt-1">Edit Technician</h3>
+                <span className="text-[10px] font-black text-secondary uppercase tracking-[0.2em]">Professional profile updates</span>
+                <h3 className="text-xl font-bold font-headline text-primary uppercase mt-1">Edit Professional</h3>
               </div>
               <button
                 onClick={() => setIsEditModalOpen(false)}
@@ -1117,7 +1117,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
 
           <div className="absolute inset-0 cursor-pointer" onClick={() => setEmergencyBookingPartnerId(null)} />
 
-          <div className="relative w-full max-w-md bg-white rounded-[32px] overflow-hidden shadow-2xl p-6 border border-outline-variant/30 animate-in zoom-in-95 duration-200">
+          <div className="relative w-full max-w-md bg-white rounded-4xl overflow-hidden shadow-2xl p-6 border border-outline-variant/30 animate-in zoom-in-95 duration-200">
 
             <div className="flex justify-between items-start mb-6">
               <div>
@@ -1134,7 +1134,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
 
             <div className="space-y-4 text-xs font-bold text-primary">
               <p className="text-[10px] text-on-surface-variant/70 leading-relaxed font-semibold">
-                Force-assign a pending home service booking directly onto this technician&apos;s itinerary.
+                Assign a pending booking directly to this professional.
               </p>
 
               <div className="space-y-1.5">
@@ -1171,7 +1171,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                   disabled={isPending}
                   className="flex-1 py-3 bg-secondary hover:brightness-105 text-primary rounded-xl"
                 >
-                  Dispatch Assignment
+                  Assign Booking
                 </Button>
               </div>
 
@@ -1187,10 +1187,10 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
         <div className="fixed inset-0 bg-primary/25 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="absolute inset-0 cursor-pointer" onClick={() => setReviewKycPartner(null)} />
 
-          <div className="relative w-full max-w-2xl bg-white rounded-[32px] overflow-hidden shadow-2xl p-6 border border-outline-variant/30 animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+          <div className="relative w-full max-w-2xl bg-white rounded-4xl overflow-hidden shadow-2xl p-6 border border-outline-variant/30 animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
             <div className="flex justify-between items-start mb-4 shrink-0">
               <div>
-                <span className="text-[10px] font-black text-secondary uppercase tracking-[0.2em]">Compliance Verification</span>
+                <span className="text-[10px] font-black text-secondary uppercase tracking-[0.2em]">KYC Verification</span>
                 <h3 className="text-xl font-bold font-headline text-primary uppercase mt-1">
                   Review KYC: {reviewKycPartner.full_name}
                 </h3>
@@ -1234,7 +1234,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                 )}
               </div>
 
-              {/* Technician Info */}
+              {/* Professional Info */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-surface-dim/40 rounded-2xl p-4 border border-outline-variant/10">
                 <div>
                   <h4 className="text-[9px] uppercase tracking-wider text-on-surface-variant/50 mb-1">Experience</h4>
@@ -1367,7 +1367,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                 }}
                 className="w-full text-left px-2.5 py-1.5 text-xs font-bold text-[#1c2438] hover:bg-surface-container-low rounded-lg transition-colors flex items-center gap-1.5"
               >
-                <span className="material-symbols-outlined text-xs">edit</span> Edit Technician
+                <span className="material-symbols-outlined text-xs">edit</span> Edit Professional
               </button>
               <button
                 onClick={() => {
@@ -1388,7 +1388,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                 }}
                 className="w-full text-left px-2.5 py-1.5 text-xs font-bold text-[#1c2438] hover:bg-surface-container-low rounded-lg transition-colors flex items-center gap-1.5"
               >
-                <span className="material-symbols-outlined text-xs">bolt</span> Assign Dispatch Job
+                <span className="material-symbols-outlined text-xs">bolt</span> Assign Booking
               </button>
               <button
                 onClick={() => {
@@ -1447,12 +1447,12 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
           <div className="absolute inset-0 cursor-pointer" onClick={() => setSelectedReviewsPartner(null)} />
 
           {/* Modal Container */}
-          <div className="relative w-full max-w-lg bg-white rounded-[32px] overflow-hidden shadow-2xl p-6 border border-outline-variant/30 animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+          <div className="relative w-full max-w-lg bg-white rounded-4xl overflow-hidden shadow-2xl p-6 border border-outline-variant/30 animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
             
             {/* Header */}
             <div className="flex justify-between items-start mb-4 shrink-0">
               <div>
-                <span className="text-[10px] font-black text-secondary uppercase tracking-[0.2em]">Technician Performance Feedback</span>
+                <span className="text-[10px] font-black text-secondary uppercase tracking-[0.2em]">Professional Feedback</span>
                 <h3 className="text-xl font-bold font-headline text-primary uppercase mt-1">Reviews ({selectedReviewsPartner.reviews_count})</h3>
                 <p className="text-[11px] text-on-surface-variant/70 font-medium mt-1">
                   Showing ratings and comments for <span className="font-bold">{selectedReviewsPartner.full_name}</span>
@@ -1468,7 +1468,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
 
             {/* Overall Summary block inside Modal */}
             <div className="bg-surface-container-low rounded-2xl p-4 mb-4 flex items-center gap-4 shrink-0">
-              <div className="text-center bg-white px-4 py-3 rounded-xl border border-outline-variant/10 min-w-[80px]">
+              <div className="text-center bg-white px-4 py-3 rounded-xl border border-outline-variant/10 min-w-20">
                 <span className="text-3xl font-black text-primary leading-none tracking-tight">
                   {selectedReviewsPartner.rating_avg ? selectedReviewsPartner.rating_avg.toFixed(1) : "—"}
                 </span>
@@ -1479,7 +1479,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
               <div className="text-xs">
                 <p className="font-bold text-primary">Aggregate score from completed jobs.</p>
                 <p className="text-on-surface-variant font-medium mt-0.5">
-                  Technician reliability rate is <span className="font-bold">{selectedReviewsPartner.reliability_rate}%</span>.
+                  Professional reliability rate is <span className="font-bold">{selectedReviewsPartner.reliability_rate}%</span>.
                 </p>
               </div>
             </div>
@@ -1496,7 +1496,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                   <span className="material-symbols-outlined text-4xl mb-2 opacity-35">rate_review</span>
                   <p className="font-bold text-sm">No reviews yet</p>
                   <p className="text-xs mt-1 text-on-surface-variant/60">
-                    This technician has not received any customer ratings yet.
+                    This professional has not received any customer ratings yet.
                   </p>
                 </div>
               ) : (
@@ -1660,7 +1660,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                 <div className="space-y-6 text-xs text-primary font-bold">
                   {/* Status & Compliance */}
                   <div className="space-y-4 pb-4 border-b border-outline-variant/10">
-                    <h5 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70">Operational Profile</h5>
+                    <h5 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70">Professional Profile</h5>
                     
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -1987,7 +1987,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
               {/* Notes & Override Tab */}
               {activeProfileTab === "notes" && (
                 <div className="space-y-5">
-                  <h5 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70 mb-2">CRM Admin Notes</h5>
+                  <h5 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70 mb-2">Admin Notes</h5>
                   
                   {selectedProfilePartner.internal_note ? (
                     <div className="border border-outline-variant/15 p-3.5 rounded-xl bg-surface-container-low/30">
@@ -2037,7 +2037,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                       className="w-full bg-secondary hover:brightness-105 hover:scale-[1.01] text-primary rounded-xl py-3 font-black text-xs uppercase tracking-widest transition-all"
                       disabled={isPending}
                     >
-                      {isPending ? "Saving changes..." : "Save CRM Profile Metadata"}
+                      {isPending ? "Saving changes..." : "Save Notes & Risk Reason"}
                     </Button>
                   </form>
                 </div>

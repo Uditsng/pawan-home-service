@@ -309,7 +309,7 @@ export default async function AdminBookingsPage() {
             Bookings
           </h1>
           <p className="text-on-surface-variant font-medium mt-1 opacity-60 text-sm">
-            Track all bookings, assign partners, and manage orders.
+            Track all bookings, assign professionals, and manage customer requests.
           </p>
         </div>
       </div>

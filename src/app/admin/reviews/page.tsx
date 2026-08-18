@@ -137,10 +137,10 @@ export default async function AdminReviewsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-primary tracking-tight font-headline">
-            Review Moderation
+            Customer Reviews
           </h1>
           <p className="text-xs text-on-surface-variant/70 font-semibold mt-1">
-            Approve, reject, or hide customer ratings & reviews.
+            View and manage customer ratings and reviews.
           </p>
         </div>
       </div>

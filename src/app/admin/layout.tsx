@@ -14,7 +14,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "Dashboard", href: "/admin/dashboard", icon: "dashboard" },
     { name: "Bookings", href: "/admin/bookings", icon: "calendar_month" },
     { name: "Customers", href: "/admin/customers", icon: "group" },
-    { name: "Partners", href: "/admin/partners", icon: "handshake" },
+    { name: "Professionals", href: "/admin/partners", icon: "handshake" },
     { name: "Services", href: "/admin/services", icon: "handyman" },
     { name: "CarryBuddy", href: "/admin/shopping-assistant", icon: "shopping_bag" },
     { name: "Finance", href: "/admin/finance", icon: "payments" },
@@ -43,7 +43,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 />
                 <div>
                   <h1 className="text-xl font-bold tracking-tight text-primary leading-none">PHS Cleaning Company</h1>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant mt-1">Admin Ops</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant mt-1">Admin</p>
                 </div>
               </Link>
               <button onClick={() => setMobileMenuOpen(false)} className="p-2 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors">
@@ -88,7 +88,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             />
             <div>
               <h1 className="text-2xl font-bold tracking-tighter text-primary leading-none">PHS Cleaning Company</h1>
-              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-on-surface-variant mt-1.5 opacity-60">Operations</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-on-surface-variant mt-1.5 opacity-60">Admin Portal</p>
             </div>
           </Link>
         </div>

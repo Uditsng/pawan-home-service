@@ -119,9 +119,9 @@ export default function ReviewsConsole({ initialReviews }: ReviewsConsoleProps) 
 
   const tabs: { key: TabType; label: string; badgeVariant: "warning" | "success" | "danger" | "surface" }[] = [
     { key: "pending", label: "Pending Approval", badgeVariant: "warning" },
-    { key: "approved", label: "Approved & Live", badgeVariant: "success" },
+    { key: "approved", label: "Approved", badgeVariant: "success" },
     { key: "rejected", label: "Rejected", badgeVariant: "danger" },
-    { key: "hidden", label: "Hidden / Archived", badgeVariant: "surface" },
+    { key: "hidden", label: "Hidden", badgeVariant: "surface" },
   ];
 
   return (
@@ -131,7 +131,7 @@ export default function ReviewsConsole({ initialReviews }: ReviewsConsoleProps) 
         <div className="p-4 bg-error/10 border border-error/20 text-error text-sm rounded-2xl flex items-start gap-3 animate-fade-in">
           <span className="material-symbols-outlined text-lg mt-0.5">error</span>
           <div className="flex-1">
-            <h4 className="font-bold">Moderation Action Failed</h4>
+            <h4 className="font-bold">Action Failed</h4>
             <p className="text-xs mt-0.5 opacity-90">{errorMsg}</p>
           </div>
           <button
@@ -269,7 +269,7 @@ export default function ReviewsConsole({ initialReviews }: ReviewsConsoleProps) 
                     {/* Overall Rating & Service */}
                     <div className="space-y-1">
                       <span className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/50 block">
-                        Overall Score
+                        Overall Rating
                       </span>
                       <div className="flex items-center gap-2">
                         {renderStars(review.rating, "text-lg")}
@@ -295,10 +295,10 @@ export default function ReviewsConsole({ initialReviews }: ReviewsConsoleProps) 
                     </div>
                   </div>
 
-                  {/* Professional (Provider) Assigned */}
+                  {/* Professional Assigned */}
                   {review.partner && (
                     <div className="flex items-center gap-2 text-xs bg-surface-container-low/40 px-3 py-2 rounded-xl border border-outline-variant/10">
-                      <span className="text-on-surface-variant/70 font-semibold">Assigned Pro:</span>
+                      <span className="text-on-surface-variant/70 font-semibold">Professional:</span>
                       <div className="flex items-center gap-1.5">
                         <div className="w-5 h-5 rounded-full overflow-hidden bg-surface-container relative shrink-0">
                           {review.partner.avatar_url ? (

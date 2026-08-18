@@ -68,7 +68,7 @@ export default function InvoiceSettingsForm({ initialSettings }: InvoiceSettings
         <Card variant="solid" className="p-6 space-y-4">
           <div className="flex items-center gap-3 border-b border-outline-variant/10 pb-3">
             <span className="material-symbols-outlined text-primary text-xl">business</span>
-            <h3 className="text-sm font-bold uppercase tracking-wider text-primary">Company Registry Details</h3>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-primary">Company Details</h3>
           </div>
 
           <div className="space-y-4">
@@ -139,7 +139,7 @@ export default function InvoiceSettingsForm({ initialSettings }: InvoiceSettings
         <Card variant="solid" className="p-6 space-y-4">
           <div className="flex items-center gap-3 border-b border-outline-variant/10 pb-3">
             <span className="material-symbols-outlined text-primary text-xl">contact_mail</span>
-            <h3 className="text-sm font-bold uppercase tracking-wider text-primary">Support & Physical Address</h3>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-primary">Contact & Address</h3>
           </div>
 
           <div className="space-y-4">

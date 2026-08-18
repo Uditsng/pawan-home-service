@@ -130,7 +130,7 @@ export function SettingsConsole({
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60">Partner Payout Share</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60">Professional Payout Share</label>
                 <input
                   type="text"
                   value={`${Math.max(0, 100 - (parseFloat(platformCommission) || 0))}%`}
@@ -140,10 +140,10 @@ export function SettingsConsole({
               </div>
             </div>
           </div>
-          <p className="text-[10px] font-bold text-on-surface-variant/40 mt-4 uppercase">Applies immediately to upcoming services & partner payouts.</p>
+          <p className="text-[10px] font-bold text-on-surface-variant/40 mt-4 uppercase">Applies immediately to upcoming services & professional payouts.</p>
         </Card>
 
-        {/* Tax & Currency (GST System Engine) */}
+        {/* Tax & Currency (GST) */}
         <Card variant="solid" className="space-y-6 flex flex-col justify-between">
           <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -151,7 +151,7 @@ export function SettingsConsole({
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                   <span className="material-symbols-outlined">payments</span>
                 </div>
-                <h3 className="text-lg font-bold tracking-tight text-primary font-headline">GST System</h3>
+                <h3 className="text-lg font-bold tracking-tight text-primary font-headline">GST / Taxes</h3>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
@@ -217,7 +217,7 @@ export function SettingsConsole({
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60">Partner Penalty Rate</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60">Professional Penalty Rate</label>
                 <input
                   type="text"
                   value={penaltyRate}
@@ -227,7 +227,7 @@ export function SettingsConsole({
               </div>
             </div>
           </div>
-          <p className="text-[10px] font-bold text-on-surface-variant/40 mt-4 uppercase">Partner rejections affect internal cancellation rates.</p>
+          <p className="text-[10px] font-bold text-on-surface-variant/40 mt-4 uppercase">Professional rejections affect cancellation rates.</p>
         </Card>
 
         {/* Service Zones */}
@@ -274,7 +274,7 @@ export function SettingsConsole({
         </Card>
       </div>
 
-      {/* Referral Program Engine Card */}
+      {/* Referral Program Card */}
       <Card variant="solid" className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -282,7 +282,7 @@ export function SettingsConsole({
               <span className="material-symbols-outlined">volunteer_activism</span>
             </div>
             <div>
-              <h3 className="text-lg font-bold tracking-tight text-primary font-headline">Referral Program System</h3>
+              <h3 className="text-lg font-bold tracking-tight text-primary font-headline">Referral Program</h3>
               <p className="text-xs text-on-surface-variant font-medium">Configure referrer reward and friend checkout discount parameters (default 50-50 split).</p>
             </div>
           </div>

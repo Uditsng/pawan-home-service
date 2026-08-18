@@ -110,7 +110,7 @@ export default async function PerformancePage() {
           </div>
           <div className="hidden sm:flex items-center gap-1.5 bg-secondary/15 text-primary px-3 py-1.5 rounded-xl border border-secondary/30 text-xs font-bold font-label">
             <span className="material-symbols-outlined text-base">workspace_premium</span>
-            <span>Quality Scorecard</span>
+            <span>Performance Summary</span>
           </div>
         </div>
 
@@ -129,7 +129,7 @@ export default async function PerformancePage() {
                 </div>
                 <div>
                   <span className="font-label text-[10px] font-extrabold uppercase tracking-widest text-secondary block">
-                    Partner Metric Overview
+                    Performance Overview
                   </span>
                   <h2 className="font-headline font-extrabold text-sm sm:text-base leading-snug text-white">
                     {ratingAvg >= 4.5
@@ -270,7 +270,7 @@ export default async function PerformancePage() {
               </p>
             </div>
             <span className="text-[10px] bg-error/10 text-error px-2.5 py-1 rounded-lg font-bold uppercase tracking-wider">
-              Safety Threshold: 5%
+              Keep below 5%
             </span>
           </div>
         </section>
@@ -353,7 +353,7 @@ export default async function PerformancePage() {
                 100+ Jobs
               </span>
               <span className="text-[10px] text-on-surface-variant mt-0.5">
-                {(totalCompleted || 0) >= 100 ? "Veteran Partner" : `${totalCompleted || 0}/100 Jobs`}
+                {(totalCompleted || 0) >= 100 ? "Experienced Professional" : `${totalCompleted || 0}/100 Jobs`}
               </span>
             </div>
 

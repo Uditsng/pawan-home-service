@@ -22,7 +22,7 @@ export default async function PartnerSettingsPage() {
           <Link href="/partner/profile" className="text-on-surface-variant hover:text-primary transition-colors flex items-center">
             <span className="material-symbols-outlined text-[24px]">arrow_back</span>
           </Link>
-          <h1 className="text-lg sm:text-xl font-headline font-black text-on-surface">App Settings</h1>
+          <h1 className="text-lg sm:text-xl font-headline font-black text-on-surface">Settings</h1>
         </div>
 
         <div className="max-w-md w-full rounded-3xl p-6 sm:p-8 text-center shadow-xs relative overflow-hidden bg-surface-container-lowest mx-auto border border-outline-variant/15">
@@ -38,7 +38,7 @@ export default async function PartnerSettingsPage() {
           </span>
 
           <h2 className="text-xl sm:text-2xl font-headline font-black tracking-tight text-on-surface mb-2">
-            App Settings
+            Settings
           </h2>
 
           <p className="text-on-surface-variant text-xs sm:text-sm leading-relaxed mb-6 font-medium">
@@ -46,7 +46,7 @@ export default async function PartnerSettingsPage() {
           </p>
 
           <div className="pt-4 border-t border-outline-variant/15 text-[11px] text-on-surface-variant/60 font-bold uppercase tracking-widest">
-            PHS Partner App v1.0.2
+            PHS Professional App v1.0.2
           </div>
         </div>
       </main>

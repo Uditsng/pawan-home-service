@@ -281,7 +281,7 @@ export default function PendingClient({
   if (kycStatus === "approved") {
     return (
       <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-6 antialiased">
-        <div className="w-full max-w-xl bg-white/80 backdrop-blur-xl p-8 md:p-12 rounded-[32px] shadow-[0_20px_50px_rgba(30,41,59,0.06)] border border-white/50 text-center relative overflow-hidden">
+        <div className="w-full max-w-xl bg-white/80 backdrop-blur-xl p-8 md:p-12 rounded-4xl shadow-[0_20px_50px_rgba(30,41,59,0.06)] border border-white/50 text-center relative overflow-hidden">
           
           <div className="absolute top-0 right-0 w-48 h-48 bg-secondary/15 rounded-full blur-[60px] -z-10 -mr-16 -mt-16" />
 
@@ -292,11 +292,11 @@ export default function PendingClient({
           </div>
 
           <h1 className="text-2xl md:text-3xl font-headline font-black tracking-tighter text-primary">
-            Application Approved!
+            Verification Approved!
           </h1>
           
           <p className="text-on-surface-variant text-sm font-semibold mt-4 leading-relaxed max-w-md mx-auto">
-            Your KYC verification is complete and has been approved. We are redirecting you to set up your profile and services.
+            Your document verification is complete and approved. Redirecting you to set up your profile and services.
           </p>
 
           <div className="flex justify-center mt-8 gap-1.5 items-center">
@@ -314,7 +314,7 @@ export default function PendingClient({
   if (kycStatus === "pending") {
     return (
       <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-6 antialiased">
-        <div className="w-full max-w-xl bg-white/80 backdrop-blur-xl p-8 md:p-12 rounded-[32px] shadow-[0_20px_50px_rgba(30,41,59,0.06)] border border-white/50 text-center relative overflow-hidden">
+        <div className="w-full max-w-xl bg-white/80 backdrop-blur-xl p-8 md:p-12 rounded-4xl shadow-[0_20px_50px_rgba(30,41,59,0.06)] border border-white/50 text-center relative overflow-hidden">
           
           <div className="absolute top-0 right-0 w-48 h-48 bg-secondary/15 rounded-full blur-[60px] -z-10 -mr-16 -mt-16" />
 
@@ -325,11 +325,11 @@ export default function PendingClient({
           </div>
 
           <h1 className="text-2xl md:text-3xl font-headline font-black tracking-tighter text-primary">
-            Verification Pending
+            Document Review Pending
           </h1>
           
           <p className="text-on-surface-variant text-sm font-semibold mt-4 leading-relaxed max-w-md mx-auto">
-            Your documents have been submitted successfully. Our team will contact you shortly to perform offline verifications and activate your account.
+            Your documents have been submitted. Our team is reviewing them and will activate your account shortly.
           </p>
 
           <div className="bg-surface-container rounded-2xl p-5 border border-outline-variant/15 text-left text-xs font-bold text-on-surface-variant space-y-2 mt-8">
@@ -361,20 +361,20 @@ export default function PendingClient({
   // State: Documents Upload Form (Null, Not Submitted, or Rejected)
   return (
     <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-6 antialiased pb-16">
-      <div className="w-full max-w-2xl bg-white/80 backdrop-blur-xl p-6 md:p-10 rounded-[32px] shadow-[0_20px_50px_rgba(30,41,59,0.06)] border border-white/50 relative overflow-hidden">
+      <div className="w-full max-w-2xl bg-white/80 backdrop-blur-xl p-6 md:p-10 rounded-4xl shadow-[0_20px_50px_rgba(30,41,59,0.06)] border border-white/50 relative overflow-hidden">
         
         <div className="absolute top-0 right-0 w-64 h-64 bg-secondary/10 rounded-full blur-[80px] -z-10 -mr-20 -mt-20" />
 
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 bg-secondary/10 border border-secondary/20 rounded-full px-3 py-1.5 text-xs font-bold text-secondary uppercase tracking-wider mb-4 shadow-sm">
             <span className="w-2 h-2 rounded-full bg-secondary"></span>
-            Verification Required
+            Document Verification
           </div>
           <h1 className="text-2xl md:text-3xl font-headline font-black tracking-tighter text-primary">
-            Upload KYC Documents
+            Upload Verification Documents
           </h1>
           <p className="text-on-surface-variant text-sm font-medium mt-2">
-            Please upload clear copies (under 2MB, JPG/PNG/PDF) for offline registration audit.
+            Please upload clear copies (under 2MB, JPG/PNG/PDF) for document review.
           </p>
         </div>
 
@@ -382,7 +382,7 @@ export default function PendingClient({
           <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl flex items-start gap-3 shadow-sm">
             <span className="material-symbols-outlined text-lg mt-0.5">warning</span>
             <div>
-              <p className="font-extrabold text-sm">Verification Rejected</p>
+              <p className="font-extrabold text-sm">Verification Needs Attention</p>
               <p className="text-xs font-semibold text-red-600 mt-1">
                 Reason: {rejectionReason || "Documents were not clear or incomplete."}
               </p>
@@ -396,7 +396,7 @@ export default function PendingClient({
             {documentTypes.map((doc) => (
               <div
                 key={doc.key}
-                className="bg-surface-container-low rounded-2xl p-4 border border-outline-variant/15 flex flex-col justify-between h-[110px] relative hover:border-secondary/50 transition-all"
+                className="bg-surface-container-low rounded-2xl p-4 border border-outline-variant/15 flex flex-col justify-between h-28 relative hover:border-secondary/50 transition-all"
               >
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-secondary text-lg">
@@ -411,7 +411,7 @@ export default function PendingClient({
                   {urls[doc.key] ? (
                     <div className="flex items-center gap-2 text-emerald-600 font-extrabold">
                       <span className="material-symbols-outlined text-sm">check_circle</span>
-                      <span className="truncate max-w-[180px]">{filesSelected[doc.key]}</span>
+                      <span className="truncate max-w-45">{filesSelected[doc.key]}</span>
                     </div>
                   ) : (
                     <label className="flex items-center gap-1.5 justify-center py-2 px-3 bg-white border border-outline-variant/30 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors shadow-sm w-full">
@@ -433,7 +433,7 @@ export default function PendingClient({
           {/* Details fields */}
           <div className="border-t border-outline-variant/15 pt-6 space-y-4">
             <h3 className="text-sm font-headline font-black text-secondary uppercase tracking-wider mb-2">
-              Technician details
+              Professional Details
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -473,7 +473,7 @@ export default function PendingClient({
           {/* Bank Details */}
           <div className="border-t border-outline-variant/15 pt-6 space-y-4">
             <h3 className="text-sm font-headline font-black text-secondary uppercase tracking-wider mb-2">
-              Payout Bank Details
+              Bank Account for Payouts
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -550,7 +550,7 @@ export default function PendingClient({
               disabled={isUploading || isPending}
               className="flex-1 py-3 bg-linear-to-br from-[#059669] to-success text-white font-extrabold text-xs rounded-xl hover:scale-[1.01] active:scale-95 shadow-[0_8px_20px_rgba(16,185,129,0.25)] transition-all duration-200 border-none cursor-pointer"
             >
-              {isUploading ? "Uploading Documents..." : isPending ? "Submitting Application..." : "Submit KYC Documents"}
+              {isUploading ? "Uploading Documents..." : isPending ? "Submitting Application..." : "Submit Documents for Review"}
             </Button>
           </div>
         </form>

@@ -267,15 +267,15 @@ export function EarningsClient({ bookings, commissionPercent, streak, comparison
         {/* 3 Metric Cards */}
         <div className="grid grid-cols-3 gap-1.5">
           <div className="bg-surface-container-lowest border border-outline-variant/15 rounded-lg p-2">
-            <p className="text-[9px] uppercase tracking-wider font-bold text-on-surface-variant">Service Revenue</p>
+            <p className="text-[9px] uppercase tracking-wider font-bold text-on-surface-variant">Total Job Value</p>
             <p className="text-sm font-black text-on-surface tracking-tight">₹{breakdown.serviceRevenue.toFixed(0)}</p>
           </div>
           <div className="bg-surface-container-lowest border border-outline-variant/15 rounded-lg p-2">
-            <p className="text-[9px] uppercase tracking-wider font-bold text-on-surface-variant">Platform Commission</p>
+            <p className="text-[9px] uppercase tracking-wider font-bold text-on-surface-variant">Platform Fee</p>
             <p className="text-sm font-black text-error tracking-tight">-₹{breakdown.platformCommissionAmount.toFixed(0)}</p>
           </div>
           <div className="bg-primary rounded-lg p-2">
-            <p className="text-[9px] uppercase tracking-wider font-bold text-secondary/90">You Take Home</p>
+            <p className="text-[9px] uppercase tracking-wider font-bold text-secondary/90">Your Earnings</p>
             <p className="text-sm font-black text-on-primary tracking-tight">₹{breakdown.partnerPayoutAmount.toFixed(0)}</p>
           </div>
         </div>
@@ -364,7 +364,7 @@ export function EarningsClient({ bookings, commissionPercent, streak, comparison
         {/* Transaction List */}
         <div>
           <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1 px-0.5">
-            Transactions ({filtered.length})
+            Completed Jobs ({filtered.length})
           </p>
           <div className="space-y-0.5">
             {filtered.map((b) => {
@@ -398,15 +398,15 @@ export function EarningsClient({ bookings, commissionPercent, streak, comparison
                   {isExpanded && (
                     <div className="bg-surface-container-low border border-outline-variant/15 rounded-lg p-2 mx-1 mb-0.5 text-[11px] space-y-0.5">
                       <div className="flex justify-between">
-                        <span className="text-on-surface-variant">Service Revenue</span>
+                        <span className="text-on-surface-variant">Total Job Value</span>
                         <span className="font-semibold">₹{e.serviceRevenue.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-on-surface-variant">Platform Commission ({e.commissionPercent}%)</span>
+                        <span className="text-on-surface-variant">Platform Fee ({e.commissionPercent}%)</span>
                         <span className="font-semibold text-error">-₹{e.platformCommissionAmount.toFixed(2)}</span>
                       </div>
                       <div className="border-t border-outline-variant/10 pt-0.5 flex justify-between font-bold">
-                        <span className="text-on-surface-variant">You Take Home</span>
+                        <span className="text-on-surface-variant">Your Payout</span>
                         <span className="text-primary">₹{e.partnerPayoutAmount.toFixed(2)}</span>
                       </div>
                       {b.booking_pricing?.gst_amount ? (

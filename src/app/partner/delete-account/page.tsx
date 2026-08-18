@@ -27,7 +27,7 @@ export default async function PartnerDeleteAccountPage() {
           <Link href="/partner/profile" className="text-on-surface-variant hover:text-primary transition-colors flex items-center">
             <span className="material-symbols-outlined text-[24px]">arrow_back</span>
           </Link>
-          <h1 className="text-lg sm:text-xl font-headline font-black text-on-surface">Request Account Deletion</h1>
+          <h1 className="text-lg sm:text-xl font-headline font-black text-on-surface">Request Delete Account</h1>
         </div>
 
         <div className="max-w-md w-full rounded-3xl p-6 sm:p-8 text-center shadow-xs relative overflow-hidden bg-surface-container-lowest mx-auto border border-outline-variant/15">
@@ -43,19 +43,19 @@ export default async function PartnerDeleteAccountPage() {
           </span>
 
           <h2 className="text-xl sm:text-2xl font-headline font-black tracking-tight text-on-surface mb-2">
-            Account Deletion
+            Delete Account
           </h2>
 
           <p className="text-on-surface-variant text-xs sm:text-sm leading-relaxed mb-6 font-medium">
-            We are working on an automated, secure account self-deletion interface for our professionals. Currently, this page is under development to ensure data security and platform integrity.
+            We are building a direct account deletion tool. In the meantime, please reach out to our support team and we will assist you immediately.
           </p>
 
           <div className="bg-surface-container-low rounded-2xl p-4 mb-6 border border-outline-variant/15 text-left">
             <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest block mb-1">
-              Urgent Request?
+              Need Help?
             </span>
             <p className="text-xs text-on-surface-variant leading-relaxed font-medium">
-              Please email our support desk at{" "}
+              Please email support at{" "}
               <a href="mailto:phscustomercare15@gmail.com" className="text-primary font-bold hover:underline">
                 phscustomercare15@gmail.com
               </a>{" "}

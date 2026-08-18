@@ -78,7 +78,7 @@ export default async function PartnerServicesPage() {
 
         <div>
           <h2 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-4 ml-1">
-            Professional Skill & Service Configuration
+            My Services & Locations
           </h2>
 
           {/* Services Offered Section */}

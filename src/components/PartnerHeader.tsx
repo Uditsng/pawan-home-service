@@ -52,7 +52,7 @@ export default function PartnerHeader({ initialStatus = "offline" }: PartnerHead
 
   if (isBusy) {
     dotColor    = "bg-warning shadow-[0_0_8px_rgba(245,158,11,0.5)]";
-    labelText   = "ON JOB";
+    labelText   = "ON A JOB";
     labelColor  = "text-warning";
     borderColor = "border-warning/20";
     title       = "You are currently on a job";

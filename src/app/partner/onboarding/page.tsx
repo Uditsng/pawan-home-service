@@ -72,13 +72,13 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
         <div className="mb-8 sm:mb-10 text-center">
           <div className="inline-flex items-center gap-2 bg-secondary/15 border border-secondary/30 rounded-full px-3 py-1.5 text-xs font-bold text-primary uppercase tracking-wider mb-4 shadow-xs">
             <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
-            Partner Onboarding Setup
+            Professional Setup
           </div>
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-headline font-black tracking-tight text-on-surface">
-            Complete Your Partner Profile
+            Set Up Your Professional Profile
           </h1>
           <p className="text-on-surface-variant text-xs sm:text-sm font-medium mt-2 max-w-lg mx-auto leading-relaxed">
-            Select your service expertise and pincode coverage to activate auto-assignment on your profile.
+            Select the services you offer and areas you cover to start receiving jobs.
           </p>
         </div>
 
@@ -113,7 +113,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
               Cancel
             </Link>
             <Button variant="gradient" className="flex-1 py-3.5 bg-primary text-on-primary font-extrabold text-xs sm:text-sm rounded-2xl hover:bg-primary/95 shadow-sm transition-all border-none cursor-pointer">
-              Save & Go Live
+              Save & Continue
             </Button>
           </div>
 

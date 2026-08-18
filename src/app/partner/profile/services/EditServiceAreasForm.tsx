@@ -51,13 +51,13 @@ export default function EditServiceAreasForm({ initialAreas }: EditServiceAreasF
       )}
 
       <div className="p-4 sm:p-5 border-b border-outline-variant/15 flex items-center justify-between bg-surface-container-low/50">
-        <h3 className="font-headline font-bold text-on-surface text-base">Service Areas</h3>
+        <h3 className="font-headline font-bold text-on-surface text-base">Service Locations</h3>
         {!isEditing && (
           <button
             onClick={() => setIsEditing(true)}
             className="px-4 py-2 bg-primary text-on-primary text-xs font-bold rounded-xl shadow-xs hover:bg-primary/95 active:scale-95 transition-all cursor-pointer border-none"
           >
-            Edit Areas
+            Edit Locations
           </button>
         )}
       </div>

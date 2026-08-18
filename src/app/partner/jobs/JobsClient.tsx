@@ -501,18 +501,18 @@ export default function JobsClient({
           <button
             disabled={isPending}
             onClick={() =>
-              handleAction(() => startRoute(job.id), "Route started! Drive safely.")
+              handleAction(() => startRoute(job.id), "On the way! Drive safely.")
             }
             className="bg-linear-to-br from-[#00685f] to-[#008378] text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-[0_4px_12px_rgba(0,104,95,0.25)] hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
           >
-            {isPending ? "Processing..." : "Start Route"}
+            {isPending ? "Processing..." : "On My Way"}
           </button>
           <button
             disabled={isPending}
             onClick={() => openRejectModal(job.id)}
             className="px-4 py-2.5 border-2 border-red-200 text-red-500 font-label rounded-xl font-bold uppercase tracking-wider text-[10px] hover:bg-red-50 active:scale-95 transition-all disabled:opacity-50"
           >
-            Can&apos;t Do
+            Decline Job
           </button>
         </div>
       );
@@ -523,10 +523,10 @@ export default function JobsClient({
         return (
           <button
             disabled={isPending}
-            onClick={() => handleAction(() => startRoute(job.id), "Route started!")}
+            onClick={() => handleAction(() => startRoute(job.id), "On the way!")}
             className="bg-linear-to-br from-[#00685f] to-[#008378] text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-[0_4px_12px_rgba(0,104,95,0.25)] hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
           >
-            {isPending ? "Processing..." : "Start Route"}
+            {isPending ? "Processing..." : "On My Way"}
           </button>
         );
       }
@@ -537,7 +537,7 @@ export default function JobsClient({
             onClick={() => handleAction(() => reachLocation(job.id), "Reached location. OTP generated.")}
             className="bg-linear-to-br from-[#00685f] to-[#008378] text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-[0_4px_12px_rgba(0,104,95,0.25)] hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
           >
-            {isPending ? "Processing..." : "Reached Location"}
+            {isPending ? "Processing..." : "I Have Arrived"}
           </button>
         );
       }
@@ -566,7 +566,7 @@ export default function JobsClient({
                   onClick={() => handleAction(() => verifyArrivalOtp(job.id, enteredOtp), "OTP verified! Service started.")}
                   className="bg-linear-to-br from-[#00685f] to-[#008378] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md hover:brightness-110 active:scale-95 disabled:opacity-50"
                 >
-                  Verify
+                  Verify OTP
                 </button>
               ) : (
                 <button
@@ -574,7 +574,7 @@ export default function JobsClient({
                   onClick={() => handleAction(() => reachLocation(job.id), "New Arrival OTP generated & sent to customer.")}
                   className="bg-linear-to-br from-[#00685f] to-[#008378] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md hover:brightness-110 active:scale-95 disabled:opacity-50"
                 >
-                  Resend
+                  Resend OTP
                 </button>
               )}
             </div>
@@ -593,7 +593,7 @@ export default function JobsClient({
               onClick={() => handleAction(() => requestCompletion(job.id), "Completion OTP requested. Ask the customer for OTP.")}
               className="bg-linear-to-br from-[#00685f] to-[#008378] text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-[0_4px_12px_rgba(0,104,95,0.25)] hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 shrink-0"
             >
-              {isPending ? "Processing..." : "Complete Service"}
+              {isPending ? "Processing..." : "Complete Job"}
             </button>
             {isHourly && (
               <button
@@ -634,7 +634,7 @@ export default function JobsClient({
                   onClick={() => handleAction(() => verifyCompletionOtp(job.id, enteredOtp), "Completion OTP verified! Service closed.")}
                   className="bg-linear-to-br from-[#00685f] to-[#008378] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md hover:brightness-110 active:scale-95 disabled:opacity-50"
                 >
-                  Verify
+                  Verify OTP
                 </button>
               ) : (
                 <button
@@ -642,7 +642,7 @@ export default function JobsClient({
                   onClick={() => handleAction(() => requestCompletion(job.id), "New Completion OTP generated & sent to customer.")}
                   className="bg-linear-to-br from-[#00685f] to-[#008378] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md hover:brightness-110 active:scale-95 disabled:opacity-50"
                 >
-                  Resend
+                  Resend OTP
                 </button>
               )}
             </div>
@@ -675,10 +675,10 @@ export default function JobsClient({
         key={offer.id}
         className="relative bg-white rounded-3xl p-4 shadow-[0_4px_24px_rgba(0,34,97,0.08)] border border-primary/10 overflow-hidden"
       >
-        {/* Tier badge */}
+        {/* Offer badge */}
         <div className="absolute top-4 right-4 bg-primary/8 px-2 py-1 rounded-full">
           <span className="text-[9px] font-black uppercase tracking-widest text-primary">
-            Tier {offer.broadcast_tier}
+            Job Offer {offer.broadcast_tier}
           </span>
         </div>
 
@@ -765,7 +765,7 @@ export default function JobsClient({
             {isClaiming ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Claiming...
+                Accepting...
               </>
             ) : (
               <>
@@ -852,20 +852,20 @@ export default function JobsClient({
                 disabled={!rejectReason.trim()}
                 className="flex-1 py-3 rounded-xl bg-red-500 text-white font-bold text-sm shadow-lg hover:bg-red-600 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Confirm Rejection
+                Decline Job
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ─── Request More Time Modal ───────────────────────── */}
+      {/* ─── Request Extra Time Modal ───────────────────────── */}
       {extensionModalOpen && extensionJob && (
         <div className="fixed inset-0 z-200 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-2xl font-body">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-headline font-bold text-lg text-on-surface">
-                Request More Time
+                Request Extra Time
               </h3>
               <button
                 type="button"
@@ -887,7 +887,7 @@ export default function JobsClient({
               </div>
             ) : (
               <div className="space-y-2 mb-6">
-                <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Select Extension Rate</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Choose Extra Time</p>
                 <div className="grid grid-cols-1 gap-2">
                   {pricingOptions.map((opt) => {
                     const isSelected = selectedExtMinutes === opt.duration_minutes;
@@ -903,7 +903,7 @@ export default function JobsClient({
                             : "bg-surface border-outline-variant/10 text-on-surface hover:bg-surface-container-low hover:border-outline-variant/30"
                         }`}
                       >
-                        <span className="text-xs font-bold">{label} Extension</span>
+                        <span className="text-xs font-bold">+{label}</span>
                         <span className={`text-xs font-black ${isSelected ? "text-white" : "text-primary"}`}>₹{opt.price}</span>
                       </button>
                     );
@@ -926,7 +926,7 @@ export default function JobsClient({
                 disabled={isPending || pricingOptions.length === 0}
                 className="flex-1 py-3 rounded-xl bg-primary text-white font-bold text-sm shadow-lg hover:bg-primary/95 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {isPending ? "Sending..." : "Submit Request"}
+                {isPending ? "Sending..." : "Send Request"}
               </button>
             </div>
           </div>
@@ -1103,7 +1103,7 @@ export default function JobsClient({
                             {formatSecondsLeft(getHourlyTimeRemaining(job))}
                           </p>
                         ) : (
-                          <p className="text-[11px] font-bold text-on-surface-variant/70">Awaiting Start</p>
+                          <p className="text-[11px] font-bold text-on-surface-variant/70">Not Started Yet</p>
                         )}
                       </div>
                     </div>
@@ -1121,7 +1121,7 @@ export default function JobsClient({
                           return (
                             <span className="text-amber-600 flex items-center gap-1.5 animate-pulse">
                               <span className="material-symbols-outlined text-[13px]">hourglass_empty</span>
-                              Requested +{durationStr} (₹{latest.additional_amount}) &middot; Awaiting approval
+                              Requested +{durationStr} (₹{latest.additional_amount}) &middot; Waiting for customer
                             </span>
                           );
                         }
@@ -1129,7 +1129,7 @@ export default function JobsClient({
                           return (
                             <span className="text-blue-600 flex items-center gap-1.5 animate-pulse">
                               <span className="material-symbols-outlined text-[13px]">pending_payment</span>
-                              Approved &middot; Awaiting customer payment (₹{latest.additional_amount})
+                              Approved &middot; Waiting for customer payment (₹{latest.additional_amount})
                             </span>
                           );
                         }
@@ -1137,7 +1137,7 @@ export default function JobsClient({
                           return (
                             <span className="text-red-600 flex items-center gap-1.5">
                               <span className="material-symbols-outlined text-[13px]">cancel</span>
-                              Extension Rejected by Customer
+                              Extra time declined by customer
                             </span>
                           );
                         }
@@ -1145,7 +1145,7 @@ export default function JobsClient({
                           return (
                             <span className="text-[#059669] flex items-center gap-1.5">
                               <span className="material-symbols-outlined text-[13px]">check_circle</span>
-                              Extension Activated +{durationStr}
+                              Extra time added: +{durationStr}
                             </span>
                           );
                         }
@@ -1162,7 +1162,7 @@ export default function JobsClient({
                         if (!quote) {
                           return (
                             <div className="space-y-2">
-                              <p className="text-[11px] text-on-surface-variant font-medium">No quotation submitted yet for this inspection job.</p>
+                              <p className="text-[11px] text-on-surface-variant font-medium">No price quote created yet for this inspection job.</p>
                               {activeQuoteFormId === job.id ? (
                                 <div className="border border-outline-variant/10 rounded-xl p-3 bg-white">
                                   <QuotationWorkflow
@@ -1187,7 +1187,7 @@ export default function JobsClient({
                                   onClick={() => setActiveQuoteFormId(job.id)}
                                   className="w-full py-2 bg-primary text-white text-[11px] font-bold rounded-xl hover:opacity-90 transition-opacity"
                                 >
-                                  Create Quotation
+                                  Create Price Quote
                                 </button>
                               )}
                             </div>
@@ -1199,9 +1199,9 @@ export default function JobsClient({
                             <div className="space-y-1">
                               <p className="text-[11px] font-bold text-amber-600 flex items-center gap-1.5">
                                 <span className="material-symbols-outlined text-[13px]">hourglass_empty</span>
-                                Quotation Pending Approval: ₹{quote.total_amount}
+                                Quote Pending Approval: ₹{quote.total_amount}
                               </p>
-                              <p className="text-[9px] text-on-surface-variant/65">Work should begin only after the customer approves this quote.</p>
+                              <p className="text-[9px] text-on-surface-variant/65">Please wait for the customer to approve before starting work.</p>
                             </div>
                           );
                         }
@@ -1246,7 +1246,7 @@ export default function JobsClient({
                                   onClick={() => setActiveQuoteFormId(job.id)}
                                   className="w-full py-2 bg-primary text-white text-[11px] font-bold rounded-xl hover:opacity-90 transition-opacity"
                                 >
-                                  Submit New Quotation
+                                  Submit New Quote
                                 </button>
                               )}
                             </div>

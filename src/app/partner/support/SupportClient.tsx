@@ -30,14 +30,14 @@ export default function SupportClient() {
     {
       label: "Helpline Email",
       value: "phscustomercare15@gmail.com",
-      actionLabel: "Compose Email",
+      actionLabel: "Send Email",
       actionHref: "mailto:phscustomercare15@gmail.com",
       isCopyable: true,
     },
     {
       label: "Helpline Number",
       value: "+91 7408702019",
-      actionLabel: "Call Hotline",
+      actionLabel: "Call Support",
       actionHref: "tel:+917408702019",
       isCopyable: true,
     },
@@ -58,10 +58,10 @@ export default function SupportClient() {
       {/* Intro paragraph */}
       <div className="space-y-2 bg-surface-container-lowest rounded-3xl p-5 sm:p-6 shadow-xs border border-outline-variant/15">
         <p className="text-xs sm:text-sm text-on-surface-variant leading-relaxed font-medium">
-          We stand fully accountable for our services. Partner support desk is available to assist you with booking assignment status, payout issues, registration updates, and customer complaints.
+          Our support team is here to help you with job assignments, payouts, profile updates, and any questions.
         </p>
         <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mt-2">
-          Operational Hours: <span className="text-primary font-headline">9:00 AM - 8:00 PM (Mon - Sun)</span>
+          Support Hours: <span className="text-primary font-headline">9:00 AM - 8:00 PM (Mon - Sun)</span>
         </p>
       </div>
 

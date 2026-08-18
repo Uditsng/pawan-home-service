@@ -98,10 +98,10 @@ export default async function PartnerJobsPage() {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-xl font-black font-headline tracking-tighter text-on-surface">
-              Job Center
+              My Jobs
             </h1>
             <p className="text-xs font-semibold text-on-surface-variant flex items-center gap-1 mt-0.5">
-              Offers, assigned & active missions
+              Manage offers, assigned, and active jobs.
             </p>
           </div>
         </div>

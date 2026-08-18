@@ -42,7 +42,7 @@ export default async function PartnerBankDetailsPage() {
           <Link href="/partner/profile" className="text-on-surface-variant hover:text-primary transition-colors flex items-center">
             <span className="material-symbols-outlined text-[24px]">arrow_back</span>
           </Link>
-          <h1 className="text-lg sm:text-xl font-headline font-black text-on-surface">Registered Bank Account</h1>
+          <h1 className="text-lg sm:text-xl font-headline font-black text-on-surface">Bank Account</h1>
         </div>
 
         {!hasBankDetails ? (
@@ -50,15 +50,15 @@ export default async function PartnerBankDetailsPage() {
             <div className="w-16 h-16 bg-error/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <span className="material-symbols-outlined text-3xl text-error">account_balance_wallet</span>
             </div>
-            <h2 className="text-lg font-headline font-black text-on-surface mb-2">No Bank Details Found</h2>
+            <h2 className="text-lg font-headline font-black text-on-surface mb-2">No Bank Account Added</h2>
             <p className="text-xs sm:text-sm text-on-surface-variant font-medium mb-6 leading-relaxed max-w-md mx-auto">
-              You haven&apos;t added any bank details yet. Complete your KYC document submission to register your payout bank account.
+              You haven&apos;t added any bank details yet. Please submit your verification documents to add your bank account.
             </p>
             <Link
               href="/partner/pending"
               className="inline-flex items-center justify-center bg-primary text-on-primary font-bold text-xs sm:text-sm px-6 py-3 rounded-2xl hover:bg-primary/95 transition-all shadow-xs"
             >
-              Complete KYC Verification
+              Submit Verification Documents
             </Link>
           </div>
         ) : (
@@ -70,7 +70,7 @@ export default async function PartnerBankDetailsPage() {
                 </div>
                 <div>
                   <h3 className="font-headline font-bold text-base text-on-surface">Payout Bank Account</h3>
-                  <p className="text-xs text-on-surface-variant font-medium">Registered Payout Account</p>
+                  <p className="text-xs text-on-surface-variant font-medium">Verified for payouts</p>
                 </div>
               </div>
 
@@ -108,9 +108,9 @@ export default async function PartnerBankDetailsPage() {
             <div className="bg-warning/10 border border-warning/20 rounded-2xl p-4 flex gap-3">
               <span className="material-symbols-outlined text-warning text-lg shrink-0 mt-0.5">lock</span>
               <div>
-                <p className="text-xs font-bold text-on-surface">Locked Bank Information</p>
+                <p className="text-xs font-bold text-on-surface">Bank Details Locked</p>
                 <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
-                  To prevent unauthorized changes and protect your payouts, bank details cannot be edited online. Contact administration to request updates.
+                  For security, bank details cannot be edited directly in the app. Please contact support if you need to update your bank account.
                 </p>
               </div>
             </div>

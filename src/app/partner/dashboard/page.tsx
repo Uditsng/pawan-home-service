@@ -113,7 +113,7 @@ export default async function PartnerDashboardPage() {
               </div>
               <div>
                 <p className="text-[10px] sm:text-[11px] uppercase tracking-widest font-extrabold opacity-80 font-label">
-                  Current Mission In Progress
+                  Current Active Job
                 </p>
                 <p className="font-bold text-base sm:text-lg mt-0.5 leading-snug">
                   {activeJob.services?.title} —{" "}
@@ -137,17 +137,17 @@ export default async function PartnerDashboardPage() {
             </div>
             <div>
               <p className="font-bold text-sm sm:text-base text-on-surface">
-                No active mission currently
+                No active job right now
               </p>
               <p className="text-xs text-on-surface-variant mt-0.5">
-                Check your{" "}
+                Check{" "}
                 <Link
                   href="/partner/jobs"
                   className="text-primary font-bold hover:underline"
                 >
-                  Job Center
+                  My Jobs
                 </Link>{" "}
-                to view pending assignments and broadcasts.
+                to view upcoming and assigned jobs.
               </p>
             </div>
           </div>
@@ -158,7 +158,7 @@ export default async function PartnerDashboardPage() {
           <div className="lg:col-span-4 bg-surface-container-lowest border border-outline-variant/15 shadow-xs rounded-3xl p-6 relative overflow-hidden group">
             <div className="relative z-10">
               <span className="font-label text-xs uppercase tracking-widest text-on-surface-variant font-bold">
-                Daily Earnings
+                Today&apos;s Earnings
               </span>
               <div className="mt-2 flex items-baseline gap-2">
                 <h2 className="text-3xl sm:text-4xl font-black font-headline tracking-tight text-primary">
@@ -206,7 +206,7 @@ export default async function PartnerDashboardPage() {
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   <div>
                     <span className="bg-secondary/15 text-primary font-label text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest border border-secondary/30">
-                      New Assignment
+                      New Job Assigned
                     </span>
                     <h3 className="text-xl sm:text-2xl font-black font-headline mt-3 text-on-surface tracking-tight">
                       {nextAssignedJob.services?.title || "Service Request"}
@@ -217,7 +217,7 @@ export default async function PartnerDashboardPage() {
                       ₹{calculateCommissionBreakdown(Number(nextAssignedJob.total_amount || 0), commissionPercent).partnerPayoutAmount.toFixed(0)}
                     </p>
                     <p className="font-label text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">
-                      Potential Payout
+                      Your Payout
                     </p>
                   </div>
                 </div>
@@ -288,7 +288,7 @@ export default async function PartnerDashboardPage() {
                     href="/partner/jobs"
                     className="flex-1 bg-primary hover:bg-primary/95 text-on-primary py-3.5 px-6 rounded-2xl font-extrabold font-headline tracking-wide text-sm sm:text-base shadow-sm active:scale-[0.98] transition-all text-center"
                   >
-                    Manage Job in Job Center
+                    View Job Details
                   </Link>
                 </div>
               </div>
@@ -301,7 +301,7 @@ export default async function PartnerDashboardPage() {
                 </span>
               </div>
               <p className="font-bold text-on-surface text-base sm:text-lg">
-                No new assignments pending
+                No new jobs assigned
               </p>
               <p className="text-xs sm:text-sm text-on-surface-variant max-w-md mt-1">
                 New jobs will be auto-assigned to you based on your active status, services, and pincodes.
@@ -379,7 +379,7 @@ export default async function PartnerDashboardPage() {
                 : "—"}
             </p>
             <p className="font-label text-[10px] sm:text-xs uppercase font-bold tracking-widest text-on-surface-variant mt-1.5">
-              Rating Avg
+              Average Rating
             </p>
           </div>
           <div className="text-center md:border-r border-outline-variant/15 p-2 group">
@@ -389,7 +389,7 @@ export default async function PartnerDashboardPage() {
                 : "—"}
             </p>
             <p className="font-label text-[10px] sm:text-xs uppercase font-bold tracking-widest text-on-surface-variant mt-1.5">
-              Acceptance
+              Acceptance Rate
             </p>
           </div>
           <div className="text-center md:border-r border-outline-variant/15 p-2 group">

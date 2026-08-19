@@ -41,8 +41,13 @@ export function ComingSoonStrip({ services, hrefFor }: ComingSoonStripProps) {
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-primary/5">
-                  <span className="material-symbols-outlined text-4xl text-primary/20">image</span>
+                <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-linear-to-br from-primary/10 via-surface-container-low to-secondary/10">
+                  <span className="material-symbols-outlined text-4xl text-primary/30 group-hover:scale-110 transition-transform duration-300">
+                    schedule
+                  </span>
+                  <span className="text-[8px] font-black uppercase tracking-widest text-on-surface-variant/50">
+                    Poster coming soon
+                  </span>
                 </div>
               )}
               <div className="absolute top-2 left-2 bg-primary text-white text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full shadow-xs">
@@ -54,8 +59,9 @@ export function ComingSoonStrip({ services, hrefFor }: ComingSoonStripProps) {
               {service.description && (
                 <p className="text-[10px] text-on-surface-variant leading-snug line-clamp-2">{service.description}</p>
               )}
-              <span className="text-[10px] font-black text-secondary uppercase tracking-wider flex items-center gap-0.5 pt-1 mt-auto group-hover:gap-1.5 transition-all">
-                Notify Me <span className="material-symbols-outlined text-[12px]">arrow_forward</span>
+              <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-primary bg-secondary/10 border border-secondary/25 rounded-full px-3 py-1.5 mt-auto w-max group-hover:bg-secondary group-hover:text-primary transition-colors duration-300">
+                Notify Me
+                <span className="material-symbols-outlined text-[12px]">notifications_active</span>
               </span>
             </div>
           </Link>

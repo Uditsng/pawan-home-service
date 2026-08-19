@@ -106,14 +106,14 @@ export const getCachedServiceDetails = (serviceId: string) => unstable_cache(
       `)
       .eq("id", serviceId)
       .eq("status", "published")
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error(`[cachedServiceDetails] Database fetch failed for service ${serviceId}:`, error.message);
       throw error;
     }
 
-    return data as unknown as ServiceWithSubcategory;
+    return (data || null) as unknown as ServiceWithSubcategory | null;
   },
   [`service-details-${serviceId}`],
   {

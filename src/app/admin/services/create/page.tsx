@@ -80,6 +80,48 @@ export default async function AdminCreateServicePage() {
     // Core details
     const title = formData.get("title") as string;
     const subcategory_id = formData.get("subcategory_id") as string;
+    const form_mode = (formData.get("form_mode") as string) || "full";
+    const status = (formData.get("status") as string) || "published";
+
+    // ── Upcoming (Coming Soon) service ───────────────────────────────────────
+    if (form_mode === "upcoming") {
+      const poster_url = (formData.get("poster_url") as string) || null;
+      const description = (formData.get("description") as string) || "";
+
+      const { error } = await db.from("services").insert({
+        title,
+        subcategory_id,
+        description,
+        poster_url,
+        status: "upcoming",
+        is_active: true,
+        base_price: 0,
+        pricing_model: "fixed",
+        pricing_config: {},
+        form_fields: [],
+        gst_applicable: false,
+        image_url: null,
+        page_content: {
+          about_text: description,
+          included_features: [],
+          excluded_features: [],
+          faqs: [],
+        },
+      });
+
+      if (error) {
+        console.error(error);
+        return { type: "error", message: error.message };
+      }
+
+      revalidateServices(subcategory_id);
+      revalidatePath('/admin/services');
+      revalidatePath('/services');
+      revalidatePath('/');
+      revalidatePath('/services/upcoming');
+      redirect('/admin/services');
+    }
+
     const base_price = parseFloat(formData.get("base_price") as string);
     const original_price_raw = formData.get("original_price") as string;
     const original_price = original_price_raw ? parseFloat(original_price_raw) : null;
@@ -88,7 +130,6 @@ export default async function AdminCreateServicePage() {
     const image_url = formData.get("image_url") as string || null;
     const pricing_model = (formData.get("pricing_model") as string) || "fixed";
     const duration_rates_raw = formData.get("duration_rates_json") as string;
-    const status = (formData.get("status") as string) || "published";
 
     const pricing_config_json = formData.get("pricing_config_json") as string;
     const form_fields_json = formData.get("form_fields_json") as string;

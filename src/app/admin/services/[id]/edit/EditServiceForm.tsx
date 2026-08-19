@@ -31,6 +31,7 @@ type ServiceInitialData = {
   title: string;
   subcategory_id: string | null;
   image_url?: string | null;
+  poster_url?: string | null;
   base_price: number;
   original_price?: number | null;
   price_breakdown?: string | null;
@@ -76,7 +77,9 @@ export function EditServiceForm({
   taxRate?: number;
 }) {
   const [state, formAction, isPending] = useActionState(action, { type: null, message: null });
-  const [submitType, setSubmitType] = useState<"draft" | "published" | null>(null);
+
+  // Status selector (used to go-live from upcoming or save drafts)
+  const [status, setStatus] = useState<string>(initialData.status || "published");
 
   // Tab State
   const [activeTab, setActiveTab] = useState<"basic" | "pricing" | "variants" | "addons" | "content" | "preview" >("basic");
@@ -366,9 +369,57 @@ export function EditServiceForm({
           </div>
 
           <div className="pt-2">
+            <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Service Status</label>
+            <div className="flex flex-wrap gap-2">
+              {([
+                { value: "draft", label: "Draft", hint: "Hidden from customers" },
+                { value: "published", label: "Published", hint: "Visible & bookable" },
+                { value: "upcoming", label: "Upcoming", hint: "Coming Soon teaser" },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setStatus(opt.value)}
+                  className={`px-4 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                    status === opt.value
+                      ? "bg-primary text-white border-primary shadow-xs"
+                      : "bg-surface text-on-surface-variant border-outline-variant/25 hover:border-primary/40 hover:text-primary"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-on-surface-variant/70 mt-1.5">
+              {status === "upcoming"
+                ? "This service appears in the Coming Soon section with its poster & tagline. Select Published to launch it as a bookable service."
+                : status === "published"
+                  ? "This service is publicly visible and bookable by customers."
+                  : "Draft services are hidden from customers until published."}
+            </p>
+          </div>
+
+          <div className="pt-2">
             <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Service Image</label>
             <ImageUploadField defaultValue={initialData.image_url || ""} onValueChange={setPreviewImageUrl} />
           </div>
+
+          {status === "upcoming" && (
+            <div className="pt-2">
+              <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Coming Soon Poster (9:16)</label>
+              <ImageUploadField
+                name="poster_url"
+                defaultValue={initialData.poster_url || ""}
+                title="Coming Soon Poster"
+                description="Upload a 9:16 portrait poster used on Coming Soon banners and the Coming Soon page."
+                aspect={9 / 16}
+                aspectLabel="9:16"
+                outputWidth={720}
+                outputHeight={1280}
+                fileNameSuffix="poster"
+              />
+            </div>
+          )}
 
           {/* Warranty / Guarantee Tag */}
           <div className="p-4 bg-surface rounded-2xl border border-outline-variant/15 space-y-3">
@@ -1358,30 +1409,17 @@ export function EditServiceForm({
       <input type="hidden" name="variants_json" value={JSON.stringify(variantsList.filter((v) => v.title.trim()))} />
       <input type="hidden" name="addons_json" value={JSON.stringify(addonsList.filter((a) => a.title.trim()))} />
       <input type="hidden" name="form_fields_json" value={JSON.stringify(formFields)} />
+      <input type="hidden" name="status" value={status} />
 
       {/* Save Button Bar */}
       <div className="flex justify-end gap-3 border-t border-outline-variant/10 pt-4 sticky bottom-0 bg-surface-container-lowest py-3 z-10">
-        <Button 
-          type="submit" 
-          name="status" 
-          value="draft" 
-          variant="slate" 
-          size="lg" 
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
           disabled={isPending}
-          onClick={() => setSubmitType("draft")}
         >
-          {isPending && submitType === "draft" ? "Saving..." : "Save as Draft"}
-        </Button>
-        <Button 
-          type="submit" 
-          name="status" 
-          value="published" 
-          variant="primary" 
-          size="lg" 
-          disabled={isPending}
-          onClick={() => setSubmitType("published")}
-        >
-          {isPending && submitType === "published" ? "Publishing..." : "Publish Service"}
+          {isPending ? "Saving..." : "Save Changes"}
         </Button>
       </div>
     </form>

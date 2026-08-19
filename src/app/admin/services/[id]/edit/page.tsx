@@ -82,6 +82,7 @@ export default async function AdminEditServicePage({ params }: { params: Promise
     const price_breakdown = formData.get("price_breakdown") as string;
     const description = formData.get("description") as string;
     const image_url = formData.get("image_url") as string || null;
+    const poster_url = formData.get("poster_url") as string || null;
     const pricing_model = (formData.get("pricing_model") as string) || "fixed";
     const duration_rates_raw = formData.get("duration_rates_json") as string;
 
@@ -146,6 +147,7 @@ export default async function AdminEditServicePage({ params }: { params: Promise
       description,
       page_content,
       image_url,
+      poster_url,
       pricing_model,
       pricing_config,
       form_fields,

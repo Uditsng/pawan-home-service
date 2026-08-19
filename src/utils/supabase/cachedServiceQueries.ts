@@ -265,6 +265,106 @@ export const getCachedServiceAddons = (serviceId: string) => unstable_cache(
   }
 )();
 
+export interface UpcomingService {
+  id: string;
+  title: string;
+  description: string;
+  poster_url?: string | null;
+  status: string;
+  subcategory_id: string;
+  subcategories: {
+    subcategory_name: string;
+    icon_name: string;
+    categories: {
+      category_name: string;
+    };
+  } | null;
+}
+
+/**
+ * Fetches all "upcoming" (Coming Soon) services for the public landing /
+ * customer dashboard strips, cached for 30 minutes.
+ */
+export const getCachedUpcomingServices = () => unstable_cache(
+  async () => {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("services")
+      .select(`
+        id,
+        title,
+        description,
+        poster_url,
+        status,
+        subcategory_id,
+        subcategories (
+          subcategory_name,
+          icon_name,
+          categories (
+            category_name
+          )
+        )
+      `)
+      .eq("status", "upcoming")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("[cachedUpcomingServices] Database fetch failed:", error.message);
+      throw error;
+    }
+
+    return (data || []) as unknown as UpcomingService[];
+  },
+  ["upcoming-services"],
+  {
+    revalidate: 1800, // Cache for 30 minutes
+    tags: [TAG_SERVICES],
+  }
+)();
+
+/**
+ * Fetches a single upcoming service by ID, cached for 30 minutes.
+ * Returns null when the service is not an upcoming (Coming Soon) service.
+ */
+export const getCachedUpcomingService = (serviceId: string) => unstable_cache(
+  async () => {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("services")
+      .select(`
+        id,
+        title,
+        description,
+        poster_url,
+        status,
+        subcategory_id,
+        subcategories (
+          subcategory_name,
+          icon_name,
+          categories (
+            category_name
+          )
+        )
+      `)
+      .eq("id", serviceId)
+      .eq("status", "upcoming")
+      .maybeSingle();
+
+    if (error) {
+      console.error(`[cachedUpcomingService] Database fetch failed for service ${serviceId}:`, error.message);
+      throw error;
+    }
+
+    return (data || null) as unknown as UpcomingService | null;
+  },
+  [`upcoming-service-${serviceId}`],
+  {
+    revalidate: 1800, // Cache for 30 minutes
+    tags: [TAG_SERVICES, `service-${serviceId}`],
+  }
+)();
+
 /**
  * Fetches active pricing rules for a service, cached for 30 minutes.
  * Invalidated by TAG_PRICING_RULES or specific service tag.

@@ -38,6 +38,7 @@ export default async function AdminServicesPage() {
 
   const publishedCount = services.filter(s => (s.status || 'published') === 'published').length;
   const draftCount = services.filter(s => s.status === 'draft').length;
+  const upcomingCount = services.filter(s => s.status === 'upcoming').length;
   const categoriesCount = categories?.length || 0;
 
   return (
@@ -61,6 +62,7 @@ export default async function AdminServicesPage() {
         categories={categories || []}
         publishedCount={publishedCount}
         draftCount={draftCount}
+        upcomingCount={upcomingCount}
         categoriesCount={categoriesCount}
       />
     </div>

@@ -14,6 +14,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const errorParam = searchParams.get("error");
   const messageParam = searchParams.get("message");
+  const nextParam = searchParams.get("next");
 
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -35,6 +36,9 @@ function LoginForm() {
     const fd = new FormData();
     fd.set("phone", phone);
     fd.set("password", password);
+    if (nextParam) {
+      fd.set("next", nextParam);
+    }
     try {
       await loginWithPhone(fd);
     } catch (err) {
@@ -75,6 +79,7 @@ function LoginForm() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
+              {nextParam && <input type="hidden" name="next" value={nextParam} />}
               {/* Mobile Number */}
               <div className="space-y-1.5 group">
                 <label className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-widest group-focus-within:text-primary transition-colors">

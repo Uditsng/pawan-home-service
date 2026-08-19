@@ -265,9 +265,14 @@ export async function duplicateService(serviceId: string) {
 /**
  * Toggle Service Status (Publish / Draft)
  */
-export async function toggleServiceStatus(serviceId: string, currentStatus: 'draft' | 'published') {
+export async function toggleServiceStatus(serviceId: string, currentStatus: 'draft' | 'published' | 'upcoming') {
   await requireAdmin();
   const supabase = await createClient();
+
+  // Upcoming services must go through the Edit form (poster + go-live flow).
+  if (currentStatus === 'upcoming') {
+    throw new Error("Upcoming services cannot be toggled. Use the Edit page status selector.");
+  }
 
   const newStatus = currentStatus === 'draft' ? 'published' : 'draft';
 

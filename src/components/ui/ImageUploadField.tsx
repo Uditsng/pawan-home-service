@@ -10,12 +10,26 @@ interface ImageUploadFieldProps {
   name?: string;
   defaultValue?: string;
   onValueChange?: (value: string) => void;
+  title?: string;
+  description?: string;
+  aspect?: number;
+  aspectLabel?: string;
+  outputWidth?: number;
+  outputHeight?: number;
+  fileNameSuffix?: string;
 }
 
 export function ImageUploadField({
   name = "image_url",
   defaultValue = "",
   onValueChange,
+  title = "Service Showcase Image",
+  description = "Define or upload the high-definition cover image for the catalog.",
+  aspect = 1,
+  aspectLabel = "1:1",
+  outputWidth = 1024,
+  outputHeight = 1024,
+  fileNameSuffix = "",
 }: ImageUploadFieldProps) {
   const [activeTab, setActiveTab] = useState<"upload" | "url">(() => {
     return defaultValue && !defaultValue.startsWith("/assets/") ? "url" : "upload";
@@ -68,14 +82,14 @@ export function ImageUploadField({
     img.onload = () => {
       const w = img.width;
       const h = img.height;
-      const isSquare = Math.abs(w - h) <= 5;
+      const isAspectOk = Math.abs(w / h - aspect) <= 0.03;
       const warnings: string[] = [];
 
-      if (!isSquare) {
-        warnings.push(`Aspect ratio is not 1:1 square (${w}x${h}). The image might be stretched on service detail banners.`);
+      if (!isAspectOk) {
+        warnings.push(`Aspect ratio is not ${aspectLabel} (${w}x${h}). The image might be stretched on service detail banners.`);
       }
-      if (w < 1024 || h < 1024) {
-        warnings.push(`Resolution is below 1024x1024 (${w}x${h}). Standardized high-density screens prefer 1024px minimum.`);
+      if (w < outputWidth || h < outputHeight) {
+        warnings.push(`Resolution is below ${outputWidth}x${outputHeight} (${w}x${h}). Standardized high-density screens prefer ${outputWidth}px minimum.`);
       }
 
       setImageMeta(prev => ({
@@ -154,7 +168,7 @@ export function ImageUploadField({
         .replace(/[^a-z0-9]/g, "-")
         .replace(/-+/g, "-")
         .replace(/^-|-$/g, "");
-      const fileName = `${cleanName}-${timestamp}.webp`;
+      const fileName = `${cleanName}${fileNameSuffix ? `-${fileNameSuffix}` : ""}-${timestamp}.webp`;
 
       // 2. Upload cropped WebP to Supabase Storage
       const { error: uploadError } = await supabase.storage
@@ -178,8 +192,8 @@ export function ImageUploadField({
       setPreviewUrl(publicUrl);
       setUploadState("success");
       setImageMeta({
-        width: 1024,
-        height: 1024,
+        width: outputWidth,
+        height: outputHeight,
         sizeKb: compressedKb,
         originalSizeKb: compressedKb,
         format: "WebP (Crop-optimized)",
@@ -215,8 +229,8 @@ export function ImageUploadField({
       {/* Title & Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-outline-variant/10 pb-3">
         <div>
-          <h3 className="text-sm font-bold text-primary font-headline">Service Showcase Image</h3>
-          <p className="text-[10px] text-on-surface-variant/70 mt-0.5">Define or upload the high-definition cover image for the catalog.</p>
+          <h3 className="text-sm font-bold text-primary font-headline">{title}</h3>
+          <p className="text-[10px] text-on-surface-variant/70 mt-0.5">{description}</p>
         </div>
         <div className="flex bg-surface-container rounded-lg p-0.5 border border-outline-variant/10 w-max shrink-0">
           <button
@@ -329,7 +343,10 @@ export function ImageUploadField({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-surface rounded-2xl border border-outline-variant/25 p-4 items-center">
           {/* Preview Canvas */}
           <div className="md:col-span-1 flex justify-center">
-            <div className="relative w-32 h-32 bg-surface-container-low rounded-xl overflow-hidden border border-outline-variant/20 shadow-xs flex items-center justify-center shrink-0">
+            <div
+              className="relative bg-surface-container-low rounded-xl overflow-hidden border border-outline-variant/20 shadow-xs flex items-center justify-center shrink-0"
+              style={{ width: aspect >= 1 ? 128 : 96, aspectRatio: aspect }}
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={previewUrl}
@@ -381,15 +398,15 @@ export function ImageUploadField({
           <span className="material-symbols-outlined text-secondary text-sm">info</span>
           PHS Service Image Guidelines
         </h4>
-        <div className="grid grid-cols-2 gap-2 text-[11px] font-medium leading-relaxed">
-          <div className="flex gap-1.5 items-start">
-            <span className="material-symbols-outlined text-[14px] text-secondary mt-0.5">check_circle</span>
-            <span><strong>Aspect Ratio:</strong> 1:1 (Square aspect layout)</span>
-          </div>
-          <div className="flex gap-1.5 items-start">
-            <span className="material-symbols-outlined text-[14px] text-secondary mt-0.5">check_circle</span>
-            <span><strong>Dimensions:</strong> Fixed 1024 x 1024 px — crop tool lets you pick the exact frame shown to customers</span>
-          </div>
+<div className="grid grid-cols-2 gap-2 text-[11px] font-medium leading-relaxed">
+            <div className="flex gap-1.5 items-start">
+              <span className="material-symbols-outlined text-[14px] text-secondary mt-0.5">check_circle</span>
+              <span><strong>Aspect Ratio:</strong> {aspectLabel} ({aspect >= 1 ? "Landscape/Square layout" : "Portrait layout"})</span>
+            </div>
+            <div className="flex gap-1.5 items-start">
+              <span className="material-symbols-outlined text-[14px] text-secondary mt-0.5">check_circle</span>
+              <span><strong>Dimensions:</strong> Fixed {outputWidth} x {outputHeight} px — crop tool lets you pick the exact frame shown to customers</span>
+            </div>
           <div className="flex gap-1.5 items-start">
             <span className="material-symbols-outlined text-[14px] text-secondary mt-0.5">check_circle</span>
             <span><strong>Preferred Format:</strong> WebP (Optimized file speed)</span>
@@ -406,6 +423,10 @@ export function ImageUploadField({
         createPortal(
           <ImageCropper
             imageSrc={cropImageSrc}
+            outputWidth={outputWidth}
+            outputHeight={outputHeight}
+            aspectRatio={aspect}
+            aspectLabel={aspectLabel}
             onCropComplete={(blob) => {
               const originalName = pendingFileNameRef.current;
               setCropImageSrc(null);

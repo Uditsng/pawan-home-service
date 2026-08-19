@@ -267,7 +267,20 @@ export async function loginWithPhone(formData: FormData) {
     partner: "/partner/dashboard",
     customer: "/customer/dashboard",
   };
-  redirect(routes[profile.role] || "/customer/dashboard");
+  const base = routes[profile.role] || "/customer/dashboard";
+
+  // Honor a ?next= return path for customers (e.g. returning to a waitlist page).
+  const next = formData.get("next") as string;
+  const isSafeNext =
+    typeof next === "string" &&
+    next.startsWith("/") &&
+    !next.startsWith("//") &&
+    !next.includes("\\");
+  if (profile.role === "customer" && isSafeNext) {
+    redirect(next);
+  }
+
+  redirect(base);
 }
 
 // ─── FORGOT PASSWORD FLOW ────────────────────────────────────

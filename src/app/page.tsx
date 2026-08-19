@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 import HeroConversationalCard from "@/components/HeroConversationalCard";
 import LandingGridClient from "./LandingGridClient";
 import { getCachedCategories } from "@/utils/supabase/cachedCategoryQueries";
+import { getCachedUpcomingServices } from "@/utils/supabase/cachedServiceQueries";
+import { ComingSoonStrip } from "@/components/ComingSoonStrip";
 import { getDashboardForRole } from "@/utils/supabase/roles";
 
 
@@ -45,7 +47,7 @@ export default async function Home() {
   }
 
   // Parallelize independent queries for faster page loads
-  const [servicesResult, categories] = await Promise.all([
+  const [servicesResult, categories, upcomingServices] = await Promise.all([
     supabase
       .from('services')
       .select(`
@@ -63,6 +65,7 @@ export default async function Home() {
       .eq('status', 'published')
       .order('title', { ascending: true }),
     getCachedCategories(),
+    getCachedUpcomingServices(),
   ]);
 
   const availableServices = (servicesResult.data || []) as unknown as ServiceWithSubcategory[];
@@ -116,6 +119,12 @@ export default async function Home() {
 
         {/* Section 3: Popular Services Categories Client Component */}
         <LandingGridClient categories={categories} availableServices={availableServices} />
+
+        {/* Section 3.5: Coming Soon Strip */}
+        <ComingSoonStrip
+          services={upcomingServices}
+          hrefFor={(service) => `/services/upcoming/${service.id}`}
+        />
 
         {/* Section 4: How It Works (Interactive Steps) */}
         <section className="w-full">

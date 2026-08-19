@@ -84,7 +84,8 @@ export interface Service {
   base_price: number;
   original_price?: number | null;
   is_active: boolean;
-  status?: 'draft' | 'published';
+  status?: 'draft' | 'published' | 'upcoming';
+  poster_url?: string | null;
   created_at: string;
   page_content: ServicePageContent | null;
   pricing_model?: PricingModel;
@@ -109,6 +110,14 @@ export interface Service {
   availability_config?: Record<string, unknown> | null;
   policy_config?: Record<string, unknown> | null;
   requirements_config?: Record<string, unknown> | null;
+}
+
+export interface ServiceWaitlist {
+  id: string;
+  service_id: string;
+  user_id: string;
+  status: string;
+  created_at: string;
 }
 
 export interface Booking {

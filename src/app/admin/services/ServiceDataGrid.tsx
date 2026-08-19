@@ -41,12 +41,14 @@ export function ServiceDataGrid({
   categories,
   publishedCount,
   draftCount,
+  upcomingCount,
   categoriesCount,
 }: {
   services: ServiceItem[];
   categories: CategoryItem[];
   publishedCount: number;
   draftCount: number;
+  upcomingCount: number;
   categoriesCount: number;
 }) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -105,6 +107,10 @@ export function ServiceDataGrid({
   };
 
   const handleToggleStatus = async (serviceId: string, currentStatus: string | null | undefined) => {
+    if ((currentStatus || 'published') === 'upcoming') {
+      setErrorMsg("Upcoming services cannot be toggled here. Use the Edit page status selector to publish or draft them.");
+      return;
+    }
     try {
       setIsToggling(serviceId);
       setErrorMsg(null);
@@ -153,7 +159,7 @@ export function ServiceDataGrid({
       )}
 
       {/* ─── 1. METRIC HEADER ──────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">Total Services</p>
           <p className="text-2xl font-bold text-primary font-headline mt-1">{services.length}</p>
@@ -165,6 +171,10 @@ export function ServiceDataGrid({
         <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">Draft</p>
           <p className="text-2xl font-bold text-amber-600 font-headline mt-1">{draftCount}</p>
+        </div>
+        <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">Upcoming</p>
+          <p className="text-2xl font-bold text-primary font-headline mt-1">{upcomingCount}</p>
         </div>
         <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">Categories</p>
@@ -209,6 +219,7 @@ export function ServiceDataGrid({
               <option value="">All Statuses</option>
               <option value="published">Published</option>
               <option value="draft">Draft</option>
+              <option value="upcoming">Upcoming</option>
             </select>
           </div>
         </div>
@@ -304,18 +315,24 @@ export function ServiceDataGrid({
                       </td>
                       {/* Status */}
                       <td className="px-4 py-1.5 whitespace-nowrap">
-                        <button
-                          onClick={() => handleToggleStatus(service.id, service.status)}
-                          disabled={isToggling === service.id}
-                          className="hover:scale-105 active:scale-95 transition-all cursor-pointer"
-                          title="Click to toggle status"
-                        >
-                          {isToggling === service.id ? (
-                            <span className="material-symbols-outlined animate-spin text-sm text-on-surface-variant">progress_activity</span>
-                          ) : (
+                        {(service.status || 'published') === 'upcoming' ? (
+                          <span title="Edit via the Edit page status selector">
                             <Badge variant={statusDetails.badgeVariant} className="text-[8px] px-2 py-0.5">{statusDetails.label}</Badge>
-                          )}
-                        </button>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleToggleStatus(service.id, service.status)}
+                            disabled={isToggling === service.id}
+                            className="hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                            title="Click to toggle status"
+                          >
+                            {isToggling === service.id ? (
+                              <span className="material-symbols-outlined animate-spin text-sm text-on-surface-variant">progress_activity</span>
+                            ) : (
+                              <Badge variant={statusDetails.badgeVariant} className="text-[8px] px-2 py-0.5">{statusDetails.label}</Badge>
+                            )}
+                          </button>
+                        )}
                       </td>
                       {/* Price */}
                       <td className="px-4 py-1.5 whitespace-nowrap">

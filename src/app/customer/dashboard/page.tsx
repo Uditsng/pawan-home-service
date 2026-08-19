@@ -4,6 +4,8 @@ import { createClient } from "@/utils/supabase/server";
 import DashboardCarousel from "./DashboardCarousel";
 import DashboardGridClient from "./DashboardGridClient";
 import { getCachedCategories } from "@/utils/supabase/cachedCategoryQueries";
+import { getCachedUpcomingServices } from "@/utils/supabase/cachedServiceQueries";
+import { ComingSoonStrip } from "@/components/ComingSoonStrip";
 
 interface ServiceWithSubcategory {
   id: string;
@@ -27,7 +29,7 @@ export default async function CustomerDashboard() {
   const supabase = await createClient();
 
   // Parallelize independent queries for ~400ms savings
-  const [servicesResult, categories] = await Promise.all([
+  const [servicesResult, categories, upcomingServices] = await Promise.all([
     // Fetch services with only needed columns (no page_content JSONB)
     supabase
       .from('services')
@@ -47,6 +49,8 @@ export default async function CustomerDashboard() {
       .order('title', { ascending: true }),
     // Fetch all categories
     getCachedCategories(),
+    // Fetch Coming Soon services
+    getCachedUpcomingServices(),
   ]);
 
   const availableServices = (servicesResult.data || []) as unknown as ServiceWithSubcategory[];
@@ -58,6 +62,18 @@ export default async function CustomerDashboard() {
 
         {/* Promotional Carousel Banner */}
         <DashboardCarousel />
+
+        {/* Coming Soon Strip */}
+        <div className="mb-8 md:mb-12">
+          <ComingSoonStrip
+            services={upcomingServices}
+            hrefFor={(service) => {
+              const catName = service.subcategories?.categories?.category_name || "services";
+              const catSlug = catName.toLowerCase().replace(/\s+/g, "-").replace(/&/g, "and");
+              return `/customer/services/${catSlug}/${service.id}`;
+            }}
+          />
+        </div>
 
         {/* Service Categories Bento Grid Client Component */}
         <DashboardGridClient categories={categories} availableServices={availableServices} />

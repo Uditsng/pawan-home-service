@@ -1,4 +1,4 @@
-export type ServiceStatus = 'draft' | 'published';
+export type ServiceStatus = 'draft' | 'published' | 'upcoming';
 
 export interface StatusDetail {
   label: string;
@@ -13,6 +13,10 @@ export const SERVICE_STATUS_CONFIG: Record<ServiceStatus, StatusDetail> = {
   published: {
     label: 'Published',
     badgeVariant: 'success',
+  },
+  upcoming: {
+    label: 'Upcoming',
+    badgeVariant: 'primary',
   },
 };
 

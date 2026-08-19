@@ -232,6 +232,7 @@ export function CreateServiceForm({
 }: CreateServiceFormProps) {
   const [state, formAction, isPending] = useActionState(action, { type: null, message: null });
   const [submitType, setSubmitType] = useState<"draft" | "published" | null>(null);
+  const [formMode, setFormMode] = useState<"full" | "upcoming">("full");
 
   // Tab State
   const [activeTab, setActiveTab] = useState<"basic" | "pricing" | "variants" | "addons" | "content" | "preview">("basic");
@@ -467,8 +468,43 @@ export function CreateServiceForm({
           </div>
         )}
 
+        {/* Mode Toggle: Full Service vs Upcoming (Coming Soon) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface rounded-2xl border border-outline-variant/15 p-4">
+          <div>
+            <h3 className="text-sm font-bold text-primary font-headline">Service Type</h3>
+            <p className="text-[10px] text-on-surface-variant/70 mt-0.5">
+              Choose between a fully bookable service or a &quot;Coming Soon&quot; teaser.
+            </p>
+          </div>
+          <div className="flex bg-surface-container rounded-xl p-1 border border-outline-variant/10 w-max">
+            <button
+              type="button"
+              onClick={() => setFormMode("full")}
+              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all select-none cursor-pointer ${
+                formMode === "full"
+                  ? "bg-primary text-white shadow-xs"
+                  : "text-on-surface-variant/80 hover:text-primary"
+              }`}
+            >
+              Full Service
+            </button>
+            <button
+              type="button"
+              onClick={() => setFormMode("upcoming")}
+              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all select-none cursor-pointer flex items-center gap-1.5 ${
+                formMode === "upcoming"
+                  ? "bg-primary text-white shadow-xs"
+                  : "text-on-surface-variant/80 hover:text-primary"
+              }`}
+            >
+              <span className="material-symbols-outlined text-sm">schedule</span>
+              Upcoming (Coming Soon)
+            </button>
+          </div>
+        </div>
+
         {/* Tab Navigation Menu */}
-        <div className="flex border-b border-outline-variant/30 gap-1 overflow-x-auto no-scrollbar">
+        <div className={`flex border-b border-outline-variant/30 gap-1 overflow-x-auto no-scrollbar ${formMode === "upcoming" ? "hidden" : ""}`}>
           {([
             { id: "basic", label: "Basic Info", icon: "info" },
             { id: "pricing", label: "Pricing & Slabs", icon: "payments" },
@@ -493,6 +529,90 @@ export function CreateServiceForm({
         </div>
 
         {/* Dynamic Forms Tabs Content */}
+        {formMode === "upcoming" ? (
+          <div className="bg-surface-container-lowest p-6 rounded-3xl border border-outline-variant/15 shadow-sm space-y-6">
+            <div className="flex items-center gap-2 bg-secondary/10 border border-secondary/30 rounded-xl px-4 py-3 w-fit">
+              <span className="material-symbols-outlined text-sm text-secondary">schedule</span>
+              <p className="text-xs font-black uppercase tracking-wider text-primary">Coming Soon Teaser</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Service Title</label>
+                <input
+                  name="title"
+                  required
+                  type="text"
+                  className="w-full border border-outline-variant/20 rounded-lg p-3 bg-surface focus:ring-2 focus:ring-primary/20 outline-none text-xs font-bold text-primary"
+                  placeholder="e.g. Mosquito Fogging (Coming Soon)"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Select Sub-category</label>
+                <div className="flex gap-2">
+                  <select
+                    name="subcategory_id"
+                    required
+                    value={selectedSubcatId}
+                    onChange={handleSubcategoryChange}
+                    className="grow border border-outline-variant/20 rounded-lg p-3 bg-surface focus:ring-2 focus:ring-primary/20 outline-none text-xs font-bold text-primary"
+                  >
+                    <option value="">-- Choose a sub-category --</option>
+                    {localCategories.map((cat) => (
+                      <optgroup key={cat.id} label={cat.category_name}>
+                        {cat.subcategories.map((sub) => (
+                          <option key={sub.id} value={sub.id}>{sub.subcategory_name}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+
+                  <div className="rounded-xl bg-green-500/10 p-3 flex items-center justify-center min-w-11 shrink-0">
+                    <ServiceIconComponent iconName={selectedIcon} className="w-5 h-5 text-emerald-600 drop-shadow-sm" />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowAddSubcategory(true)}
+                    className="shrink-0 rounded-lg border border-secondary/30 bg-secondary/10 hover:bg-secondary/20 text-secondary px-3.5 py-1.5 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    + Sub-cat
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Poster Image (9:16)</label>
+              <ImageUploadField
+                name="poster_url"
+                title="Coming Soon Poster"
+                description="Upload a 9:16 portrait poster used on Coming Soon banners and the Coming Soon page."
+                aspect={9 / 16}
+                aspectLabel="9:16"
+                outputWidth={720}
+                outputHeight={1280}
+                fileNameSuffix="poster"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Tagline</label>
+              <textarea
+                name="description"
+                required
+                rows={4}
+                className="w-full border border-outline-variant/20 rounded-lg p-3 bg-surface focus:ring-2 focus:ring-primary/20 outline-none text-xs text-primary"
+                placeholder="A short, punchy line shown on the banner. e.g. Next-gen bed bug protection, launching soon."
+              />
+              <p className="text-[10px] text-on-surface-variant/70 mt-1.5">
+                The tagline appears on the Coming Soon banner and detail page. Pricing and booking will be configured when you publish this service later.
+              </p>
+            </div>
+
+            <input type="hidden" name="form_mode" value="upcoming" />
+          </div>
+        ) : (
         <div className="bg-surface-container-lowest p-6 rounded-3xl border border-outline-variant/15 shadow-sm min-h-100">
 
           {/* TAB 1: BASIC INFO */}
@@ -1538,6 +1658,7 @@ export function CreateServiceForm({
             </div>
           </div>
         </div>
+        )}
 
         {/* Hidden inputs to pass data correctly in server actions */}
         <input type="hidden" name="pricing_config_json" value={JSON.stringify(pricingConfigObj)} />
@@ -1547,28 +1668,43 @@ export function CreateServiceForm({
 
         {/* Submit Bar */}
         <div className="flex justify-end gap-3 border-t border-outline-variant/10 pt-4 sticky bottom-0 bg-surface-container-lowest py-3 z-10">
-          <Button
-            type="submit"
-            name="status"
-            value="draft"
-            variant="slate"
-            size="lg"
-            disabled={isPending}
-            onClick={() => setSubmitType("draft")}
-          >
-            {isPending && submitType === "draft" ? "Saving..." : "Save as Draft"}
-          </Button>
-          <Button
-            type="submit"
-            name="status"
-            value="published"
-            variant="primary"
-            size="lg"
-            disabled={isPending}
-            onClick={() => setSubmitType("published")}
-          >
-            {isPending && submitType === "published" ? "Publishing..." : "Publish Service"}
-          </Button>
+          {formMode === "upcoming" ? (
+            <Button
+              type="submit"
+              name="status"
+              value="upcoming"
+              variant="primary"
+              size="lg"
+              disabled={isPending}
+            >
+              {isPending ? "Saving..." : "Save Upcoming Service"}
+            </Button>
+          ) : (
+            <>
+              <Button
+                type="submit"
+                name="status"
+                value="draft"
+                variant="slate"
+                size="lg"
+                disabled={isPending}
+                onClick={() => setSubmitType("draft")}
+              >
+                {isPending && submitType === "draft" ? "Saving..." : "Save as Draft"}
+              </Button>
+              <Button
+                type="submit"
+                name="status"
+                value="published"
+                variant="primary"
+                size="lg"
+                disabled={isPending}
+                onClick={() => setSubmitType("published")}
+              >
+                {isPending && submitType === "published" ? "Publishing..." : "Publish Service"}
+              </Button>
+            </>
+          )}
         </div>
       </form>
     </>

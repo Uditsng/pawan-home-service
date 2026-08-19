@@ -10,9 +10,12 @@ import {
   getCachedServiceVariants,
   getCachedServiceAddons,
   getCachedPricingRules,
+  getCachedUpcomingService,
   PublicReview
 } from "@/utils/supabase/cachedServiceQueries";
 import { createClient } from "@/utils/supabase/server";
+import { getCurrentProfile } from "@/utils/supabase/auth-checks";
+import { ComingSoonPage } from "@/components/ComingSoonPage";
 import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 
 export default async function ServiceDetailsPage({ params }: { params: Promise<{ category: string, serviceId: string }> }) {
@@ -26,6 +29,38 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
   ]);
 
   if (!service) {
+    // Not a published service — fall back to the upcoming (Coming Soon) view.
+    const [upcoming, upcomingCount, currentProfile] = await Promise.all([
+      getCachedUpcomingService(resolvedParams.serviceId),
+      supabase.rpc("get_service_waitlist_count", { p_service_id: resolvedParams.serviceId }),
+      getCurrentProfile(),
+    ]);
+
+    if (upcoming) {
+      let isWaitlisted = false;
+      if (currentProfile?.user) {
+        const { data: waitlistRow } = await supabase
+          .from("service_waitlist")
+          .select("id")
+          .eq("service_id", resolvedParams.serviceId)
+          .eq("user_id", currentProfile.user.id)
+          .maybeSingle();
+        isWaitlisted = waitlistRow !== null;
+      }
+
+      return (
+        <div className="bg-surface font-body text-on-surface antialiased min-h-screen">
+          <ComingSoonPage
+            service={upcoming}
+            initialWaitlisted={isWaitlisted}
+            waitlistCount={Number(upcomingCount) || 0}
+            backHref={`/customer/services/${resolvedParams.category}`}
+            backLabel="Back to Services"
+          />
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen flex items-center justify-center font-body bg-surface text-on-surface">
         <div className="text-center">

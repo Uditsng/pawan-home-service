@@ -14,19 +14,29 @@ interface Point {
 interface ImageCropperProps {
   imageSrc: string;
   outputSize?: number;
+  outputWidth?: number;
+  outputHeight?: number;
+  aspectRatio?: number;
+  aspectLabel?: string;
   onCropComplete: (blob: Blob) => void;
   onCancel: () => void;
 }
 
 /**
- * Fixed-aspect (1:1) crop tool rendered as an overlay modal. The admin drags to
+ * Fixed-aspect crop tool rendered as an overlay modal. The admin drags to
  * reposition and zooms (slider or mouse wheel) to choose the visible region.
- * On apply, the selected region is rendered to a fixed 1024x1024 (configurable)
- * WebP blob so every consumer sees the exact same frame with fixed dimensions.
+ * On apply, the selected region is rendered to a fixed-dimension WebP blob so
+ * every consumer sees the exact same frame with fixed dimensions.
+ * Defaults to a 1:1 square at 1024x1024 px; pass `aspectRatio`/`aspectLabel`
+ * and `outputWidth`/`outputHeight` for portrait posters (e.g. 9:16, 720x1280).
  */
 export function ImageCropper({
   imageSrc,
   outputSize = 1024,
+  outputWidth,
+  outputHeight,
+  aspectRatio = 1,
+  aspectLabel = "1:1",
   onCropComplete,
   onCancel,
 }: ImageCropperProps) {
@@ -180,9 +190,11 @@ export function ImageCropper({
     const sw = Math.min(naturalSize.width - sx, boxSize.width / scale);
     const sh = Math.min(naturalSize.height - sy, boxSize.height / scale);
 
+    const outW = outputWidth ?? outputSize;
+    const outH = outputHeight ?? outputSize;
     const canvas = document.createElement("canvas");
-    canvas.width = outputSize;
-    canvas.height = outputSize;
+    canvas.width = outW;
+    canvas.height = outH;
     const ctx = canvas.getContext("2d");
     if (!ctx) {
       setIsProcessing(false);
@@ -190,7 +202,7 @@ export function ImageCropper({
     }
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
-    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, outputSize, outputSize);
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, outW, outH);
     canvas.toBlob(
       (blob) => {
         setIsProcessing(false);
@@ -210,7 +222,7 @@ export function ImageCropper({
           <div>
             <h3 className="text-sm font-bold text-primary font-headline">Crop Service Image</h3>
             <p className="text-[10px] text-on-surface-variant/70 mt-0.5">
-              Drag to reposition · scroll or slide to zoom. Output is fixed at 1:1 {outputSize}×{outputSize} px.
+              Drag to reposition · scroll or slide to zoom. Output is fixed at {aspectLabel} {outputWidth ?? outputSize}×{outputHeight ?? outputSize} px.
             </p>
           </div>
           <button
@@ -230,9 +242,10 @@ export function ImageCropper({
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
           onWheel={handleWheel}
-          className={`relative w-full aspect-square overflow-hidden rounded-2xl bg-surface-dim border border-outline-variant/25 touch-none select-none cursor-grab ${
+          className={`relative w-full overflow-hidden rounded-2xl bg-surface-dim border border-outline-variant/25 touch-none select-none cursor-grab ${
             isDragging ? "cursor-grabbing" : ""
           }`}
+          style={{ aspectRatio }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -250,7 +263,7 @@ export function ImageCropper({
             ))}
           </div>
           <div className="pointer-events-none absolute bottom-2 left-2 text-[9px] font-black uppercase tracking-wider bg-primary/70 text-white px-2 py-1 rounded-lg">
-            1:1 · {outputSize}×{outputSize}
+            {aspectLabel} · {outputWidth ?? outputSize}×{outputHeight ?? outputSize}
           </div>
         </div>
 

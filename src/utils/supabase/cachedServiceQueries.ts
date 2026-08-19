@@ -311,7 +311,7 @@ export const getCachedUpcomingServices = () => unstable_cache(
 
     if (error) {
       console.error("[cachedUpcomingServices] Database fetch failed:", error.message);
-      throw error;
+      return [];
     }
 
     return (data || []) as unknown as UpcomingService[];
@@ -353,7 +353,7 @@ export const getCachedUpcomingService = (serviceId: string) => unstable_cache(
 
     if (error) {
       console.error(`[cachedUpcomingService] Database fetch failed for service ${serviceId}:`, error.message);
-      throw error;
+      return null;
     }
 
     return (data || null) as unknown as UpcomingService | null;

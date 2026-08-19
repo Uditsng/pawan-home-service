@@ -7,9 +7,10 @@ interface ComingSoonStripProps {
 }
 
 /**
- * Horizontal "Coming Soon" banner strip rendered on the public landing page and
- * the customer dashboard. Cards link through to the dedicated Coming Soon page
- * (via the provided hrefFor builder, which differs per portal).
+ * Compact horizontal "Coming Soon" strip rendered on the public landing page and
+ * the customer dashboard. Cards show icon, title, tagline and a Notify Me pill —
+ * no poster image. Clicking a card takes the user to the dedicated Coming Soon
+ * detail page where the 9:16 poster is displayed.
  */
 export function ComingSoonStrip({ services, hrefFor }: ComingSoonStripProps) {
   if (!services || services.length === 0) return null;
@@ -25,47 +26,45 @@ export function ComingSoonStrip({ services, hrefFor }: ComingSoonStripProps) {
         Be the first to know when these services go live.
       </p>
 
-      <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 -mx-1 px-1">
-        {services.map((service) => (
-          <Link
-            key={service.id}
-            href={hrefFor(service)}
-            className="group shrink-0 w-40 sm:w-44 flex flex-col bg-surface-container-lowest rounded-2xl border border-outline-variant/15 shadow-sm overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all duration-300"
-          >
-            <div className="relative aspect-[9/16] w-full bg-surface-container-low overflow-hidden">
-              {service.poster_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={service.poster_url}
-                  alt={service.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-linear-to-br from-primary/10 via-surface-container-low to-secondary/10">
-                  <span className="material-symbols-outlined text-4xl text-primary/30 group-hover:scale-110 transition-transform duration-300">
-                    schedule
-                  </span>
-                  <span className="text-[8px] font-black uppercase tracking-widest text-on-surface-variant/50">
-                    Poster coming soon
+      <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 -mx-1 px-1">
+        {services.map((service) => {
+          const iconName = service.subcategories?.icon_name || "home_repair_service";
+          return (
+            <Link
+              key={service.id}
+              href={hrefFor(service)}
+              className="group shrink-0 w-64 sm:w-72 flex flex-col bg-surface-container-lowest rounded-2xl border border-outline-variant/15 shadow-sm p-4 hover:-translate-y-1 hover:shadow-lg hover:border-secondary/30 transition-all duration-300"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-[#059669] drop-shadow-sm">
+                    {iconName}
                   </span>
                 </div>
-              )}
-              <div className="absolute top-2 left-2 bg-primary text-white text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full shadow-xs">
-                Coming Soon
+                <div className="min-w-0">
+                  <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-secondary bg-secondary/10 border border-secondary/25 px-2 py-0.5 rounded-full">
+                    <span className="material-symbols-outlined text-[10px]">schedule</span>
+                    Coming Soon
+                  </span>
+                  <h3 className="text-sm font-bold text-primary leading-tight line-clamp-2 mt-1.5">
+                    {service.title}
+                  </h3>
+                </div>
               </div>
-            </div>
-            <div className="p-3 space-y-1 grow flex flex-col">
-              <h3 className="text-xs font-bold text-primary leading-tight line-clamp-2">{service.title}</h3>
+
               {service.description && (
-                <p className="text-[10px] text-on-surface-variant leading-snug line-clamp-2">{service.description}</p>
+                <p className="text-[10px] text-on-surface-variant leading-snug line-clamp-2 mt-2">
+                  {service.description}
+                </p>
               )}
-              <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-primary bg-secondary/10 border border-secondary/25 rounded-full px-3 py-1.5 mt-auto w-max group-hover:bg-secondary group-hover:text-primary transition-colors duration-300">
+
+              <span className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-primary bg-secondary/10 border border-secondary/25 rounded-full px-3 py-1.5 mt-3 w-max group-hover:bg-secondary transition-colors duration-300">
                 Notify Me
                 <span className="material-symbols-outlined text-[12px]">notifications_active</span>
               </span>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
     </section>
   );

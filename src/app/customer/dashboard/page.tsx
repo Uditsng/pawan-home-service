@@ -64,7 +64,7 @@ export default async function CustomerDashboard() {
         <DashboardCarousel />
 
         {/* Coming Soon Strip */}
-        <div className="mb-8 md:mb-12">
+        <div className="mb-4 md:mb-6 bg-yellow-100">
           <ComingSoonStrip
             services={upcomingServices}
             hrefFor={(service) => {
@@ -99,7 +99,7 @@ export default async function CustomerDashboard() {
                 height={300}
                 className="w-full aspect-square object-cover rounded-2xl shadow-xs"
               />
-              <p className="text-[11px] md:text-sm font-semibold text-on-surface mt-2.5 max-w-[150px] md:max-w-[180px] leading-tight">
+              <p className="text-[11px] md:text-sm font-semibold text-on-surface mt-2.5 max-w-38 md:max-w-45 leading-tight">
                 Verified Professionals You Can Trust
               </p>
             </div>
@@ -111,7 +111,7 @@ export default async function CustomerDashboard() {
                 height={300}
                 className="w-full aspect-square object-cover rounded-2xl shadow-xs"
               />
-              <p className="text-[11px] md:text-sm font-semibold text-on-surface mt-2.5 max-w-[150px] md:max-w-[180px] leading-tight">
+              <p className="text-[11px] md:text-sm font-semibold text-on-surface mt-2.5 max-w-38 md:max-w-45 leading-tight">
                 Well Trained to deliver great service
               </p>
             </div>
@@ -123,7 +123,7 @@ export default async function CustomerDashboard() {
                 height={300}
                 className="w-full aspect-square object-cover rounded-2xl shadow-xs"
               />
-              <p className="text-[11px] md:text-sm font-semibold text-on-surface mt-2.5 max-w-[150px] md:max-w-[180px] leading-tight">
+              <p className="text-[11px] md:text-sm font-semibold text-on-surface mt-2.5 max-w-38 md:max-w-45 leading-tight">
                 Safe, reliable, and consistent every single time
               </p>
             </div>

@@ -45,6 +45,7 @@ export default async function SubcategoryServiceListingPage({
         <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
           {(displayServices || []).map((service) => {
             const iconName = service.subcategories?.icon_name || "sparkles";
+            const isUpcoming = service.status === "upcoming" || service.base_price === 0 || !service.base_price;
 
             // Hourly services default to their configured minimum duration so the
             // cart prices the correct number of blocks instead of assuming 60 min.
@@ -72,9 +73,10 @@ export default async function SubcategoryServiceListingPage({
                   {/* Rectangular banner thumbnail */}
                   <div className="relative w-full aspect-4/3 bg-surface-container-low">
                     <ServiceCardThumbnail
-                      imageUrl={service.image_url}
+                      imageUrl={service.image_url || service.poster_url}
                       iconName={iconName}
                       alt={service.title}
+                      status={isUpcoming ? "upcoming" : service.status}
                       containerClassName="absolute inset-0 w-full h-full"
                       iconClassName="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 text-emerald-600 drop-shadow-sm"
                     />
@@ -93,39 +95,57 @@ export default async function SubcategoryServiceListingPage({
                       {service.title}
                     </span>
                     <div className="flex flex-col items-center gap-0.5 shrink-0 mt-1">
-                      <span className="text-[13px] sm:text-[15px] md:text-[17px] text-primary font-black tracking-tight leading-none">
-                        ₹{service.base_price}
-                      </span>
-                      {service.original_price && (
-                        <span className="text-[10px] md:text-xs text-on-surface-variant/60 line-through font-medium">
-                          ₹{service.original_price}
+                      {isUpcoming ? (
+                        <span className="text-[10px] sm:text-[11px] text-secondary font-black tracking-tight leading-none uppercase bg-primary/95 px-2 py-0.5 rounded-md shadow-xs">
+                          Coming Soon
                         </span>
+                      ) : (
+                        <>
+                          <span className="text-[13px] sm:text-[15px] md:text-[17px] text-primary font-black tracking-tight leading-none">
+                            ₹{service.base_price}
+                          </span>
+                          {service.original_price && (
+                            <span className="text-[10px] md:text-xs text-on-surface-variant/60 line-through font-medium">
+                              ₹{service.original_price}
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* z-20 clickable Add to Cart button */}
+                {/* z-20 clickable Add to Cart / Notify Me button */}
                 <div className="absolute bottom-1.5 right-1.5 z-20">
-                  <AddToCartButton
-                    item={{
-                      serviceId: service.id,
-                      title: service.title,
-                      iconName: iconName,
-                      imageUrl: service.image_url,
-                      subcategoryName: service.subcategories?.subcategory_name || "Service",
-                      categorySlug: categorySlug,
-                      gstApplicable: service.gst_applicable ?? false,
-                      variantId: null,
-                      selectedDuration,
-                      areaSqft: null,
-                      quantity: null,
-                      distanceKm: null,
-                      addons: null,
-                      selectedPackages: null,
-                    }}
-                    compact={true}
-                  />
+                  {isUpcoming ? (
+                    <Link
+                      href={`/customer/services/${categorySlug}/${service.id}`}
+                      className="w-7 h-7 sm:w-8 sm:h-8 bg-secondary text-primary rounded-lg flex items-center justify-center shadow-xs hover:bg-secondary/90 transition-colors"
+                      title="Notify Me / Join Waitlist"
+                    >
+                      <span className="material-symbols-outlined text-sm font-bold">notifications_active</span>
+                    </Link>
+                  ) : (
+                    <AddToCartButton
+                      item={{
+                        serviceId: service.id,
+                        title: service.title,
+                        iconName: iconName,
+                        imageUrl: service.image_url,
+                        subcategoryName: service.subcategories?.subcategory_name || "Service",
+                        categorySlug: categorySlug,
+                        gstApplicable: service.gst_applicable ?? false,
+                        variantId: null,
+                        selectedDuration,
+                        areaSqft: null,
+                        quantity: null,
+                        distanceKm: null,
+                        addons: null,
+                        selectedPackages: null,
+                      }}
+                      compact={true}
+                    />
+                  )}
                 </div>
               </div>
             );

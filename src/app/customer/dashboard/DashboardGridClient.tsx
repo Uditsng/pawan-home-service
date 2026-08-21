@@ -12,6 +12,7 @@ interface ServiceWithSubcategory {
   original_price?: number | null;
   category?: string;
   image_url?: string | null;
+  poster_url?: string | null;
   subcategory_id: string;
   subcategories: {
     subcategory_name: string;
@@ -147,6 +148,7 @@ export default function DashboardGridClient({ categories, availableServices }: D
             const iconName = service.subcategories?.icon_name || "sparkles";
             const catSlug = (service.subcategories?.categories?.category_name || service.category || "services")
               .toLowerCase().replace(/[,\s]+/g, "-").replace(/&/g, "and");
+            const isUpcoming = service.base_price === 0 || !service.base_price;
 
             return (
               <Link
@@ -156,9 +158,10 @@ export default function DashboardGridClient({ categories, availableServices }: D
               >
                 <div className="relative w-full aspect-[4/3] bg-surface-container-low">
                   <ServiceCardThumbnail
-                    imageUrl={service.image_url}
+                    imageUrl={service.image_url || service.poster_url}
                     iconName={iconName}
                     alt={service.title}
+                    status={isUpcoming ? "upcoming" : undefined}
                     containerClassName="absolute inset-0 w-full h-full"
                     iconClassName="w-10 h-10 md:w-12 md:h-12 text-emerald-600 drop-shadow-sm"
                   />
@@ -166,10 +169,18 @@ export default function DashboardGridClient({ categories, availableServices }: D
                 <div className="p-2.5 sm:p-3 text-center">
                   <span className="block font-headline font-bold text-xs md:text-sm text-on-surface line-clamp-2 leading-tight min-h-9 flex items-center justify-center">{service.title}</span>
                   <div className="flex items-center justify-center gap-1.5 mt-1">
-                    {service.original_price && (
-                      <span className="text-[9px] md:text-[10px] text-on-surface-variant/50 line-through">₹{service.original_price}</span>
+                    {isUpcoming ? (
+                      <span className="text-[10px] sm:text-[11px] text-secondary font-black tracking-tight leading-none uppercase bg-primary/95 px-2 py-0.5 rounded-md shadow-xs">
+                        Coming Soon
+                      </span>
+                    ) : (
+                      <>
+                        {service.original_price && (
+                          <span className="text-[9px] md:text-[10px] text-on-surface-variant/50 line-through">₹{service.original_price}</span>
+                        )}
+                        <span className="text-[10px] md:text-[11px] text-primary font-bold tracking-tight">₹{service.base_price}</span>
+                      </>
                     )}
-                    <span className="text-[10px] md:text-[11px] text-primary font-bold tracking-tight">₹{service.base_price}</span>
                   </div>
                 </div>
               </Link>

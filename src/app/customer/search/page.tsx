@@ -27,7 +27,9 @@ interface ServiceResult {
   original_price?: number | null;
   category?: string;
   image_url?: string | null;
+  poster_url?: string | null;
   subcategory_id: string;
+  status?: string;
   subcategories: {
     subcategory_name: string;
     icon_name: string;
@@ -88,7 +90,7 @@ export default async function SearchPage({
         `)
         .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
         .eq("is_active", true)
-        .eq("status", "published")
+        .in("status", ["published", "upcoming"])
         .limit(15),
 
       // Search Subcategories
@@ -258,6 +260,7 @@ export default async function SearchPage({
                             service.category ||
                             "services"
                         );
+                        const isUpcoming = service.status === "upcoming";
 
                         return (
                           <Link
@@ -266,9 +269,10 @@ export default async function SearchPage({
                             className="bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant/10 shadow-xs flex items-center gap-3 md:gap-4 hover:border-primary/20 transition-colors"
                           >
                             <ServiceCardThumbnail
-                              imageUrl={service.image_url}
+                              imageUrl={service.image_url || service.poster_url}
                               iconName={iconName}
                               alt={service.title}
+                              status={service.status}
                               containerClassName="w-16 h-12 md:w-20 md:h-14 rounded-xl"
                               iconClassName="w-5 h-5 md:w-6 md:h-6 text-[#059669] drop-shadow-sm"
                             />
@@ -281,14 +285,22 @@ export default async function SearchPage({
                               </p>
                             </div>
                             <div className="flex flex-col items-end whitespace-nowrap">
-                              {service.original_price && (
-                                <span className="text-[10px] md:text-xs text-on-surface-variant/50 line-through">
-                                  ₹{service.original_price}
+                              {isUpcoming ? (
+                                <span className="text-[10px] md:text-xs text-secondary font-black tracking-tight uppercase bg-primary/90 px-2 py-0.5 rounded-md">
+                                  Coming Soon
                                 </span>
+                              ) : (
+                                <>
+                                  {service.original_price && (
+                                    <span className="text-[10px] md:text-xs text-on-surface-variant/50 line-through">
+                                      ₹{service.original_price}
+                                    </span>
+                                  )}
+                                  <span className="font-bold text-primary text-sm md:text-base">
+                                    ₹{service.base_price}
+                                  </span>
+                                </>
                               )}
-                              <span className="font-bold text-primary text-sm md:text-base">
-                                ₹{service.base_price}
-                              </span>
                             </div>
                           </Link>
                         );

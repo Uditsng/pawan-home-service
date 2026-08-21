@@ -76,19 +76,22 @@ export default async function PublicSubcategoryServiceListingPage({
           <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
             {servicesList.map((service) => {
               const iconName = service.subcategories?.icon_name || "sparkles";
+              const isUpcoming = service.status === "upcoming" || service.base_price === 0 || !service.base_price;
+              const cardHref = isUpcoming ? `/services/upcoming/${service.id}` : "/login";
 
               return (
                 <Link
                   key={service.id}
-                  href="/login"
+                  href={cardHref}
                   className="glass-panel group relative block w-full overflow-hidden rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
                 >
                   {/* Rectangular banner thumbnail */}
                   <div className="relative w-full aspect-4/3 bg-surface-container-low">
                     <ServiceCardThumbnail
-                      imageUrl={service.image_url}
+                      imageUrl={service.image_url || service.poster_url}
                       iconName={iconName}
                       alt={service.title}
+                      status={isUpcoming ? "upcoming" : service.status}
                       containerClassName="absolute inset-0 w-full h-full"
                       iconClassName="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 text-emerald-600 drop-shadow-sm"
                     />
@@ -108,24 +111,40 @@ export default async function PublicSubcategoryServiceListingPage({
                       {service.title}
                     </span>
                     <div className="flex flex-col items-center gap-0.5 shrink-0 mt-1">
-                      <span className="text-[13px] sm:text-[15px] md:text-[17px] text-primary font-black tracking-tight leading-none">
-                        ₹{service.base_price}
-                      </span>
-                      {service.original_price && (
-                        <span className="text-[10px] md:text-xs text-on-surface-variant/60 line-through font-medium">
-                          ₹{service.original_price}
+                      {isUpcoming ? (
+                        <span className="text-[10px] sm:text-[11px] text-secondary font-black tracking-tight leading-none uppercase bg-primary/95 px-2 py-0.5 rounded-md shadow-xs">
+                          Coming Soon
                         </span>
+                      ) : (
+                        <>
+                          <span className="text-[13px] sm:text-[15px] md:text-[17px] text-primary font-black tracking-tight leading-none">
+                            ₹{service.base_price}
+                          </span>
+                          {service.original_price && (
+                            <span className="text-[10px] md:text-xs text-on-surface-variant/60 line-through font-medium">
+                              ₹{service.original_price}
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
 
-                  {/* Add button mimic */}
+                  {/* Add or Notify button mimic */}
                   <div className="absolute bottom-1 right-1">
-                    <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center border border-outline-variant/15 text-emerald-600 shadow-[0_4px_10px_rgba(15,23,42,0.08)]">
-                      <span className="material-symbols-outlined text-[16px] md:text-[18px] font-bold">
-                        add
-                      </span>
-                    </div>
+                    {isUpcoming ? (
+                      <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center bg-secondary text-primary shadow-[0_4px_10px_rgba(15,23,42,0.08)]">
+                        <span className="material-symbols-outlined text-[16px] md:text-[18px] font-bold">
+                          notifications_active
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center border border-outline-variant/15 text-emerald-600 shadow-[0_4px_10px_rgba(15,23,42,0.08)]">
+                        <span className="material-symbols-outlined text-[16px] md:text-[18px] font-bold">
+                          add
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </Link>
               );

@@ -16,11 +16,13 @@ export interface ServiceWithSubcategory {
   gst_applicable?: boolean | null;
   pricing_config?: unknown;
   image_url?: string;
+  poster_url?: string | null;
   page_content?: ServicePageContent | null;
   price_breakdown?: string | null;
   duration_minutes?: number | null;
   estimated_duration?: number | null;
   warranty?: string | null;
+  status?: "published" | "upcoming" | "draft" | string;
   subcategories: {
     subcategory_name: string;
     icon_name: string;
@@ -48,7 +50,7 @@ export interface PublicReview {
 }
 
 /**
- * Fetches active/published services by subcategory ID, cached for 30 minutes.
+ * Fetches active (published & upcoming) services by subcategory ID, cached for 30 minutes.
  * Invalidated by TAG_SERVICES or specific subcategory tag.
  */
 export const getCachedServicesBySubcategory = (subcategoryId: string) => unstable_cache(
@@ -68,7 +70,7 @@ export const getCachedServicesBySubcategory = (subcategoryId: string) => unstabl
       `)
       .eq("subcategory_id", subcategoryId)
       .eq("is_active", true)
-      .eq("status", "published")
+      .in("status", ["published", "upcoming"])
       .order("title", { ascending: true });
 
     if (error) {
@@ -269,6 +271,7 @@ export interface UpcomingService {
   id: string;
   title: string;
   description: string;
+  image_url?: string | null;
   poster_url?: string | null;
   status: string;
   subcategory_id: string;
@@ -294,6 +297,7 @@ export const getCachedUpcomingServices = () => unstable_cache(
         id,
         title,
         description,
+        image_url,
         poster_url,
         status,
         subcategory_id,
@@ -336,6 +340,7 @@ export const getCachedUpcomingService = (serviceId: string) => unstable_cache(
         id,
         title,
         description,
+        image_url,
         poster_url,
         status,
         subcategory_id,

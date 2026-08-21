@@ -10,6 +10,7 @@ interface ServiceCardThumbnailProps {
   containerClassName: string;
   iconClassName: string;
   alt?: string;
+  status?: string;
 }
 
 /**
@@ -29,17 +30,26 @@ export default function ServiceCardThumbnail({
   containerClassName,
   iconClassName,
   alt = "",
+  // status,
 }: ServiceCardThumbnailProps) {
   const [source, setSource] = useState<"transformed" | "original" | "icon">(() =>
     imageUrl ? "transformed" : "icon"
   );
 
+  // const isUpcoming = status === "upcoming";
+
   if (source === "icon" || !imageUrl) {
     return (
       <div
-        className={`bg-green-500/10 flex items-center justify-center shrink-0 ${containerClassName}`}
+        className={`bg-green-500/10 flex items-center justify-center shrink-0 relative ${containerClassName}`}
       >
         <ServiceIconComponent iconName={iconName} className={iconClassName} />
+        {/* {isUpcoming && (
+          <div className="absolute top-1.5 right-1.5 z-10 bg-primary/90 text-secondary border border-secondary/30 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-md shadow-xs flex items-center gap-0.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
+            <span>Coming Soon</span>
+          </div>
+        )} */}
       </div>
     );
   }
@@ -63,6 +73,12 @@ export default function ServiceCardThumbnail({
           setSource((prev) => (prev === "transformed" ? "original" : "icon"))
         }
       />
+      {/* {isUpcoming && (
+        <div className="absolute top-1.5 right-1.5 z-10 bg-primary/90 text-secondary border border-secondary/30 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-md shadow-xs flex items-center gap-0.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
+          <span>Coming Soon</span>
+        </div>
+      )} */}
     </div>
   );
 }

@@ -140,8 +140,7 @@ export default async function CustomerDashboard() {
               PHS
             </h1>
             <p className="text-on-surface-variant text-xs md:text-sm font-semibold mt-2">
-              Trusted by 450k+ families
-            </p>
+              Your Home. In Safe Hands.            </p>
           </div>
 
           {/* Footer Pills Container */}

@@ -14,17 +14,17 @@ const originalBanners: BannerItem[] = [
   {
     src: "/assets/PHS Banner 1.jpeg",
     title: "PHS Cleaning Company - Premium Home Services",
-    link: "/services"
+    link: "/customer/services/cleaning"
   },
   {
     src: "/assets/PHS Banner 2.jpeg",
     title: "PHS Cleaning Company - Safe & Effective Pest Control",
-    link: "/services"
+    link: "/customer/services/pest-control-services"
   },
   {
     src: "/assets/PHS Banner 3.jpeg",
     title: "PHS Cleaning Company - Premium Housekeeping & Cleaning",
-    link: "/services"
+    link: "/customer/services/house-keeping"
   },
   {
     src: "/assets/PHS Banner 4.jpeg",
@@ -141,7 +141,7 @@ export default function DashboardCarousel() {
             <Link
               key={idx}
               href={banner.link}
-              className={`shrink-0 snap-center w-[88%] md:w-[75%] lg:w-[60%] max-w-[768px] aspect-video rounded-2xl overflow-hidden relative border transition-all duration-700 ease-out block group cursor-pointer ${
+              className={`shrink-0 snap-center w-[88%] md:w-[75%] lg:w-[60%] max-w-3xl aspect-video rounded-2xl overflow-hidden relative border transition-all duration-700 ease-out block group cursor-pointer ${
                 isCenter
                   ? "scale-100 opacity-100 z-10 shadow-[0_16px_36px_rgba(0,34,97,0.12)] border-outline-variant/30"
                   : "scale-[0.93] sm:scale-[0.91] opacity-45 blur-[0.4px] z-0 border-transparent"

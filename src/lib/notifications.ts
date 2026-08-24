@@ -292,7 +292,7 @@ async function sendFcmPush(
       },
     });
 
-    let invalidTokens: string[] = [];
+    const invalidTokens: string[] = [];
     const userStatusMap: Record<string, "firebase_accepted" | "delivery_failed"> = {};
 
     // Default all targets to failed

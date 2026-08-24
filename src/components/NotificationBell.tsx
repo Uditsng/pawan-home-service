@@ -5,6 +5,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import type { AppNotification } from "@/lib/types";
 import type { RealtimePostgresChangesPayload, AuthChangeEvent, Session } from "@supabase/supabase-js";
+import { Capacitor } from "@capacitor/core";
+import { playJobAlertTone } from "@/lib/sound";
 
 // ─── Icon Map ────────────────────────────────────────────
 const typeIcons: Record<string, string> = {
@@ -21,12 +23,12 @@ const typeIcons: Record<string, string> = {
 };
 
 const typeColors: Record<string, string> = {
-  new_job_offer: "bg-secondary/15 text-primary",
+  new_job_offer: "bg-emerald-500/10 text-emerald-600",
   booking_created: "bg-blue-500/10 text-blue-600",
-  booking_confirmed: "bg-green-500/10 text-green-600",
-  partner_assigned: "bg-indigo-500/10 text-indigo-600",
+  booking_confirmed: "bg-indigo-500/10 text-indigo-600",
+  partner_assigned: "bg-cyan-500/10 text-cyan-600",
   partner_reassigned: "bg-amber-500/10 text-amber-600",
-  service_started: "bg-cyan-500/10 text-cyan-600",
+  service_started: "bg-purple-500/10 text-purple-600",
   service_completed: "bg-emerald-500/10 text-emerald-600",
   booking_cancelled: "bg-red-500/10 text-red-600",
   extension_requested: "bg-orange-500/10 text-orange-600",
@@ -35,34 +37,6 @@ const typeColors: Record<string, string> = {
 
 // High-priority types that trigger in-app alert sound for partners
 const HIGH_PRIORITY_TYPES = new Set(["new_job_offer", "partner_assigned", "extension_requested"]);
-
-// Play an alert tone using Web Audio API (no external file needed)
-function playAlertTone() {
-  try {
-    const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-    // Bell-like tone: 880Hz then 660Hz, short envelope
-    const frequencies = [880, 660, 880];
-    let startTime = ctx.currentTime;
-    frequencies.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = "sine";
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0, startTime);
-      gain.gain.linearRampToValueAtTime(0.4, startTime + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.25);
-      osc.start(startTime);
-      osc.stop(startTime + 0.25);
-      startTime += i === 0 ? 0.3 : 0.28;
-    });
-    // Auto-close the audio context after tones finish
-    setTimeout(() => ctx.close(), 1200);
-  } catch {
-    // Ignore — Web Audio may not be available in all environments
-  }
-}
 
 
 // ─── Time Ago ────────────────────────────────────────────────
@@ -210,11 +184,16 @@ export default function NotificationBell() {
             // tray notification. We compensate with a Web Audio alert tone
             // and a brief visual flash on the bell button so they never miss a job.
             if (HIGH_PRIORITY_TYPES.has(newNotif.type)) {
-              playAlertTone();
+              // On native, the OS local notification (scheduled in MobileSetup)
+              // already plays the alert sound, so only chime on the web build
+              // to avoid a doubled/overlapping alert tone.
+              if (!Capacitor.isNativePlatform()) {
+                playJobAlertTone(4);
+              }
               const bellBtn = document.getElementById("notification-bell-trigger");
               if (bellBtn) {
                 bellBtn.classList.add("ring-2", "ring-secondary", "ring-offset-1");
-                setTimeout(() => bellBtn.classList.remove("ring-2", "ring-secondary", "ring-offset-1"), 2000);
+                setTimeout(() => bellBtn.classList.remove("ring-2", "ring-secondary", "ring-offset-1"), 4000);
               }
             }
           } else if (payload.eventType === "DELETE") {
@@ -363,7 +342,7 @@ export default function NotificationBell() {
           notifications
         </span>
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 shadow-lg animate-bounce">
+          <span className="absolute -top-0.5 -right-0.5 min-w-5 h-5 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 shadow-lg animate-bounce">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
@@ -373,7 +352,7 @@ export default function NotificationBell() {
       {isOpen && (
         <div
           id="notification-dropdown"
-          className="fixed md:absolute left-4 right-4 md:left-auto md:right-0 top-20 md:top-full mt-3 md:w-[360px] max-h-[480px] bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-2xl z-100 flex flex-col overflow-hidden"
+          className="fixed md:absolute left-4 right-4 md:left-auto md:right-0 top-20 md:top-full mt-3 md:w-90 max-h-120 bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-2xl z-100 flex flex-col overflow-hidden"
           style={{ animation: "slideDown 0.2s ease-out" }}
         >
           {/* Header */}

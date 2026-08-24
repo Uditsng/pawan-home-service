@@ -200,8 +200,7 @@ export default async function PartnerDashboardPage() {
 
           {/* New Job Request (High Priority Card) */}
           {nextAssignedJob ? (
-            <div className="lg:col-span-8 bg-surface-container-lowest border border-outline-variant/15 rounded-3xl overflow-hidden shadow-xs relative group hover:shadow-md transition-shadow">
-              <div className="absolute top-0 left-0 w-1.5 h-full bg-secondary"></div>
+            <div className="lg:col-span-8 bg-surface-container-lowest border border-black/10 rounded-3xl overflow-hidden shadow-xs relative group hover:shadow-md transition-shadow">
               <div className="p-5 sm:p-6 lg:p-8">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   <div>

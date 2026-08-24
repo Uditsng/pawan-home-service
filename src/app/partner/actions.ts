@@ -109,19 +109,37 @@ export async function rejectJob(
   });
 
   if (!newPartnerId) {
-    // No replacement found — set booking back to pending for admin handling
+    // Expire the rejecting partner's offer row
+    await supabase
+      .from("booking_job_offers")
+      .update({ status: "expired" })
+      .eq("booking_id", bookingId)
+      .eq("partner_id", user.id);
+
+    // Release partner's availability
+    await supabase.rpc("release_partner_assignment", {
+      p_booking_id: bookingId,
+      p_partner_id: user.id,
+      p_clear_offers: false,
+    });
+
+    // Set booking back to pending and reset dispatch state for fresh Tier 1 broadcast
     await supabase
       .from("bookings")
       .update({
         partner_id: null,
         status: "pending" as BookingStatus,
+        dispatch_status: "broadcasting",
+        broadcast_tier: 0,
+        last_broadcast_at: null,
+        dispatch_locked_at: null,
       })
       .eq("id", bookingId);
 
-    // Notify Admins about failed auto-assignment
+    // Notify Admins about rejection & reassignment trigger
     void notifyAdmins(
       "Job Assignment Failed",
-      `Booking #${bookingId.substring(0, 8)} has no available professionals after rejection. Manual assignment required.`,
+      `Booking #${bookingId.substring(0, 8)} was rejected by partner. Initiating redispatch.`,
       "partner_reassigned",
       { booking_id: bookingId }
     );
@@ -132,7 +150,7 @@ export async function rejectJob(
       "PARTNER_REASSIGNED",
       "SYSTEM",
       {
-        result: "no_partner_available",
+        result: "partner_rejected_redispatching",
         needs_admin_attention: true,
       }
     );
@@ -151,22 +169,10 @@ export async function rejectJob(
       const isNotCompleted = latestBooking.status !== "completed";
 
       if (isPending && isUnassigned && isNotCancelled && isNotCompleted) {
-        // Trigger re-dispatch batch (which automatically excludes rejecting partner)
+        // Trigger fresh dispatch batch (excludes rejecting partner via booking_rejections)
         void triggerDispatchBatch(bookingId, 1);
       }
     }
-  } else {
-    // Log successful reassignment
-    await logBookingEvent(
-      supabase,
-      bookingId,
-      "PARTNER_REASSIGNED",
-      "SYSTEM",
-      {
-        new_partner_id: newPartnerId,
-        result: "reassigned_successfully",
-      }
-    );
   }
 
   // Update rejection metrics for the partner
@@ -1133,6 +1139,43 @@ export async function claimJobOffer(
       "booking_confirmed",
       { booking_id: bookingId }
     );
+  }
+
+  revalidatePath("/partner", "layout");
+  return { success: true };
+}
+
+// ─── DECLINE JOB OFFER ─────────────────────────────────────────
+// Allows a partner to decline/dismiss an unaccepted broadcast offer.
+// Uses the atomic decline_job_offer RPC.
+
+export async function declineJobOffer(
+  bookingId: string,
+  reason?: string
+): Promise<{ success: boolean; error?: string; noLongerAvailable?: boolean }> {
+  const { supabase, user, error: authError } = await getAuthenticatedPartner();
+  if (!user) return { success: false, error: authError ?? "Not authenticated" };
+
+  const { data: result, error: rpcError } = await supabase.rpc("decline_job_offer", {
+    p_booking_id: bookingId,
+    p_partner_id: user.id,
+    p_reason: reason || "Partner declined offer",
+  });
+
+  if (rpcError) {
+    return { success: false, error: "Failed to decline offer. Please try again." };
+  }
+
+  const declineResult = result as { success: boolean; reason?: string };
+
+  if (!declineResult.success) {
+    return {
+      success: false,
+      noLongerAvailable: declineResult.reason === "offer_no_longer_available",
+      error: declineResult.reason === "offer_no_longer_available"
+        ? "This offer is no longer available."
+        : "Could not decline offer.",
+    };
   }
 
   revalidatePath("/partner", "layout");

@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/dispatch/cron",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/notifications/process",
+      "schedule": "* * * * *"
+    }
+  ]
+}

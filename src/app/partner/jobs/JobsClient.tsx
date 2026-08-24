@@ -11,11 +11,14 @@ import {
   requestCompletion,
   verifyCompletionOtp,
   claimJobOffer,
+  declineJobOffer,
 } from "../actions";
 import type { BookingWithDetails, BookingExtension, BookingQuote } from "@/lib/types";
+import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { requestExtensionAction } from "@/app/actions/extensions";
 import QuotationWorkflow from "@/components/QuotationWorkflow";
 import ServiceCardThumbnail from "@/components/ServiceCardThumbnail";
+import { startJobRinger, stopJobRinger } from "@/lib/sound";
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -135,8 +138,9 @@ export default function JobsClient({
   const [rejectBookingId, setRejectBookingId]   = useState<string | null>(null);
   const [rejectReason, setRejectReason]         = useState("");
 
-  // Claiming state for individual offer cards
+  // Claiming & declining states for individual offer cards
   const [claimingId, setClaimingId] = useState<string | null>(null);
+  const [decliningId, setDecliningId] = useState<string | null>(null);
 
   // ─── Supabase Realtime: subscribe to my job offers ──────────
   const [offeredJobs, setOfferedJobs] = useState<JobOffer[]>(initialOfferedJobs);
@@ -205,7 +209,10 @@ export default function JobsClient({
           schema: "public",
           table: "booking_job_offers",
         },
-        () => {
+        (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
+          if (payload.eventType === "INSERT") {
+            startJobRinger();
+          }
           // Refetch on any change (insert/update)
           void refreshOffers();
         }
@@ -213,6 +220,7 @@ export default function JobsClient({
       .subscribe();
 
     return () => {
+      stopJobRinger();
       void supabase.removeChannel(channel);
     };
   }, [refreshOffers]);
@@ -435,6 +443,7 @@ export default function JobsClient({
   }
 
   async function handleAcceptOffer(bookingId: string) {
+    stopJobRinger();
     setClaimingId(bookingId);
     setActionError(null);
     const result = await claimJobOffer(bookingId);
@@ -454,6 +463,27 @@ export default function JobsClient({
     } else {
       setActionError(result.error || "Failed to accept job. Please try again.");
       setTimeout(() => setActionError(null), 5000);
+    }
+  }
+
+  async function handleDeclineOffer(bookingId: string) {
+    stopJobRinger();
+    setDecliningId(bookingId);
+    setActionError(null);
+    const result = await declineJobOffer(bookingId);
+    setDecliningId(null);
+
+    if (result.success) {
+      setActionSuccess("Offer declined.");
+      setTimeout(() => setActionSuccess(null), 3000);
+      setOfferedJobs((prev) => prev.filter((o) => o.booking_id !== bookingId));
+    } else if (result.noLongerAvailable) {
+      setActionError("This offer is no longer available.");
+      setTimeout(() => setActionError(null), 4000);
+      setOfferedJobs((prev) => prev.filter((o) => o.booking_id !== bookingId));
+    } else {
+      setActionError(result.error || "Failed to decline offer. Please try again.");
+      setTimeout(() => setActionError(null), 4000);
     }
   }
 
@@ -667,6 +697,8 @@ export default function JobsClient({
     const b = offer.bookings;
     if (!b) return null;
     const isClaiming = claimingId === b.id;
+    const isDeclining = decliningId === b.id;
+    const isBusy = isClaiming || isDeclining;
     const servicePrice = Number(b.total_amount || 0);
     const location = b.address || (b.area ? `${b.area}, ${b.city || ""}` : b.city || "Kanpur Nagar");
 
@@ -750,30 +782,46 @@ export default function JobsClient({
           </div>
         )}
 
-        {/* Payout + Accept */}
-        <div className="flex items-center justify-between pt-2.5 border-t border-outline-variant/15">
+        {/* Payout + Action buttons */}
+        <div className="flex items-center justify-between pt-2.5 border-t border-outline-variant/15 gap-2">
           <div>
             <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant">Service Price</p>
             <p className="text-2xl font-black text-primary tracking-tighter">₹{servicePrice}</p>
           </div>
 
-          <button
-            onClick={() => void handleAcceptOffer(b.id)}
-            disabled={isClaiming}
-            className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-2xl font-black text-sm shadow-[0_8px_20px_rgba(0,34,97,0.3)] hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {isClaiming ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Accepting...
-              </>
-            ) : (
-              <>
-                <span className="material-symbols-outlined text-lg">check_circle</span>
-                Accept Job
-              </>
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => void handleDeclineOffer(b.id)}
+              disabled={isBusy}
+              className="flex items-center gap-1 text-on-surface-variant/80 border border-outline-variant/30 hover:border-error/40 hover:text-error hover:bg-error/5 px-3 py-2.5 rounded-xl font-bold text-xs active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Decline Offer"
+            >
+              {isDeclining ? (
+                <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <span className="material-symbols-outlined text-base">close</span>
+              )}
+              <span>Decline</span>
+            </button>
+
+            <button
+              onClick={() => void handleAcceptOffer(b.id)}
+              disabled={isBusy}
+              className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-black text-sm shadow-[0_8px_20px_rgba(0,34,97,0.3)] hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isClaiming ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Accepting...
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-lg">check_circle</span>
+                  Accept
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Time received */}

@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { notifyCustomer, notifyPartner } from "@/lib/notifications";
 import { requireAdmin } from "@/utils/supabase/auth-checks";
+import { triggerDispatchBatch } from "@/app/actions/dispatch";
 
 /**
  * Helper to throw user-friendly error messages for database schema issues.
@@ -166,73 +167,86 @@ export async function updateBookingStatusAction(
 }
 
 /**
- * Manually Assign a Partner to a Booking (Admin Override)
- * Sets partner_id, updates status to confirmed, logs event.
+ * Manually Assign a Partner to a Booking (Admin Action)
+ * Uses the authoritative finalize_booking_assignment RPC to ensure
+ * atomic assignment, competing offer expiration, availability update,
+ * and metric single-ownership.
  */
 export async function manualAssignPartnerAction(
   bookingId: string,
-  partnerId: string
+  partnerId: string,
+  overrideEligibility: boolean = false,
+  overrideReason?: string
 ) {
   await requireAdmin();
   const supabase = await createClient();
 
-  const { error } = await supabase
-    .from("bookings")
-    .update({
-      partner_id: partnerId,
-      status: "confirmed",
-      accepted_at: new Date().toISOString(),
-    })
-    .eq("id", bookingId);
+  const { data: result, error: rpcError } = await supabase.rpc("finalize_booking_assignment", {
+    p_booking_id: bookingId,
+    p_partner_id: partnerId,
+    p_assigned_by: "admin",
+    p_override_eligibility: overrideEligibility,
+    p_override_reason: overrideReason || null,
+  });
 
-  if (error) {
-    handleDatabaseError(error);
+  if (rpcError) {
+    handleDatabaseError(rpcError);
+  }
+
+  const assignResult = result as { success: boolean; reason?: string };
+
+  if (!assignResult || !assignResult.success) {
+    switch (assignResult?.reason) {
+      case "already_assigned":
+        throw new Error("This booking has already been assigned to another professional.");
+      case "service_mismatch":
+        throw new Error("Selected professional does not offer this service. Use force assignment if intentional.");
+      case "pincode_mismatch":
+        throw new Error("Selected professional does not serve this pincode. Use force assignment if intentional.");
+      case "partner_not_active":
+        throw new Error("Selected professional is currently inactive or offline.");
+      case "invalid_partner":
+        throw new Error("Selected user is not an active professional.");
+      default:
+        throw new Error(assignResult?.reason || "Failed to assign professional.");
+    }
   }
 
   // Log assignment event
+  const isForceAssigned = overrideEligibility === true;
   await supabase.from("booking_events").insert({
     booking_id: bookingId,
-    event_type: "PARTNER_AUTO_ASSIGNED",
-    actor: "SYSTEM",
+    event_type: isForceAssigned ? "ADMIN_FORCE_ASSIGNED" : "PARTNER_AUTO_ASSIGNED",
+    actor: "ADMIN",
     metadata: {
       partner_id: partnerId,
-      assignment_method: "admin_manual_override",
+      assignment_method: isForceAssigned ? "admin_force_override" : "admin_manual_assignment",
+      override_reason: overrideReason || null,
     },
   });
 
   await supabase.from("booking_audit_trail").insert({
     booking_id: bookingId,
-    action: "PARTNER_ASSIGNED",
+    action: isForceAssigned ? "ADMIN_FORCE_ASSIGNED" : "PARTNER_ASSIGNED",
     actor: "ADMIN",
     metadata: {
       partner_id: partnerId,
-      assignment_method: "admin_manual_override",
+      assignment_method: isForceAssigned ? "admin_force_override" : "admin_manual_assignment",
+      override_reason: overrideReason || null,
     },
   });
-
-  // Update partner's last_assigned_at and job counts
-  const { data: partnerProfile } = await supabase
-    .from("profiles")
-    .select("jobs_offered_count, jobs_accepted_count, full_name")
-    .eq("id", partnerId)
-    .single();
-
-  if (partnerProfile) {
-    await supabase
-      .from("profiles")
-      .update({
-        jobs_offered_count: (partnerProfile.jobs_offered_count || 0) + 1,
-        jobs_accepted_count: (partnerProfile.jobs_accepted_count || 0) + 1,
-        last_assigned_at: new Date().toISOString(),
-      })
-      .eq("id", partnerId);
-  }
 
   // ─── Notifications ─────────────────────────────────────────
   const { data: bookingInfo } = await supabase
     .from("bookings")
     .select("customer_id, services:service_id(title), city, scheduled_date")
     .eq("id", bookingId)
+    .single();
+
+  const { data: partnerProfile } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", partnerId)
     .single();
 
   if (bookingInfo) {
@@ -317,24 +331,43 @@ export async function reassignPartnerAction(
     }
   }
 
-  // Revert to pending (Unassigned) for manual intervention
+  // Release old partner's assignment and expire their offer
+  if (currentPartnerId) {
+    await supabase
+      .from("booking_job_offers")
+      .update({ status: "expired" })
+      .eq("booking_id", bookingId)
+      .eq("partner_id", currentPartnerId);
+
+    await supabase.rpc("release_partner_assignment", {
+      p_booking_id: bookingId,
+      p_partner_id: currentPartnerId,
+      p_clear_offers: false,
+    });
+  }
+
+  // Revert to pending and reset dispatch state for fresh Tier 1 broadcast
   await supabase
     .from("bookings")
     .update({
       partner_id: null,
       status: "pending",
+      dispatch_status: "broadcasting",
+      broadcast_tier: 0,
+      last_broadcast_at: null,
+      dispatch_locked_at: null,
     })
     .eq("id", bookingId);
 
   await supabase.from("booking_events").insert({
     booking_id: bookingId,
     event_type: "PARTNER_REASSIGNED",
-    actor: "SYSTEM",
+    actor: "ADMIN",
     metadata: {
       previous_partner_id: currentPartnerId,
       new_partner_id: null,
       reason: reason || null,
-      result: "manual_intervention_required",
+      result: "redispatching_new_partner",
     },
   });
 
@@ -347,6 +380,9 @@ export async function reassignPartnerAction(
       reason: reason || null,
     },
   });
+
+  // Trigger fresh dispatch batch (excludes rejected partners)
+  void triggerDispatchBatch(bookingId, 1);
 
   // ─── Notifications ─────────────────────────────────────────
   if (currentPartnerId) {

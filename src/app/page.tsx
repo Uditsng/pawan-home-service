@@ -106,7 +106,7 @@ export default async function Home() {
             </h1>
 
             <p className="text-sm sm:text-base md:text-lg text-on-surface-variant mb-8 max-w-xl mx-auto md:mx-0 font-medium leading-relaxed px-2 md:px-0">
-              Sit back and relax. We’ll take care of your home, just like it’s our own.            </p>
+              Sit back and relax. We’ll take care of your home, just like it’s our own.</p>
 
           </div>
 

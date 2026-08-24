@@ -156,7 +156,7 @@ export default function DashboardGridClient({ categories, availableServices }: D
                 key={service.id}
                 className="glass-panel group relative block w-full overflow-hidden rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
               >
-                <div className="relative w-full aspect-[4/3] bg-surface-container-low">
+                <div className="relative w-full aspect-4/3 bg-surface-container-low">
                   <ServiceCardThumbnail
                     imageUrl={service.image_url || service.poster_url}
                     iconName={iconName}
@@ -167,7 +167,7 @@ export default function DashboardGridClient({ categories, availableServices }: D
                   />
                 </div>
                 <div className="p-2.5 sm:p-3 text-center">
-                  <span className="block font-headline font-bold text-xs md:text-sm text-on-surface line-clamp-2 leading-tight min-h-9 flex items-center justify-center">{service.title}</span>
+                  <span className="block font-headline font-bold text-xs md:text-sm text-on-surface line-clamp-2 leading-tight min-h-9 items-center justify-center">{service.title}</span>
                   <div className="flex items-center justify-center gap-1.5 mt-1">
                     {isUpcoming ? (
                       <span className="text-[10px] sm:text-[11px] text-secondary font-black tracking-tight leading-none uppercase bg-primary/95 px-2 py-0.5 rounded-md shadow-xs">

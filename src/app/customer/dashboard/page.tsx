@@ -60,6 +60,9 @@ export default async function CustomerDashboard() {
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 pt-4 md:pt-6">
 
+        {/* Service Categories Bento Grid Client Component */}
+        <DashboardGridClient categories={categories} availableServices={availableServices} />
+        
         {/* Promotional Carousel Banner */}
         <DashboardCarousel />
 
@@ -76,7 +79,7 @@ export default async function CustomerDashboard() {
         </div>
 
         {/* Service Categories Bento Grid Client Component */}
-        <DashboardGridClient categories={categories} availableServices={availableServices} />
+        {/* <DashboardGridClient categories={categories} availableServices={availableServices} /> */}
 
         {/* Reliable & Trustworthy Section */}
         <section className="mb-8 md:mb-12 px-1">

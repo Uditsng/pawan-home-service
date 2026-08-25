@@ -10,15 +10,28 @@ import { triggerDispatchBatch } from "@/app/actions/dispatch";
  * Helper to throw user-friendly error messages for database schema issues.
  */
 function handleDatabaseError(error: { message?: string; code?: string }): never {
-  if (error.code === '42703' || error.message?.includes("column")) {
+  // Missing database function => required SQL migration was not applied.
+  if (
+    error.code === "PGRST202" ||
+    error.message?.includes("Could not find the function")
+  ) {
     throw new Error(
-      "DATABASE_SCHEMA_ERROR: One or more required columns are missing from the 'bookings' table. " +
-      "Please run these SQL commands in your Supabase Dashboard SQL Editor:\n\n" +
-      "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'UPI';\n" +
-      "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS address TEXT;"
+      "MIGRATION_REQUIRED: A required database function is missing. " +
+        "Please run supabase/migrations/20260825000000_admin_reassign_redispatch_fix.sql " +
+        "in your Supabase Dashboard SQL Editor."
     );
   }
-  throw new Error(error.message || "An unknown database error occurred.");
+  if (error.code === '42703' || error.message?.includes("column")) {
+    throw new Error(
+      "DATABASE_SCHEMA_ERROR: A required column is missing in the database. " +
+      "Run the pending files in supabase/migrations/ via your Supabase Dashboard SQL Editor " +
+      "(at minimum 20260825000001_dispatch_escalation_live_remediation.sql).\n\n" +
+      `[DB] ${error.message || "unknown error"}`
+    );
+  }
+  throw new Error(
+    `${error.message || "An unknown database error occurred."} [code: ${error.code ?? "n/a"}]`
+  );
 }
 
 /**
@@ -279,110 +292,73 @@ export async function manualAssignPartnerAction(
   return { success: true };
 }
 
+export interface ReassignPartnerResult {
+  success: boolean;
+  /** Number of professionals the fresh broadcast reached. */
+  dispatched: number;
+  /** broadcasting | exhausted | blocked | failed */
+  dispatchStatus: string;
+  /** Actual block/failure reason from the dispatch engine, when present. */
+  reason?: string | null;
+}
+
 /**
- * Reassign Partner — Reject current partner and attempt auto-assign next.
- * Logs rejection in booking_rejections, calls RPC for next partner.
+ * Reassign Partner — atomically releases the current professional via the
+ * admin_release_booking_assignment RPC (rejection log, metrics, full offer
+ * cleanup, dispatch-state reset, audit records in one locked transaction),
+ * then runs a fresh Tier-1 broadcast and reports its real outcome.
  */
 export async function reassignPartnerAction(
   bookingId: string,
   reason?: string
-) {
+): Promise<ReassignPartnerResult> {
   await requireAdmin();
   const supabase = await createClient();
 
-  // Get current booking data for reassignment context
-  const { data: booking, error: fetchError } = await supabase
-    .from("bookings")
-    .select("partner_id, service_id, city, scheduled_date")
-    .eq("id", bookingId)
-    .single();
+  const { data: rpcResult, error: rpcError } = await supabase.rpc(
+    "admin_release_booking_assignment",
+    {
+      p_booking_id: bookingId,
+      p_reason: reason ?? null,
+    }
+  );
 
-  if (fetchError || !booking) {
-    throw new Error("Failed to fetch booking details for reassignment.");
+  if (rpcError) {
+    handleDatabaseError(rpcError);
   }
 
-  const currentPartnerId = booking.partner_id;
+  const release = rpcResult as { success: boolean; reason?: string; previous_partner_id?: string | null } | null;
 
-  // Log rejection if there was a current partner
-  if (currentPartnerId) {
-    await supabase.from("booking_rejections").insert({
-      booking_id: bookingId,
-      partner_id: currentPartnerId,
-      reason: reason || "Admin initiated reassignment",
-    });
-
-    // Update partner cancellation metrics
-    const { data: partnerProfile } = await supabase
-      .from("profiles")
-      .select("jobs_cancelled_count, cancellation_rate, jobs_offered_count")
-      .eq("id", currentPartnerId)
-      .single();
-
-    if (partnerProfile) {
-      const newCancelCount = (partnerProfile.jobs_cancelled_count || 0) + 1;
-      const totalOffered = partnerProfile.jobs_offered_count || 1;
-      await supabase
-        .from("profiles")
-        .update({
-          jobs_cancelled_count: newCancelCount,
-          cancellation_rate: newCancelCount / totalOffered,
-        })
-        .eq("id", currentPartnerId);
+  if (!release?.success) {
+    switch (release?.reason) {
+      case "unauthorized":
+        throw new Error("You are not authorized to reassign bookings.");
+      case "booking_not_found":
+        throw new Error("Booking not found.");
+      case "booking_not_reassignable":
+        throw new Error("Completed or cancelled bookings cannot be reassigned.");
+      case "reset_failed":
+        throw new Error("Failed to reset the booking for redispatch. Please try again.");
+      default:
+        throw new Error(release?.reason || "Failed to release the current professional.");
     }
   }
 
-  // Release old partner's assignment and expire their offer
-  if (currentPartnerId) {
-    await supabase
-      .from("booking_job_offers")
-      .update({ status: "expired" })
-      .eq("booking_id", bookingId)
-      .eq("partner_id", currentPartnerId);
+  const currentPartnerId = release.previous_partner_id ?? null;
 
-    await supabase.rpc("release_partner_assignment", {
-      p_booking_id: bookingId,
-      p_partner_id: currentPartnerId,
-      p_clear_offers: false,
-    });
+  // Fresh Tier-1 broadcast. Awaited so the admin sees the real outcome.
+  const dispatch = await triggerDispatchBatch(bookingId, 1);
+
+  let dispatchStatus: string;
+  if (dispatch.error) {
+    dispatchStatus = "failed";
+  } else if (dispatch.dispatched > 0) {
+    dispatchStatus = "broadcasting";
+  } else if (dispatch.reason === "exhausted") {
+    dispatchStatus = "exhausted";
+  } else {
+    dispatchStatus = "blocked";
   }
-
-  // Revert to pending and reset dispatch state for fresh Tier 1 broadcast
-  await supabase
-    .from("bookings")
-    .update({
-      partner_id: null,
-      status: "pending",
-      dispatch_status: "broadcasting",
-      broadcast_tier: 0,
-      last_broadcast_at: null,
-      dispatch_locked_at: null,
-    })
-    .eq("id", bookingId);
-
-  await supabase.from("booking_events").insert({
-    booking_id: bookingId,
-    event_type: "PARTNER_REASSIGNED",
-    actor: "ADMIN",
-    metadata: {
-      previous_partner_id: currentPartnerId,
-      new_partner_id: null,
-      reason: reason || null,
-      result: "redispatching_new_partner",
-    },
-  });
-
-  await supabase.from("booking_audit_trail").insert({
-    booking_id: bookingId,
-    action: "PARTNER_REASSIGNED",
-    actor: "ADMIN",
-    metadata: {
-      previous_partner_id: currentPartnerId || null,
-      reason: reason || null,
-    },
-  });
-
-  // Trigger fresh dispatch batch (excludes rejected partners)
-  void triggerDispatchBatch(bookingId, 1);
 
   // ─── Notifications ─────────────────────────────────────────
   if (currentPartnerId) {
@@ -415,7 +391,12 @@ export async function reassignPartnerAction(
 
   revalidatePath("/admin/bookings");
   revalidatePath("/admin/partners");
-  return { success: true, newPartnerId: null };
+  return {
+    success: true,
+    dispatched: dispatch.dispatched,
+    dispatchStatus,
+    reason: dispatch.error ?? dispatch.reason ?? null,
+  };
 }
 
 /**

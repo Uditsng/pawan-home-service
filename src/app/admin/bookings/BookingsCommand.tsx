@@ -76,6 +76,7 @@ export function BookingsCommand({
   const [bookings, setBookings] = useState<SerializedBooking[]>(initialBookings);
   const [isPending, startTransition] = useTransition();
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<{ tone: "success" | "warning"; text: string } | null>(null);
 
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState("");
@@ -424,39 +425,31 @@ export function BookingsCommand({
   const handleReassign = (bookingId: string, reason?: string) => {
     setModalAction(null);
     setModalTargetBooking(null);
+    setActionNotice(null);
 
     startTransition(async () => {
       try {
         const result = await reassignPartnerAction(bookingId, reason);
-        if (result.newPartnerId) {
-          const newPartner = availablePartners.find((p) => p.id === result.newPartnerId);
-          setBookings((prev) =>
-            prev.map((b) =>
-              b.id === bookingId
-                ? {
-                    ...b,
-                    partner_id: result.newPartnerId,
-                    status: "confirmed",
-                    partner: newPartner
-                      ? {
-                          id: newPartner.id,
-                          full_name: newPartner.full_name,
-                          email: newPartner.email,
-                          phone: newPartner.phone,
-                          avatar_url: newPartner.avatar_url,
-                          status: newPartner.status,
-                        }
-                      : b.partner,
-                  }
-                : b
-            )
-          );
+        setBookings((prev) =>
+          prev.map((b) =>
+            b.id === bookingId ? { ...b, partner_id: null, status: "pending", partner: null } : b
+          )
+        );
+        if (result.dispatchStatus === "broadcasting") {
+          setActionNotice({
+            tone: "success",
+            text: `Reassignment started — broadcasting the job offer to ${result.dispatched} professional${result.dispatched === 1 ? "" : "s"}. You'll see the booking confirm once one accepts.`,
+          });
+        } else if (result.dispatchStatus === "exhausted") {
+          setActionNotice({
+            tone: "warning",
+            text: "No eligible Professional is available right now. Manual assignment is required.",
+          });
         } else {
-          setBookings((prev) =>
-            prev.map((b) =>
-              b.id === bookingId ? { ...b, partner_id: null, status: "pending", partner: null } : b
-            )
-          );
+          setActionNotice({
+            tone: "warning",
+            text: `Redispatch could not start (${result.reason ?? "unknown reason"}). You can assign a Professional manually.`,
+          });
         }
         setActionError(null);
         setCancelReason("");
@@ -485,6 +478,7 @@ export function BookingsCommand({
     setModalTargetBooking(booking);
     setModalAction(action);
     setCancelReason("");
+    setActionNotice(null);
     setDropdownMenu(null);
   };
 
@@ -528,6 +522,35 @@ export function BookingsCommand({
             type="button"
             onClick={() => setActionError(null)}
             className="p-1 rounded-lg hover:bg-red-500/20 text-red-700 transition-colors shrink-0 cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-base font-bold block">close</span>
+          </button>
+        </div>
+      )}
+
+      {/* Outcome Notice Banner */}
+      {actionNotice && (
+        <div
+          className={`${
+            actionNotice.tone === "success"
+              ? "bg-secondary/10 border-secondary/40"
+              : "bg-warning/10 border-warning/40"
+          } border rounded-xl p-4 flex items-center justify-between gap-4 text-xs font-semibold text-primary animate-in fade-in slide-in-from-top-4 duration-300`}
+        >
+          <div className="flex items-center gap-3">
+            <span
+              className={`material-symbols-outlined text-lg ${
+                actionNotice.tone === "success" ? "text-secondary" : "text-warning"
+              }`}
+            >
+              {actionNotice.tone === "success" ? "check_circle" : "warning"}
+            </span>
+            <p className="leading-relaxed">{actionNotice.text}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActionNotice(null)}
+            className="p-1 rounded-lg hover:bg-surface-container-low text-primary transition-colors shrink-0 cursor-pointer"
           >
             <span className="material-symbols-outlined text-base font-bold block">close</span>
           </button>

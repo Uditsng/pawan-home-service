@@ -63,6 +63,39 @@ interface PartnersConsoleProps {
   };
 }
 
+const MENU_WIDTH_PX = 192;
+const MENU_GAP_PX = 4;
+const VIEWPORT_MARGIN_PX = 8;
+const MENU_EST_HEIGHT_PX = 250;
+
+/**
+ * Viewport-anchored placement for the fixed-position row actions menu.
+ * getBoundingClientRect() is viewport-relative, matching position:fixed —
+ * never mix in window.scrollY/X or the menu lands off-screen when scrolled.
+ */
+function getMenuPositionStyle(rect: DOMRect): React.CSSProperties {
+  const spaceBelow = window.innerHeight - rect.bottom - VIEWPORT_MARGIN_PX;
+  const spaceAbove = rect.top - VIEWPORT_MARGIN_PX;
+  const left = Math.min(
+    Math.max(VIEWPORT_MARGIN_PX, rect.right - MENU_WIDTH_PX),
+    Math.max(VIEWPORT_MARGIN_PX, window.innerWidth - MENU_WIDTH_PX - VIEWPORT_MARGIN_PX)
+  );
+  const maxHeight = Math.max(160, Math.max(spaceAbove, spaceBelow) - MENU_GAP_PX);
+
+  if (spaceBelow < MENU_EST_HEIGHT_PX && spaceAbove > spaceBelow) {
+    return {
+      bottom: window.innerHeight - rect.top + MENU_GAP_PX,
+      left,
+      maxHeight,
+    };
+  }
+  return {
+    top: rect.bottom + MENU_GAP_PX,
+    left,
+    maxHeight,
+  };
+}
+
 export function PartnersConsole({ initialPartners, allServices = [], fleetCounts }: PartnersConsoleProps) {
   const [partners, setPartners] = useState<SerializedPartner[]>(initialPartners);
   const [isPending, startTransition] = useTransition();
@@ -112,11 +145,6 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
   });
   const [editError, setEditError] = useState<string | null>(null);
   const [editSuccess, setEditSuccess] = useState<string | null>(null);
-
-  // Emergency Dispatch Modal States
-  const [emergencyBookingPartnerId, setEmergencyBookingPartnerId] = useState<string | null>(null);
-  const [emergencyBookingSelected, setEmergencyBookingSelected] = useState("BK-8842 - Pest Control (Roorkee)");
-  const [emergencySuccess, setEmergencySuccess] = useState<string | null>(null);
 
   // KYC Review Modal States
   const [reviewKycPartner, setReviewKycPartner] = useState<SerializedPartner | null>(null);
@@ -486,25 +514,6 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
     });
   };
 
-  const handleEmergencyDispatchSubmit = () => {
-    if (!emergencyBookingPartnerId) return;
-    setEmergencySuccess(null);
-    startTransition(async () => {
-      try {
-        // Mock a success
-        setEmergencySuccess("Manual dispatch successfully routed! Professional assigned.");
-        // Transition partner status to Busy / On Job
-        setPartners(prev => prev.map(p => p.id === emergencyBookingPartnerId ? { ...p, status: 'busy' } : p));
-        setTimeout(() => {
-          setEmergencyBookingPartnerId(null);
-          setEmergencySuccess(null);
-        }, 1500);
-      } catch (err: unknown) {
-        console.error(err);
-      }
-    });
-  };
-
   const handleReviewKyc = (status: "approved" | "rejected") => {
     if (!reviewKycPartner) return;
     setKycSuccess(null);
@@ -613,7 +622,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                 onChange={(e) => handleFilterChange(setSelectedStatus, e.target.value)}
                 className="w-full bg-surface-container-low text-primary text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-2 rounded-lg border border-outline-variant/30 focus:border-secondary/60 focus:outline-none transition-all cursor-pointer"
               >
-                <option value="All">📡 All Statuses</option>
+                <option value="All">All Statuses</option>
                 <option value="Pending">Pending Setup</option>
                 <option value="Online">Online / Active</option>
                 <option value="Busy">Busy / On Job</option>
@@ -1111,78 +1120,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
         </div>
       )}
 
-      {/* ─── 6. INTERACTIVE EMERGENCY DISPATCH ASSIGNMENT MODAL ─── */}
-      {emergencyBookingPartnerId && (
-        <div className="fixed inset-0 bg-primary/25 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-
-          <div className="absolute inset-0 cursor-pointer" onClick={() => setEmergencyBookingPartnerId(null)} />
-
-          <div className="relative w-full max-w-md bg-white rounded-4xl overflow-hidden shadow-2xl p-6 border border-outline-variant/30 animate-in zoom-in-95 duration-200">
-
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <span className="text-[10px] font-black text-secondary uppercase tracking-[0.2em]">Quick dispatch control</span>
-                <h3 className="text-xl font-bold font-headline text-primary uppercase mt-1">Assign Booking</h3>
-              </div>
-              <button
-                onClick={() => setEmergencyBookingPartnerId(null)}
-                className="p-1.5 rounded-xl hover:bg-surface-container transition-colors"
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-
-            <div className="space-y-4 text-xs font-bold text-primary">
-              <p className="text-[10px] text-on-surface-variant/70 leading-relaxed font-semibold">
-                Assign a pending booking directly to this professional.
-              </p>
-
-              <div className="space-y-1.5">
-                <label className="text-[9px] uppercase tracking-wider text-on-surface-variant/50">Select Pending Job</label>
-                <select
-                  value={emergencyBookingSelected}
-                  onChange={(e) => setEmergencyBookingSelected(e.target.value)}
-                  className="w-full bg-surface-container-low text-primary p-3 rounded-xl border border-outline-variant/40 focus:outline-none"
-                >
-                  <option value="BK-8842">BK-8842 - Pest Control (Roorkee Cantt)</option>
-                  <option value="BK-8890">BK-8890 - Sofa Deep Cleaning (Civil Lines)</option>
-                  <option value="BK-8901">BK-8901 - Plumber Service (IIT Roorkee)</option>
-                </select>
-              </div>
-
-              {emergencySuccess && (
-                <div className="bg-emerald-50 text-emerald-700 p-3 rounded-xl border border-emerald-200 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-sm">check_circle</span> {emergencySuccess}
-                </div>
-              )}
-
-              <div className="pt-4 border-t border-outline-variant/15 flex gap-3">
-                <Button
-                  type="button"
-                  variant="slate"
-                  onClick={() => setEmergencyBookingPartnerId(null)}
-                  className="flex-1 py-3 text-primary bg-surface-container hover:bg-surface-container-high rounded-xl"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleEmergencyDispatchSubmit}
-                  disabled={isPending}
-                  className="flex-1 py-3 bg-secondary hover:brightness-105 text-primary rounded-xl"
-                >
-                  Assign Booking
-                </Button>
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
-      )}
-
-      {/* ─── 7. INTERACTIVE KYC REVIEW MODAL ─── */}
+      {/* ─── 6. INTERACTIVE KYC REVIEW MODAL ─── */}
       {reviewKycPartner && (
         <div className="fixed inset-0 bg-primary/25 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="absolute inset-0 cursor-pointer" onClick={() => setReviewKycPartner(null)} />
@@ -1337,14 +1275,8 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
 
           {/* Menu container */}
           <div
-            className="fixed w-48 bg-white border border-outline-variant/30 rounded-xl shadow-xl z-9999 p-1 divide-y divide-outline-variant/10 text-left animate-in fade-in duration-100"
-            style={{
-              top: `${dropdownMenu.rect.bottom + window.scrollY + 160 > window.innerHeight + window.scrollY
-                  ? dropdownMenu.rect.top + window.scrollY - 165 // open upward
-                  : dropdownMenu.rect.bottom + window.scrollY + 4 // open downward
-                }px`,
-              left: `${dropdownMenu.rect.right - 192 + window.scrollX}px` // aligned to the right side of button
-            }}
+            className="fixed w-48 bg-white border border-outline-variant/30 rounded-xl shadow-xl z-9999 p-1 divide-y divide-outline-variant/10 text-left animate-in fade-in duration-100 overflow-y-auto"
+            style={getMenuPositionStyle(dropdownMenu.rect)}
           >
             <div className="py-0.5">
               <p className="text-[8px] font-black uppercase text-on-surface-variant/40 px-2.5 py-0.5 tracking-wider">Management</p>
@@ -1380,15 +1312,6 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                 className="w-full text-left px-2.5 py-1.5 text-xs font-bold text-[#1c2438] hover:bg-surface-container-low rounded-lg transition-colors flex items-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-xs">verified_user</span> Review KYC Documents
-              </button>
-              <button
-                onClick={() => {
-                  setEmergencyBookingPartnerId(dropdownMenu.partner.id);
-                  setDropdownMenu(null);
-                }}
-                className="w-full text-left px-2.5 py-1.5 text-xs font-bold text-[#1c2438] hover:bg-surface-container-low rounded-lg transition-colors flex items-center gap-1.5"
-              >
-                <span className="material-symbols-outlined text-xs">bolt</span> Assign Booking
               </button>
               <button
                 onClick={() => {
@@ -1691,9 +1614,17 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                   <div className="space-y-2 pb-4 border-b border-outline-variant/10">
                     <h5 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70">Assigned Services</h5>
                     {selectedProfilePartner.skills.length > 0 ? (
-                      <p className="text-xs font-semibold text-primary leading-relaxed">
-                        {selectedProfilePartner.skills.join(", ")}
-                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedProfilePartner.skills.map((skill, idx) => (
+                          <span
+                            key={`skill-${idx}`}
+                            className="inline-flex items-center gap-1 bg-green-500/10 border border-outline-variant/20 text-primary text-[10px] font-bold px-2.5 py-1 rounded-full"
+                          >
+                            {/* <span className="material-symbols-outlined text-xs text-[#059669] drop-shadow-sm">check_circle</span> */}
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
                     ) : (
                       <p className="text-[10px] text-on-surface-variant/60 font-medium italic">No services mapped yet.</p>
                     )}
@@ -1703,12 +1634,17 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                   <div className="space-y-2 pb-4 border-b border-outline-variant/10">
                     <h5 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70">Service Areas</h5>
                     {selectedProfilePartner.service_areas && selectedProfilePartner.service_areas.length > 0 ? (
-                      <p className="text-xs font-semibold text-primary leading-relaxed">
-                        {selectedProfilePartner.service_areas.map(area => {
-                          const areaName = area.city || "Area";
-                          return `${areaName} (${area.pincode})`;
-                        }).join(", ")}
-                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedProfilePartner.service_areas.map((area, idx) => (
+                          <span
+                            key={`area-${idx}`}
+                            className="inline-flex items-center gap-1 bg-surface-container-low border border-outline-variant/30 text-on-surface text-[10px] font-bold px-2.5 py-1 rounded-full"
+                          >
+                            {/* <span className="material-symbols-outlined text-xs text-on-surface-variant">location_on</span> */}
+                            {area.city || "Area"} · {area.pincode}
+                          </span>
+                        ))}
+                      </div>
                     ) : (
                       <p className="text-[10px] text-on-surface-variant/60 font-medium italic">No service areas mapped yet.</p>
                     )}

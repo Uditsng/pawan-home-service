@@ -265,16 +265,34 @@ export async function editPartnerAction(data: {
   await requireAdmin();
   const admin = createAdminClient();
 
+  let e164Phone: string;
+  try {
+    e164Phone = normaliseIndianPhone(data.phone);
+  } catch {
+    return { success: false, error: "Invalid mobile number. Must be a 10-digit Indian mobile number." };
+  }
+
+  // Merge (never replace) existing auth metadata so keys set during onboarding
+  // (e.g. role) survive the full_name update.
+  const { data: existingUser, error: fetchUserError } = await admin.auth.admin.getUserById(data.id);
+  if (fetchUserError || !existingUser?.user) {
+    return toActionError(fetchUserError);
+  }
+  const mergedMetadata: Record<string, unknown> = {
+    ...(existingUser.user.user_metadata ?? {}),
+    full_name: data.full_name,
+  };
+
   // Update auth user via the official Admin Auth API
   const updateUserInput: {
     email: string;
     phone: string;
     password?: string;
-    user_metadata: { full_name: string };
+    user_metadata: Record<string, unknown>;
   } = {
     email: data.email,
-    phone: data.phone,
-    user_metadata: { full_name: data.full_name },
+    phone: e164Phone,
+    user_metadata: mergedMetadata,
   };
   if (data.password && data.password.trim().length > 0) {
     updateUserInput.password = data.password;
@@ -294,14 +312,16 @@ export async function editPartnerAction(data: {
     return toActionError(authUpdateError);
   }
 
-  // Update partner profile core fields. Fleet Control columns (service_tier,
-  // is_available) are optional and may not exist on the live DB, so they are
-  // only applied when available — never blocking the edit.
+  // Update partner profile core fields. Email and phone MUST be mirrored here
+  // because every portal reads contact details from profiles — updating only
+  // auth.users makes edits appear to revert after a page refresh.
   const { error: profileError } = await admin
     .from('profiles')
     .update({
       status: data.status,
       full_name: data.full_name,
+      email: data.email,
+      phone: e164Phone,
     })
     .eq('id', data.id);
 

@@ -78,6 +78,8 @@ export function BookingsCommand({
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<{ tone: "success" | "warning"; text: string } | null>(null);
 
+  const [assignError, setAssignError] = useState<string | null>(null);
+
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState("");
   const [activeStatus, setActiveStatus] = useState("all");
@@ -386,6 +388,7 @@ export function BookingsCommand({
   };
 
   const handleManualAssign = (bookingId: string, partnerId: string) => {
+    setAssignError(null);
     startTransition(async () => {
       try {
         await manualAssignPartnerAction(bookingId, partnerId);
@@ -417,7 +420,7 @@ export function BookingsCommand({
         setPartnerSearchTerm("");
         setActionError(null);
       } catch (err: unknown) {
-        setActionError((err as Error).message || "Failed to assign partner.");
+        setAssignError((err as Error).message || "Failed to assign professional.");
       }
     });
   };
@@ -471,6 +474,7 @@ export function BookingsCommand({
     setAssignTargetBooking(booking);
     setPartnerSearchTerm("");
     setIsAssignDrawerOpen(true);
+    setAssignError(null);
     setDropdownMenu(null);
   };
 
@@ -1637,6 +1641,21 @@ export function BookingsCommand({
                 />
               </div>
             </div>
+
+            {/* Inline Assignment Error */}
+            {assignError && (
+              <div className="mx-4 mt-4 bg-red-500/10 border border-red-500/30 rounded-xl p-3 flex items-start gap-2.5 text-xs font-semibold text-red-700 animate-in fade-in slide-in-from-top-2 duration-300">
+                <span className="material-symbols-outlined text-red-600 text-base shrink-0">error</span>
+                <p className="leading-relaxed">{assignError}</p>
+                <button
+                  type="button"
+                  onClick={() => setAssignError(null)}
+                  className="p-0.5 rounded-lg hover:bg-red-500/20 text-red-700 transition-colors shrink-0 ml-auto cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm font-bold block">close</span>
+                </button>
+              </div>
+            )}
 
             {/* Partners List */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">

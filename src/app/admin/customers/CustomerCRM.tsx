@@ -462,6 +462,16 @@ export function CustomerCRM({
             >
               💤 Dormant
             </button>
+            <div className="h-4 w-1px bg-outline-variant/30 hidden sm:block mx-0.5" />
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg border border-outline-variant/20 bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-primary transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={filteredCustomers.length === 0}
+            >
+              <span className="material-symbols-outlined text-sm">download</span>
+              Export CSV
+            </button>
           </div>
         </div>
 
@@ -519,17 +529,6 @@ export function CustomerCRM({
               className="w-full border border-outline-variant/20 rounded-lg py-2 px-3 bg-surface-container focus:ring-1 focus:ring-primary/50 outline-none text-xs text-on-surface-variant transition-all cursor-pointer"
             />
           </div>
-        </div>
-        <div className="flex justify-end border-t border-outline-variant/10 pt-3">
-          <button
-            type="button"
-            onClick={handleExportCSV}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest border border-outline-variant/20 rounded-xl hover:bg-surface-container transition-all"
-            disabled={filteredCustomers.length === 0}
-          >
-            <span className="material-symbols-outlined text-sm">download</span>
-            Export CSV
-          </button>
         </div>
       </div>
 

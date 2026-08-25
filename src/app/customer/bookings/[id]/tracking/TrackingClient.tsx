@@ -4,6 +4,7 @@ import { useState, useEffect, useTransition, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { Capacitor } from "@capacitor/core";
 import { createClient } from "@/utils/supabase/client";
 import BottomNav from "@/components/BottomNav";
 import RatingSection from "@/components/RatingSection";
@@ -387,6 +388,7 @@ export default function TrackingClient({
 
         const options = {
           key: orderRes.keyId,
+          ...(Capacitor.isNativePlatform() ? { webview_intent: true } : {}),
           amount: orderRes.amount,
           currency: orderRes.currency,
           name: "PHS Cleaning Company",

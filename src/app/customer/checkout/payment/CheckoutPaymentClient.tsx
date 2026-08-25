@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { Capacitor } from "@capacitor/core";
 import { createRazorpayOrderAction, verifyRazorpayPaymentAction } from "@/app/actions/payment";
 import { Coupon, CartItem } from "@/lib/types";
 import { formatDuration } from "@/lib/pricing";
@@ -192,8 +193,11 @@ export default function CheckoutPaymentClient({
           ? `Booking for ${services.length} Services`
           : `Booking for ${services[0].title}`;
 
+        const isNativeApp = Capacitor.isNativePlatform();
+
         const options = {
           key: rzOrder.keyId,
+          ...(isNativeApp ? { webview_intent: true } : {}),
           amount: rzOrder.amount,
           currency: rzOrder.currency,
           name: "PHS Cleaning Company",
@@ -201,18 +205,22 @@ export default function CheckoutPaymentClient({
           order_id: rzOrder.orderId,
           theme: { color: "#002261" },
           method: { card: true, upi: true, netbanking: true, wallet: false, emi: false, paylater: false },
-          config: {
-            display: {
-              blocks: {
-                preferred: {
-                  name: "Payment Options",
-                  instruments: [{ method: "card" }, { method: "upi" }, { method: "netbanking" }],
+          ...(isNativeApp
+            ? {}
+            : {
+                config: {
+                  display: {
+                    blocks: {
+                      preferred: {
+                        name: "Payment Options",
+                        instruments: [{ method: "card" }, { method: "upi" }, { method: "netbanking" }],
+                      },
+                    },
+                    sequence: ["block.preferred"],
+                    preferences: { show_default_blocks: false },
+                  },
                 },
-              },
-              sequence: ["block.preferred"],
-              preferences: { show_default_blocks: false },
-            },
-          },
+              }),
           handler: async function (response: RazorpaySuccessResponse) {
             try {
               const verifyRes = await verifyRazorpayPaymentAction({

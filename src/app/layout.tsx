@@ -6,6 +6,7 @@ import MobileSetup from "@/components/MobileSetup";
 import SplashLoader from "@/components/SplashLoader";
 import { RefreshProvider } from "@/lib/refresh/RefreshContext";
 import VersionAlert from "@/components/VersionAlert";
+import OfflineOverlay from "@/components/OfflineOverlay";
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Analytics } from '@vercel/analytics/next';
 
@@ -61,6 +62,7 @@ export default function RootLayout({
           <MobileSetup />
           <SplashLoader />
           <VersionAlert />
+          <OfflineOverlay />
           {children}
         </RefreshProvider>
         <SpeedInsights />

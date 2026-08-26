@@ -6,7 +6,8 @@ const config: CapacitorConfig = {
 
   server: {
     url: 'https://www.phscleaningcompany.com/',
-    cleartext: false
+    cleartext: false,
+    errorPath: 'offline.html'
   },
 
   plugins: {

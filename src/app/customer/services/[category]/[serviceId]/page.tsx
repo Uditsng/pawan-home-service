@@ -136,8 +136,8 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
               </div>
             </div>
 
-            <p className="text-sm md:text-lg text-on-surface-variant mb-5 md:mb-8 max-w-lg leading-relaxed">
-              {content.about_text?.split('.')[0] || service.description || "Professional and top-tier services tailored to you."}
+            <p className="text-sm md:text-lg text-on-surface-variant mb-3 md:mb-5 leading-relaxed">
+              {content.about_text || service.description || "Professional and top-tier services tailored to you."}
             </p>
             <div className="flex flex-wrap gap-2 md:gap-4">
               <span className="inline-flex items-center gap-1 bg-surface px-2 py-1.5 md:py-2 rounded-full font-bold shadow-sm text-xs md:text-sm border border-outline-variant/30">
@@ -183,28 +183,29 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
       </div>
 
       {/* Main Content Body */}
-      <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-10 space-y-8 md:space-y-16">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6 md:space-y-8">
 
         {/* What Does Our Expert Do? */}
         <section>
           <h2 className="text-2xl md:text-3xl font-extrabold text-center mb-1 font-headline tracking-tighter">What Does Our Expert Do?</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-1 max-w-5xl mx-auto">
             {/* Included */}
-            <div className="px-0 py-2 md:py-4">
-              <h3 className="text-on-surface font-headline tracking-tight font-bold flex items-center gap-2 mb-4 md:mb-6 text-sm md:text-base">
-                <span className="material-symbols-outlined rounded-full bg-primary/20 text-primary p-1 text-[18px] md:text-[24px]">check</span> What&apos;s Included
+            <div className="px-0 py-2 md:py-3">
+              <h3 className="text-on-surface font-headline tracking-tight font-bold flex items-center gap-2 mb-1 md:mb-2 text-sm md:text-base">
+                <span className="material-symbols-outlined rounded-full bg-primary/20 text-primary p-1 text-[18px] md:text-[24px]">check</span>
+                 What&apos;s Included
               </h3>
-              <ul className="space-y-2">
+              <ul className="space-y-1">
                 {(content.included_features && content.included_features.length > 0 ? content.included_features : ["Comprehensive Professional Service", "Standard Tools & Equipment", "Trusted & Background verified experts"]).map((item: string, i: number) => (
                   <li key={i} className="flex gap-2 md:gap-3 text-on-surface-variant">
-                    <span className="material-symbols-outlined text-primary shrink-0 text-lg md:text-xl">done</span>
+                    <span className="material-symbols-outlined text-primary shrink-10 text-md md:text-lg">done</span>
                     <span className="text-xs md:text-[15px] font-medium">{item}</span>
                   </li>
                 ))}
               </ul>
             </div>
             {/* Excluded */}
-            <div className="px-0 py-6 md:py-8">
+            <div className="px-0 py-2 md:py-3">
               <h3 className="text-on-surface font-headline tracking-tight font-bold flex items-center gap-2 mb-4 md:mb-6 text-sm md:text-base">
                 <span className="material-symbols-outlined rounded-full bg-red-100 text-red-600 p-1 text-[18px] md:text-[24px]">close</span> What&apos;s Excluded
               </h3>
@@ -237,10 +238,10 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
         {/* Why Choose Us */}
         {content.why_choose_us && content.why_choose_us.length > 0 && (
           <section className="max-w-4xl mx-auto">
-            <h2 className="text-2xl md:text-3xl font-extrabold text-center mb-8 md:mb-10 font-headline tracking-tighter">Why Choose Us</h2>
+            <h2 className="text-2xl md:text-3xl font-extrabold text-center mb-4 md:mb-6 font-headline tracking-tighter">Why Choose Us</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {content.why_choose_us.map((item, i) => (
-                <div key={i} className="flex items-start gap-4 p-4 md:p-6 bg-surface-container-lowest rounded-xl border border-outline-variant/10">
+                <div key={i} className="flex items-start gap-4 p-3 md:p-4 bg-surface-container-lowest rounded-xl border border-outline-variant/10">
                   <div className="w-12 h-12 bg-secondary/10 rounded-xl flex items-center justify-center shrink-0">
                     <span className="material-symbols-outlined text-secondary drop-shadow-sm">{item.icon}</span>
                   </div>
@@ -257,7 +258,7 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
         {/* FAQ */}
         {content.faqs && content.faqs.length > 0 && (
           <section className="max-w-3xl mx-auto">
-            <h2 className="text-2xl md:text-3xl font-extrabold text-center mb-8 md:mb-10 font-headline tracking-tighter">Frequently Asked Questions</h2>
+            <h2 className="text-2xl md:text-3xl font-extrabold text-center mb-6 md:mb-8 font-headline tracking-tighter">Frequently Asked Questions</h2>
             <div className="space-y-3 md:space-y-4">
               {content.faqs.map((faq, i) => (
                 <details key={i} className="group bg-surface-container-low rounded-xl md:rounded-2xl border border-outline-variant/20 [&_summary::-webkit-details-marker]:hidden cursor-pointer">
@@ -281,10 +282,9 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
           {totalReviewsCount === 0 ? (
             <div className="text-center bg-surface-container-low border border-outline-variant/10 rounded-3xl p-8 max-w-lg mx-auto">
               <span className="material-symbols-outlined text-4xl text-on-surface-variant/40 mb-2">rate_review</span>
-              <p className="font-bold text-primary font-headline text-sm md:text-base">No reviews yet</p>
-              <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
-                Be the first to review this service after completing your booking!
-              </p>
+              <p className="font-bold text-primary font-headline text-sm md:text-base">                Be the first to review this service after completing your booking!
+</p>
+            
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">

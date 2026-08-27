@@ -201,7 +201,7 @@ export default function DynamicServiceConfigurator({
   }, [service, iconName, model, bookingState, subcategoryName, categorySlug]);
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 relative">
+    <div className="max-w-3xl mx-auto space-y-4 relative">
       {/* 1. Variants Selection (if any) */}
       <VariantSelector
         variants={variants}
@@ -210,20 +210,20 @@ export default function DynamicServiceConfigurator({
       />
 
       {/* 2. Pricing Model Configurator Inputs */}
-      <section className="bg-surface-container-low border border-outline-variant/20 rounded-3xl p-5 md:p-6 shadow-xs">
-        <h3 className="text-base font-bold text-primary font-headline mb-4 flex items-center gap-2">
-          <span className="material-symbols-outlined text-secondary">
+      <section className="bg-surface-container-low border border-green-300 rounded-2xl p-3 md:p-4 shadow-xs">
+        <h3 className="text-base font-bold text-primary font-headline mb-2 flex items-center gap-1 text-center justify-center">
+          {/* <span className="material-symbols-outlined text-secondary">
             {model === "hourly" ? "schedule" : "tune"}
-          </span>{" "}
+          </span>{" "} */}
           {model === "hourly" ? "Select service duration" : "Service Parameters"}
         </h3>
 
         {/* Fixed Price (No Inputs) */}
-        {/* {model === "fixed" && (
+        {model === "fixed" && (
           <p className="text-xs text-on-surface-variant font-medium leading-relaxed">
             This service has a standard flat fee. Simply select any required add-ons and proceed to check out.
           </p>
-        )} */}
+        )}
 
         {/* Inspection Fee */}
         {model === "inspection" && (

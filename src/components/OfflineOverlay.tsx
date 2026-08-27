@@ -29,7 +29,7 @@ export default function OfflineOverlay() {
       if (online) {
         setIsOffline(false);
         setShowToast(true);
-        setTimeout(() => setShowToast(false), 3000);
+        setTimeout(() => setShowToast(false), 1000);
       } else {
         setIsOffline(true);
       }
@@ -102,7 +102,7 @@ export default function OfflineOverlay() {
       {/* Back Online Toast */}
       {showToast && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-10000 px-5 py-3 rounded-full bg-surface-container-lowest text-primary shadow-xl border border-secondary/30 flex items-center gap-2.5 animate-in fade-in slide-in-from-top-4 duration-300">
-          <span className="w-2.5 h-2.5 rounded-full bg-secondary animate-pulse" />
+          {/* <span className="w-2.5 h-2.5 rounded-full bg-secondary animate-pulse" /> */}
           <span className="text-xs font-semibold tracking-wide">Back Online</span>
         </div>
       )}
@@ -114,7 +114,7 @@ export default function OfflineOverlay() {
           className="fixed inset-0 z-9999 bg-surface/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300 select-none"
         >
           {/* Ambient decorative glowing backdrop */}
-          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-secondary/10 rounded-full blur-3xl pointer-events-none" />
+          {/* <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-secondary/10 rounded-full blur-3xl pointer-events-none" /> */}
 
           {/* Card Container */}
           <div className="relative w-full max-w-sm bg-surface-container-lowest rounded-3xl p-8 shadow-2xl border border-outline-variant/60 flex flex-col items-center">

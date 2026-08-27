@@ -346,7 +346,20 @@ export default function PendingClient({
 
           <div className="mt-8 pt-6 border-t border-outline-variant/15 flex flex-col gap-3">
             <div className="text-xs text-on-surface-variant/75 font-semibold">
-              Need assistance? Contact us at <span className="text-primary font-bold">office@phs.com</span>
+              Need assistance? Contact us at {" "}
+  <a
+    href="tel:7408702019"
+    className="text-primary font-bold hover:underline transition-colors"
+  >
+    7408702019
+  </a>{" "}
+  or{" "}
+  <a
+    href="mailto:phsapp0@gmail.com"
+    className="text-primary font-bold hover:underline transition-colors"
+  >
+    phsapp0@gmail.com
+  </a>
             </div>
             <div className="flex justify-center mt-2">
               <LogoutButton variant="button" className="px-6 py-2 rounded-xl text-xs font-bold border-2 border-outline-variant hover:bg-surface-container transition-colors bg-transparent text-primary" />

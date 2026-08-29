@@ -4,6 +4,7 @@ import "./globals.css";
 import SkipToContent from "@/components/SkipToContent";
 import MobileSetup from "@/components/MobileSetup";
 import SplashLoader from "@/components/SplashLoader";
+import GlobalNumberInputPolicy from "@/components/GlobalNumberInputPolicy";
 import { RefreshProvider } from "@/lib/refresh/RefreshContext";
 import VersionAlert from "@/components/VersionAlert";
 import OfflineOverlay from "@/components/OfflineOverlay";
@@ -59,6 +60,7 @@ export default function RootLayout({
       <body className="bg-background font-body text-on-surface antialiased" suppressHydrationWarning>
         <SkipToContent />
         <RefreshProvider>
+          <GlobalNumberInputPolicy />
           <MobileSetup />
           <SplashLoader />
           <VersionAlert />

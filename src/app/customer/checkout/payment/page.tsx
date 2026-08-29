@@ -5,6 +5,7 @@ import { Coupon, CartItem } from "@/lib/types";
 import { buildCartCatalog } from "@/lib/catalog/buildCartCatalog";
 import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 import { calculateReferralDiscount } from "@/lib/pricing";
+import { validateCouponAction } from "@/app/actions/coupon.actions";
 
 export interface ServiceDisplayLine {
   serviceId: string;
@@ -70,23 +71,6 @@ export default async function UnifiedCheckoutPaymentPage({
   });
   const referralDiscount = referralCalc.discountAmount;
   const walletBalance = Number(profileResult.data?.wallet_balance || 0);
-
-  // Fetch active coupon code (for single-service flow, couponCode comes from query param)
-  let couponObj: Coupon | null = null;
-  if (couponCode) {
-    const { data: couponData } = await supabase
-      .from("coupons")
-      .select("*")
-      .eq("code", couponCode)
-      .eq("is_active", true)
-      .single();
-    if (couponData) {
-      const now = new Date();
-      if (!couponData.expires_at || new Date(couponData.expires_at) > now) {
-        couponObj = couponData as unknown as Coupon;
-      }
-    }
-  }
 
   let scheduleDateObj: Date = new Date();
   if (date && time) {
@@ -199,6 +183,64 @@ export default async function UnifiedCheckoutPaymentPage({
     redirect("/customer/dashboard");
   }
 
+  // Coupon validation — use authoritative server-side validation. Runs after
+  // `availableItems` (the checkout inputs) are built so the engine prices
+  // exactly what will be charged.
+  let couponObj: Coupon | null = null;
+  let pricingSummary: {
+    originalSubtotal: number;
+    discountAmount: number;
+    taxAmount: number;
+    finalPayable: number;
+    couponValid: boolean;
+  } = {
+    originalSubtotal: 0,
+    discountAmount: 0,
+    taxAmount: 0,
+    finalPayable: 0,
+    couponValid: false,
+  };
+  let appliedCouponCode: string | null = null;
+
+  if (couponCode) {
+    const validationResult = await validateCouponAction(
+      couponCode,
+      availableItems,
+      date,
+      time,
+      addressId
+    );
+    if (validationResult.success) {
+      appliedCouponCode = validationResult.couponCode;
+      pricingSummary = {
+        originalSubtotal: validationResult.originalSubtotal,
+        discountAmount: validationResult.discountAmount,
+        taxAmount: validationResult.taxAmount,
+        finalPayable: validationResult.finalPayable,
+        couponValid: validationResult.couponValid,
+      };
+      // Fetch the full coupon record for display purposes
+      const { data: couponData } = await supabase
+        .from("coupons")
+        .select("*")
+        .eq("code", validationResult.couponCode)
+        .single();
+      if (couponData) {
+        couponObj = couponData as unknown as Coupon;
+      }
+    } else {
+      // Coupon invalid — clear it and reset summary
+      appliedCouponCode = null;
+      pricingSummary = {
+        originalSubtotal: 0,
+        discountAmount: 0,
+        taxAmount: 0,
+        finalPayable: 0,
+        couponValid: false,
+      };
+    }
+  }
+
   return (
     <CheckoutPaymentClient
       services={services}
@@ -216,6 +258,8 @@ export default async function UnifiedCheckoutPaymentPage({
       walletBalance={walletBalance}
       couponCode={couponCode || null}
       couponObj={couponObj}
+      pricingSummary={pricingSummary}
+      appliedCouponCode={appliedCouponCode}
     />
   );
 }

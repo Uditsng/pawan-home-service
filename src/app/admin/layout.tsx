@@ -16,6 +16,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "Customers", href: "/admin/customers", icon: "group" },
     { name: "Professionals", href: "/admin/partners", icon: "handshake" },
     { name: "Services", href: "/admin/services", icon: "handyman" },
+    { name: "Coupons", href: "/admin/coupons", icon: "local_offer" },
     { name: "Waitlists", href: "/admin/waitlist", icon: "notifications_active" },
     { name: "CarryBuddy", href: "/admin/shopping-assistant", icon: "shopping_bag" },
     { name: "Finance", href: "/admin/finance", icon: "payments" },
@@ -33,7 +34,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="fixed inset-0 z-60 lg:hidden">
           <div className="fixed inset-0 bg-primary/40 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}></div>
           <aside className="fixed left-0 top-0 h-screen w-72 bg-surface flex flex-col py-8 px-6 z-70 shadow-2xl animate-[slideIn_0.3s_ease-out] border-r border-outline-variant/30">
-            <div className="mb-12 flex items-center justify-between">
+            <div className="mb-4 flex items-center justify-between">
               <Link href="/admin/dashboard" className="flex items-center gap-3 group">
                 <Image
                   src="/PHS.png"
@@ -51,7 +52,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
-            <nav className="flex-1 space-y-1.5 overflow-y-auto no-scrollbar">
+            <nav className="flex-1 space-y-1 overflow-y-auto no-scrollbar">
               {navLinks.map((link) => {
                 const isActive = pathname === link.href || (pathname.startsWith(link.href) && link.href !== '/admin');
                 return (
@@ -59,8 +60,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                      key={link.name}
                      href={link.href}
                      onClick={() => setMobileMenuOpen(false)}
-                     className={`flex items-center gap-4 px-5 py-3.5 rounded-2xl transition-all font-bold text-sm ${isActive
-                       ? "bg-primary text-white shadow-xl shadow-primary/20"
+                     className={`flex items-center gap-2 px-5 py-2 rounded-2xl transition-all font-bold text-sm ${isActive
+                       ? "bg-primary text-white"
                        : "text-on-surface-variant hover:bg-surface-container-low hover:text-primary"
                        }`}
                   >
@@ -78,8 +79,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-60 bg-surface-container-lowest flex-col py-6 px-3 z-50 border-r border-outline-variant/30">
-        <div className="mb-12">
-          <Link href="/admin/dashboard" className="flex items-center gap-4 group">
+        <div className="mb-4">
+          <Link href="/admin/dashboard" className="flex items-center gap-3 group">
             <Image
               src="/PHS.png"
               alt="PHS Logo"
@@ -94,15 +95,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Link>
         </div>
 
-        <nav className="flex-1 space-y-1.5 overflow-y-auto no-scrollbar">
+        <nav className="flex-1 space-y-1 overflow-y-auto no-scrollbar">
           {navLinks.map((link) => {
             const isActive = pathname === link.href || (pathname.startsWith(link.href) && link.href !== '/admin');
             return (
               <Link
                 key={link.name}
                 href={link.href}
-                className={`flex items-center gap-2 px-3 py-3.5 rounded-xl transition-all font-bold text-[14px] ${isActive
-                  ? "bg-primary text-white shadow-xl shadow-primary/20 pl-5 pr-1"
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all font-bold text-[14px] ${isActive
+                  ? "bg-primary text-white pl-5 pr-1"
                   : "text-on-surface-variant hover:bg-surface-container-low hover:text-primary pl-4 pr-2 px-3 hover:pl-4 hover:pr-2"
                   }`}
               >

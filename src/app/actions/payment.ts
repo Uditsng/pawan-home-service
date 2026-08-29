@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 import { createClient } from "@/utils/supabase/server";
 import crypto from "crypto";
@@ -11,6 +11,7 @@ import { buildCartCatalog } from "@/lib/catalog/buildCartCatalog";
 import type { PricingBreakdown } from "@/lib/pricing/types";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { combineDateTimeToISO } from "@/utils/schedule";
+import { normalizeCouponCode, validateCoupon } from "@/lib/pricing/couponEngine";
 
 export interface ServiceCheckoutInput {
   serviceId: string;
@@ -48,20 +49,6 @@ interface DBAddress {
   pincode: string;
 }
 
-async function fetchCoupon(supabase: SupabaseClient, couponCode?: string | null): Promise<Coupon | null> {
-  if (!couponCode) return null;
-  const { data } = await supabase
-    .from("coupons")
-    .select("*")
-    .eq("code", couponCode)
-    .eq("is_active", true)
-    .single();
-  if (!data) return null;
-  const now = new Date();
-  if (data.expires_at && new Date(data.expires_at) <= now) return null;
-  return data as unknown as Coupon;
-}
-
 /**
  * Shared helper: computes pricing breakdowns for all given services.
  * Prices flow through the single `src/lib/pricing` engine (same math the
@@ -76,19 +63,29 @@ async function computeServiceBreakdowns(
     time: string;
     pincode: string;
     couponCode?: string | null;
+    customerId?: string | null;
   }
 ): Promise<{
   breakdowns: Record<string, PricingBreakdown>;
   totalAmount: number;
   coupon: Coupon | null;
   titleMap: Record<string, string>;
+  validatedCoupon: Coupon | null;
+  pricingSummary: {
+    originalSubtotal: number;
+    discountAmount: number;
+    taxAmount: number;
+    finalPayable: number;
+    couponValid: boolean;
+  };
 }> {
   const serviceIds = services.map((s) => s.serviceId);
-  const couponObj = await fetchCoupon(supabase, options.couponCode);
+  const scheduledDate = new Date(combineDateTimeToISO(options.date, options.time));
 
+  // Build catalog once — single source of truth for pricing.
   const { catalog, services: serviceSources } = await buildCartCatalog(serviceIds);
 
-  // Normalize checkout inputs to cart items so both client & server price identically
+  // Normalize checkout inputs to cart items.
   const items: CartItem[] = services.map((item) => ({
     serviceId: item.serviceId,
     title: serviceSources[item.serviceId]?.title || "",
@@ -109,30 +106,96 @@ async function computeServiceBreakdowns(
     expectedBags: item.expectedBags ?? null,
   }));
 
-  const scheduledDate = new Date(combineDateTimeToISO(options.date, options.time));
+  // Pass 1 — without coupon, to get the authoritative pre-coupon subtotal
+  // used for validation (min booking amount, usage limits, etc.).
+  const baseLineItems = computeCartLineItems(items, catalog, {
+    scheduledDate,
+    pincode: options.pincode,
+  });
+  let provisionalSubtotal = 0;
+  for (const line of baseLineItems) {
+    provisionalSubtotal += line.breakdown.total_price;
+  }
 
+  let validatedCoupon: Coupon | null = null;
+  let pricingSummary = {
+    originalSubtotal: 0,
+    discountAmount: 0,
+    taxAmount: 0,
+    finalPayable: 0,
+    couponValid: false,
+  };
+
+  if (options.couponCode) {
+    const normalized = normalizeCouponCode(options.couponCode);
+    const validationResult = await validateCoupon(
+      supabase,
+      normalized,
+      provisionalSubtotal,
+      options.customerId ?? undefined,
+      serviceIds[0]
+    );
+
+    if (validationResult.eligible && validationResult.coupon) {
+      const coupon = validationResult.coupon;
+      // Service-restriction guard: if the coupon is limited to a specific
+      // service, every service in the cart must be that service.
+      if (
+        coupon.applicable_to_service_id &&
+        !serviceIds.every((id) => id === coupon.applicable_to_service_id)
+      ) {
+        validatedCoupon = null;
+      } else {
+        validatedCoupon = coupon;
+      }
+    }
+  }
+
+  // Pass 2 — with the validated coupon (null when absent/invalid). This is the
+  // authoritative pricing: the canonical engine applies the coupon exactly as
+  // the client did, so the charged amount matches the preview.
   const lineItems = computeCartLineItems(items, catalog, {
     scheduledDate,
     pincode: options.pincode,
-    coupon: couponObj,
+    coupon: validatedCoupon,
   });
 
   const breakdowns: Record<string, PricingBreakdown> = {};
   const titleMap: Record<string, string> = {};
   let totalAmount = 0;
+  let discountAmount = 0;
+  let taxAmount = 0;
 
   for (const line of lineItems) {
     breakdowns[line.serviceId] = line.breakdown;
     totalAmount += line.breakdown.total_price;
+    discountAmount += line.breakdown.coupon_discount;
+    taxAmount += line.breakdown.gst_amount;
   }
   for (const [id, src] of Object.entries(serviceSources)) {
     titleMap[id] = src.title;
   }
 
-  return { breakdowns, totalAmount, coupon: couponObj, titleMap };
+  // originalSubtotal (pre-coupon) = final payable + coupon discount.
+  const originalSubtotal = totalAmount + discountAmount;
+  pricingSummary = {
+    originalSubtotal,
+    discountAmount,
+    taxAmount,
+    finalPayable: totalAmount,
+    couponValid: !!validatedCoupon,
+  };
+
+  return {
+    breakdowns,
+    totalAmount,
+    coupon: validatedCoupon,
+    titleMap,
+    validatedCoupon,
+    pricingSummary,
+  };
 }
 
-// ─── CREATE RAZORPAY ORDER ────────────────────────────────────
 
 export async function createRazorpayOrderAction(payload: {
   services: ServiceCheckoutInput[];
@@ -152,25 +215,30 @@ export async function createRazorpayOrderAction(payload: {
   }
 
   const { data: addr } = await supabase
-    .from("user_addresses").select("city, pincode").eq("id", payload.addressId).eq("user_id", user.id).single();
+    .from("user_addresses").select("formatted_address, city, pincode").eq("id", payload.addressId).eq("user_id", user.id).single();
   if (!addr) throw new Error("Address not found");
 
-  const { totalAmount } = await computeServiceBreakdowns(supabase, payload.services, {
+  const computeResult = await computeServiceBreakdowns(supabase, payload.services, {
     date: payload.date,
     time: payload.time,
     pincode: addr.pincode,
     couponCode: payload.couponCode,
   });
 
-  // The server is the payment authority: recompute the exact payable the client
-  // displayed (same engine), then create the Razorpay order for that amount.
-  const { finalPayable } = calculateFinalPayable({
-    totalBeforeWallet: totalAmount,
-    walletAmountToUse: payload.walletAmountToUse,
-    referralDiscount: payload.referralDiscount,
-  });
+  const totalAmount = computeResult.totalAmount;
+  const { originalSubtotal, taxAmount, couponValid } =
+    computeResult.pricingSummary;
 
-  if (finalPayable <= 0) {
+  // Final amount the customer actually pays via Razorpay = post-coupon,
+  // post-wallet, post-referral. This must match verifyRazorpayPaymentAction
+  // exactly so the gateway amount equals the captured amount.
+  const finalOrderAmount = calculateFinalPayable({
+    totalBeforeWallet: totalAmount,
+    walletAmountToUse: payload.walletAmountToUse ?? 0,
+    referralDiscount: payload.referralDiscount ?? 0,
+  }).finalPayable;
+
+  if (finalOrderAmount <= 0) {
     return { freeOrder: true, amount: 0, currency: "INR" };
   }
 
@@ -185,7 +253,7 @@ export async function createRazorpayOrderAction(payload: {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: authHeader },
     body: JSON.stringify({
-      amount: Math.round(finalPayable * 100),
+      amount: Math.round(finalOrderAmount * 100),
       currency: "INR",
       receipt: `rcpt_${Date.now()}`,
     }),
@@ -198,9 +266,34 @@ export async function createRazorpayOrderAction(payload: {
   }
 
   const orderData = await response.json();
+  const orderId = orderData.id;
+
+  // Persist authoritative pricing snapshot to orders table (immutable for this order's lifecycle)
+  await supabase.from("orders").insert({
+    customer_id: user.id,
+    status: "pending",
+    total_amount: finalOrderAmount,
+    city: addr.city,
+    address: addr.formatted_address,
+    pincode: addr.pincode,
+    scheduled_date: new Date().toISOString(), // will be overridden with real date later
+    item_count: payload.services.length,
+    payment_status: "pending",
+    // Coupon snapshot fields — immutable for this order
+    coupon_code: payload.couponCode || null,
+    original_subtotal: originalSubtotal,
+    tax_amount: taxAmount,
+    final_amount: finalOrderAmount,
+    coupon_valid_at_creation: couponValid,
+  });
+
+  // Coupon usage will be created AFTER payment verification (see verifyRazorpayPaymentAction)
+  // This ensures: if payment fails, coupon is not consumed
+  // If payment succeeds, coupon usage is created in the verification step
+
   return {
     freeOrder: false,
-    orderId: orderData.id,
+    orderId,
     amount: orderData.amount / 100,
     currency: orderData.currency,
     keyId,
@@ -264,6 +357,22 @@ export async function verifyRazorpayPaymentAction(payload: {
     }
   }
 
+  // 1c. Coupon usage idempotency check
+  // If this Razorpay order already created a coupon usage, don't re-consume.
+  if (!payload.isFree && payload.razorpay_order_id && payload.couponCode) {
+    const { data: existingUsage } = await supabase
+      .from("coupon_usages")
+      .select("id")
+      .eq("order_id", payload.razorpay_order_id)
+      .limit(1)
+      .maybeSingle();
+    if (existingUsage) {
+      // Coupon already redeemed for this order — finalize successfully without re-consuming
+      // We still need to proceed with the rest of the flow to maintain idempotency
+      console.log("[payment] Coupon already redeemed for order", payload.razorpay_order_id, "- skipping re-consumption.");
+    }
+  }
+
   // 2. Fetch address
   const { data: addr } = await supabase
     .from("user_addresses").select("formatted_address, city, area, pincode").eq("id", payload.addressId).eq("user_id", user.id).single();
@@ -280,12 +389,14 @@ export async function verifyRazorpayPaymentAction(payload: {
   const timestamp = new Date(isoStr);
 
   // 4. Compute all pricing breakdowns (shared engine, server-side authority)
-  const { breakdowns, totalAmount, titleMap } = await computeServiceBreakdowns(supabase, payload.services, {
-    date: payload.date,
-    time: payload.time,
-    pincode: addr.pincode,
-    couponCode: payload.couponCode,
-  });
+  // This now includes authoritative coupon validation and pricing snapshot.
+  const { breakdowns, totalAmount, titleMap, validatedCoupon, pricingSummary } =
+    await computeServiceBreakdowns(supabase, payload.services, {
+      date: payload.date,
+      time: payload.time,
+      pincode: addr.pincode,
+      couponCode: payload.couponCode,
+    });
 
   // Wallet is capped at the payable and re-derived here (never trust the client).
   const payable = calculateFinalPayable({
@@ -296,6 +407,10 @@ export async function verifyRazorpayPaymentAction(payload: {
   const walletAmountToUse = payable.walletApplied;
   const referralDiscount = payable.referralDiscount;
   const finalOrderAmount = payable.finalPayable;
+
+  // Extract coupon snapshot values from the authoritative pricing summary
+  const { discountAmount: snapshotDiscountAmount, originalSubtotal: snapshotOriginalSubtotal, taxAmount: snapshotTaxAmount, couponValid } =
+    pricingSummary;
 
   // Security check: Validate free order bypass
   if (payload.isFree && finalOrderAmount > 0) {
@@ -322,7 +437,7 @@ export async function verifyRazorpayPaymentAction(payload: {
     }
   }
 
-  // 5. Create Order
+// 5. Create Order
   const { data: order, error: orderError } = await supabase
     .from("orders")
     .insert({
@@ -335,6 +450,12 @@ export async function verifyRazorpayPaymentAction(payload: {
       scheduled_date: timestamp.toISOString(),
       item_count: payload.services.length,
       payment_status: "paid",
+      // Authoritative pricing snapshot — immutable for this order's lifecycle
+      coupon_code: payload.couponCode || null,
+      original_subtotal: snapshotOriginalSubtotal,
+      tax_amount: snapshotTaxAmount,
+      final_amount: finalOrderAmount,
+      coupon_valid_at_creation: couponValid,
     })
     .select("id")
     .single();
@@ -368,6 +489,36 @@ export async function verifyRazorpayPaymentAction(payload: {
     razorpay_payment_id: payload.razorpay_payment_id ?? null,
     razorpay_signature: payload.razorpay_signature ?? null,
   });
+
+  // 8. Create coupon usage record (if coupon was applied)
+  //    This is done AFTER payment verification to ensure idempotency:
+  //    - If payment fails, coupon is NOT consumed (usage not created)
+  //    - If payment succeeds, coupon usage is created once
+  //    - The UNIQUE (coupon_id, order_id) constraint prevents double redemption
+  //    Wrapped so a concurrent retry (already-redeemed) does not fail an
+  //    otherwise-successful payment — the order is already committed.
+  if (!payload.isFree && payload.couponCode && validatedCoupon) {
+    const couponCodeNormalized = normalizeCouponCode(payload.couponCode);
+
+    const { error: usageError } = await supabase.from("coupon_usages").insert({
+      coupon_id: validatedCoupon.id,
+      customer_id: user.id,
+      order_id: order.id,
+      discount_amount: snapshotDiscountAmount,
+      coupon_code_snapshot: couponCodeNormalized,
+      discount_type_snapshot: validatedCoupon.discount_type,
+      used_at: new Date().toISOString(),
+    });
+
+    if (usageError) {
+      // A unique-violation here means the coupon was already redeemed for this
+      // order (e.g. a retried webhook). Treat as idempotent, not a failure.
+      console.warn(
+        "[payment] Coupon usage insert issue (ignored, order already committed):",
+        usageError.message
+      );
+    }
+  }
 
   // 8. Create child bookings
   for (const item of payload.services) {

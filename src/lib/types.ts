@@ -461,6 +461,12 @@ export interface CheckoutPricingSnapshot {
   businessName?: string;
   businessGstin?: string;
   formAnswers?: string;
+  // Authoritative pricing snapshot — immutable for the life of the Razorpay order
+  originalSubtotal: number;       // subtotal before discount + tax
+  discountAmount: number;         // clamped discount (never exceeds subtotal)
+  taxAmount: number;              // GST calculated on discounted subtotal
+  finalAmount: number;            // payable amount = originalSubtotal - discountAmount + taxAmount
+  couponValidAtCreation: boolean; // was coupon valid when order was created
 }
 
 export interface BookingQuote {
@@ -510,6 +516,7 @@ export interface Coupon {
   is_active: boolean;
   expires_at: string | null;
   created_at: string;
+  applicable_to_service_id: string | null; // NULL = all services; specific UUID = that service only
 }
 
 

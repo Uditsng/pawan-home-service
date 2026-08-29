@@ -1,6 +1,10 @@
 import { unstable_cache } from "next/cache";
 import { SupabaseClient } from "@supabase/supabase-js";
-import { createClient } from "@/utils/supabase/server";
+// Anon client (no cookies) — required because this function runs inside
+// `unstable_cache`, which forbids dynamic data sources like `cookies()`.
+// Matches every other cached query (cachedServiceQueries) and platform_settings
+// is publicly readable (anon policy).
+import { createClient } from "@/utils/supabase/client";
 import { TAG_PLATFORM_SETTINGS } from "@/utils/supabase/cacheTags";
 
 export interface PlatformSettings {

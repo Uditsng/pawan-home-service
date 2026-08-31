@@ -17,7 +17,9 @@ INSERT INTO public.categories (id, category_name) VALUES
   ('c38e7aa3-7d2d-4a90-8c65-1e8982551e5e'::uuid, 'Renovation, Logistics & Events'),
   ('79a4de54-30ad-4ef7-8c35-1d096a605f6e'::uuid, 'House Keeping'),
   ('5ba6c71c-30ad-4ef7-8c35-1d096a605f6e'::uuid, 'Personal Assistance Services'),
-  ('8fa6c71c-30ad-4ef7-8c35-1d096a605f6e'::uuid, 'Grooming & Wellness')
+  ('8fa6c71c-30ad-4ef7-8c35-1d096a605f6e'::uuid, 'Grooming & Wellness'),
+  ('9ea6c71c-30ad-4ef7-8c35-1d096a605f6f'::uuid, 'Pet grooming'),
+  ('aeb6c71c-30ad-4ef7-8c35-1d096a605f6e'::uuid, 'Interior & 3D Design')
 ON CONFLICT (id) DO UPDATE SET category_name = EXCLUDED.category_name;
 
 -- 2. RECREATE SUBCATEGORIES TABLE
@@ -66,7 +68,15 @@ INSERT INTO public.subcategories (id, subcategory_name, icon_name, category_id) 
   ('a4aac9fd-572f-41a3-ad88-2aa38a40ce09'::uuid, 'Packing & Moving', 'inventory_2', 'c38e7aa3-7d2d-4a90-8c65-1e8982551e5e'::uuid),
   ('2cb6a6b5-0c7f-4b95-a204-0987c6543210'::uuid, 'Shopping Assistant Service', 'shopping_bag', '5ba6c71c-30ad-4ef7-8c35-1d096a605f6e'::uuid),
   ('2cb6a6b5-0c7f-4b95-a204-0987c6543220'::uuid, 'Companionship Services', 'diversity_3', '5ba6c71c-30ad-4ef7-8c35-1d096a605f6e'::uuid),
-  ('2cb6a6b5-0c7f-4b95-a204-0987c6543230'::uuid, 'Men''s Salon & Massage', 'content_cut', '8fa6c71c-30ad-4ef7-8c35-1d096a605f6e'::uuid)
+  ('2cb6a6b5-0c7f-4b95-a204-0987c6543230'::uuid, 'Men''s Salon & Massage', 'content_cut', '8fa6c71c-30ad-4ef7-8c35-1d096a605f6e'::uuid),
+  -- Pet grooming
+  ('1e9a7812-40ad-4ef7-8c35-1d096a605f01'::uuid, 'Pet Bath & Washing', 'pets', '9ea6c71c-30ad-4ef7-8c35-1d096a605f6f'::uuid),
+  ('1e9a7812-40ad-4ef7-8c35-1d096a605f02'::uuid, 'Pet Haircut & Styling', 'content_cut', '9ea6c71c-30ad-4ef7-8c35-1d096a605f6f'::uuid),
+  ('1e9a7812-40ad-4ef7-8c35-1d096a605f03'::uuid, 'Complete Pet Grooming Packages', 'cruelty_free', '9ea6c71c-30ad-4ef7-8c35-1d096a605f6f'::uuid),
+  -- Interior & 3D Design
+  ('2f0b8923-50be-4f48-9d46-2e107b716001'::uuid, '3D Interior Room Design', 'view_in_ar', 'aeb6c71c-30ad-4ef7-8c35-1d096a605f6e'::uuid),
+  ('2f0b8923-50be-4f48-9d46-2e107b716002'::uuid, '3D Exterior Elevation', 'architecture', 'aeb6c71c-30ad-4ef7-8c35-1d096a605f6e'::uuid),
+  ('2f0b8923-50be-4f48-9d46-2e107b716003'::uuid, '2D Architectural Drawings', 'square_foot', 'aeb6c71c-30ad-4ef7-8c35-1d096a605f6e'::uuid)
 ON CONFLICT (id) DO NOTHING;
 
 -- 3. RECREATE SERVICES TABLE WITH FULL SCHEMA

@@ -94,6 +94,24 @@ const categoryIcons: Record<string, React.ReactNode> = {
       <circle cx="18" cy="18" r="3" fill="#a6ce37" fillOpacity="0.25" stroke="#002261" strokeWidth="2" />
       <path d="M9 15L15 5M15 15L9 5" stroke="#002261" strokeWidth="2" strokeLinecap="round" />
     </svg>
+  ),
+  // Pet grooming
+  "9ea6c71c-30ad-4ef7-8c35-1d096a605f6f": (
+    <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="7" cy="8.5" r="2" fill="#a6ce37" stroke="#002261" strokeWidth="1.5" />
+      <circle cx="12" cy="6" r="2.2" fill="#a6ce37" stroke="#002261" strokeWidth="1.5" />
+      <circle cx="17" cy="8.5" r="2" fill="#a6ce37" stroke="#002261" strokeWidth="1.5" />
+      <path d="M12 11.5C9 11.5 6.5 13.5 6.5 16C6.5 18.5 9 20.5 12 20.5C15 20.5 17.5 18.5 17.5 16C17.5 13.5 15 11.5 12 11.5Z" fill="#a6ce37" fillOpacity="0.3" stroke="#002261" strokeWidth="2" />
+    </svg>
+  ),
+  // Interior & 3D Design
+  "aeb6c71c-30ad-4ef7-8c35-1d096a605f6e": (
+    <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 3L20 7.5V16.5L12 21L4 16.5V7.5L12 3Z" fill="#a6ce37" fillOpacity="0.25" stroke="#002261" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M12 3V12M12 12L20 7.5M12 12L4 7.5" stroke="#002261" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 12V21" stroke="#002261" strokeWidth="2" />
+      <circle cx="12" cy="12" r="2" fill="#a6ce37" />
+    </svg>
   )
 };
 

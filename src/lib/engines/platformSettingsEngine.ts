@@ -18,6 +18,7 @@ export interface PlatformSettings {
   freeCancellationWindowMinutes: number;// authoritative numeric value, e.g. 15
   partnerPenaltyRate: number;   // e.g. 10 (percent)
   serviceAreas: string[];
+  serviceablePincodes: string[];
 }
 
 export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
@@ -31,6 +32,7 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   freeCancellationWindowMinutes: 15,
   partnerPenaltyRate: 10,
   serviceAreas: ["Roorkee", "Chandigarh", "Dehradun", "Haridwar"],
+  serviceablePincodes: ["247667", "160017", "248001", "249401"],
 };
 
 /**
@@ -85,6 +87,7 @@ export async function fetchPlatformSettings(supabase: SupabaseClient): Promise<P
       freeCancellationWindowMinutes: parseNum(settingsMap["free_cancellation_window_minutes"], DEFAULT_PLATFORM_SETTINGS.freeCancellationWindowMinutes),
       partnerPenaltyRate: parseNum(settingsMap["partner_penalty_rate"], DEFAULT_PLATFORM_SETTINGS.partnerPenaltyRate),
       serviceAreas: parseStringArray(settingsMap["service_areas"], DEFAULT_PLATFORM_SETTINGS.serviceAreas),
+      serviceablePincodes: parseStringArray(settingsMap["serviceable_pincodes"], DEFAULT_PLATFORM_SETTINGS.serviceablePincodes),
     };
   } catch (err) {
     console.error("fetchPlatformSettings error:", err);

@@ -17,6 +17,7 @@ export async function updateSettingsAction(settings: {
   free_cancellation_window_minutes?: number;
   partner_penalty_rate?: string;
   service_areas?: string[];
+  serviceable_pincodes?: string[];
   referral_reward_referrer?: string;
   referral_reward_referred?: string;
 }) {
@@ -79,6 +80,13 @@ export async function updateSettingsAction(settings: {
       .upsert({ key: "service_areas", value: settings.service_areas, updated_at: new Date().toISOString() });
   }
 
+  // Update serviceable_pincodes
+  if (settings.serviceable_pincodes !== undefined) {
+    await supabase
+      .from("platform_settings")
+      .upsert({ key: "serviceable_pincodes", value: settings.serviceable_pincodes, updated_at: new Date().toISOString() });
+  }
+
   // Update referral_reward_referrer
   if (settings.referral_reward_referrer !== undefined) {
     await supabase
@@ -104,6 +112,82 @@ export async function updateSettingsAction(settings: {
   revalidatePath("/customer/checkout/cart/payment");
   revalidatePlatformSettings();
   return { success: true };
+}
+
+/**
+ * Log user interest ("Notify Me") for an unserviceable location
+ */
+export async function logServiceInterestAction(data: { pincode: string; city?: string; service_id?: string }) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const { error } = await supabase.from("service_interest_requests").insert({
+      user_id: user?.id || null,
+      pincode: data.pincode,
+      city: data.city || null,
+      service_id: data.service_id || null,
+    });
+
+    if (error) {
+      console.error("logServiceInterestAction error:", error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (err: unknown) {
+    console.error("logServiceInterestAction exception:", err);
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+export interface DemandAnalyticsData {
+  topPincodes: { pincode: string; count: number }[];
+  recentRequests: {
+    id: string;
+    pincode: string;
+    city: string | null;
+    created_at: string;
+  }[];
+  totalRequests: number;
+}
+
+/**
+ * Fetch Demand Analytics for Admin Settings
+ */
+export async function fetchDemandAnalyticsAction(): Promise<DemandAnalyticsData> {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const { data: requests, error } = await supabase
+    .from("service_interest_requests")
+    .select("id, pincode, city, created_at")
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  if (error || !requests) {
+    return { topPincodes: [], recentRequests: [], totalRequests: 0 };
+  }
+
+  // Aggregate by pincode
+  const pincodeMap: Record<string, number> = {};
+  requests.forEach((req) => {
+    const p = req.pincode.trim();
+    if (p) {
+      pincodeMap[p] = (pincodeMap[p] || 0) + 1;
+    }
+  });
+
+  const topPincodes = Object.entries(pincodeMap)
+    .map(([pincode, count]) => ({ pincode, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+
+  return {
+    topPincodes,
+    recentRequests: requests.slice(0, 15),
+    totalRequests: requests.length,
+  };
 }
 
 /**

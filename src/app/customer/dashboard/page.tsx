@@ -1,11 +1,10 @@
 import Image from "next/image";
 import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/utils/supabase/server";
-import DashboardCarousel from "./DashboardCarousel";
 import DashboardGridClient from "./DashboardGridClient";
 import { getCachedCategories } from "@/utils/supabase/cachedCategoryQueries";
 import { getCachedUpcomingServices } from "@/utils/supabase/cachedServiceQueries";
-import { ComingSoonStrip } from "@/components/ComingSoonStrip";
+import { getCachedPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 
 interface ServiceWithSubcategory {
   id: string;
@@ -27,10 +26,10 @@ interface ServiceWithSubcategory {
 
 export default async function CustomerDashboard() {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  // Parallelize independent queries for ~400ms savings
-  const [servicesResult, categories, upcomingServices] = await Promise.all([
-    // Fetch services with only needed columns (no page_content JSONB)
+  // Parallelize independent queries
+  const [servicesResult, categories, upcomingServices, settings, defaultAddressRes] = await Promise.all([
     supabase
       .from('services')
       .select(`
@@ -47,13 +46,38 @@ export default async function CustomerDashboard() {
       .eq('is_active', true)
       .eq('status', 'published')
       .order('title', { ascending: true }),
-    // Fetch all categories
     getCachedCategories(),
-    // Fetch Coming Soon services
     getCachedUpcomingServices(),
+    getCachedPlatformSettings(),
+    user
+      ? supabase
+          .from('user_addresses')
+          .select('id, city, pincode, formatted_address')
+          .eq('user_id', user.id)
+          .eq('is_default', true)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
 
   const availableServices = (servicesResult.data || []) as unknown as ServiceWithSubcategory[];
+  const defaultAddress = defaultAddressRes.data;
+
+  // Evaluate location availability
+  const liveCities = (settings.serviceAreas || []).map((c) => c.toLowerCase());
+  const livePincodes = (settings.serviceablePincodes || []).map((p) => p.toLowerCase());
+
+  const userCity = defaultAddress?.city?.trim() || "";
+  const userPincode = defaultAddress?.pincode?.trim() || "";
+
+  let isServiceable = true; // default to true if user has not set any address yet
+  let hasAddress = false;
+
+  if (userPincode || userCity) {
+    hasAddress = true;
+    const pinMatch = userPincode ? livePincodes.includes(userPincode.toLowerCase()) : false;
+    const cityMatch = userCity ? liveCities.includes(userCity.toLowerCase()) : false;
+    isServiceable = pinMatch || cityMatch;
+  }
 
   return (
     <div className="bg-surface font-body text-on-surface antialiased min-h-screen pb-24">
@@ -61,23 +85,16 @@ export default async function CustomerDashboard() {
       <main className="max-w-7xl mx-auto px-4 md:px-6 pt-4 md:pt-6">
 
         
-        {/* Promotional Carousel Banner */}
-        <DashboardCarousel />
-
-        {/* Coming Soon Strip */}
-        <div className="mb-4 md:mb-6 bg-yellow-100">
-          <ComingSoonStrip
-            services={upcomingServices}
-            hrefFor={(service) => {
-              const catName = service.subcategories?.categories?.category_name || "services";
-              const catSlug = catName.toLowerCase().replace(/\s+/g, "-").replace(/&/g, "and");
-              return `/customer/services/${catSlug}/${service.id}`;
-            }}
-          />
-        </div>
-
-        {/* Service Categories Bento Grid Client Component */}
-        <DashboardGridClient categories={categories} availableServices={availableServices} />
+        {/* Service Categories & Availability Bento Grid Client Component */}
+        <DashboardGridClient
+          categories={categories}
+          availableServices={availableServices}
+          upcomingServices={upcomingServices}
+          isServiceable={isServiceable}
+          hasAddress={hasAddress}
+          userPincode={userPincode}
+          userCity={userCity}
+        />
 
         {/* Reliable & Trustworthy Section */}
         <section className="mb-8 md:mb-12 px-1">

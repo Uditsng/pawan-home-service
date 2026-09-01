@@ -68,6 +68,8 @@ export default function ScheduleClient({
   });
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [isAddressSelectorExpanded, setIsAddressSelectorExpanded] = useState(false);
+  const [isAddressServiceable, setIsAddressServiceable] = useState<boolean>(true);
+  const [isCheckingAddressAvailability, setIsCheckingAddressAvailability] = useState<boolean>(false);
 
   const [meetingLocation, setMeetingLocation] = useState("");
   const [destination, setDestination] = useState("");
@@ -98,6 +100,37 @@ export default function ScheduleClient({
       setMeetingLocation("");
     }
   }
+
+  useEffect(() => {
+    if (!selectedAddress) return;
+
+    let isMounted = true;
+    queueMicrotask(() => {
+      if (isMounted) {
+        setIsCheckingAddressAvailability(true);
+      }
+    });
+
+    fetch(`/api/location/check-availability?pincode=${encodeURIComponent(selectedAddress.pincode)}&city=${encodeURIComponent(selectedAddress.city)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted) {
+          setIsAddressServiceable(Boolean(data?.available));
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to check checkout address availability:", err);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsCheckingAddressAvailability(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedAddress]);
 
   const fetchFreshAddresses = async () => {
     const supabase = createClient();
@@ -306,11 +339,46 @@ export default function ScheduleClient({
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 bg-green-500/10 text-[#059669] px-2.5 py-1 rounded-full shrink-0 border border-green-500/20">
-                  <span className="material-symbols-outlined text-xs font-bold">check_circle</span>
-                  <span className="text-[9px] font-bold uppercase tracking-wider">Confirmed</span>
-                </div>
+                {isCheckingAddressAvailability ? (
+                  <div className="flex items-center gap-1.5 bg-gray-500/10 text-gray-600 px-2.5 py-1 rounded-full shrink-0 border border-gray-500/20">
+                    <div className="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Checking...</span>
+                  </div>
+                ) : isAddressServiceable ? (
+                  <div className="flex items-center gap-1.5 bg-green-500/10 text-[#059669] px-2.5 py-1 rounded-full shrink-0 border border-green-500/20">
+                    <span className="material-symbols-outlined text-xs font-bold">check_circle</span>
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Confirmed</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 bg-red-500/10 text-red-600 px-2.5 py-1 rounded-full shrink-0 border border-red-500/20">
+                    <span className="material-symbols-outlined text-xs font-bold">error</span>
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Not Live</span>
+                  </div>
+                )}
               </div>
+
+              {/* Unserviceable Address Alert */}
+              {!isAddressServiceable && !isCheckingAddressAvailability && (
+                <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex flex-col gap-2 animate-in fade-in">
+                  <div className="flex items-start gap-2 text-amber-900 text-xs">
+                    <span className="material-symbols-outlined text-amber-600 text-base shrink-0 mt-0.5">warning</span>
+                    <div>
+                      <h4 className="font-bold text-amber-900">Service Currently Unavailable at this Location</h4>
+                      <p className="text-[11px] text-amber-800 leading-relaxed font-medium mt-0.5">
+                        PHS services are not yet live in pincode <span className="font-mono font-bold">{selectedAddress.pincode}</span> ({selectedAddress.city}).
+                        Please select or add an address in an active service area to complete your booking.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddressSelectorExpanded(true)}
+                    className="self-end text-[11px] font-bold text-amber-900 underline hover:text-amber-950 cursor-pointer"
+                  >
+                    Change Address
+                  </button>
+                </div>
+              )}
 
               {/* Address selector inline when expanded */}
               {isAddressSelectorExpanded && (
@@ -541,7 +609,7 @@ export default function ScheduleClient({
                   {selectedPackages ? (
                     <>
                       <p className="text-[9px] font-bold text-on-surface-variant uppercase tracking-widest">Selected Services</p>
-                      <p className="font-bold text-on-surface text-[10px] md:text-xs max-w-[200px] truncate">
+                      <p className="font-bold text-on-surface text-[10px] md:text-xs max-w-50 truncate">
                         {(() => {
                           const ids = selectedPackages.split(",");
                           const rawPkgs = (service.page_content as Record<string, unknown> | undefined)?.packages;
@@ -580,12 +648,20 @@ export default function ScheduleClient({
           </div>
           <button
             onClick={handleContinue}
-            disabled={!effectiveSelectedTime || !selectedAddressId}
+            disabled={!effectiveSelectedTime || !selectedAddressId || !isAddressServiceable || isCheckingAddressAvailability}
             className={`mb-1 w-full py-3 rounded-xl font-headline font-extrabold text-sm md:text-base flex items-center justify-center gap-2 transition-all
-              ${(!effectiveSelectedTime || !selectedAddressId) ? 'bg-surface-container text-on-surface/30 cursor-not-allowed' : 'bg-secondary text-white shadow-[0_10px_24px_rgba(253,118,26,0.2)] hover:opacity-90 active:scale-[0.98]'}`}
+              ${(!effectiveSelectedTime || !selectedAddressId || !isAddressServiceable || isCheckingAddressAvailability) ? 'bg-surface-container text-on-surface/30 cursor-not-allowed' : 'bg-secondary text-white shadow-[0_10px_24px_rgba(253,118,26,0.2)] hover:opacity-90 active:scale-[0.98]'}`}
           >
-            {service ? "Continue To Booking" : "Continue To Payment"}
-            <span className="material-symbols-outlined text-lg">arrow_forward</span>
+            {isCheckingAddressAvailability
+              ? "Checking Location..."
+              : !isAddressServiceable
+              ? "Service Unavailable at Location"
+              : service
+              ? "Continue To Booking"
+              : "Continue To Payment"}
+            <span className="material-symbols-outlined text-lg">
+              {!isAddressServiceable ? "block" : "arrow_forward"}
+            </span>
           </button>
         </div>
       </footer>

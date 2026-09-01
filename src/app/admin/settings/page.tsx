@@ -1,23 +1,27 @@
 import { createClient } from "@/utils/supabase/server";
 import { SettingsConsole } from "./SettingsConsole";
 import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
+import { fetchDemandAnalyticsAction } from "./actions";
 
 export default async function AdminSettingsPage() {
   const supabase = await createClient();
   let isSchemaError = false;
 
-  const { data, error } = await supabase.from('platform_settings').select('*');
+  const { error } = await supabase.from('platform_settings').select('key').limit(1);
   if (error && error.code === '42P01') {
     isSchemaError = true;
   }
 
-  const settings = await fetchPlatformSettings(supabase);
+  const [settings, demandAnalytics] = await Promise.all([
+    fetchPlatformSettings(supabase),
+    fetchDemandAnalyticsAction().catch(() => ({ topPincodes: [], recentRequests: [], totalRequests: 0 })),
+  ]);
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div>
-        <h1 className="text-2xl font-black tracking-tighter text-primary font-headline">Settings</h1>
-        <p className="text-on-surface-variant font-medium mt-1 opacity-60 text-sm">Manage platform rules, default rates, and serviceable areas.</p>
+        <h1 className="text-2xl font-black tracking-tighter text-primary font-headline">Settings & Service Areas</h1>
+        <p className="text-on-surface-variant font-medium mt-1 opacity-60 text-sm">Manage live service zones, pincodes, platform rules, and customer demand interest.</p>
       </div>
 
       {/* Database Schema Warning Banner */}
@@ -50,8 +54,10 @@ export default async function AdminSettingsPage() {
         initialCancellationWindowMinutes={settings.freeCancellationWindowMinutes}
         initialPenaltyRate={String(settings.partnerPenaltyRate)}
         initialServiceAreas={settings.serviceAreas}
+        initialServiceablePincodes={settings.serviceablePincodes}
         initialReferralRewardReferrer={String(settings.referralRewardReferrer)}
         initialReferralRewardReferred={String(settings.referralRewardReferred)}
+        demandAnalytics={demandAnalytics}
       />
     </div>
   );

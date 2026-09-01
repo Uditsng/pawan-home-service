@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/Button";
 import { updateSettingsAction } from "./actions";
 import { formatFreeWindowLabel } from "@/utils/bookingPolicy";
 
+import { DemandAnalyticsData } from "./actions";
+
 interface SettingsConsoleProps {
   initialPlatformCommission: string;
   initialTaxRate: string;
@@ -14,8 +16,10 @@ interface SettingsConsoleProps {
   initialCancellationWindowMinutes: number;
   initialPenaltyRate: string;
   initialServiceAreas: string[];
+  initialServiceablePincodes?: string[];
   initialReferralRewardReferrer: string;
   initialReferralRewardReferred: string;
+  demandAnalytics?: DemandAnalyticsData;
 }
 
 export function SettingsConsole({
@@ -26,8 +30,10 @@ export function SettingsConsole({
   initialCancellationWindowMinutes,
   initialPenaltyRate,
   initialServiceAreas,
+  initialServiceablePincodes = [],
   initialReferralRewardReferrer,
   initialReferralRewardReferred,
+  demandAnalytics = { topPincodes: [], recentRequests: [], totalRequests: 0 },
 }: SettingsConsoleProps) {
   const [platformCommission, setPlatformCommission] = useState(initialPlatformCommission);
   const [taxRate, setTaxRate] = useState(initialTaxRate);
@@ -36,9 +42,11 @@ export function SettingsConsole({
   const [cancellationWindowMinutes, setCancellationWindowMinutes] = useState(initialCancellationWindowMinutes);
   const [penaltyRate, setPenaltyRate] = useState(initialPenaltyRate);
   const [serviceAreas, setServiceAreas] = useState<string[]>(initialServiceAreas);
+  const [serviceablePincodes, setServiceablePincodes] = useState<string[]>(initialServiceablePincodes);
   const [referralRewardReferrer, setReferralRewardReferrer] = useState(initialReferralRewardReferrer);
   const [referralRewardReferred, setReferralRewardReferred] = useState(initialReferralRewardReferred);
   const [newCity, setNewCity] = useState("");
+  const [newPincode, setNewPincode] = useState("");
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -59,6 +67,22 @@ export function SettingsConsole({
     setServiceAreas(serviceAreas.filter(city => city !== cityToRemove));
   };
 
+  const handleAddPincode = (e: React.FormEvent) => {
+    e.preventDefault();
+    const pin = newPincode.trim();
+    if (!pin || !/^\d{6}$/.test(pin)) return;
+    if (serviceablePincodes.includes(pin)) {
+      setNewPincode("");
+      return;
+    }
+    setServiceablePincodes([...serviceablePincodes, pin]);
+    setNewPincode("");
+  };
+
+  const handleRemovePincode = (pinToRemove: string) => {
+    setServiceablePincodes(serviceablePincodes.filter(pin => pin !== pinToRemove));
+  };
+
   const handleSaveChanges = async () => {
     setIsSaving(true);
     setSaveSuccess(false);
@@ -73,6 +97,7 @@ export function SettingsConsole({
         free_cancellation_window: formatFreeWindowLabel(cancellationWindowMinutes),
         partner_penalty_rate: penaltyRate,
         service_areas: serviceAreas,
+        serviceable_pincodes: serviceablePincodes,
         referral_reward_referrer: referralRewardReferrer,
         referral_reward_referred: referralRewardReferred,
       });
@@ -230,47 +255,90 @@ export function SettingsConsole({
           <p className="text-[10px] font-bold text-on-surface-variant/40 mt-4 uppercase">Professional rejections affect cancellation rates.</p>
         </Card>
 
-        {/* Service Zones */}
+        {/* Service Zones & Live Pincodes */}
         <Card variant="solid" className="space-y-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
               <span className="material-symbols-outlined">map</span>
             </div>
-            <h3 className="text-lg font-bold tracking-tight text-primary font-headline">Service Areas</h3>
+            <div>
+              <h3 className="text-lg font-bold tracking-tight text-primary font-headline">Live Cities & Pincodes</h3>
+              <p className="text-[10px] text-on-surface-variant font-medium">Admin decides live service locations (overrides partner locations).</p>
+            </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 min-h-24 content-start">
-            {serviceAreas.map(city => (
-              <span
-                key={city}
-                className="px-3.5 py-2 rounded-xl bg-surface border border-outline-variant/20 text-primary text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-all cursor-pointer group"
-                onClick={() => handleRemoveCity(city)}
-                title="Remove city"
+          {/* Active Cities */}
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70">Live Cities</label>
+            <div className="flex flex-wrap gap-2 min-h-12 content-start">
+              {serviceAreas.map(city => (
+                <span
+                  key={city}
+                  className="px-3.5 py-1.5 rounded-xl bg-surface border border-outline-variant/20 text-primary text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-all cursor-pointer group"
+                  onClick={() => handleRemoveCity(city)}
+                  title="Remove city"
+                >
+                  {city}
+                  <span className="material-symbols-outlined text-[12px] text-on-surface-variant group-hover:text-red-500 font-bold">close</span>
+                </span>
+              ))}
+              {serviceAreas.length === 0 && (
+                <p className="text-xs text-on-surface-variant/40 font-semibold italic p-1">No active cities.</p>
+              )}
+            </div>
+            <form onSubmit={handleAddCity} className="flex gap-2 pt-1">
+              <input
+                type="text"
+                placeholder="e.g. Lucknow"
+                value={newCity}
+                onChange={(e) => setNewCity(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-xl bg-surface border border-outline-variant/20 text-xs font-bold text-primary outline-none focus:ring-2 focus:ring-secondary/50"
+              />
+              <button
+                type="submit"
+                className="px-3 py-2 rounded-xl bg-primary text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#0F172A] active:scale-95 transition-all shadow-md cursor-pointer"
               >
-                {city}
-                <span className="material-symbols-outlined text-[12px] text-on-surface-variant group-hover:text-red-500 font-bold">close</span>
-              </span>
-            ))}
-            {serviceAreas.length === 0 && (
-              <p className="text-xs text-on-surface-variant/40 font-semibold italic p-2">No active cities. Platform bookings will fail coverage checks.</p>
-            )}
+                + Add City
+              </button>
+            </form>
           </div>
 
-          <form onSubmit={handleAddCity} className="flex gap-2">
-            <input
-              type="text"
-              placeholder="e.g. Roorkee"
-              value={newCity}
-              onChange={(e) => setNewCity(e.target.value)}
-              className="flex-1 px-4 py-2.5 rounded-xl bg-surface border border-outline-variant/20 text-xs font-bold text-primary outline-none focus:ring-2 focus:ring-secondary/50"
-            />
-            <button
-              type="submit"
-              className="px-4 py-2.5 rounded-xl bg-primary text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#0F172A] active:scale-95 transition-all shadow-md"
-            >
-              + Add City
-            </button>
-          </form>
+          {/* Active Pincodes */}
+          <div className="space-y-2 pt-2 border-t border-outline-variant/15">
+            <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70">Live Pincodes</label>
+            <div className="flex flex-wrap gap-2 min-h-12 content-start">
+              {serviceablePincodes.map(pin => (
+                <span
+                  key={pin}
+                  className="px-3.5 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-all cursor-pointer group font-mono"
+                  onClick={() => handleRemovePincode(pin)}
+                  title="Remove pincode"
+                >
+                  {pin}
+                  <span className="material-symbols-outlined text-[12px] text-emerald-800 group-hover:text-red-500 font-bold">close</span>
+                </span>
+              ))}
+              {serviceablePincodes.length === 0 && (
+                <p className="text-xs text-on-surface-variant/40 font-semibold italic p-1">No specific pincodes added (all pincodes in live cities are active).</p>
+              )}
+            </div>
+            <form onSubmit={handleAddPincode} className="flex gap-2 pt-1">
+              <input
+                type="text"
+                maxLength={6}
+                placeholder="6-digit Pincode (e.g. 226010)"
+                value={newPincode}
+                onChange={(e) => setNewPincode(e.target.value.replace(/\D/g, ""))}
+                className="flex-1 px-3 py-2 rounded-xl bg-surface border border-outline-variant/20 text-xs font-bold text-primary outline-none focus:ring-2 focus:ring-secondary/50 font-mono"
+              />
+              <button
+                type="submit"
+                className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 active:scale-95 transition-all shadow-md cursor-pointer"
+              >
+                + Add Pin
+              </button>
+            </form>
+          </div>
         </Card>
       </div>
 
@@ -321,6 +389,87 @@ export function SettingsConsole({
               className={`w-full p-3.5 rounded-xl bg-surface border border-outline-variant/20 text-sm font-bold text-primary outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary transition-all ${!referralEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             />
             <p className="text-[10px] text-on-surface-variant/50 font-medium">Discount applied to friend&apos;s first booking checkout.</p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Customer Demand Analytics Card */}
+      <Card variant="solid" className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-[#059669]">
+              <span className="material-symbols-outlined">analytics</span>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold tracking-tight text-primary font-headline">Customer Demand & Notify Me Requests</h3>
+              <p className="text-xs text-on-surface-variant font-medium">Track unserviceable locations where customers are requesting PHS services.</p>
+            </div>
+          </div>
+          <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-800 text-xs font-bold">
+            {demandAnalytics.totalRequests} Total Interest Requests
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Top Requested Pincodes */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-black uppercase tracking-wider text-on-surface-variant/70">Top Requested Pincodes</h4>
+            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+              {demandAnalytics.topPincodes.map((item) => (
+                <div
+                  key={item.pincode}
+                  className="flex items-center justify-between p-3 rounded-xl bg-surface border border-outline-variant/15 text-xs"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-emerald-600 text-base">pin_drop</span>
+                    <span className="font-mono font-bold text-primary">{item.pincode}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full bg-secondary/15 text-primary font-bold text-[11px]">
+                      {item.count} {item.count === 1 ? "request" : "requests"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!serviceablePincodes.includes(item.pincode)) {
+                          setServiceablePincodes([...serviceablePincodes, item.pincode]);
+                        }
+                      }}
+                      className="text-[10px] font-bold text-emerald-700 hover:underline cursor-pointer"
+                    >
+                      + Make Live
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {demandAnalytics.topPincodes.length === 0 && (
+                <p className="text-xs text-on-surface-variant/50 italic py-4">No notify requests recorded yet.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Recent Interest Requests Table */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-black uppercase tracking-wider text-on-surface-variant/70">Recent Requests Log</h4>
+            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+              {demandAnalytics.recentRequests.map((req) => (
+                <div
+                  key={req.id}
+                  className="flex items-center justify-between p-3 rounded-xl bg-surface border border-outline-variant/15 text-xs"
+                >
+                  <div>
+                    <span className="font-mono font-bold text-primary">{req.pincode}</span>
+                    {req.city && <span className="text-on-surface-variant text-[11px] ml-2">({req.city})</span>}
+                  </div>
+                  <span className="text-[10px] text-on-surface-variant/60">
+                    {new Date(req.created_at).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
+                  </span>
+                </div>
+              ))}
+              {demandAnalytics.recentRequests.length === 0 && (
+                <p className="text-xs text-on-surface-variant/50 italic py-4">No recent interest logs.</p>
+              )}
+            </div>
           </div>
         </div>
       </Card>

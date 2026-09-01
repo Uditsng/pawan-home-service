@@ -1,9 +1,14 @@
 "use client";
+import ServiceCardThumbnail from "@/components/ServiceCardThumbnail";
+import UnserviceableHeroBanner from "@/components/UnserviceableHeroBanner";
+import DashboardCarousel from "./DashboardCarousel";
+import { ComingSoonStrip } from "@/components/ComingSoonStrip";
+import { UpcomingService } from "@/utils/supabase/cachedServiceQueries";
+
 
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import ServiceCardThumbnail from "@/components/ServiceCardThumbnail";
 
 interface ServiceWithSubcategory {
   id: string;
@@ -32,6 +37,11 @@ interface Category {
 interface DashboardGridClientProps {
   categories: Category[];
   availableServices: ServiceWithSubcategory[];
+  upcomingServices?: UpcomingService[];
+  isServiceable?: boolean;
+  hasAddress?: boolean;
+  userPincode?: string;
+  userCity?: string;
 }
 
 const categoryIcons: Record<string, React.ReactNode> = {
@@ -122,7 +132,6 @@ const categoryIcons: Record<string, React.ReactNode> = {
 
 const getCategoryIcon = (id: string) => {
   if (categoryIcons[id]) return categoryIcons[id];
-  // Modern fallback SVG
   return (
     <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="12" cy="12" r="8" fill="#a6ce37" fillOpacity="0.25" stroke="#002261" strokeWidth="2" />
@@ -131,9 +140,38 @@ const getCategoryIcon = (id: string) => {
   );
 };
 
-export default function DashboardGridClient({ categories, availableServices }: DashboardGridClientProps) {
+export default function DashboardGridClient({
+  categories,
+  availableServices,
+  upcomingServices = [],
+  isServiceable = true,
+  hasAddress = true,
+  userPincode = "",
+  userCity = "",
+}: DashboardGridClientProps) {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const router = useRouter();
+
+  const triggerChangeLocation = () => {
+    // Trigger location header button or navigate to addresses
+    const headerBtn = document.querySelector('button[title*="address"], header button') as HTMLButtonElement | null;
+    if (headerBtn) {
+      headerBtn.click();
+    } else {
+      router.push("/customer/profile/addresses");
+    }
+  };
+
+  const handleBlockedClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const msg = userPincode
+      ? `⚠️ PHS service is not yet live in pincode ${userPincode}. Click "Notify Me!" to request launch.`
+      : `⚠️ PHS service is not yet live in your area. Click "Notify Me!" to request launch.`;
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
 
   if (selectedCategoryId) {
     const servicesForCategory = availableServices.filter(
@@ -216,51 +254,119 @@ export default function DashboardGridClient({ categories, availableServices }: D
   }
 
   return (
-    <section className="mb-8 md:mb-12">
-      <div className="mb-4 md:mb-6">
-        <h3 className="font-headline text-lg md:text-xl font-extrabold text-on-surface">Explore Categories</h3>
-        <p className="text-on-surface-variant text-xs md:text-sm">Select a category to view available services</p>
-      </div>
+    <div className="space-y-6">
+      {/* Blocked Toast Alert */}
+      {toastMessage && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-primary text-white text-xs md:text-sm font-bold px-6 py-3 rounded-2xl shadow-xl border border-secondary/30 flex items-center gap-2 animate-in fade-in slide-in-from-top-4">
+          <span className="material-symbols-outlined text-secondary text-base">info</span>
+          {toastMessage}
+        </div>
+      )}
 
-      {/* Categories Grid (no sticky hover styles) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {categories.map((cat) => {
-          // Count services in this category
-          const serviceCount = availableServices.filter(
-            (s) => s.subcategories?.categories?.id === cat.id
-          ).length;
-
-          return (
-            <div
-              onClick={() => {
-                const catSlug = cat.category_name
-                  .toLowerCase()
-                  .replace(/[,\s]+/g, "-")
-                  .replace(/&/g, "and");
-                router.push(`/customer/services/${catSlug}`);
-              }}
-              key={cat.id}
-              className="bg-surface-container-low p-5 md:p-6 rounded-2xl flex flex-col items-center justify-center text-center border border-outline-variant/10 shadow-sm aspect-square cursor-pointer active:bg-surface-container-high active:scale-95 transition-all"
-            >
-              <div className="w-16 h-16 rounded-2xl bg-secondary/10 mb-4 flex items-center justify-center text-primary transition-transform active:scale-105">
-                {getCategoryIcon(cat.id)}
-              </div>
-              <span className="font-headline font-bold text-sm md:text-base text-on-surface leading-snug line-clamp-2">
-                {cat.category_name}
-              </span>
-              <span className="text-[10px] md:text-xs text-on-surface-variant mt-1.5 font-medium bg-surface-container-high/60 px-2 py-0.5 rounded-full">
-                {serviceCount} {serviceCount === 1 ? "Service" : "Services"}
-              </span>
-            </div>
-          );
-        })}
-
-        {categories.length === 0 && (
-          <div className="col-span-2 sm:col-span-4 text-center py-8 text-on-surface-variant text-sm">
-            No categories available.
+      {/* No Address Prompt */}
+      {!hasAddress && (
+        <div className="bg-secondary/15 border border-secondary/30 rounded-2xl p-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-xs md:text-sm font-bold text-primary">
+            <span className="material-symbols-outlined text-secondary text-base">location_on</span>
+            <span>Check service availability in your area</span>
           </div>
-        )}
-      </div>
-    </section>
+          <button
+            type="button"
+            onClick={triggerChangeLocation}
+            className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all cursor-pointer shrink-0"
+          >
+            Set Location
+          </button>
+        </div>
+      )}
+
+      {/* Unserviceable Hero Banner vs Serviceable Carousel */}
+      {!isServiceable ? (
+        <UnserviceableHeroBanner
+          currentPincode={userPincode}
+          currentCity={userCity}
+          onChangeLocationClick={triggerChangeLocation}
+        />
+      ) : (
+        <>
+          <DashboardCarousel />
+          {upcomingServices.length > 0 && (
+            <div className="mb-4 md:mb-6 bg-yellow-100 rounded-2xl">
+              <ComingSoonStrip
+                services={upcomingServices}
+                hrefFor={(service) => {
+                  const catName = service.subcategories?.categories?.category_name || "services";
+                  const catSlug = catName.toLowerCase().replace(/\s+/g, "-").replace(/&/g, "and");
+                  return `/customer/services/${catSlug}/${service.id}`;
+                }}
+              />
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Services We Offer Section */}
+      <section className="mb-8 md:mb-12">
+        <div className="mb-4 md:mb-6 flex items-center justify-between">
+          <div>
+            <h3 className="font-headline text-lg md:text-xl font-extrabold text-on-surface">
+              {!isServiceable ? "Services we offer" : "Explore Categories"}
+            </h3>
+            <p className="text-on-surface-variant text-xs md:text-sm">
+              {!isServiceable
+                ? "Services will be available as soon as PHS launches in your area"
+                : "Select a category to view available services"}
+            </p>
+          </div>
+        </div>
+
+        {/* Categories Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {categories.map((cat) => {
+            const serviceCount = availableServices.filter(
+              (s) => s.subcategories?.categories?.id === cat.id
+            ).length;
+
+            return (
+              <div
+                key={cat.id}
+                onClick={(e) => {
+                  if (!isServiceable) {
+                    handleBlockedClick(e);
+                    return;
+                  }
+                  const catSlug = cat.category_name
+                    .toLowerCase()
+                    .replace(/[,\s]+/g, "-")
+                    .replace(/&/g, "and");
+                  router.push(`/customer/services/${catSlug}`);
+                }}
+                className={`bg-surface-container-low p-5 md:p-6 rounded-2xl flex flex-col items-center justify-center text-center border border-outline-variant/10 shadow-sm aspect-square transition-all ${
+                  !isServiceable
+                    ? "opacity-75 cursor-not-allowed hover:border-amber-400/50"
+                    : "cursor-pointer active:bg-surface-container-high active:scale-95"
+                }`}
+              >
+                <div className="w-16 h-16 rounded-2xl bg-secondary/10 mb-4 flex items-center justify-center text-primary transition-transform active:scale-105">
+                  {getCategoryIcon(cat.id)}
+                </div>
+                <span className="font-headline font-bold text-sm md:text-base text-on-surface leading-snug line-clamp-2">
+                  {cat.category_name}
+                </span>
+                <span className="text-[10px] md:text-xs text-on-surface-variant mt-1.5 font-medium bg-surface-container-high/60 px-2 py-0.5 rounded-full">
+                  {!isServiceable ? "Coverage Pending" : `${serviceCount} ${serviceCount === 1 ? "Service" : "Services"}`}
+                </span>
+              </div>
+            );
+          })}
+
+          {categories.length === 0 && (
+            <div className="col-span-2 sm:col-span-4 text-center py-8 text-on-surface-variant text-sm">
+              No categories available.
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
   );
 }

@@ -535,33 +535,33 @@ export default function PendingClient({
           </div>
 
           {successMsg && (
-            <div className="p-4 bg-emerald-50 text-emerald-600 text-xs font-bold rounded-xl border border-emerald-200 flex items-center gap-2">
+            <div className="p-4 bg-emerald-50 text-emerald-600 text-xs font-bold rounded-2xl border border-emerald-200 flex items-center gap-2">
               <span className="material-symbols-outlined text-sm">check_circle</span>
               {successMsg}
             </div>
           )}
 
           {errorMsg && (
-            <div className="p-4 bg-red-50 text-red-600 text-xs font-bold rounded-xl border border-red-200 flex items-center gap-2 animate-pulse">
+            <div className="p-4 bg-red-50 text-red-600 text-xs font-bold rounded-2xl border border-red-200 flex items-center gap-2 animate-pulse">
               <span className="material-symbols-outlined text-sm">error</span>
               {errorMsg}
             </div>
           )}
 
           <div className="pt-6 border-t border-outline-variant/15 flex gap-4">
-            <LogoutButton variant="button" className="px-6 py-3 rounded-xl border-2 border-outline-variant hover:bg-surface-container font-bold text-on-surface-variant transition-colors bg-transparent" />
+            <LogoutButton variant="button" className="px-6 py-3 rounded-2xl border-2 border-outline-variant hover:bg-surface-container font-bold text-on-surface-variant transition-colors bg-transparent" />
             <Button
               type="button"
               onClick={handleSaveDraft}
               disabled={isUploading || isPending}
-              className="px-6 py-3 bg-white border border-outline-variant/60 text-primary font-extrabold text-xs rounded-xl hover:bg-slate-50 transition-all duration-200 cursor-pointer"
+              className="px-6 py-3 bg-yellow-200 border border-outline-variant/60 text-black font-extrabold text-xs rounded-2xl"
             >
               Save Draft
             </Button>
             <Button
               type="submit"
               disabled={isUploading || isPending}
-              className="flex-1 py-3 bg-linear-to-br from-[#059669] to-success text-white font-extrabold text-xs rounded-xl hover:scale-[1.01] active:scale-95 shadow-[0_8px_20px_rgba(16,185,129,0.25)] transition-all duration-200 border-none cursor-pointer"
+              className="flex-1 py-3 bg-linear-to-br from-[#059669] to-success text-white font-extrabold text-xs rounded-2xl hover:scale-[1.01] active:scale-95 shadow-[0_8px_20px_rgba(16,185,129,0.25)] transition-all duration-200 border-none cursor-pointer"
             >
               {isUploading ? "Uploading Documents..." : isPending ? "Submitting Application..." : "Submit Documents for Review"}
             </Button>

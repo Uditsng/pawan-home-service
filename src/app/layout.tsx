@@ -8,7 +8,6 @@ import GlobalNumberInputPolicy from "@/components/GlobalNumberInputPolicy";
 import { RefreshProvider } from "@/lib/refresh/RefreshContext";
 import VersionAlert from "@/components/VersionAlert";
 import OfflineOverlay from "@/components/OfflineOverlay";
-import WhatsAppButton from "@/components/WhatsAppButton";
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Analytics } from '@vercel/analytics/next';
 
@@ -67,7 +66,6 @@ export default function RootLayout({
           <VersionAlert />
           <OfflineOverlay />
           {children}
-          <WhatsAppButton />
         </RefreshProvider>
         <SpeedInsights />
         <Analytics />

@@ -140,7 +140,7 @@ export function BookingsCommand({
       setIsLoadingLogs(true);
       try {
         const supabase = createClient();
-        
+
         // Fetch audit trail
         const { data: auditData } = await supabase
           .from("booking_audit_trail")
@@ -366,13 +366,13 @@ export function BookingsCommand({
           prev.map((b) =>
             b.id === bookingId
               ? {
-                  ...b,
-                  status: newStatus,
-                  ...(newStatus === "cancelled"
-                    ? { cancelled_at: new Date().toISOString(), cancelled_by: "SYSTEM", cancellation_reason: reason || null }
-                    : {}),
-                  ...(newStatus === "completed" ? { completed_at: new Date().toISOString() } : {}),
-                }
+                ...b,
+                status: newStatus,
+                ...(newStatus === "cancelled"
+                  ? { cancelled_at: new Date().toISOString(), cancelled_by: "SYSTEM", cancellation_reason: reason || null }
+                  : {}),
+                ...(newStatus === "completed" ? { completed_at: new Date().toISOString() } : {}),
+              }
               : b
           )
         );
@@ -397,21 +397,21 @@ export function BookingsCommand({
           prev.map((b) =>
             b.id === bookingId
               ? {
-                  ...b,
-                  partner_id: partnerId,
-                  status: "confirmed",
-                  accepted_at: new Date().toISOString(),
-                  partner: assignedPartner
-                    ? {
-                        id: assignedPartner.id,
-                        full_name: assignedPartner.full_name,
-                        email: assignedPartner.email,
-                        phone: assignedPartner.phone,
-                        avatar_url: assignedPartner.avatar_url,
-                        status: assignedPartner.status,
-                      }
-                    : b.partner,
-                }
+                ...b,
+                partner_id: partnerId,
+                status: "confirmed",
+                accepted_at: new Date().toISOString(),
+                partner: assignedPartner
+                  ? {
+                    id: assignedPartner.id,
+                    full_name: assignedPartner.full_name,
+                    email: assignedPartner.email,
+                    phone: assignedPartner.phone,
+                    avatar_url: assignedPartner.avatar_url,
+                    status: assignedPartner.status,
+                  }
+                  : b.partner,
+              }
               : b
           )
         );
@@ -535,17 +535,15 @@ export function BookingsCommand({
       {/* Outcome Notice Banner */}
       {actionNotice && (
         <div
-          className={`${
-            actionNotice.tone === "success"
+          className={`${actionNotice.tone === "success"
               ? "bg-secondary/10 border-secondary/40"
               : "bg-warning/10 border-warning/40"
-          } border rounded-xl p-4 flex items-center justify-between gap-4 text-xs font-semibold text-primary animate-in fade-in slide-in-from-top-4 duration-300`}
+            } border rounded-xl p-4 flex items-center justify-between gap-4 text-xs font-semibold text-primary animate-in fade-in slide-in-from-top-4 duration-300`}
         >
           <div className="flex items-center gap-3">
             <span
-              className={`material-symbols-outlined text-lg ${
-                actionNotice.tone === "success" ? "text-secondary" : "text-warning"
-              }`}
+              className={`material-symbols-outlined text-lg ${actionNotice.tone === "success" ? "text-secondary" : "text-warning"
+                }`}
             >
               {actionNotice.tone === "success" ? "check_circle" : "warning"}
             </span>
@@ -596,17 +594,15 @@ export function BookingsCommand({
           </p>
         </div>
 
-        <div className={`p-4 rounded-xl border shadow-sm relative overflow-hidden group ${
-          unassignedCount > 0
+        <div className={`p-4 rounded-xl border shadow-sm relative overflow-hidden group ${unassignedCount > 0
             ? "bg-amber-500/5 border-amber-500/20"
             : "bg-surface-container-lowest border-outline-variant/15"
-        }`}>
+          }`}>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/70">
             Unassigned Bookings
           </p>
-          <h2 className={`text-2xl font-bold font-headline mt-1.5 ${
-            unassignedCount > 0 ? "text-amber-700" : "text-primary"
-          }`}>
+          <h2 className={`text-2xl font-bold font-headline mt-1.5 ${unassignedCount > 0 ? "text-amber-700" : "text-primary"
+            }`}>
             {unassignedCount} Pending
           </h2>
           {unassignedCount > 0 ? (
@@ -709,11 +705,10 @@ export function BookingsCommand({
               <button
                 key={p.key}
                 onClick={() => { setTimePeriod(p.key); setCurrentPage(1); }}
-                className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
-                  timePeriod === p.key
+                className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${timePeriod === p.key
                     ? "bg-primary text-white shadow-md shadow-primary/20"
                     : "text-on-surface-variant hover:text-primary"
-                }`}
+                  }`}
               >
                 {p.label}
               </button>
@@ -736,11 +731,10 @@ export function BookingsCommand({
             <button
               key={pill.key}
               onClick={() => handleFilterChange(setActiveStatus, pill.key)}
-              className={`shrink-0 px-3.5 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all whitespace-nowrap ${
-                activeStatus === pill.key
+              className={`shrink-0 px-3.5 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all whitespace-nowrap ${activeStatus === pill.key
                   ? "bg-primary text-white shadow-md shadow-primary/20"
                   : "text-on-surface-variant hover:text-primary"
-              }`}
+                }`}
             >
               {pill.label} ({pill.count})
             </button>
@@ -788,8 +782,8 @@ export function BookingsCommand({
                         </p>
                         <p className="text-[9px] font-bold text-on-surface-variant/50 uppercase tracking-widest leading-none mt-0.5">
                           {booking.created_at
-                             ? format(new Date(booking.created_at), "MMM dd, yyyy · hh:mm a")
-                             : "Unscheduled"}
+                            ? format(new Date(booking.created_at), "MMM dd, yyyy · hh:mm a")
+                            : "Unscheduled"}
                         </p>
                       </td>
 
@@ -1066,11 +1060,10 @@ export function BookingsCommand({
                   <button
                     key={pageNum}
                     onClick={() => setCurrentPage(pageNum)}
-                    className={`w-9 h-9 rounded-xl text-xs font-black transition-all ${
-                      currentPage === pageNum
+                    className={`w-9 h-9 rounded-xl text-xs font-black transition-all ${currentPage === pageNum
                         ? "bg-primary text-white shadow-md shadow-primary/20"
                         : "text-on-surface-variant hover:bg-surface-container-high"
-                    }`}
+                      }`}
                   >
                     {pageNum}
                   </button>
@@ -1131,11 +1124,10 @@ export function BookingsCommand({
                 <button
                   key={tab}
                   onClick={() => setActiveDrawerTab(tab)}
-                  className={`grow py-3 text-xs font-bold uppercase tracking-wider border-b-2 text-center transition-all ${
-                    activeDrawerTab === tab
+                  className={`grow py-3 text-xs font-bold uppercase tracking-wider border-b-2 text-center transition-all ${activeDrawerTab === tab
                       ? "border-secondary text-primary"
                       : "border-transparent text-on-surface-variant hover:text-primary"
-                  }`}
+                    }`}
                 >
                   {tab === "partner" ? "Professional" : tab === "details" ? "Details" : tab === "actions" ? "Manage" : "Timeline"}
                 </button>
@@ -1496,11 +1488,10 @@ export function BookingsCommand({
                           <p className="text-[10px] text-on-surface-variant/60">{selectedBooking.partner.email || "No email"}</p>
                           <p className="text-[10px] text-on-surface-variant/50">{selectedBooking.partner.phone || "No phone"}</p>
                         </div>
-                        <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-1 rounded-full border ${
-                          selectedBooking.partner.status === "active"
+                        <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-1 rounded-full border ${selectedBooking.partner.status === "active"
                             ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
                             : "bg-surface-container text-on-surface-variant border-outline-variant"
-                        }`}>
+                          }`}>
                           {selectedBooking.partner.status}
                         </span>
                       </div>
@@ -1690,11 +1681,10 @@ export function BookingsCommand({
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1.5 shrink-0">
-                      <span className={`text-[7px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full ${
-                        partner.status === "active"
+                      <span className={`text-[7px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full ${partner.status === "active"
                           ? "bg-emerald-500/10 text-emerald-700"
                           : "bg-surface-container-highest text-on-surface-variant"
-                      }`}>
+                        }`}>
                         {partner.status}
                       </span>
                       <Button
@@ -1724,16 +1714,16 @@ export function BookingsCommand({
               {modalAction === "cancel"
                 ? "Force Cancel Booking"
                 : modalAction === "complete"
-                ? "Mark as Completed"
-                : "Reassign Professional"}
+                  ? "Mark as Completed"
+                  : "Reassign Professional"}
             </h4>
             <p className="text-xs text-on-surface-variant/80 font-normal mt-3">
               Are you sure you want to{" "}
               {modalAction === "cancel"
                 ? "permanently cancel"
                 : modalAction === "complete"
-                ? "force-complete"
-                : "unassign or reassign the professional for"}{" "}
+                  ? "force-complete"
+                  : "unassign or reassign the professional for"}{" "}
               booking{" "}
               <span className="font-bold text-primary font-mono">
                 BK-{modalTargetBooking.id.slice(0, 8).toUpperCase()}
@@ -1779,9 +1769,8 @@ export function BookingsCommand({
                 variant={modalAction === "cancel" ? "primary" : "primary"}
                 size="sm"
                 disabled={isPending}
-                className={`rounded-lg font-bold text-xs ${
-                  modalAction === "cancel" ? "bg-red-600 hover:bg-red-700" : ""
-                }`}
+                className={`rounded-lg font-bold text-xs ${modalAction === "cancel" ? "bg-red-600 hover:bg-red-700" : ""
+                  }`}
                 onClick={() => {
                   if (modalAction === "cancel") {
                     handleStatusUpdate(modalTargetBooking.id, "cancelled", cancelReason || undefined);
@@ -1795,10 +1784,10 @@ export function BookingsCommand({
                 {isPending
                   ? "Processing..."
                   : modalAction === "cancel"
-                  ? "Confirm Cancel"
-                  : modalAction === "complete"
-                  ? "Confirm Complete"
-                  : "Confirm Reassign"}
+                    ? "Confirm Cancel"
+                    : modalAction === "complete"
+                      ? "Confirm Complete"
+                      : "Confirm Reassign"}
               </Button>
             </div>
           </div>
@@ -1808,20 +1797,19 @@ export function BookingsCommand({
       {dropdownMenu && createPortal(
         <>
           {/* Backdrop for outside click */}
-          <div 
-            className="fixed inset-0 z-9998 bg-transparent" 
-            onClick={() => setDropdownMenu(null)} 
+          <div
+            className="fixed inset-0 z-9998 bg-transparent"
+            onClick={() => setDropdownMenu(null)}
           />
-          
+
           {/* Menu container */}
-          <div 
+          <div
             className="fixed w-48 bg-white border border-outline-variant/30 rounded-xl shadow-lg z-9999 p-1 divide-y divide-outline-variant/10 text-left animate-in fade-in duration-100"
             style={{
-              top: `${
-                dropdownMenu.rect.bottom + 180 > window.innerHeight
+              top: `${dropdownMenu.rect.bottom + 180 > window.innerHeight
                   ? dropdownMenu.rect.top - 185
                   : dropdownMenu.rect.bottom + 4
-              }px`,
+                }px`,
               left: `${dropdownMenu.rect.right - 192}px`
             }}
           >

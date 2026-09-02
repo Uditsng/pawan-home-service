@@ -9,6 +9,7 @@ import { getCachedCategories } from "@/utils/supabase/cachedCategoryQueries";
 import { getCachedUpcomingServices } from "@/utils/supabase/cachedServiceQueries";
 import { ComingSoonStrip } from "@/components/ComingSoonStrip";
 import { getDashboardForRole } from "@/utils/supabase/roles";
+import WhatsAppButton from "@/components/WhatsAppButton";
 
 
 export const revalidate = 300; // ISR: revalidate every 5 minutes
@@ -77,6 +78,8 @@ export default async function Home() {
     <>
 
       <Header />
+      <WhatsAppButton />
+      
 
       {/* Atmospheric Background Orbs */}
       <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden">

@@ -2,10 +2,10 @@ import "@/app/brand-theme.css";
 import { CartProvider } from "@/lib/cart/CartContext";
 import CartDrawer from "@/components/CartDrawer";
 import { createClient } from "@/utils/supabase/server";
-
 import Header from "@/components/Header";
 import CustomerHeader from "@/components/CustomerHeader";
 import HeaderVisibilityWrapper from "./HeaderVisibilityWrapper";
+import WhatsAppButton from "@/components/WhatsAppButton";
 
 export default async function CustomerMobileLayout({
   children,
@@ -20,6 +20,7 @@ export default async function CustomerMobileLayout({
       <HeaderVisibilityWrapper header={user ? <CustomerHeader /> : <Header />}>
         {children}
         <CartDrawer />
+        <WhatsAppButton />
       </HeaderVisibilityWrapper>
     </CartProvider>
   );

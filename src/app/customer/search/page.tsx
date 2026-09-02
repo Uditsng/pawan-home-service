@@ -50,6 +50,71 @@ const getCategoryIconName = (categoryName: string) => {
   return "category";
 };
 
+const INTENT_STOP_WORDS = new Set([
+  "service",
+  "services",
+  "repair",
+  "repairs",
+  "cleaning",
+  "fix",
+  "work",
+  "near",
+  "me",
+  "booking",
+  "online",
+]);
+
+function parseSearchTokens(query: string) {
+  const normalized = query.toLowerCase().trim();
+  const rawTokens = normalized.split(/\s+/).filter((t) => t.length > 0);
+  const primaryTokens = rawTokens.filter(
+    (token) => !INTENT_STOP_WORDS.has(token) && token.length >= 2
+  );
+
+  return {
+    rawQuery: normalized,
+    rawTokens,
+    primaryTokens: primaryTokens.length > 0 ? primaryTokens : rawTokens,
+  };
+}
+
+function calculateRelevanceScore(
+  title: string,
+  description: string,
+  rawQuery: string,
+  primaryTokens: string[]
+): number {
+  const tLower = title.toLowerCase();
+  const dLower = (description || "").toLowerCase();
+  const qLower = rawQuery.toLowerCase();
+  let score = 0;
+
+  // 1. Exact title match or query prefix match
+  if (tLower === qLower) score += 300;
+  else if (tLower.startsWith(qLower)) score += 200;
+  else if (tLower.includes(qLower)) score += 150;
+
+  // 2. Whole standalone word match (e.g. \bAC\b in "AC Repair" vs embedded in "Facial")
+  for (const token of primaryTokens) {
+    try {
+      const wordRegex = new RegExp(`\\b${token}\\b`, "i");
+      if (wordRegex.test(tLower)) {
+        score += 100;
+      } else if (tLower.includes(token)) {
+        score += 25;
+      }
+
+      if (wordRegex.test(dLower)) {
+        score += 20;
+      }
+    } catch {
+      if (tLower.includes(token)) score += 25;
+    }
+  }
+
+  return score;
+}
+
 export default async function SearchPage({
   searchParams,
 }: {
@@ -65,6 +130,7 @@ export default async function SearchPage({
 
   if (q) {
     const searchQuery = q.trim();
+    const { primaryTokens } = parseSearchTokens(searchQuery);
 
     // Record this real search for the dynamic "Popular Searches" feed
     try {
@@ -73,9 +139,22 @@ export default async function SearchPage({
       // Best-effort: analytics must never block the search page
     }
 
+    // Build multi-token OR filters for Supabase queries
+    const serviceTokenFilters = primaryTokens
+      .flatMap((t) => [`title.ilike.%${t}%`, `description.ilike.%${t}%`])
+      .join(",");
+
+    const subcategoryTokenFilters = primaryTokens
+      .map((t) => `subcategory_name.ilike.%${t}%`)
+      .join(",");
+
+    const categoryTokenFilters = primaryTokens
+      .map((t) => `category_name.ilike.%${t}%`)
+      .join(",");
+
     // Perform queries in parallel for better performance
     const [servicesRes, subcategoriesRes, categoriesRes] = await Promise.all([
-      // Search Services
+      // Search Services (limit 35 to prevent truncation of relevant results before scoring)
       supabase
         .from("services")
         .select(`
@@ -88,10 +167,10 @@ export default async function SearchPage({
             )
           )
         `)
-        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
+        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,${serviceTokenFilters}`)
         .eq("is_active", true)
         .in("status", ["published", "upcoming"])
-        .limit(15),
+        .limit(35),
 
       // Search Subcategories
       supabase
@@ -104,19 +183,28 @@ export default async function SearchPage({
             category_name
           )
         `)
-        .ilike("subcategory_name", `%${searchQuery}%`)
+        .or(`subcategory_name.ilike.%${searchQuery}%,${subcategoryTokenFilters}`)
         .limit(10),
 
       // Search Categories
       supabase
         .from("categories")
         .select("id, category_name")
-        .ilike("category_name", `%${searchQuery}%`)
+        .or(`category_name.ilike.%${searchQuery}%,${categoryTokenFilters}`)
         .limit(5),
     ]);
 
     if (servicesRes.data) {
-      servicesResults = servicesRes.data as unknown as ServiceResult[];
+      const rawList = servicesRes.data as unknown as ServiceResult[];
+      servicesResults = rawList
+        .map((s) => ({
+          service: s,
+          score: calculateRelevanceScore(s.title, s.description || "", searchQuery, primaryTokens),
+        }))
+        .filter((item) => item.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .map((item) => item.service)
+        .slice(0, 15);
     }
     if (subcategoriesRes.data) {
       subcategoriesResults = subcategoriesRes.data as unknown as SubcategoryResult[];
@@ -257,8 +345,8 @@ export default async function SearchPage({
                         const iconName = service.subcategories?.icon_name || "sparkles";
                         const catSlug = getSlug(
                           service.subcategories?.categories?.category_name ||
-                            service.category ||
-                            "services"
+                          service.category ||
+                          "services"
                         );
                         const isUpcoming = service.status === "upcoming";
 

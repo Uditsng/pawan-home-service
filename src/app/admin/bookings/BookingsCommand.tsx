@@ -38,11 +38,205 @@ interface NotificationLog {
   booking_id?: string;
   title: string;
   role?: string | null;
+  type?: string | null;
   message?: string | null;
   body?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+  metadata?: Record<string, unknown> | null;
+  recipient?: {
+    role?: string | null;
+  } | null;
 }
+
+// ─── Log Formatting Helpers ─────────────────────────────────
+
+const formatMetadataKey = (key: string): string => {
+  return key
+    .replace(/_/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+const formatMetadataValue = (value: unknown, keyName: string): React.ReactNode => {
+  if (value === null || value === undefined) {
+    return <span className="text-on-surface-variant/40 italic">N/A</span>;
+  }
+
+  if (typeof value === "boolean") {
+    return (
+      <span className={`font-semibold ${value ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
+        {value ? "Yes" : "No"}
+      </span>
+    );
+  }
+
+  if (typeof value === "number") {
+    const keyLower = keyName.toLowerCase();
+    const isCurrency =
+      keyLower.includes("amount") ||
+      keyLower.includes("price") ||
+      keyLower.includes("cost") ||
+      keyLower.includes("total") ||
+      keyLower.includes("discount") ||
+      keyLower.includes("fee");
+
+    if (isCurrency) {
+      return <span className="font-semibold text-primary">₹{value.toLocaleString("en-IN")}</span>;
+    }
+    return <span>{value}</span>;
+  }
+
+  if (typeof value === "string") {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(value)) {
+      return (
+        <span className="font-mono text-[10px] bg-surface-container px-1.5 py-0.5 rounded text-on-surface-variant/80 border border-outline-variant/10" title={value}>
+          {value.slice(0, 8)}...{value.slice(-4)}
+        </span>
+      );
+    }
+
+    if (value.length >= 19 && !isNaN(Date.parse(value)) && (value.includes("T") || value.includes("-"))) {
+      try {
+        return <span>{format(new Date(value), "PPP · p")}</span>;
+      } catch {
+        // Fall back
+      }
+    }
+
+    return <span className="wrap-break">{value}</span>;
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <span className="text-on-surface-variant/40 italic">None</span>;
+    return (
+      <div className="flex flex-wrap gap-1 mt-0.5">
+        {value.map((item, idx) => (
+          <span key={idx} className="bg-surface-container px-1.5 py-0.5 rounded text-[10px] text-on-surface-variant border border-outline-variant/10">
+            {typeof item === "object" ? JSON.stringify(item) : String(item)}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  if (typeof value === "object") {
+    return (
+      <div className="pl-2 border-l border-outline-variant/20 mt-1 space-y-1">
+        {Object.entries(value as Record<string, unknown>).map(([subKey, subVal]) => (
+          <div key={subKey} className="text-[10px] flex items-start gap-1.5">
+            <span className="font-medium text-on-surface-variant/70 shrink-0">{formatMetadataKey(subKey)}:</span>
+            <span className="text-primary/90">{formatMetadataValue(subVal, subKey)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return <span>{String(value)}</span>;
+};
+
+const renderReadableMetadata = (metadata: Record<string, unknown>) => {
+  const entries = Object.entries(metadata).filter(
+    ([, val]) => val !== undefined && val !== null && val !== ""
+  );
+
+  if (entries.length === 0) return null;
+
+  return (
+    <div className="mt-2 bg-surface-container/60 border border-outline-variant/15 p-2.5 rounded-lg text-xs space-y-1.5 text-on-surface-variant">
+      {entries.map(([key, val]) => {
+        const isLongText = typeof val === "string" && val.length > 50;
+        const isObjOrArray = typeof val === "object" && val !== null;
+
+        if (isLongText || isObjOrArray) {
+          return (
+            <div key={key} className="space-y-0.5">
+              <span className="text-[10px] font-semibold tracking-wider text-on-surface-variant/70 uppercase">
+                {formatMetadataKey(key)}
+              </span>
+              <div className="text-xs text-primary/90 pl-1">
+                {formatMetadataValue(val, key)}
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div key={key} className="flex items-baseline justify-between text-xs gap-2">
+            <span className="text-[10px] font-medium text-on-surface-variant/70 shrink-0">
+              {formatMetadataKey(key)}
+            </span>
+            <div className="text-xs text-primary/90 font-medium text-right">
+              {formatMetadataValue(val, key)}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const renderNotificationRoleBadge = (notif: NotificationLog) => {
+  const meta = (notif.metadata || {}) as Record<string, unknown>;
+  const rawRole = (
+    notif.role ||
+    notif.recipient?.role ||
+    meta.recipientRole ||
+    meta.role ||
+    ""
+  ).toString().toLowerCase().trim();
+
+  let role: "customer" | "partner" | "admin" = "customer";
+
+  if (rawRole === "partner" || rawRole === "pro") {
+    role = "partner";
+  } else if (rawRole === "admin") {
+    role = "admin";
+  } else if (rawRole === "customer" || rawRole === "user" || rawRole === "client") {
+    role = "customer";
+  } else {
+    const typeStr = (notif.type || "").toLowerCase();
+    const titleStr = (notif.title || "").toLowerCase();
+    if (
+      typeStr.includes("partner") ||
+      typeStr.includes("job_offer") ||
+      typeStr.includes("payout") ||
+      typeStr.includes("pro_") ||
+      typeStr.includes("reassigned") ||
+      titleStr.includes("partner") ||
+      titleStr.includes("job offer") ||
+      titleStr.includes("assigned to you")
+    ) {
+      role = "partner";
+    } else if (typeStr.includes("admin") || titleStr.includes("admin")) {
+      role = "admin";
+    }
+  }
+
+  switch (role) {
+    case "partner":
+      return (
+        <span className="text-[6px] font-bold uppercase bg-emerald-500/15 text-emerald-700  px-2 py-0.5 rounded-md tracking-wider border border-emerald-500/20 flex items-center gap-1 shrink-0">
+          PARTNER
+        </span>
+      );
+    case "admin":
+      return (
+        <span className="text-[6px] font-bold uppercase bg-purple-500/15 text-purple-800  px-2 py-0.5 rounded-md tracking-wider border border-purple-500/20 flex items-center gap-1 shrink-0">
+          ADMIN
+        </span>
+      );
+    case "customer":
+    default:
+      return (
+        <span className="text-[6px] font-bold uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-md tracking-wider border border-primary/20 flex items-center gap-1 shrink-0">
+          CUSTOMER
+        </span>
+      );
+  }
+};
 
 interface BookingsCommandProps {
   initialBookings: SerializedBooking[];
@@ -151,7 +345,7 @@ export function BookingsCommand({
         // Fetch notifications logs
         const { data: notifData } = await supabase
           .from("notifications")
-          .select("*")
+          .select("*, recipient:profiles(role)")
           .eq("booking_id", selectedBookingId)
           .order("created_at", { ascending: false });
 
@@ -1254,11 +1448,7 @@ export function BookingsCommand({
                           <p className="text-[10px] text-on-surface-variant/60">
                             {format(new Date(log.timestamp), "PPP · p")}
                           </p>
-                          {log.metadata && Object.keys(log.metadata).length > 0 && (
-                            <pre className="text-[9px] text-on-surface-variant/75 mt-1 bg-surface-container p-2 rounded-lg border border-outline-variant/10 font-mono overflow-x-auto">
-                              {JSON.stringify(log.metadata, null, 2)}
-                            </pre>
-                          )}
+                          {log.metadata && Object.keys(log.metadata).length > 0 && renderReadableMetadata(log.metadata)}
                         </div>
                       ))}
                     </div>
@@ -1272,16 +1462,14 @@ export function BookingsCommand({
                   ) : notificationsLog.length === 0 ? (
                     <p className="text-xs text-on-surface-variant/50 italic">No notifications logged for this booking yet.</p>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-1">
                       {notificationsLog.map((notif) => {
                         const dateStr = notif.created_at || notif.updated_at;
                         return (
                           <div key={notif.id} className="bg-surface-container/50 border border-outline-variant/10 p-3 rounded-xl space-y-1">
                             <div className="flex justify-between items-start">
                               <h6 className="text-xs font-bold text-primary">{notif.title}</h6>
-                              <span className="text-[8px] font-black uppercase bg-primary/10 text-primary px-1.5 py-0.5 rounded-sm tracking-wider">
-                                {notif.role || "user"}
-                              </span>
+                              {renderNotificationRoleBadge(notif)}
                             </div>
                             <p className="text-xs text-on-surface-variant/85 leading-normal">{notif.message || notif.body}</p>
                             <p className="text-[9px] text-on-surface-variant/50">

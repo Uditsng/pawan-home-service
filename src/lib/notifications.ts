@@ -90,7 +90,7 @@ export async function sendNotification(params: SendNotificationParams): Promise<
   if (targets.length === 0) return;
 
   const bookingId = (metadata?.booking_id as string) || null;
-  const role = (metadata?.role as string) || null;
+  const role = recipientRole || (metadata?.role as string) || null;
 
   const isDev = process.env.NODE_ENV === "development";
   if (isDev) {

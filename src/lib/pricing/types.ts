@@ -1,6 +1,6 @@
-import type { BookingPricing, PricingModel } from "@/lib/types";
+import type { BookingPricing, PricingModel, OrderFeeItem } from "@/lib/types";
 
-export type { PricingModel };
+export type { PricingModel, OrderFeeItem };
 
 /**
  * Per-service pricing configuration, mirroring the `services.pricing_config`
@@ -140,6 +140,7 @@ export interface CartLineItem {
 
 export interface FinalPayableInput {
   totalBeforeWallet: number; // sum of per-service breakdown.total_price (GST + coupon already applied)
+  orderFees?: OrderFeeItem[];
   walletAmountToUse?: number;
   referralDiscount?: number;
 }
@@ -147,6 +148,7 @@ export interface FinalPayableInput {
 export interface FinalPayableResult {
   walletApplied: number;
   referralDiscount: number;
+  orderFeesTotal: number;
   finalPayable: number;
 }
 
@@ -154,6 +156,8 @@ export interface CartPricingResult {
   lineItems: CartLineItem[];
   subtotal: number; // pre-GST subtotal (sum of total_price − gst_amount)
   gstTotal: number;
+  orderFees: OrderFeeItem[];
+  orderFeesTotal: number;
   couponDiscountTotal: number;
   totalBeforeWallet: number;
   walletApplied: number;

@@ -241,6 +241,10 @@ export default async function UnifiedCheckoutPaymentPage({
     }
   }
 
+  const orderFees = (platformSettings.orderFees || [])
+    .filter((f) => f.enabled && f.amount > 0)
+    .map((f) => ({ id: f.id, name: f.name, amount: f.amount }));
+
   return (
     <CheckoutPaymentClient
       services={services}
@@ -256,6 +260,7 @@ export default async function UnifiedCheckoutPaymentPage({
       taxRatePercent={taxRatePercent}
       referralDiscount={referralDiscount}
       walletBalance={walletBalance}
+      orderFees={orderFees}
       couponCode={couponCode || null}
       couponObj={couponObj}
       pricingSummary={pricingSummary}

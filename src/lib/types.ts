@@ -181,6 +181,12 @@ export interface CartItem {
   expectedBags?: string | null;
 }
 
+export interface OrderFeeItem {
+  id: string;
+  name: string;
+  amount: number;
+}
+
 export interface Order {
   id: string;
   customer_id: string;
@@ -191,6 +197,13 @@ export interface Order {
   pincode: string | null;
   scheduled_date: string | null;
   item_count: number;
+  payment_status?: 'pending' | 'paid' | 'failed' | 'refunded' | null;
+  coupon_code?: string | null;
+  original_subtotal?: number;
+  tax_amount?: number;
+  final_amount?: number;
+  coupon_valid_at_creation?: boolean;
+  order_fees?: OrderFeeItem[];
   created_at: string;
   updated_at: string;
 }

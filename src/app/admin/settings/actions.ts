@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/utils/supabase/auth-checks";
 import { revalidatePlatformSettings } from "@/utils/supabase/cacheInvalidators";
 
+import { type OrderFee } from "@/lib/engines/platformSettingsEngine";
+
 /**
  * Save settings to database
  */
@@ -20,6 +22,7 @@ export async function updateSettingsAction(settings: {
   serviceable_pincodes?: string[];
   referral_reward_referrer?: string;
   referral_reward_referred?: string;
+  order_fees?: OrderFee[];
 }) {
   await requireAdmin();
   const supabase = await createClient();
@@ -99,6 +102,37 @@ export async function updateSettingsAction(settings: {
     await supabase
       .from("platform_settings")
       .upsert({ key: "referral_reward_referred", value: settings.referral_reward_referred, updated_at: new Date().toISOString() });
+  }
+
+  // Update order_fees with strict server-side validation
+  if (settings.order_fees !== undefined) {
+    const sanitizedOrderFees: OrderFee[] = [];
+    if (Array.isArray(settings.order_fees)) {
+      for (const item of settings.order_fees) {
+        if (typeof item === "object" && item !== null) {
+          const name = typeof item.name === "string" ? item.name.trim() : "";
+          const rawAmount = typeof item.amount === "number" ? item.amount : parseFloat(String(item.amount || 0));
+          const id = typeof item.id === "string" && item.id.trim()
+            ? item.id.trim()
+            : `fee_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+          const enabled = item.enabled === true;
+
+          // Strict validation: non-empty name, non-negative finite amount
+          if (name.length > 0 && !isNaN(rawAmount) && isFinite(rawAmount) && rawAmount >= 0) {
+            sanitizedOrderFees.push({
+              id,
+              name: name.slice(0, 60),
+              amount: Math.round(rawAmount * 100) / 100,
+              enabled,
+            });
+          }
+        }
+      }
+    }
+
+    await supabase
+      .from("platform_settings")
+      .upsert({ key: "order_fees", value: sanitizedOrderFees, updated_at: new Date().toISOString() });
   }
 
   revalidatePath("/", "layout");

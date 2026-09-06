@@ -31,6 +31,7 @@ export function calculateInvoice(params: {
     coupon_discount?: number;
     wallet_discount?: number;
     total_price?: number;
+    surcharges?: { id?: string; name: string; amount: number }[] | unknown;
   } | null;
   extensions?: {
     id: string;
@@ -91,6 +92,23 @@ export function calculateInvoice(params: {
       meta: { category: booking.services?.category || "Cleaning" },
     },
   ];
+
+  // Include surcharges and order fees if present
+  if (bookingPricing?.surcharges && Array.isArray(bookingPricing.surcharges)) {
+    for (const sur of bookingPricing.surcharges as { id?: string; name: string; amount: number }[]) {
+      if (sur && typeof sur === "object" && sur.name && typeof sur.amount === "number") {
+        lineItems.push({
+          description: sur.name,
+          quantity: 1,
+          unit_price: sur.amount,
+          discount: 0,
+          tax: 0,
+          total: sur.amount,
+          meta: { id: sur.id, type: "fee" },
+        });
+      }
+    }
+  }
 
   // Add extensions as separate line items
   extensions.forEach((ext) => {

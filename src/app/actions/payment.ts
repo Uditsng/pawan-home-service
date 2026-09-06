@@ -1,17 +1,18 @@
-﻿"use server";
+"use server";
 
 import { createClient } from "@/utils/supabase/server";
 import crypto from "crypto";
 import { notifyCustomer, notifyAdmins } from "@/lib/notifications";
 import { triggerDispatchBatch } from "@/app/actions/dispatch";
-import { Coupon, CartItem } from "@/lib/types";
+import { Coupon, CartItem, Order } from "@/lib/types";
 import { calculateFinalPayable } from "@/lib/pricing";
 import { computeCartLineItems } from "@/lib/pricing/cartCatalog";
 import { buildCartCatalog } from "@/lib/catalog/buildCartCatalog";
-import type { PricingBreakdown } from "@/lib/pricing/types";
+import type { PricingBreakdown, OrderFeeItem } from "@/lib/pricing/types";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { combineDateTimeToISO } from "@/utils/schedule";
 import { normalizeCouponCode, validateCoupon } from "@/lib/pricing/couponEngine";
+import { fetchPlatformSettings, getActiveOrderFees } from "@/lib/engines/platformSettingsEngine";
 
 export interface ServiceCheckoutInput {
   serviceId: string;
@@ -64,6 +65,7 @@ async function computeServiceBreakdowns(
     pincode: string;
     couponCode?: string | null;
     customerId?: string | null;
+    frozenOrderFees?: OrderFeeItem[];
   }
 ): Promise<{
   breakdowns: Record<string, PricingBreakdown>;
@@ -71,6 +73,8 @@ async function computeServiceBreakdowns(
   coupon: Coupon | null;
   titleMap: Record<string, string>;
   validatedCoupon: Coupon | null;
+  orderFees: OrderFeeItem[];
+  orderFeesTotal: number;
   pricingSummary: {
     originalSubtotal: number;
     discountAmount: number;
@@ -84,6 +88,20 @@ async function computeServiceBreakdowns(
 
   // Build catalog once — single source of truth for pricing.
   const { catalog, services: serviceSources } = await buildCartCatalog(serviceIds);
+
+  // Fetch active order fees (or use frozen snapshot from order creation if verifying payment)
+  let orderFees: OrderFeeItem[];
+  if (options.frozenOrderFees && Array.isArray(options.frozenOrderFees)) {
+    orderFees = options.frozenOrderFees;
+  } else {
+    const platformSettings = await fetchPlatformSettings(supabase);
+    orderFees = getActiveOrderFees(platformSettings).map((f) => ({
+      id: f.id,
+      name: f.name,
+      amount: f.amount,
+    }));
+  }
+  const orderFeesTotal = orderFees.reduce((sum, f) => sum + f.amount, 0);
 
   // Normalize checkout inputs to cart items.
   const items: CartItem[] = services.map((item) => ({
@@ -182,7 +200,7 @@ async function computeServiceBreakdowns(
     originalSubtotal,
     discountAmount,
     taxAmount,
-    finalPayable: totalAmount,
+    finalPayable: totalAmount + orderFeesTotal,
     couponValid: !!validatedCoupon,
   };
 
@@ -192,10 +210,11 @@ async function computeServiceBreakdowns(
     coupon: validatedCoupon,
     titleMap,
     validatedCoupon,
+    orderFees,
+    orderFeesTotal,
     pricingSummary,
   };
 }
-
 
 export async function createRazorpayOrderAction(payload: {
   services: ServiceCheckoutInput[];
@@ -230,10 +249,11 @@ export async function createRazorpayOrderAction(payload: {
     computeResult.pricingSummary;
 
   // Final amount the customer actually pays via Razorpay = post-coupon,
-  // post-wallet, post-referral. This must match verifyRazorpayPaymentAction
+  // post-order-fees, post-wallet, post-referral. This must match verifyRazorpayPaymentAction
   // exactly so the gateway amount equals the captured amount.
   const finalOrderAmount = calculateFinalPayable({
     totalBeforeWallet: totalAmount,
+    orderFees: computeResult.orderFees,
     walletAmountToUse: payload.walletAmountToUse ?? 0,
     referralDiscount: payload.referralDiscount ?? 0,
   }).finalPayable;
@@ -256,6 +276,9 @@ export async function createRazorpayOrderAction(payload: {
       amount: Math.round(finalOrderAmount * 100),
       currency: "INR",
       receipt: `rcpt_${Date.now()}`,
+      notes: {
+        order_fees: JSON.stringify(computeResult.orderFees),
+      },
     }),
   });
 
@@ -268,7 +291,7 @@ export async function createRazorpayOrderAction(payload: {
   const orderData = await response.json();
   const orderId = orderData.id;
 
-  // Persist authoritative pricing snapshot to orders table (immutable for this order's lifecycle)
+  // Persist authoritative pricing and order_fees snapshot to orders table (immutable for this order's lifecycle)
   await supabase.from("orders").insert({
     customer_id: user.id,
     status: "pending",
@@ -279,17 +302,14 @@ export async function createRazorpayOrderAction(payload: {
     scheduled_date: new Date().toISOString(), // will be overridden with real date later
     item_count: payload.services.length,
     payment_status: "pending",
-    // Coupon snapshot fields — immutable for this order
+    // Pricing snapshot fields — immutable for this order
     coupon_code: payload.couponCode || null,
     original_subtotal: originalSubtotal,
     tax_amount: taxAmount,
     final_amount: finalOrderAmount,
     coupon_valid_at_creation: couponValid,
+    order_fees: computeResult.orderFees,
   });
-
-  // Coupon usage will be created AFTER payment verification (see verifyRazorpayPaymentAction)
-  // This ensures: if payment fails, coupon is not consumed
-  // If payment succeeds, coupon usage is created in the verification step
 
   return {
     freeOrder: false,
@@ -325,13 +345,17 @@ export async function verifyRazorpayPaymentAction(payload: {
     return { success: false, error: "No services specified." };
   }
 
-  // 1. Signature Verification
+  let rzAmount = 0;
+  let rzOrderNotes: Record<string, string> | undefined;
+
+  // 1. Signature Verification & Gateway Order Retrieval
   if (!payload.isFree) {
     if (!payload.razorpay_order_id || !payload.razorpay_payment_id || !payload.razorpay_signature) {
       return { success: false, error: "Missing payment credentials." };
     }
+    const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.trim();
     const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim();
-    if (!keySecret) return { success: false, error: "Razorpay credentials missing on server." };
+    if (!keyId || !keySecret) return { success: false, error: "Razorpay credentials missing on server." };
 
     const generatedSignature = crypto
       .createHmac("sha256", keySecret)
@@ -342,6 +366,22 @@ export async function verifyRazorpayPaymentAction(payload: {
       console.error("[Razorpay] Invalid signature detected. Possible tampering attempt.");
       return { success: false, error: "Payment verification failed (signature mismatch)." };
     }
+
+    // 1a. Fetch authoritative order from Razorpay API to obtain the exact charged amount
+    const authHeader = "Basic " + Buffer.from(keyId + ":" + keySecret).toString("base64");
+    const rzResponse = await fetch(`https://api.razorpay.com/v1/orders/${payload.razorpay_order_id}`, {
+      headers: { Authorization: authHeader },
+    });
+
+    if (!rzResponse.ok) {
+      const errBody = await rzResponse.text();
+      console.error("[Razorpay] Failed to fetch order from Razorpay API:", errBody);
+      return { success: false, error: "Unable to verify order with payment gateway." };
+    }
+
+    const rzOrder = (await rzResponse.json()) as { amount: number; notes?: Record<string, string> };
+    rzAmount = (rzOrder.amount || 0) / 100;
+    rzOrderNotes = rzOrder.notes;
   }
 
   // 1b. Duplicate payment guard
@@ -358,7 +398,6 @@ export async function verifyRazorpayPaymentAction(payload: {
   }
 
   // 1c. Coupon usage idempotency check
-  // If this Razorpay order already created a coupon usage, don't re-consume.
   if (!payload.isFree && payload.razorpay_order_id && payload.couponCode) {
     const { data: existingUsage } = await supabase
       .from("coupon_usages")
@@ -367,8 +406,6 @@ export async function verifyRazorpayPaymentAction(payload: {
       .limit(1)
       .maybeSingle();
     if (existingUsage) {
-      // Coupon already redeemed for this order — finalize successfully without re-consuming
-      // We still need to proceed with the rest of the flow to maintain idempotency
       console.log("[payment] Coupon already redeemed for order", payload.razorpay_order_id, "- skipping re-consumption.");
     }
   }
@@ -388,81 +425,141 @@ export async function verifyRazorpayPaymentAction(payload: {
   const isoStr = `${payload.date}T${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:00+05:30`;
   const timestamp = new Date(isoStr);
 
-  // 4. Compute all pricing breakdowns (shared engine, server-side authority)
-  // This now includes authoritative coupon validation and pricing snapshot.
-  const { breakdowns, totalAmount, titleMap, validatedCoupon, pricingSummary } =
+  // 4. Retrieve Frozen Pricing Snapshot
+  let frozenOrderFees: OrderFeeItem[] | undefined;
+  let pendingOrderSnapshot: Order | null = null;
+  if (payload.razorpay_order_id) {
+    const { data: pendingOrder } = await supabase
+      .from("orders")
+      .select("*")
+      .eq("customer_id", user.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (pendingOrder) {
+      pendingOrderSnapshot = pendingOrder as Order;
+      if (pendingOrderSnapshot.order_fees && Array.isArray(pendingOrderSnapshot.order_fees) && pendingOrderSnapshot.order_fees.length > 0) {
+        frozenOrderFees = pendingOrderSnapshot.order_fees;
+      }
+    }
+
+    // Fallback: If pendingOrder row not found or had no order_fees, check Razorpay order notes
+    if (!frozenOrderFees && rzOrderNotes?.order_fees) {
+      try {
+        const parsed = JSON.parse(rzOrderNotes.order_fees);
+        if (Array.isArray(parsed)) {
+          frozenOrderFees = parsed;
+        }
+      } catch {
+        // ignore parse error
+      }
+    }
+  }
+
+  // Authoritative server-side pricing recomputation using the frozen snapshot
+  const { breakdowns, totalAmount, titleMap, validatedCoupon, pricingSummary, orderFees } =
     await computeServiceBreakdowns(supabase, payload.services, {
       date: payload.date,
       time: payload.time,
       pincode: addr.pincode,
       couponCode: payload.couponCode,
+      frozenOrderFees,
     });
 
-  // Wallet is capped at the payable and re-derived here (never trust the client).
-  const payable = calculateFinalPayable({
+  const { originalSubtotal: snapshotOriginalSubtotal, discountAmount: snapshotDiscountAmount, taxAmount: snapshotTaxAmount, couponValid } = pricingSummary;
+  const walletAmountToUse = payload.walletAmountToUse ?? 0;
+  const referralDiscount = payload.referralDiscount ?? 0;
+
+  const finalOrderAmount = calculateFinalPayable({
     totalBeforeWallet: totalAmount,
-    walletAmountToUse: payload.walletAmountToUse,
-    referralDiscount: payload.referralDiscount,
-  });
-  const walletAmountToUse = payable.walletApplied;
-  const referralDiscount = payable.referralDiscount;
-  const finalOrderAmount = payable.finalPayable;
+    orderFees,
+    walletAmountToUse,
+    referralDiscount,
+  }).finalPayable;
 
-  // Extract coupon snapshot values from the authoritative pricing summary
-  const { discountAmount: snapshotDiscountAmount, originalSubtotal: snapshotOriginalSubtotal, taxAmount: snapshotTaxAmount, couponValid } =
-    pricingSummary;
-
-  // Security check: Validate free order bypass
-  if (payload.isFree && finalOrderAmount > 0) {
-    console.error(`[payment] Free order bypass blocked. User ${user.id} tried to claim ₹${finalOrderAmount} for free.`);
-    return { success: false, error: "Invalid free order request. Payable amount is greater than zero." };
-  }
-
-  // Validate against Razorpay order amount
-  if (!payload.isFree && payload.razorpay_order_id) {
-    const rzKeySecret = process.env.RAZORPAY_KEY_SECRET?.trim();
-    if (rzKeySecret) {
-      const authHeader = "Basic " + Buffer.from(process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.trim() + ":" + rzKeySecret).toString("base64");
-      const rzRes = await fetch(`https://api.razorpay.com/v1/orders/${payload.razorpay_order_id}`, {
-        headers: { Authorization: authHeader },
-      });
-      if (rzRes.ok) {
-        const rzOrder = await rzRes.json();
-        const rzAmount = Number(rzOrder.amount) / 100;
-        if (Math.abs(rzAmount - finalOrderAmount) > 1) {
-          console.error(`[payment] Amount mismatch: Razorpay order ₹${rzAmount} vs computed ₹${finalOrderAmount}`);
-          return { success: false, error: "Payment amount mismatch detected. Please contact support." };
-        }
-      }
+  // 4b. Security Validation: Amount Mismatch Guard
+  if (!payload.isFree) {
+    if (Math.abs(rzAmount - finalOrderAmount) > 1) {
+      console.error(
+        `[Razorpay] Payment amount mismatch: Gateway charged ₹${rzAmount}, but server computed ₹${finalOrderAmount}.`
+      );
+      return {
+        success: false,
+        error: "Payment amount mismatch detected. Please contact support.",
+      };
+    }
+  } else {
+    if (finalOrderAmount > 0) {
+      console.error(
+        `[Razorpay] Free order rejected: server computed payable of ₹${finalOrderAmount} (must be <= 0).`
+      );
+      return {
+        success: false,
+        error: "Invalid free order request: non-zero payment amount required.",
+      };
     }
   }
 
-// 5. Create Order
-  const { data: order, error: orderError } = await supabase
-    .from("orders")
-    .insert({
-      customer_id: user.id,
-      status: "pending",
-      total_amount: finalOrderAmount,
-      city: addr.city,
-      address: addr.formatted_address,
-      pincode: addr.pincode,
-      scheduled_date: timestamp.toISOString(),
-      item_count: payload.services.length,
-      payment_status: "paid",
-      // Authoritative pricing snapshot — immutable for this order's lifecycle
-      coupon_code: payload.couponCode || null,
-      original_subtotal: snapshotOriginalSubtotal,
-      tax_amount: snapshotTaxAmount,
-      final_amount: finalOrderAmount,
-      coupon_valid_at_creation: couponValid,
-    })
-    .select("id")
-    .single();
+  // 5. Create or Update Order Record
+  let order: { id: string };
+  if (pendingOrderSnapshot?.id) {
+    const { data: updatedOrder, error: updateError } = await supabase
+      .from("orders")
+      .update({
+        status: "pending",
+        total_amount: finalOrderAmount,
+        city: addr.city,
+        address: addr.formatted_address,
+        pincode: addr.pincode,
+        scheduled_date: timestamp.toISOString(),
+        item_count: payload.services.length,
+        payment_status: "paid",
+        coupon_code: payload.couponCode || null,
+        original_subtotal: snapshotOriginalSubtotal,
+        tax_amount: snapshotTaxAmount,
+        final_amount: finalOrderAmount,
+        coupon_valid_at_creation: couponValid,
+        order_fees: orderFees,
+      })
+      .eq("id", pendingOrderSnapshot.id)
+      .select("id")
+      .single();
 
-  if (orderError || !order) {
-    console.error("[payment] Order creation failed:", JSON.stringify(orderError));
-    return { success: false, error: `Failed to create order. ${orderError?.message || ""}` };
+    if (updateError || !updatedOrder) {
+      console.error("[payment] Order update failed:", JSON.stringify(updateError));
+      return { success: false, error: `Failed to update order. ${updateError?.message || ""}` };
+    }
+    order = updatedOrder;
+  } else {
+    const { data: createdOrder, error: orderError } = await supabase
+      .from("orders")
+      .insert({
+        customer_id: user.id,
+        status: "pending",
+        total_amount: finalOrderAmount,
+        city: addr.city,
+        address: addr.formatted_address,
+        pincode: addr.pincode,
+        scheduled_date: timestamp.toISOString(),
+        item_count: payload.services.length,
+        payment_status: "paid",
+        coupon_code: payload.couponCode || null,
+        original_subtotal: snapshotOriginalSubtotal,
+        tax_amount: snapshotTaxAmount,
+        final_amount: finalOrderAmount,
+        coupon_valid_at_creation: couponValid,
+        order_fees: orderFees,
+      })
+      .select("id")
+      .single();
+
+    if (orderError || !createdOrder) {
+      console.error("[payment] Order creation failed:", JSON.stringify(orderError));
+      return { success: false, error: `Failed to create order. ${orderError?.message || ""}` };
+    }
+    order = createdOrder;
   }
 
   // 6. Debit wallet if applicable
@@ -491,12 +588,6 @@ export async function verifyRazorpayPaymentAction(payload: {
   });
 
   // 8. Create coupon usage record (if coupon was applied)
-  //    This is done AFTER payment verification to ensure idempotency:
-  //    - If payment fails, coupon is NOT consumed (usage not created)
-  //    - If payment succeeds, coupon usage is created once
-  //    - The UNIQUE (coupon_id, order_id) constraint prevents double redemption
-  //    Wrapped so a concurrent retry (already-redeemed) does not fail an
-  //    otherwise-successful payment — the order is already committed.
   if (!payload.isFree && payload.couponCode && validatedCoupon) {
     const couponCodeNormalized = normalizeCouponCode(payload.couponCode);
 
@@ -511,8 +602,6 @@ export async function verifyRazorpayPaymentAction(payload: {
     });
 
     if (usageError) {
-      // A unique-violation here means the coupon was already redeemed for this
-      // order (e.g. a retried webhook). Treat as idempotent, not a failure.
       console.warn(
         "[payment] Coupon usage insert issue (ignored, order already committed):",
         usageError.message
@@ -520,7 +609,8 @@ export async function verifyRazorpayPaymentAction(payload: {
     }
   }
 
-  // 8. Create child bookings
+  // 9. Create child bookings
+  let isFirstBooking = true;
   for (const item of payload.services) {
     const breakdown = breakdowns[item.serviceId];
     if (!breakdown) continue;
@@ -557,7 +647,12 @@ export async function verifyRazorpayPaymentAction(payload: {
       continue;
     }
 
-    // Save pricing breakdown
+    const bookingSurcharges = [
+      ...(breakdown.surcharges || []),
+      ...(isFirstBooking && orderFees.length > 0 ? orderFees : []),
+    ];
+    isFirstBooking = false;
+
     await supabase.from("booking_pricing").insert({
       booking_id: booking.id,
       base_price: breakdown.base_price,
@@ -567,7 +662,7 @@ export async function verifyRazorpayPaymentAction(payload: {
       distance_price: breakdown.distance_price,
       inspection_fee: breakdown.inspection_fee,
       travel_fee: breakdown.travel_fee,
-      surcharges: breakdown.surcharges,
+      surcharges: bookingSurcharges,
       addons_total: breakdown.addons_total,
       addons_breakdown: breakdown.addons_breakdown,
       gst_amount: breakdown.gst_amount,
@@ -577,7 +672,6 @@ export async function verifyRazorpayPaymentAction(payload: {
       total_price: breakdown.total_price,
     });
 
-    // Save dynamic form answers
     if (item.formAnswers) {
       try {
         const answers = JSON.parse(item.formAnswers) as Record<string, string>;
@@ -591,11 +685,9 @@ export async function verifyRazorpayPaymentAction(payload: {
           await supabase.from("booking_form_answers").insert(answerRows);
         }
       } catch {
-        // Ignore parse errors
       }
     }
 
-    // Booking status history
     await supabase.from("booking_status_history").insert({
       booking_id: booking.id,
       status: "pending",
@@ -603,7 +695,6 @@ export async function verifyRazorpayPaymentAction(payload: {
       remarks: "Booking created",
     });
 
-    // Booking event
     await supabase.from("booking_events").insert({
       booking_id: booking.id,
       event_type: "BOOKING_CREATED",
@@ -618,10 +709,8 @@ export async function verifyRazorpayPaymentAction(payload: {
       },
     });
 
-    // Trigger dispatch
     void triggerDispatchBatch(booking.id, 1);
 
-    // Notifications
     const title = titleMap[item.serviceId] || "Service";
     void notifyCustomer(
       user.id,

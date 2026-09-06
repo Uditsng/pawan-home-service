@@ -48,6 +48,7 @@ interface Props {
   taxRatePercent: number;
   referralDiscount: number;
   walletBalance: number;
+  orderFees?: { id: string; name: string; amount: number }[];
   couponCode: string | null;
   couponObj: Coupon | null;
   // Authoritative pricing summary from server-side coupon validation
@@ -72,9 +73,10 @@ export default function CheckoutPaymentClient({
   time,
   scheduleDate,
   pincode,
-  taxRatePercent,
+  // taxRatePercent,
   referralDiscount,
   walletBalance,
+  orderFees = [],
   couponObj,
   pricingSummary,
   appliedCouponCode,
@@ -140,10 +142,11 @@ export default function CheckoutPaymentClient({
     () =>
       calculateCart({
         lineItems,
+        orderFees,
         walletBalanceToUse: useWallet ? walletBalance : 0,
         referralDiscount,
       }),
-    [lineItems, useWallet, walletBalance, referralDiscount]
+    [lineItems, orderFees, useWallet, walletBalance, referralDiscount]
   );
 
   // Authoritative pricing summary from server-side coupon validation.
@@ -418,8 +421,8 @@ export default function CheckoutPaymentClient({
   };
 
   return (
-    <div className="bg-surface text-on-surface min-h-screen pb-32 md:pb-16">
-      <main className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 pt-6 md:pt-8 space-y-6">
+    <div className="bg-surface text-on-surface min-h-screen pb-16 md:pb-12">
+      <main className="max-w-6xl mx-auto px-2 md:px-4 lg:px-6 pt-4 md:pt-6 space-y-2">
         {/* HEADER */}
         <div className="flex items-center justify-between border-b border-outline-variant/10 pb-4">
           <div className="flex items-center gap-3">
@@ -462,7 +465,7 @@ export default function CheckoutPaymentClient({
                 </h3>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {/* Services list */}
                 <div>
                   <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2">
@@ -572,7 +575,7 @@ export default function CheckoutPaymentClient({
             </div>
 
             {/* WALLET */}
-            <div className="bg-white border border-outline-variant/10 rounded-3xl p-5 md:p-6 shadow-xs space-y-3">
+            <div className="bg-white border border-outline-variant/10 rounded-3xl p-4 md:p-5 shadow-xs space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-primary/5 rounded-xl flex items-center justify-center shrink-0 text-primary">
@@ -691,8 +694,8 @@ export default function CheckoutPaymentClient({
                     <span className="material-symbols-outlined text-xl">domain</span>
                   </div>
                   <div>
-                    <h3 className="font-headline text-sm font-bold text-on-surface">Book as Business (GST Invoice)</h3>
-                    <p className="text-[11px] text-on-surface-variant font-medium">Claim up to 18% Input Tax Credit (ITC)</p>
+                    <h3 className="font-headline text-sm font-bold text-on-surface">Book as Business (GST Input)</h3>
+                    {/* <p className="text-[11px] text-on-surface-variant font-medium">Claim up to 18% Input Tax Credit (ITC)</p> */}
                   </div>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer select-none">
@@ -747,7 +750,7 @@ export default function CheckoutPaymentClient({
             )}
 
             {/* BILLING SUMMARY */}
-            <div className="bg-white border border-outline-variant/10 rounded-3xl p-5 md:p-6 shadow-xs space-y-4">
+            <div className="bg-white border border-outline-variant/10 rounded-3xl p-3 md:p-4 shadow-xs space-y-2">
               <div className="flex items-center gap-2 border-b border-outline-variant/10 pb-3">
                 <span className="material-symbols-outlined text-primary font-bold">receipt</span>
                 <h3 className="font-headline text-base font-bold text-on-surface">Billing Details</h3>
@@ -758,9 +761,16 @@ export default function CheckoutPaymentClient({
                 <span className="font-bold text-on-surface">₹{displaySubtotal}</span>
               </div>
               <div className="flex justify-between items-center text-on-surface-variant text-sm">
-                <span>GST ({taxRatePercent}%)</span>
+                <span>Est Govt. taxes</span>
                 <span className="font-bold text-on-surface">₹{displayTax}</span>
               </div>
+
+              {orderFees.map((fee) => (
+                <div key={fee.id} className="flex justify-between items-center text-on-surface-variant text-sm">
+                  <span>{fee.name}</span>
+                  <span className="font-bold text-on-surface">₹{fee.amount}</span>
+                </div>
+              ))}
 
               {displayDiscount > 0 && (
                 <div className="flex justify-between items-center text-sm font-bold text-green-600">
@@ -789,7 +799,7 @@ export default function CheckoutPaymentClient({
                 </div>
               )}
 
-              <hr className="border-t border-dashed border-outline-variant/30 my-3" />
+              <hr className="border-t border-dashed border-outline-variant/30 my-2" />
 
               <div className="flex justify-between items-center">
                 <p className="font-extrabold text-base text-on-surface">Total Payable</p>

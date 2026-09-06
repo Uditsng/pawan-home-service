@@ -7,6 +7,13 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/client";
 import { TAG_PLATFORM_SETTINGS } from "@/utils/supabase/cacheTags";
 
+export interface OrderFee {
+  id: string;
+  name: string;
+  amount: number;
+  enabled: boolean;
+}
+
 export interface PlatformSettings {
   platformCommission: number;    // e.g. 20 (percent)
   taxRate: number;               // e.g. 18 (percent)
@@ -19,6 +26,7 @@ export interface PlatformSettings {
   partnerPenaltyRate: number;   // e.g. 10 (percent)
   serviceAreas: string[];
   serviceablePincodes: string[];
+  orderFees: OrderFee[];
 }
 
 export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
@@ -33,11 +41,12 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   partnerPenaltyRate: 10,
   serviceAreas: ["Roorkee", "Chandigarh", "Dehradun", "Haridwar"],
   serviceablePincodes: ["247667", "160017", "248001", "249401"],
+  orderFees: [],
 };
 
 /**
  * Single source of truth for fetching platform settings from Supabase.
- * Gracefully parses numbers, booleans, strings, and arrays with safe fallbacks.
+ * Gracefully parses numbers, booleans, strings, arrays, and fee objects with safe fallbacks.
  */
 export async function fetchPlatformSettings(supabase: SupabaseClient): Promise<PlatformSettings> {
   try {
@@ -76,6 +85,30 @@ export async function fetchPlatformSettings(supabase: SupabaseClient): Promise<P
       return fallback;
     };
 
+    const parseOrderFees = (val: unknown): OrderFee[] => {
+      if (!Array.isArray(val)) return [];
+      const parsed: OrderFee[] = [];
+      for (const item of val) {
+        if (typeof item === "object" && item !== null) {
+          const raw = item as Record<string, unknown>;
+          const name = typeof raw.name === "string" ? raw.name.trim() : "";
+          const amount = typeof raw.amount === "number" ? raw.amount : parseFloat(String(raw.amount || 0));
+          const id = typeof raw.id === "string" && raw.id.trim() ? raw.id.trim() : `fee_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+          const enabled = raw.enabled === true || raw.enabled === "true";
+
+          if (name && !isNaN(amount) && isFinite(amount) && amount >= 0) {
+            parsed.push({
+              id,
+              name,
+              amount: Math.round(amount * 100) / 100,
+              enabled,
+            });
+          }
+        }
+      }
+      return parsed;
+    };
+
     return {
       platformCommission: parseNum(settingsMap["platform_commission"], DEFAULT_PLATFORM_SETTINGS.platformCommission),
       taxRate: parseNum(settingsMap["tax_rate"], DEFAULT_PLATFORM_SETTINGS.taxRate),
@@ -88,11 +121,19 @@ export async function fetchPlatformSettings(supabase: SupabaseClient): Promise<P
       partnerPenaltyRate: parseNum(settingsMap["partner_penalty_rate"], DEFAULT_PLATFORM_SETTINGS.partnerPenaltyRate),
       serviceAreas: parseStringArray(settingsMap["service_areas"], DEFAULT_PLATFORM_SETTINGS.serviceAreas),
       serviceablePincodes: parseStringArray(settingsMap["serviceable_pincodes"], DEFAULT_PLATFORM_SETTINGS.serviceablePincodes),
+      orderFees: parseOrderFees(settingsMap["order_fees"]),
     };
   } catch (err) {
     console.error("fetchPlatformSettings error:", err);
     return { ...DEFAULT_PLATFORM_SETTINGS };
   }
+}
+
+/**
+ * Helper to get only active (enabled and positive amount) order fees.
+ */
+export function getActiveOrderFees(settings: PlatformSettings): OrderFee[] {
+  return (settings.orderFees || []).filter((f) => f.enabled && f.amount > 0);
 }
 
 /**

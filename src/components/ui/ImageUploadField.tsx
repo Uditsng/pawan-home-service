@@ -25,10 +25,10 @@ export function ImageUploadField({
   onValueChange,
   title = "Service Showcase Image",
   description = "Define or upload the high-definition cover image for the catalog.",
-  aspect = 1,
-  aspectLabel = "1:1",
-  outputWidth = 1024,
-  outputHeight = 1024,
+  aspect = 16 / 9,
+  aspectLabel = "16:9",
+  outputWidth = 1280,
+  outputHeight = 720,
   fileNameSuffix = "",
 }: ImageUploadFieldProps) {
   const [activeTab, setActiveTab] = useState<"upload" | "url">(() => {

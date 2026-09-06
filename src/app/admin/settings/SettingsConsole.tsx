@@ -429,7 +429,7 @@ export function SettingsConsole({
             <span className="material-symbols-outlined text-primary text-base">point_of_sale</span>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-xs font-black uppercase tracking-wider text-primary">Fixed Order Fees</h3>
+                <h3 className="text-xs font-black uppercase tracking-wider text-primary">Additional Charges</h3>
                 <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
                   {orderFees.filter(f => f.enabled).length} of {orderFees.length} Active
                 </span>
@@ -444,7 +444,7 @@ export function SettingsConsole({
               className="px-3 py-1.5 rounded-xl bg-primary text-white text-[11px] font-bold flex items-center gap-1 hover:bg-primary/90 transition-all cursor-pointer shadow-xs"
             >
               <span className="material-symbols-outlined text-[14px]">add</span>
-              Add Fee
+              Add Charge
             </button>
           )}
         </div>
@@ -454,7 +454,7 @@ export function SettingsConsole({
           <form onSubmit={handleSaveFee} className="p-3 rounded-xl bg-surface border border-secondary/40 space-y-2.5 animate-in fade-in">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-black uppercase tracking-wider text-primary">
-                {editingFeeId ? "Edit Order Fee" : "New Order Fee"}
+                {editingFeeId ? "Edit Charge" : "New Charge"}
               </span>
               <button
                 type="button"
@@ -471,7 +471,7 @@ export function SettingsConsole({
 
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
               <div className="sm:col-span-6">
-                <label className="text-[9px] font-bold uppercase text-on-surface-variant/70">Fee Name</label>
+                <label className="text-[9px] font-bold uppercase text-on-surface-variant/70">Charge Name</label>
                 <input
                   type="text"
                   placeholder="e.g. Platform Fee, Convenience Fee"
@@ -572,7 +572,7 @@ export function SettingsConsole({
 
           {orderFees.length === 0 && !isFeeFormOpen && (
             <div className="col-span-full py-4 text-center rounded-xl border border-dashed border-outline-variant/25 bg-surface/30">
-              <p className="text-xs text-on-surface-variant/60 font-medium">No order fees added yet. Click &quot;Add Fee&quot; to configure checkout fees.</p>
+              <p className="text-xs text-on-surface-variant/60 font-medium">No additional charges configured yet. Click &quot;Add Charge&quot; to configure checkout charges.</p>
             </div>
           )}
         </div>

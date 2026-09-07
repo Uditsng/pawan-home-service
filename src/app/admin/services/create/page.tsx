@@ -6,6 +6,7 @@ import { CreateServiceForm } from "./CreateServiceForm";
 import { requireAdmin } from "@/utils/supabase/auth-checks";
 import { revalidateCategories, revalidateSubcategories, revalidateServices } from "@/utils/supabase/cacheInvalidators";
 import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
+import { logAdminAuditAction } from "@/utils/auditLogger";
 
 export default async function AdminCreateServicePage() {
   const supabase = await createClient();
@@ -203,6 +204,16 @@ export default async function AdminCreateServicePage() {
     if (error) {
       console.error(error);
       return { type: "error", message: error.message };
+    }
+
+    if (newService?.id) {
+      await logAdminAuditAction({
+        action: "CREATE",
+        targetEntity: "services",
+        recordId: newService.id,
+        recordTitle: title,
+        newData: { title, base_price, status, pricing_model },
+      });
     }
 
     if (pricing_model === "hourly" && newService?.id && duration_rates_raw) {

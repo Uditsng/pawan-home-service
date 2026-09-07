@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/utils/supabase/auth-checks";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { logAdminAuditAction } from "@/utils/auditLogger";
 
 /**
  * Update Partner Role/Status (Approval/Blocking)
@@ -12,12 +13,23 @@ export async function updatePartnerStatus(partnerId: string, status: 'active' | 
   await requireAdmin();
   const supabase = await createClient();
 
+  const { data: oldPartner } = await supabase.from('profiles').select('full_name, email, status').eq('id', partnerId).single();
+
   const { error } = await supabase
     .from('profiles')
     .update({ status })
     .eq('id', partnerId);
 
   if (error) throw new Error(error.message);
+
+  await logAdminAuditAction({
+    action: "STATUS_CHANGE",
+    targetEntity: "partners",
+    recordId: partnerId,
+    recordTitle: oldPartner?.full_name || oldPartner?.email || "Partner Profile",
+    oldData: { status: oldPartner?.status },
+    newData: { status },
+  });
 
   revalidatePath('/admin/partners');
 }
@@ -29,12 +41,23 @@ export async function updateBookingStatus(bookingId: string, status: string) {
   await requireAdmin();
   const supabase = await createClient();
 
+  const { data: oldBooking } = await supabase.from('bookings').select('status, booking_reference').eq('id', bookingId).single();
+
   const { error } = await supabase
     .from('bookings')
     .update({ status })
     .eq('id', bookingId);
 
   if (error) throw new Error(error.message);
+
+  await logAdminAuditAction({
+    action: "STATUS_CHANGE",
+    targetEntity: "bookings",
+    recordId: bookingId,
+    recordTitle: `Booking #${oldBooking?.booking_reference || bookingId.slice(0, 8)}`,
+    oldData: { status: oldBooking?.status },
+    newData: { status },
+  });
 
   revalidatePath('/admin/bookings');
   revalidatePath('/admin/dashboard');
@@ -47,6 +70,8 @@ export async function assignPartnerToBooking(bookingId: string, partnerId: strin
   await requireAdmin();
   const supabase = await createClient();
 
+  const { data: oldBooking } = await supabase.from('bookings').select('partner_id, status, booking_reference').eq('id', bookingId).single();
+
   const { error } = await supabase
     .from('bookings')
     .update({ 
@@ -57,6 +82,15 @@ export async function assignPartnerToBooking(bookingId: string, partnerId: strin
 
   if (error) throw new Error(error.message);
 
+  await logAdminAuditAction({
+    action: "UPDATE",
+    targetEntity: "bookings",
+    recordId: bookingId,
+    recordTitle: `Booking #${oldBooking?.booking_reference || bookingId.slice(0, 8)}`,
+    oldData: { partner_id: oldBooking?.partner_id, status: oldBooking?.status },
+    newData: { partner_id: partnerId, status: 'confirmed' },
+  });
+
   revalidatePath('/admin/bookings');
 }
 
@@ -66,6 +100,8 @@ export async function assignPartnerToBooking(bookingId: string, partnerId: strin
 export async function deleteService(serviceId: string) {
   await requireAdmin();
   const supabase = await createClient();
+
+  const { data: oldService } = await supabase.from('services').select('title, category, base_price').eq('id', serviceId).single();
 
   const { error } = await supabase
     .from('services')
@@ -83,10 +119,27 @@ export async function deleteService(serviceId: string) {
       
       if (updateError) throw new Error(updateError.message);
       
+      await logAdminAuditAction({
+        action: "STATUS_CHANGE",
+        targetEntity: "services",
+        recordId: serviceId,
+        recordTitle: oldService?.title || "Service Catalog Item",
+        oldData: { is_active: true },
+        newData: { is_active: false, reason: "Deactivated due to active booking constraints" },
+      });
+
       throw new Error("SERVICE_DEACTIVATED: This service has existing bookings and cannot be hard-deleted. It has been deactivated instead.");
     }
     throw new Error(error.message);
   }
+
+  await logAdminAuditAction({
+    action: "DELETE",
+    targetEntity: "services",
+    recordId: serviceId,
+    recordTitle: oldService?.title || "Service Catalog Item",
+    oldData: oldService || undefined,
+  });
 
   revalidatePath('/admin/services');
 }
@@ -259,6 +312,14 @@ export async function duplicateService(serviceId: string) {
     await supabase.from("service_pricing_rules").insert(ruleRows);
   }
 
+  await logAdminAuditAction({
+    action: "CREATE",
+    targetEntity: "services",
+    recordId: newService.id,
+    recordTitle: newTitle,
+    newData: { cloned_from_id: serviceId, title: newTitle },
+  });
+
   revalidatePath("/admin/services");
 }
 
@@ -274,6 +335,8 @@ export async function toggleServiceStatus(serviceId: string, currentStatus: 'dra
     throw new Error("Upcoming services cannot be toggled. Use the Edit page status selector.");
   }
 
+  const { data: oldService } = await supabase.from('services').select('title, status').eq('id', serviceId).single();
+
   const newStatus = currentStatus === 'draft' ? 'published' : 'draft';
 
   const { error } = await supabase
@@ -287,6 +350,15 @@ export async function toggleServiceStatus(serviceId: string, currentStatus: 'dra
   if (error) {
     throw new Error(error.message);
   }
+
+  await logAdminAuditAction({
+    action: "STATUS_CHANGE",
+    targetEntity: "services",
+    recordId: serviceId,
+    recordTitle: oldService?.title || "Service",
+    oldData: { status: currentStatus },
+    newData: { status: newStatus },
+  });
 
   revalidatePath('/admin/services');
   revalidatePath('/');

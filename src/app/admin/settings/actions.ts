@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/utils/supabase/auth-checks";
 import { revalidatePlatformSettings } from "@/utils/supabase/cacheInvalidators";
+import { logAdminAuditAction } from "@/utils/auditLogger";
 
 import { type OrderFee } from "@/lib/engines/platformSettingsEngine";
 
@@ -134,6 +135,13 @@ export async function updateSettingsAction(settings: {
       .from("platform_settings")
       .upsert({ key: "order_fees", value: sanitizedOrderFees, updated_at: new Date().toISOString() });
   }
+
+  await logAdminAuditAction({
+    action: "UPDATE",
+    targetEntity: "settings",
+    recordTitle: "Platform Settings Updated",
+    newData: settings as Record<string, unknown>,
+  });
 
   revalidatePath("/", "layout");
   revalidatePath("/admin/settings");

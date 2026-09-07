@@ -24,6 +24,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "Referrals", href: "/admin/referrals", icon: "volunteer_activism" },
     { name: "Reviews", href: "/admin/reviews", icon: "rate_review" },
     { name: "Notifications", href: "/admin/notifications", icon: "notifications" },
+    { name: "Audit Logs", href: "/admin/audit-logs", icon: "manage_search" },
     { name: "Settings", href: "/admin/settings", icon: "settings" }
   ];
 

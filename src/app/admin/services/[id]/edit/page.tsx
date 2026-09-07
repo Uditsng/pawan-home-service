@@ -7,6 +7,7 @@ import { requireAdmin } from "@/utils/supabase/auth-checks";
 import { ServiceVariant, ServiceAddon } from "@/lib/types";
 import { revalidateServices } from "@/utils/supabase/cacheInvalidators";
 import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
+import { logAdminAuditAction } from "@/utils/auditLogger";
 
 export default async function AdminEditServicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -161,6 +162,25 @@ export default async function AdminEditServicePage({ params }: { params: Promise
       console.error(error);
       return { type: "error", message: error.message };
     }
+
+    await logAdminAuditAction({
+      action: "UPDATE",
+      targetEntity: "services",
+      recordId: id,
+      recordTitle: title,
+      oldData: {
+        title: serviceData.title,
+        base_price: serviceData.base_price,
+        status: serviceData.status,
+        pricing_model: serviceData.pricing_model,
+      },
+      newData: {
+        title,
+        base_price,
+        status,
+        pricing_model,
+      },
+    });
 
     // Update duration rates
     await db.from("service_duration_pricing").delete().eq("service_id", id);

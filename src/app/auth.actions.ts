@@ -9,6 +9,7 @@ import {
   verifyOtp,
 } from "@/lib/twilio";
 import { otpSendLimiter, otpVerifyLimiter, loginLimiter, passwordResetLimiter } from "@/lib/rate-limit";
+import { logAdminAuditAction } from "@/utils/auditLogger";
 
 
 // ─── REGISTRATION FLOW ────────────────────────────────────────
@@ -230,7 +231,7 @@ export async function loginWithPhone(formData: FormData) {
   // Look up email by phone number
   const { data: profile, error: lookupError } = await supabase
     .from("profiles")
-    .select("email, role, status")
+    .select("email, role, status, full_name")
     .eq("phone", e164)
     .maybeSingle();
 
@@ -254,6 +255,18 @@ export async function loginWithPhone(formData: FormData) {
 
   if (authError || !authData.user) {
     return redirect("/login?error=Incorrect password. Please try again.");
+  }
+
+  // Audit log admin login
+  if (profile.role === "admin") {
+    await logAdminAuditAction({
+      action: "LOGIN",
+      targetEntity: "auth",
+      actorUserId: authData.user.id,
+      actorEmail: profile.email,
+      actorName: profile.full_name || undefined,
+      recordTitle: "Admin Session Login",
+    });
   }
 
   // Block pending partners

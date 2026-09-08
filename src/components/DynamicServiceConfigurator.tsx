@@ -290,7 +290,11 @@ export default function DynamicServiceConfigurator({
             minQty={Number(config.min_qty || 1)}
             maxQty={Number(config.max_qty || 100)}
             unitName={String(config.unit_name || "units")}
-            pricePerUnit={Number(config.price_per_unit || service.base_price)}
+            pricePerUnit={
+              selectedVariant
+                ? Number(selectedVariant.price)
+                : Number(config.price_per_unit || service.base_price)
+            }
             onChange={handleQuantityChange}
           />
         )}

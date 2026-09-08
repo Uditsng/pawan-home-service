@@ -83,7 +83,10 @@ export function calculatePricingBreakdown(input: PricingInput): PricingBreakdown
       const minQty = config.min_qty || 0;
       const maxQty = config.max_qty || 1000;
       const clampedQty = Math.max(minQty, Math.min(maxQty, qty));
-      const pricePerUnit = config.price_per_unit || basePrice || 0;
+      const pricePerUnit =
+        input.variantPrice !== null && input.variantPrice !== undefined
+          ? Number(input.variantPrice)
+          : Number(config.price_per_unit || basePrice || 0);
       quantityPrice = clampedQty * pricePerUnit;
       basePrice = quantityPrice;
       break;

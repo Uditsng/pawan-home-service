@@ -6,20 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import { submitKycDocumentsAction, saveKycDraftAction } from "./actions";
 import { Button } from "@/components/ui/Button";
 import LogoutButton from "@/components/LogoutButton";
-
-interface KycDocumentsData {
-  aadhaar_url?: string;
-  pan_url?: string;
-  dl_url?: string;
-  experience_years?: number;
-  police_verification_url?: string;
-  police_station_details?: string;
-  selfie_url?: string;
-  address_proof_url?: string;
-  bank_name?: string;
-  bank_account_no?: string;
-  bank_ifsc?: string;
-}
+import type { KycDocumentsData } from "@/lib/types";
 
 interface PendingClientProps {
   initialKycStatus: string | null;

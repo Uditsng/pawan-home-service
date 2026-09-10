@@ -1,12 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-
-interface KycDocumentsData {
-  bank_name?: string;
-  bank_account_no?: string;
-  bank_ifsc?: string;
-}
+import type { KycDocumentsData } from "@/lib/types";
 
 export default async function PartnerBankDetailsPage() {
   const supabase = await createClient();

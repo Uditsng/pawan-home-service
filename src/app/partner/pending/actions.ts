@@ -2,20 +2,9 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import type { KycDocumentsData } from "@/lib/types";
 
-export async function saveKycDraftAction(kycData: {
-  aadhaar_url?: string;
-  pan_url?: string;
-  dl_url?: string;
-  experience_years?: number | null;
-  police_verification_url?: string;
-  police_station_details?: string;
-  selfie_url?: string;
-  address_proof_url?: string;
-  bank_name?: string;
-  bank_account_no?: string;
-  bank_ifsc?: string;
-}) {
+export async function saveKycDraftAction(kycData: Omit<Partial<KycDocumentsData>, "experience_years"> & { experience_years?: number | null }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -41,19 +30,7 @@ export async function saveKycDraftAction(kycData: {
   return { success: true };
 }
 
-export async function submitKycDocumentsAction(kycData: {
-  aadhaar_url: string;
-  pan_url: string;
-  dl_url: string;
-  experience_years: number;
-  police_verification_url: string;
-  police_station_details: string;
-  selfie_url: string;
-  address_proof_url: string;
-  bank_name: string;
-  bank_account_no: string;
-  bank_ifsc: string;
-}) {
+export async function submitKycDocumentsAction(kycData: Required<KycDocumentsData>) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 

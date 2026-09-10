@@ -49,6 +49,23 @@ export interface Profile {
   created_at: string;
   updated_at: string | null;
   avatar_url: string | null;
+  kyc_status?: string | null;
+  kyc_rejection_reason?: string | null;
+  kyc_documents?: KycDocumentsData | null;
+}
+
+export interface KycDocumentsData {
+  aadhaar_url?: string;
+  pan_url?: string;
+  dl_url?: string;
+  experience_years?: number;
+  police_verification_url?: string;
+  police_station_details?: string;
+  selfie_url?: string;
+  address_proof_url?: string;
+  bank_name?: string;
+  bank_account_no?: string;
+  bank_ifsc?: string;
 }
 
 export interface PartnerProfile extends Profile {

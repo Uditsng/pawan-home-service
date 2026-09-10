@@ -3,7 +3,7 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import LogoutButton from "@/components/LogoutButton";
-import type { PartnerProfile } from "@/lib/types";
+import type { PartnerProfile, KycDocumentsData } from "@/lib/types";
 
 export default async function PartnerProfilePage() {
   const supabase = await createClient();
@@ -31,6 +31,19 @@ export default async function PartnerProfilePage() {
   const successRate = profile.acceptance_rate
     ? Math.round(profile.acceptance_rate * 100)
     : Math.round((completedJobs / offeredJobs) * 100);
+
+  // KYC completion status
+  const kycDocs = (profile.kyc_documents as KycDocumentsData | null) || null;
+  const allKycFields: (keyof KycDocumentsData)[] = [
+    "aadhaar_url", "pan_url", "dl_url", "selfie_url", "address_proof_url",
+    "police_verification_url", "experience_years", "police_station_details",
+    "bank_name", "bank_account_no", "bank_ifsc",
+  ];
+  const uploadedCount = kycDocs ? allKycFields.filter((f) => {
+    const val = kycDocs[f];
+    return val !== undefined && val !== null && val !== "";
+  }).length : 0;
+  const kycComplete = uploadedCount === allKycFields.length;
 
   return (
     <div className="bg-surface text-on-surface font-body min-h-screen pb-24 lg:pb-12 flex flex-col">
@@ -85,6 +98,30 @@ export default async function PartnerProfilePage() {
 
         {/* Links List Grid */}
         <div className="bg-surface-container-lowest border border-outline-variant/15 rounded-3xl shadow-xs overflow-hidden divide-y divide-outline-variant/15">
+
+          <Link href="/partner/profile/kyc" prefetch={false} className="flex items-center justify-between p-4 sm:p-5 hover:bg-surface-container-low transition-colors group">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                <span className="material-symbols-outlined text-xl">verified_user</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sm sm:text-base text-on-surface">KYC & Verification</span>
+                {profile.kyc_status === "approved" && kycComplete && (
+                  <span className="bg-success/15 text-success text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">Complete</span>
+                )}
+                {profile.kyc_status === "approved" && !kycComplete && (
+                  <span className="bg-warning/15 text-warning-container text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">Action Needed</span>
+                )}
+                {profile.kyc_status === "pending" && (
+                  <span className="bg-primary/15 text-primary text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">Under Review</span>
+                )}
+                {(!profile.kyc_status || profile.kyc_status === "draft") && (
+                  <span className="bg-surface-container-highest text-on-surface-variant text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">Draft</span>
+                )}
+              </div>
+            </div>
+            <span className="material-symbols-outlined text-on-surface-variant/50 group-hover:text-primary group-hover:translate-x-1 transition-all">chevron_right</span>
+          </Link>
 
           <Link href="/partner/profile/services" prefetch={false} className="flex items-center justify-between p-4 sm:p-5 hover:bg-surface-container-low transition-colors group">
             <div className="flex items-center gap-3.5">

@@ -1142,68 +1142,108 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
             </div>
 
             <div className="overflow-y-auto pr-1 space-y-6 flex-1 text-xs font-bold text-primary">
+              {/* KYC Completion Summary */}
+              {(() => {
+                const docs = reviewKycPartner.kyc_documents || {};
+                const allKeys = [
+                  "aadhaar_url", "pan_url", "dl_url", "selfie_url", "address_proof_url", "police_verification_url",
+                  "experience_years", "police_station_details", "bank_name", "bank_account_no", "bank_ifsc"
+                ];
+                const uploaded = allKeys.filter((k) => {
+                  const v = docs[k];
+                  return v !== undefined && v !== null && v !== "";
+                });
+                const missing = allKeys.length - uploaded.length;
+                return (
+                  <div className={`p-3 rounded-xl border flex items-center gap-2 text-xs font-bold ${missing > 0 ? "bg-warning/10 border-warning/20 text-warning-container" : "bg-success/10 border-success/20 text-success"}`}>
+                    <span className="material-symbols-outlined text-sm">{missing > 0 ? "info" : "check_circle"}</span>
+                    {missing > 0
+                      ? `${uploaded.length}/${allKeys.length} fields uploaded \u00B7 ${missing} missing \u2014 partner can upload remaining after approval`
+                      : `All ${allKeys.length} fields uploaded \u2014 KYC is complete`
+                    }
+                  </div>
+                );
+              })()}
+
               {/* Document URLs Display */}
               <div>
-                <h4 className="text-xs font-headline font-black text-secondary uppercase tracking-wider mb-3">Uploaded Documents</h4>
-                {reviewKycPartner.kyc_documents ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {Object.entries(reviewKycPartner.kyc_documents).map(([key, val]) => {
-                      if (typeof val !== "string" || !val.startsWith("http")) return null;
-                      const label = key.replace(/_/g, " ").replace("url", "").toUpperCase();
-                      return (
-                        <div key={key} className="bg-surface-container-low border border-outline-variant/20 rounded-xl p-3 flex items-center justify-between">
-                          <span className="font-bold uppercase tracking-wider text-[10px] text-on-surface-variant">{label}</span>
-                          <a
-                            href={val}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="bg-primary text-white text-[10px] uppercase font-black tracking-widest px-3 py-1.5 rounded-lg hover:brightness-110 flex items-center gap-1 shrink-0"
-                          >
-                            <span className="material-symbols-outlined text-[12px]">open_in_new</span> View Doc
-                          </a>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="p-4 bg-surface-container rounded-2xl text-center font-medium text-on-surface-variant">
-                    No documents uploaded yet.
-                  </div>
-                )}
+                <h4 className="text-xs font-headline font-black text-secondary uppercase tracking-wider mb-3">Identity Documents</h4>
+                {(() => {
+                  const docFields = [
+                    { key: "aadhaar_url", label: "Aadhaar Card" },
+                    { key: "pan_url", label: "PAN Card" },
+                    { key: "dl_url", label: "Driving Licence" },
+                    { key: "selfie_url", label: "Selfie Photo" },
+                    { key: "address_proof_url", label: "Address Proof" },
+                    { key: "police_verification_url", label: "Police Verification" },
+                  ];
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {docFields.map(({ key, label }) => {
+                        const val = reviewKycPartner.kyc_documents?.[key];
+                        const isUploaded = typeof val === "string" && val.startsWith("http");
+                        return (
+                          <div key={key} className={`border rounded-xl p-3 flex items-center justify-between ${isUploaded ? "bg-success/5 border-success/20" : "bg-warning/5 border-warning/20"}`}>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={`material-symbols-outlined text-sm ${isUploaded ? "text-success" : "text-warning"}`}>{isUploaded ? "check_circle" : "pending"}</span>
+                              <span className="font-bold uppercase tracking-wider text-[10px] text-on-surface-variant truncate">{label}</span>
+                            </div>
+                            {isUploaded ? (
+                              <a
+                                href={val}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="bg-primary text-white text-[10px] uppercase font-black tracking-widest px-3 py-1.5 rounded-lg hover:brightness-110 flex items-center gap-1 shrink-0"
+                              >
+                                <span className="material-symbols-outlined text-[12px]">open_in_new</span> View
+                              </a>
+                            ) : (
+                              <span className="text-[10px] font-bold text-warning uppercase tracking-wider shrink-0">Missing</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Professional Info */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-surface-dim/40 rounded-2xl p-4 border border-outline-variant/10">
-                <div>
-                  <h4 className="text-[9px] uppercase tracking-wider text-on-surface-variant/50 mb-1">Experience</h4>
-                  <p className="text-xs font-bold text-primary">
-                    {reviewKycPartner.kyc_documents?.experience_years ? `${reviewKycPartner.kyc_documents.experience_years} Years` : "—"}
-                  </p>
-                </div>
-                <div>
-                  <h4 className="text-[9px] uppercase tracking-wider text-on-surface-variant/50 mb-1">Nearby Police Station</h4>
-                  <p className="text-xs font-bold text-primary">
-                    {String(reviewKycPartner.kyc_documents?.police_station_details || "—")}
-                  </p>
+              <div>
+                <h4 className="text-xs font-headline font-black text-secondary uppercase tracking-wider mb-3">Professional Details</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[
+                    { key: "experience_years", label: "Experience", val: reviewKycPartner.kyc_documents?.experience_years ? `${reviewKycPartner.kyc_documents.experience_years} Years` : null },
+                    { key: "police_station_details", label: "Nearby Police Station", val: reviewKycPartner.kyc_documents?.police_station_details ? String(reviewKycPartner.kyc_documents.police_station_details) : null },
+                  ].map(({ key, label, val }) => (
+                    <div key={key} className={`border rounded-xl p-3 ${val ? "bg-success/5 border-success/20" : "bg-warning/5 border-warning/20"}`}>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className={`material-symbols-outlined text-sm ${val ? "text-success" : "text-warning"}`}>{val ? "check_circle" : "pending"}</span>
+                        <span className="text-[9px] uppercase tracking-wider text-on-surface-variant/50">{label}</span>
+                      </div>
+                      <p className="text-xs font-bold text-primary">{val || "Missing"}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
 
               {/* Bank Info */}
               <div>
                 <h4 className="text-xs font-headline font-black text-secondary uppercase tracking-wider mb-3">Bank Details</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-surface-dim/40 rounded-2xl p-4 border border-outline-variant/10">
-                  <div>
-                    <h4 className="text-[9px] uppercase tracking-wider text-on-surface-variant/50 mb-1">Bank Name</h4>
-                    <p className="text-xs font-bold text-primary">{String(reviewKycPartner.kyc_documents?.bank_name || "—")}</p>
-                  </div>
-                  <div>
-                    <h4 className="text-[9px] uppercase tracking-wider text-on-surface-variant/50 mb-1">Account Number</h4>
-                    <p className="text-xs font-bold text-primary">{String(reviewKycPartner.kyc_documents?.bank_account_no || "—")}</p>
-                  </div>
-                  <div>
-                    <h4 className="text-[9px] uppercase tracking-wider text-on-surface-variant/50 mb-1">IFSC Code</h4>
-                    <p className="text-xs font-bold text-primary">{String(reviewKycPartner.kyc_documents?.bank_ifsc || "—")}</p>
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[
+                    { key: "bank_name", label: "Bank Name", val: reviewKycPartner.kyc_documents?.bank_name ? String(reviewKycPartner.kyc_documents.bank_name) : null },
+                    { key: "bank_account_no", label: "Account Number", val: reviewKycPartner.kyc_documents?.bank_account_no ? String(reviewKycPartner.kyc_documents.bank_account_no) : null },
+                    { key: "bank_ifsc", label: "IFSC Code", val: reviewKycPartner.kyc_documents?.bank_ifsc ? String(reviewKycPartner.kyc_documents.bank_ifsc) : null },
+                  ].map(({ key, label, val }) => (
+                    <div key={key} className={`border rounded-xl p-3 ${val ? "bg-success/5 border-success/20" : "bg-warning/5 border-warning/20"}`}>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className={`material-symbols-outlined text-sm ${val ? "text-success" : "text-warning"}`}>{val ? "check_circle" : "pending"}</span>
+                        <span className="text-[9px] uppercase tracking-wider text-on-surface-variant/50">{label}</span>
+                      </div>
+                      <p className="text-xs font-bold text-primary">{val || "Missing"}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
 

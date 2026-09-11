@@ -200,7 +200,7 @@ function AddAddressFormInner({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!houseFlat.trim()) {
       setError("House / Flat Number is required");
       return;
@@ -225,7 +225,7 @@ function AddAddressFormInner({
       setError("Pincode is required");
       return;
     }
-    
+
     const pinRegex = /^[1-9][0-9]{5}$/;
     if (!pinRegex.test(pincode.trim())) {
       setError("Please enter a valid 6-digit Indian Pincode");
@@ -261,6 +261,8 @@ function AddAddressFormInner({
     onClose();
   };
 
+  const isMapMode = showMapPicker && latitude !== null && longitude !== null;
+
   return (
     <div className="fixed inset-0 z-100 flex items-end sm:items-center justify-center">
       {/* Backdrop */}
@@ -270,7 +272,13 @@ function AddAddressFormInner({
       />
 
       {/* Modal */}
-      <div className="relative w-full sm:max-w-lg bg-surface-container-lowest rounded-t-3xl sm:rounded-3xl p-6 pb-24 sm:pb-8 shadow-2xl animate-[slideUp_0.25s_ease-out] max-h-[90vh] overflow-y-auto">
+      <div
+        className={
+          isMapMode
+            ? "relative w-full sm:max-w-lg bg-surface-container-lowest rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 pt-5 shadow-2xl animate-[slideUp_0.25s_ease-out] flex flex-col max-h-[92dvh] sm:max-h-[85vh] overflow-hidden"
+            : "relative w-full sm:max-w-lg bg-surface-container-lowest rounded-t-3xl sm:rounded-3xl p-6 pb-24 sm:pb-8 shadow-2xl animate-[slideUp_0.25s_ease-out] max-h-[90vh] overflow-y-auto"
+        }
+      >
         {/* Handle bar (mobile) */}
         <div className="w-10 h-1 bg-outline-variant rounded-full mx-auto mb-4 sm:hidden" />
 
@@ -333,7 +341,7 @@ function AddAddressFormInner({
 
         {/* Show Map Pin Picker View */}
         {showMapPicker && latitude !== null && longitude !== null ? (
-          <div className="mb-4">
+          <div className={isMapMode ? "grow flex flex-col min-h-0" : "mb-4"}>
             <LocationPinPicker
               initialLat={latitude}
               initialLng={longitude}

@@ -105,7 +105,7 @@ export async function saveAddress(payload: SaveAddressPayload) {
         pincode: payload.pincode,
         latitude: lat,
         longitude: lng,
-        place_id: payload.place_id || null,
+        place_id: payload.place_id?.trim() || "structured",
         is_default: isDefault,
       })
       .eq("id", payload.id)
@@ -128,7 +128,7 @@ export async function saveAddress(payload: SaveAddressPayload) {
         pincode: payload.pincode,
         latitude: lat,
         longitude: lng,
-        place_id: payload.place_id || null,
+        place_id: payload.place_id?.trim() || "structured",
         is_default: payload.is_default || isFirst,
       })
       .select()

@@ -159,12 +159,15 @@ function AddAddressFormInner({
       setLongitude(loc.longitude);
       setAccuracy(loc.accuracy);
       setShowMapPicker(true);
-      
+
       const accInfo = getAccuracyLevel(loc.accuracy);
+      const fallbackNote = loc.attempt === 2 ? " Network/cached fix used - verify accuracy." : "";
       if (accInfo.level === "poor") {
-        setLocationNotice(`Location detected with low accuracy (~${Math.round(loc.accuracy)}m). Please check and adjust pin.`);
+        setLocationNotice(`Low accuracy (~${Math.round(loc.accuracy)}m) - please adjust the pin on map.${fallbackNote}`);
+      } else if (accInfo.level === "acceptable") {
+        setLocationNotice(`Approximate location (~${Math.round(loc.accuracy)}m) - please verify the pin.${fallbackNote}`);
       } else {
-        setLocationNotice(`Location detected (~${Math.round(loc.accuracy)}m accuracy). Confirm or adjust pin on map.`);
+        setLocationNotice(`Good accuracy (~${Math.round(loc.accuracy)}m) - confirm the pin.${fallbackNote}`);
       }
     } catch (err) {
       console.warn("[AddAddressModal] Location error:", err);
@@ -183,7 +186,16 @@ function AddAddressFormInner({
     setLatitude(coords.lat);
     setLongitude(coords.lng);
     setShowMapPicker(false);
-    setLocationNotice(`✓ Exact location confirmed (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`);
+
+    const accInfo = getAccuracyLevel(accuracy ?? Infinity);
+    const levelMessage =
+      accInfo.level === "good"
+        ? "Pin confirmed - good accuracy"
+        : accInfo.level === "acceptable"
+          ? "Pin confirmed - approximate location, please verify"
+          : "Pin confirmed - low accuracy, please adjust if needed";
+
+    setLocationNotice(`✓ ${levelMessage} (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`);
   };
 
   const handleSave = async (e: React.FormEvent) => {

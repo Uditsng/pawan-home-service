@@ -12,9 +12,68 @@ interface LocationPinPickerProps {
   onCancel: () => void;
 }
 
+interface LeafletLatLng {
+  lat: number;
+  lng: number;
+}
+
+interface LeafletMouseEvent {
+  latlng?: LeafletLatLng;
+}
+
+interface LeafletMarker {
+  getLatLng: () => LeafletLatLng;
+  setLatLng: (latlng: LeafletLatLng) => void;
+  on: (event: string, fn: () => void) => void;
+}
+
+interface LeafletMap {
+  remove?: () => void;
+  invalidateSize: () => void;
+  on: (event: string, fn: (e: LeafletMouseEvent) => void) => void;
+}
+
+interface LeafletDivIconOptions {
+  className?: string;
+  html?: string;
+  iconSize?: [number, number];
+  iconAnchor?: [number, number];
+}
+
+interface LeafletMarkerOptions {
+  draggable?: boolean;
+  icon?: unknown;
+}
+
+interface LeafletMapOptions {
+  center: [number, number];
+  zoom: number;
+  zoomControl?: boolean;
+}
+
+interface LeafletTileLayerOptions {
+  attribution?: string;
+  subdomains?: string;
+  maxZoom?: number;
+}
+
+interface LeafletTileLayer {
+  addTo: (map: LeafletMap) => LeafletTileLayer;
+}
+
+interface LeafletLibrary {
+  map: (element: HTMLElement, options: LeafletMapOptions) => LeafletMap;
+  tileLayer: (urlTemplate: string, options?: LeafletTileLayerOptions) => LeafletTileLayer;
+  divIcon: (options: LeafletDivIconOptions) => unknown;
+  marker: (
+    latlng: [number, number],
+    options?: LeafletMarkerOptions
+  ) => LeafletMarker & { addTo: (map: LeafletMap) => LeafletMarker };
+}
+
 declare global {
   interface Window {
-    L?: any;
+    L?: LeafletLibrary;
   }
 }
 
@@ -32,9 +91,11 @@ export default function LocationPinPicker({
     lng: initialLng,
   });
 
-  const [isLeafletReady, setIsLeafletReady] = useState(false);
-  const mapInstanceRef = useRef<any>(null);
-  const markerRef = useRef<any>(null);
+  const [isLeafletReady, setIsLeafletReady] = useState<boolean>(
+    () => typeof window !== "undefined" && !!window.L
+  );
+  const mapInstanceRef = useRef<google.maps.Map | LeafletMap | null>(null);
+  const markerRef = useRef<google.maps.Marker | LeafletMarker | null>(null);
 
   const accuracyInfo = getAccuracyLevel(accuracy);
 
@@ -52,11 +113,14 @@ export default function LocationPinPicker({
     }
 
     if (typeof window !== "undefined" && window.L) {
-      setIsLeafletReady(true);
+      if (!isLeafletReady) {
+        queueMicrotask(() => setIsLeafletReady(true));
+      }
       return;
     }
 
     // Load Leaflet JS
+    let cleanup: (() => void) | undefined;
     if (!document.getElementById("leaflet-js")) {
       const script = document.createElement("script");
       script.id = "leaflet-js";
@@ -66,19 +130,27 @@ export default function LocationPinPicker({
     } else {
       const existingScript = document.getElementById("leaflet-js");
       if (window.L) {
-        setIsLeafletReady(true);
+        if (!isLeafletReady) {
+          queueMicrotask(() => setIsLeafletReady(true));
+        }
       } else {
-        existingScript?.addEventListener("load", () => setIsLeafletReady(true));
+        const handleLoad = () => setIsLeafletReady(true);
+        existingScript?.addEventListener("load", handleLoad);
+        cleanup = () => existingScript?.removeEventListener("load", handleLoad);
       }
     }
-  }, [isGoogleLoaded, googleLoadError]);
+
+    return cleanup;
+  }, [isGoogleLoaded, googleLoadError, isLeafletReady]);
 
   // Clean up map instance on unmount
   useEffect(() => {
     return () => {
       if (mapInstanceRef.current) {
         try {
-          mapInstanceRef.current.remove?.();
+          if ("remove" in mapInstanceRef.current && typeof mapInstanceRef.current.remove === "function") {
+            mapInstanceRef.current.remove();
+          }
         } catch {
           // ignore cleanup errors
         }
@@ -151,7 +223,8 @@ export default function LocationPinPicker({
       });
 
       L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
         subdomains: "abcd",
         maxZoom: 19,
       }).addTo(map);
@@ -195,7 +268,7 @@ export default function LocationPinPicker({
         setCoords({ lat: pos.lat, lng: pos.lng });
       });
 
-      map.on("click", (e: any) => {
+      map.on("click", (e: LeafletMouseEvent) => {
         if (e.latlng) {
           marker.setLatLng(e.latlng);
           setCoords({ lat: e.latlng.lat, lng: e.latlng.lng });
@@ -217,7 +290,7 @@ export default function LocationPinPicker({
   }, [isLeafletReady, isGoogleLoaded, googleLoadError, initialLat, initialLng]);
 
   return (
-    <div className="flex flex-col h-[380px] w-full rounded-2xl overflow-hidden border border-outline-variant bg-surface-container-low shadow-inner relative animate-fade-in">
+    <div className="flex flex-col h-95 w-full rounded-2xl overflow-hidden border border-outline-variant bg-surface-container-low shadow-inner relative animate-fade-in">
       {/* Header instructions & Accuracy badge */}
       <div className="bg-primary/95 text-on-primary px-4 py-2.5 flex items-center justify-between z-10 shrink-0 shadow-md">
         <div className="flex items-center gap-2">
@@ -236,7 +309,7 @@ export default function LocationPinPicker({
       </div>
 
       {/* Map DOM Container */}
-      <div className="flex-1 relative w-full h-full min-h-[280px]">
+      <div className="flex-1 relative w-full h-full min-h-70">
         <div ref={containerRef} className="absolute inset-0 w-full h-full" />
       </div>
 
@@ -261,4 +334,3 @@ export default function LocationPinPicker({
     </div>
   );
 }
-

@@ -3,6 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.phsindia.app',
   appName: 'PHS Cleaning Company',
+  webDir: 'public',
 
   server: {
     url: 'https://www.phscleaningcompany.com/',

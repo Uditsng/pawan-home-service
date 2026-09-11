@@ -2,8 +2,10 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import type { PostgrestSingleResponse } from "@supabase/supabase-js";
 
 interface SaveAddressPayload {
+  id?: string;
   label: string;
   house_flat: string;
   building_society: string;
@@ -12,8 +14,28 @@ interface SaveAddressPayload {
   city: string;
   state: string;
   pincode: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  place_id?: string | null;
   is_default?: boolean;
 }
+
+type AddressRow = {
+  id: string;
+  label: string;
+  formatted_address: string;
+  address_line_1: string;
+  address_line_2: string | null;
+  area: string;
+  landmark: string | null;
+  city: string;
+  state: string;
+  pincode: string;
+  latitude: number | null;
+  longitude: number | null;
+  place_id: string | null;
+  is_default: boolean;
+};
 
 export async function saveAddress(payload: SaveAddressPayload) {
   const supabase = await createClient();
@@ -53,26 +75,67 @@ export async function saveAddress(payload: SaveAddressPayload) {
     .filter(Boolean)
     .join(", ");
 
-  const { data, error } = await supabase
-    .from("user_addresses")
-    .insert({
-      user_id: user.id,
-      label: payload.label,
-      formatted_address: formattedAddress,
-      address_line_1: payload.house_flat,
-      address_line_2: payload.building_society,
-      area: payload.area_colony,
-      landmark: payload.landmark || null,
-      city: payload.city,
-      state: payload.state,
-      pincode: payload.pincode,
-      latitude: 0,
-      longitude: 0,
-      place_id: "structured",
-      is_default: payload.is_default || isFirst,
-    })
-    .select()
-    .single();
+  const lat = payload.latitude && Number(payload.latitude) !== 0 ? payload.latitude : null;
+  const lng = payload.longitude && Number(payload.longitude) !== 0 ? payload.longitude : null;
+
+  let queryResult: PostgrestSingleResponse<AddressRow>;
+
+  if (payload.id) {
+    // Preserve the current default state unless explicitly changed
+    const { data: existing } = await supabase
+      .from("user_addresses")
+      .select("is_default")
+      .eq("id", payload.id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const isDefault = payload.is_default ?? existing?.is_default ?? false;
+
+    queryResult = await supabase
+      .from("user_addresses")
+      .update({
+        label: payload.label,
+        formatted_address: formattedAddress,
+        address_line_1: payload.house_flat,
+        address_line_2: payload.building_society,
+        area: payload.area_colony,
+        landmark: payload.landmark || null,
+        city: payload.city,
+        state: payload.state,
+        pincode: payload.pincode,
+        latitude: lat,
+        longitude: lng,
+        place_id: payload.place_id || null,
+        is_default: isDefault,
+      })
+      .eq("id", payload.id)
+      .eq("user_id", user.id)
+      .select()
+      .single();
+  } else {
+    queryResult = await supabase
+      .from("user_addresses")
+      .insert({
+        user_id: user.id,
+        label: payload.label,
+        formatted_address: formattedAddress,
+        address_line_1: payload.house_flat,
+        address_line_2: payload.building_society,
+        area: payload.area_colony,
+        landmark: payload.landmark || null,
+        city: payload.city,
+        state: payload.state,
+        pincode: payload.pincode,
+        latitude: lat,
+        longitude: lng,
+        place_id: payload.place_id || null,
+        is_default: payload.is_default || isFirst,
+      })
+      .select()
+      .single();
+  }
+
+  const { data, error } = queryResult;
 
   if (error) {
     console.error("Address creation error:", error.message);

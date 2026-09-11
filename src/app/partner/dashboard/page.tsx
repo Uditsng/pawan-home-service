@@ -263,6 +263,17 @@ export default async function PartnerDashboardPage() {
                       <p className="font-semibold text-on-surface mt-0.5 leading-tight truncate">
                         {nextAssignedJob.address || nextAssignedJob.city || "TBD"}
                       </p>
+                      {nextAssignedJob.latitude && nextAssignedJob.longitude && Number(nextAssignedJob.latitude) !== 0 && Number(nextAssignedJob.longitude) !== 0 ? (
+                        <a
+                          href={`https://www.google.com/maps/dir/?api=1&destination=${nextAssignedJob.latitude},${nextAssignedJob.longitude}&travelmode=driving&dir_action=navigate`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-lg bg-primary text-on-primary text-[11px] font-bold shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">navigation</span>
+                          Navigate to Customer
+                        </a>
+                      ) : null}
                     </div>
                   </div>
                   {nextAssignedJob.customer?.full_name && (

@@ -172,6 +172,8 @@ export interface Booking {
   meeting_location?: string | null;
   destination?: string | null;
   expected_bags?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 // ─── Cart & Orders ───────────────────────────────────────────
@@ -212,6 +214,8 @@ export interface Order {
   address: string | null;
   city: string | null;
   pincode: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   scheduled_date: string | null;
   item_count: number;
   payment_status?: 'pending' | 'paid' | 'failed' | 'refunded' | null;

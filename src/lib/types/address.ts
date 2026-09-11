@@ -10,9 +10,9 @@ export interface UserAddress {
   city: string;
   state: string;
   pincode: string;
-  latitude: number;
-  longitude: number;
-  place_id: string;
+  latitude: number | null;
+  longitude: number | null;
+  place_id: string | null;
   is_default: boolean;
   created_at: string;
   updated_at: string;

@@ -66,7 +66,7 @@ export default function AddressListClient({ addresses }: AddressListClientProps)
             </span>
           </div>
           <h3 className="text-[16px] font-bold text-on-surface mb-1">No saved addresses</h3>
-          <p className="text-[13px] text-on-surface-variant mb-4 max-w-[240px]">
+          <p className="text-[13px] text-on-surface-variant mb-4 max-w-60">
             Add your first address to quickly book services
           </p>
           <button

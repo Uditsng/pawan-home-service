@@ -48,6 +48,8 @@ interface DBAddress {
   city: string;
   area: string | null;
   pincode: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 /**
@@ -234,7 +236,7 @@ export async function createRazorpayOrderAction(payload: {
   }
 
   const { data: addr } = await supabase
-    .from("user_addresses").select("formatted_address, city, pincode").eq("id", payload.addressId).eq("user_id", user.id).single();
+    .from("user_addresses").select("formatted_address, city, pincode, latitude, longitude").eq("id", payload.addressId).eq("user_id", user.id).single();
   if (!addr) throw new Error("Address not found");
 
   const computeResult = await computeServiceBreakdowns(supabase, payload.services, {
@@ -299,6 +301,8 @@ export async function createRazorpayOrderAction(payload: {
     city: addr.city,
     address: addr.formatted_address,
     pincode: addr.pincode,
+    latitude: addr.latitude && Number(addr.latitude) !== 0 ? addr.latitude : null,
+    longitude: addr.longitude && Number(addr.longitude) !== 0 ? addr.longitude : null,
     scheduled_date: new Date().toISOString(), // will be overridden with real date later
     item_count: payload.services.length,
     payment_status: "pending",
@@ -412,7 +416,7 @@ export async function verifyRazorpayPaymentAction(payload: {
 
   // 2. Fetch address
   const { data: addr } = await supabase
-    .from("user_addresses").select("formatted_address, city, area, pincode").eq("id", payload.addressId).eq("user_id", user.id).single();
+    .from("user_addresses").select("formatted_address, city, area, pincode, latitude, longitude").eq("id", payload.addressId).eq("user_id", user.id).single();
   if (!addr) return { success: false, error: "Address not found." };
   const typedAddr = addr as unknown as DBAddress;
 
@@ -638,6 +642,8 @@ export async function verifyRazorpayPaymentAction(payload: {
         meeting_location: item.meetingLocation || null,
         destination: item.destination || null,
         expected_bags: item.expectedBags ? parseInt(item.expectedBags, 10) : 0,
+        latitude: typedAddr.latitude && Number(typedAddr.latitude) !== 0 ? typedAddr.latitude : null,
+        longitude: typedAddr.longitude && Number(typedAddr.longitude) !== 0 ? typedAddr.longitude : null,
       })
       .select("id")
       .single();

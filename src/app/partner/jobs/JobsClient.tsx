@@ -38,6 +38,8 @@ export interface RawBooking {
   scheduled_date: string | null;
   total_amount: number | string | null;
   address: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   meeting_location?: string | null;
   destination?: string | null;
   expected_bags?: number | null;
@@ -66,6 +68,8 @@ interface JobOffer {
     scheduled_date: string | null;
     total_amount: number;
     address: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
     meeting_location?: string | null;
     destination?: string | null;
     expected_bags?: number | null;
@@ -153,6 +157,7 @@ export default function JobsClient({
         id, booking_id, broadcast_tier, created_at,
         bookings:booking_id (
           id, service_id, city, area, pincode, scheduled_date, total_amount, address,
+          latitude, longitude,
           services:service_id ( title, category, image_url, subcategories ( icon_name ) )
         )
       `)
@@ -180,6 +185,8 @@ export default function JobsClient({
               scheduled_date: rawBooking.scheduled_date,
               total_amount: Number(rawBooking.total_amount || 0),
               address: rawBooking.address,
+              latitude: rawBooking.latitude,
+              longitude: rawBooking.longitude,
               services: rawService
                 ? {
                     title: rawService.title,
@@ -740,7 +747,20 @@ export default function JobsClient({
             </h3>
             <div className="flex items-start gap-1.5 mt-1">
               <span className="material-symbols-outlined text-[14px] text-on-surface-variant mt-0.5 shrink-0">location_on</span>
-              <span className="text-xs font-semibold text-on-surface-variant leading-tight">{location}</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-on-surface-variant leading-tight">{location}</p>
+                {b.latitude && b.longitude && Number(b.latitude) !== 0 && Number(b.longitude) !== 0 ? (
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${b.latitude},${b.longitude}&travelmode=driving&dir_action=navigate`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-bold text-primary hover:underline cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[13px]">navigation</span>
+                    Navigate to Customer
+                  </a>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
@@ -1101,13 +1121,26 @@ export default function JobsClient({
                   </div>
                   <div className="flex items-start gap-2 text-xs text-on-surface-variant font-semibold">
                     <span className="material-symbols-outlined text-[15px] text-on-surface-variant/50 mt-0.5 shrink-0">location_on</span>
-                    <span className="leading-tight">
-                      {job.address || 
-                        (job.area
-                          ? `${job.area}, ${job.city || ""}`
-                          : job.city || "Location TBD")
-                      }
-                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="leading-tight">
+                        {job.address || 
+                          (job.area
+                            ? `${job.area}, ${job.city || ""}`
+                            : job.city || "Location TBD")
+                        }
+                      </p>
+                      {job.latitude && job.longitude && Number(job.latitude) !== 0 && Number(job.longitude) !== 0 ? (
+                        <a
+                          href={`https://www.google.com/maps/dir/?api=1&destination=${job.latitude},${job.longitude}&travelmode=driving&dir_action=navigate`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-lg bg-primary text-on-primary text-[11px] font-bold shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">navigation</span>
+                          Navigate to Customer
+                        </a>
+                      ) : null}
+                    </div>
                   </div>
                   {job.customer?.full_name && (
                     <div className="flex items-center gap-2 text-xs text-on-surface-variant font-semibold">

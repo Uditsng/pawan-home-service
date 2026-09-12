@@ -132,7 +132,7 @@ export default async function ProfilePage() {
 
         {/* Footer */}
         <div className="text-center pt-6 md:pt-8 pb-4">
-          <p className="text-[10px] md:text-[11px] font-bold text-on-surface-variant uppercase tracking-widest">App version: 1.4.5 (d1b0)</p>
+          <p className="text-[10px] md:text-[11px] font-bold text-on-surface-variant uppercase tracking-widest">App version: 2.0.3 (d1b0)</p>
         </div>
 
       </main>

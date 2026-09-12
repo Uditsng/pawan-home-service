@@ -59,7 +59,7 @@ export interface RefreshContextType {
 const RefreshContext = createContext<RefreshContextType | null>(null);
 
 const CACHE_PREFIX = "phs_cache_";
-const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0";
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "2.0.3";
 
 const subscribeOnlineStatus = (callback: () => void) => {
   if (typeof window === "undefined") return () => {};

@@ -8,7 +8,7 @@ interface VersionCheckResponse {
   force_update: boolean;
 }
 
-const CLIENT_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0";
+const CLIENT_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "2.0.3";
 
 function parseVersion(v: string): number[] {
   return v.split(".").map((num) => parseInt(num, 10) || 0);

@@ -16,8 +16,8 @@ export async function GET() {
     }
 
     // Default settings in case database rows do not exist yet
-    let minVersion = "1.0.0";
-    let latestVersion = "1.0.0";
+    let minVersion = "2.0.3";
+    let latestVersion = "2.0.3";
     let forceUpdate = false;
 
     if (settings) {
@@ -41,8 +41,8 @@ export async function GET() {
     console.error("[VersionAPI] Exception:", error);
     // Safe fallbacks on API exception
     return NextResponse.json({
-      minimum_supported_version: "1.0.0",
-      latest_version: "1.0.0",
+      minimum_supported_version: "2.0.3",
+      latest_version: "2.0.3",
       force_update: false,
     });
   }

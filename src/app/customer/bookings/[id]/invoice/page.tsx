@@ -141,9 +141,6 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
   if (calc.discounts.coupon && calc.discounts.coupon.amount > 0) {
     summaryRows.push({ label: `Coupon Discount (${calc.discounts.coupon.code})`, value: `-${CURRENCY(calc.discounts.coupon.amount)}` });
   }
-  if ((calc.discounts.referral ?? 0) > 0) {
-    summaryRows.push({ label: "Referral Discount", value: `-${CURRENCY(calc.discounts.referral || 0)}` });
-  }
   if ((calc.discounts.wallet ?? 0) > 0) {
     summaryRows.push({ label: "Wallet Used", value: `-${CURRENCY(calc.discounts.wallet || 0)}` });
   }

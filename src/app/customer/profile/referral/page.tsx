@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
   return {
     title: "Refer & Earn | PHS Cleaning Company",
-    description: `Share your unique referral code. Earn ₹${reward} when a friend completes their first booking.`,
+    description: `Share your unique referral code. Earn ₹${reward} in wallet credit when a friend signs up.`,
   };
 }
 
@@ -23,6 +23,7 @@ interface ReferralStats {
   total_referrals: number;
   completed_referrals: number;
   pending_referrals: number;
+  rewarded_referrals: number;
   total_earned: number;
   wallet_balance: number;
 }
@@ -59,6 +60,7 @@ export default async function ReferralPage() {
     total_referrals: 0,
     completed_referrals: 0,
     pending_referrals: 0,
+    rewarded_referrals: 0,
     total_earned: 0,
     wallet_balance: 0,
   };
@@ -76,8 +78,11 @@ export default async function ReferralPage() {
 
   const statusConfig: Record<string, { label: string; className: string }> = {
     pending:   { label: "Pending",   className: "bg-amber-500/10 text-amber-700 border border-amber-500/20" },
+    rewarded:  { label: "Rewarded",  className: "bg-secondary/10 text-on-secondary border border-secondary/20" },
     completed: { label: "Rewarded",  className: "bg-secondary/10 text-on-secondary border border-secondary/20" },
     cancelled: { label: "Cancelled", className: "bg-red-500/10 text-red-600 border border-red-200" },
+    rejected:  { label: "Rejected",  className: "bg-red-500/10 text-red-600 border border-red-200" },
+    reversed:  { label: "Reversed",  className: "bg-red-500/10 text-red-600 border border-red-200" },
   };
 
   return (
@@ -112,7 +117,7 @@ export default async function ReferralPage() {
                 Earn <span className="text-secondary">₹{referrerReward}</span><br />per friend!
               </h1>
               <p className="text-white/60 text-sm font-medium">
-                Your friend gets <span className="text-white font-bold">₹{referredDiscount} off</span> their first booking.
+                Your friend gets <span className="text-white font-bold">₹{referredDiscount} wallet credit</span> the moment they sign up.
               </p>
             </div>
             <div className="w-16 h-16 bg-secondary/10 rounded-2xl flex items-center justify-center shrink-0 relative z-10">
@@ -129,7 +134,7 @@ export default async function ReferralPage() {
           </div>
 
           {stats.code ? (
-            <ReferralCodeCopyClient code={stats.code} />
+            <ReferralCodeCopyClient code={stats.code} referredBonus={referredDiscount} />
           ) : (
             <div className="text-center py-4 text-on-surface-variant text-sm font-medium">
               Generating your code...
@@ -141,7 +146,7 @@ export default async function ReferralPage() {
         <div className="grid grid-cols-3 gap-3">
           {[
             { label: "Total Referrals",  value: stats.total_referrals,    icon: "group_add",   color: "text-primary" },
-            { label: "Successful",       value: stats.completed_referrals, icon: "verified",    color: "text-[#059669]" },
+            { label: "Rewarded",         value: stats.rewarded_referrals ?? stats.completed_referrals, icon: "verified", color: "text-[#059669]" },
             { label: "Total Earned",     value: `₹${stats.total_earned}`, icon: "account_balance_wallet", color: "text-secondary" },
           ].map((stat) => (
             <div key={stat.label} className="bg-white rounded-2xl shadow-sm p-3.5 flex flex-col items-center text-center gap-1.5">
@@ -161,8 +166,8 @@ export default async function ReferralPage() {
           <div className="space-y-3">
             {[
               { step: "1", icon: "share", title: "Share your code", desc: "Send your unique referral code to friends & family via WhatsApp or any platform." },
-              { step: "2", icon: "app_registration", title: "Friend signs up", desc: `They register on PHS using your code and get ₹${referredDiscount} off their first booking automatically.` },
-              { step: "3", icon: "account_balance_wallet", title: "You both earn", desc: `Once their first service is completed, ₹${referrerReward} is credited to your wallet instantly.` },
+              { step: "2", icon: "app_registration", title: "Friend signs up", desc: `They register on PHS using your code and ₹${referredDiscount} is credited to their wallet instantly.` },
+              { step: "3", icon: "account_balance_wallet", title: "You both earn", desc: `The moment they join, ₹${referrerReward} lands in your wallet — no waiting for a completed booking.` },
             ].map((item) => (
               <div key={item.step} className="flex items-start gap-3.5">
                 <div className="w-9 h-9 rounded-xl bg-primary/5 flex items-center justify-center shrink-0 mt-0.5">
@@ -221,9 +226,9 @@ export default async function ReferralPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {ref.status === "completed" && (
+                      {ref.status === "completed" || ref.status === "rewarded" ? (
                         <span className="text-[11px] font-black text-[#059669]">+₹{ref.referrer_reward}</span>
-                      )}
+                      ) : null}
                       <span className={`text-[9px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wide ${cfg.className}`}>
                         {cfg.label}
                       </span>
@@ -237,7 +242,7 @@ export default async function ReferralPage() {
 
         {/* ── T&C FOOTNOTE ─────────────────────────────────────── */}
         <p className="text-[10px] text-on-surface-variant/50 text-center font-medium px-4 leading-relaxed">
-          Rewards are credited after your friend&apos;s first booking is fully completed. One reward per referred user. PHS reserves the right to modify or discontinue the program at any time.
+          Rewards are credited instantly to both wallets when your friend signs up with your code. One reward per referred user. PHS reserves the right to modify or discontinue the program at any time.
         </p>
 
       </main>

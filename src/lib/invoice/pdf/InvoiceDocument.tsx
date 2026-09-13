@@ -99,9 +99,6 @@ function InvoiceDocument({ snapshot, logoDataUri }: { snapshot: InvoiceSnapshot;
   if (discounts?.coupon && discounts.coupon.amount > 0) {
     summaryRows.push({ label: `Coupon Discount (${discounts.coupon.code || "COUPON"})`, value: `-${CURRENCY(discounts.coupon.amount)}` });
   }
-  if ((discounts?.referral ?? 0) > 0) {
-    summaryRows.push({ label: "Referral Discount", value: `-${CURRENCY(discounts.referral || 0)}` });
-  }
   if ((discounts?.wallet ?? 0) > 0) {
     summaryRows.push({ label: "Wallet Used", value: `-${CURRENCY(discounts.wallet || 0)}` });
   }

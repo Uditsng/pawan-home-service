@@ -360,7 +360,9 @@ export type NotificationType =
   | 'extension_paid'
   | 'extension_activated'
   | 'time_remaining_30m'
-  | 'time_completed';
+  | 'time_completed'
+  | 'referral_reward'
+  | 'referral_bonus';
 
 export interface AppNotification {
   id: string;
@@ -485,7 +487,6 @@ export interface CheckoutPricingSnapshot {
   distanceKm?: number;
   variantId?: string;
   addons?: string;
-  referralDiscount: number;
   couponCode?: string;
   walletAmountToUse: number;
   meetingLocation?: string;

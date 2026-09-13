@@ -1,11 +1,12 @@
 /**
- * Discount Engine — Single Responsibility Engine for Coupons & Referral Rewards
- * Handles coupon code math and 50-50 referral checkout discounts.
+ * Discount Engine — Single Responsibility Engine for Coupons
+ * Handles coupon code math only. Referral rewards are credited directly to
+ * the customer's wallet at registration (see reward_customer_referral RPC) —
+ * there is no checkout-time referral discount anymore.
  */
 import type {
   CouponInput,
   ReferralConfig,
-  ReferralDiscountResult,
 } from "./types";
 
 /**
@@ -32,36 +33,6 @@ export function calculateCouponDiscount(
   }
 
   return Math.max(0, discount);
-}
-
-/**
- * Calculates referral discount to apply at checkout based on user status and admin settings.
- */
-export function calculateReferralDiscount(
-  isReferredUser: boolean,
-  referralConfig: ReferralConfig
-): ReferralDiscountResult {
-  if (!referralConfig.isEnabled) {
-    return {
-      discountAmount: 0,
-      isApplied: false,
-      message: "Referral program is currently disabled.",
-    };
-  }
-
-  if (!isReferredUser) {
-    return {
-      discountAmount: 0,
-      isApplied: false,
-    };
-  }
-
-  const discountAmount = Math.max(0, Number(referralConfig.referredDiscount || 50));
-  return {
-    discountAmount,
-    isApplied: discountAmount > 0,
-    message: `First booking referral discount (₹${discountAmount}) applied!`,
-  };
 }
 
 /**

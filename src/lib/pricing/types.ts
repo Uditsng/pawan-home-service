@@ -125,12 +125,6 @@ export interface ReferralConfig {
   isEnabled: boolean; // global admin toggle
 }
 
-export interface ReferralDiscountResult {
-  discountAmount: number;
-  isApplied: boolean;
-  message?: string;
-}
-
 // ─── Cart / Payable aggregation ───────────────────────────────
 
 export interface CartLineItem {
@@ -142,12 +136,10 @@ export interface FinalPayableInput {
   totalBeforeWallet: number; // sum of per-service breakdown.total_price (GST + coupon already applied)
   orderFees?: OrderFeeItem[];
   walletAmountToUse?: number;
-  referralDiscount?: number;
 }
 
 export interface FinalPayableResult {
   walletApplied: number;
-  referralDiscount: number;
   orderFeesTotal: number;
   finalPayable: number;
 }
@@ -161,6 +153,5 @@ export interface CartPricingResult {
   couponDiscountTotal: number;
   totalBeforeWallet: number;
   walletApplied: number;
-  referralDiscount: number;
   finalPayable: number;
 }

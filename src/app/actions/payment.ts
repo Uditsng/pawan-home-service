@@ -225,7 +225,6 @@ export async function createRazorpayOrderAction(payload: {
   time: string;
   walletAmountToUse?: number;
   couponCode?: string;
-  referralDiscount?: number;
 }): Promise<RazorpayOrderResult> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -257,7 +256,6 @@ export async function createRazorpayOrderAction(payload: {
     totalBeforeWallet: totalAmount,
     orderFees: computeResult.orderFees,
     walletAmountToUse: payload.walletAmountToUse ?? 0,
-    referralDiscount: payload.referralDiscount ?? 0,
   }).finalPayable;
 
   if (finalOrderAmount <= 0) {
@@ -337,7 +335,6 @@ export async function verifyRazorpayPaymentAction(payload: {
   time: string;
   walletAmountToUse?: number;
   couponCode?: string;
-  referralDiscount?: number;
   businessName?: string;
   businessGstin?: string;
 }): Promise<VerificationResult> {
@@ -474,13 +471,11 @@ export async function verifyRazorpayPaymentAction(payload: {
 
   const { originalSubtotal: snapshotOriginalSubtotal, discountAmount: snapshotDiscountAmount, taxAmount: snapshotTaxAmount, couponValid } = pricingSummary;
   const walletAmountToUse = payload.walletAmountToUse ?? 0;
-  const referralDiscount = payload.referralDiscount ?? 0;
 
   const finalOrderAmount = calculateFinalPayable({
     totalBeforeWallet: totalAmount,
     orderFees,
     walletAmountToUse,
-    referralDiscount,
   }).finalPayable;
 
   // 4b. Security Validation: Amount Mismatch Guard
@@ -710,7 +705,6 @@ export async function verifyRazorpayPaymentAction(payload: {
         service_id: item.serviceId,
         amount: breakdown.total_price,
         order_id: order.id,
-        referral_discount: referralDiscount,
         payment_verified: true,
       },
     });

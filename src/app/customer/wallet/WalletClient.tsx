@@ -17,6 +17,7 @@ interface WalletTransaction {
 
 const sourceLabels: Record<string, string> = {
   referral_reward:   "Referral Reward",
+  referral_bonus:    "Referral Bonus",
   booking_discount:  "Booking Discount",
   admin_adjustment:  "Admin Adjustment",
   refund:            "Refund",
@@ -78,7 +79,7 @@ export default function WalletClient({
     <div className="bg-surface-dim text-on-surface antialiased min-h-screen pb-24 font-body">
       <main className="max-w-xl mx-auto px-4 md:px-5 pt-4 pb-8 space-y-4">
         {/* ── BALANCE HERO ──────────────────────────────────────── */}
-        <div className="bg-primary rounded-[24px] p-6 relative overflow-hidden">
+        <div className="bg-primary rounded-3xl p-6 relative overflow-hidden">
           <div className="absolute -top-8 -right-8 w-40 h-40 bg-secondary/15 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-white/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -121,7 +122,7 @@ export default function WalletClient({
             </div>
             <div className="flex-1">
               <p className="text-sm font-bold text-on-surface">Refer friends &amp; earn ₹{referralReward}</p>
-              <p className="text-xs text-on-surface-variant mt-0.5">For every friend who completes their first booking.</p>
+              <p className="text-xs text-on-surface-variant mt-0.5">For every friend who signs up with your code. They earn credit too!</p>
             </div>
             <a href="/customer/profile/referral" className="px-3 py-1.5 bg-primary text-on-primary text-[10px] font-extrabold uppercase tracking-widest rounded-lg shrink-0 hover:bg-primary/90 transition-colors">
               Refer
@@ -203,7 +204,7 @@ export default function WalletClient({
         </div>
 
         {/* ── NOTICE ───────────────────────────────────────────── */}
-        <div className="flex items-start gap-3 p-4 bg-amber-500/5 border border-amber-500/20 rounded-[16px]">
+        <div className="flex items-start gap-3 p-4 bg-amber-500/5 border border-amber-500/20 rounded-2xl">
           <span className="material-symbols-outlined text-amber-600 text-[18px] shrink-0 mt-0.5">info</span>
           <p className="text-[11px] text-amber-800 font-medium leading-relaxed">
             Wallet credits are applied automatically at checkout as a discount. Credits cannot be transferred or encashed. PHS Cleaning Company reserves the right to modify wallet terms at any time.

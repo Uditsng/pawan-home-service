@@ -4,9 +4,10 @@ import { useState } from "react";
 
 interface ReferralCodeCopyClientProps {
   code: string;
+  referredBonus: number;
 }
 
-export default function ReferralCodeCopyClient({ code }: ReferralCodeCopyClientProps) {
+export default function ReferralCodeCopyClient({ code, referredBonus }: ReferralCodeCopyClientProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -28,7 +29,7 @@ export default function ReferralCodeCopyClient({ code }: ReferralCodeCopyClientP
   };
 
   const whatsappMsg = encodeURIComponent(
-    `🎉 Use my code *${code}* on PHS Cleaning Company app to get ₹50 OFF your first home service booking! Download & book at phscleaningcompany.com`
+    `🎉 Use my code *${code}* on PHS Cleaning Company!\n\nSign up & get ₹${referredBonus} in wallet credit instantly.\n\nGet the app here: https://play.google.com/store/apps/details?id=com.phsindia.app`
   );
   const whatsappUrl = `https://wa.me/?text=${whatsappMsg}`;
 

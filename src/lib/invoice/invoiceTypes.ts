@@ -66,7 +66,6 @@ export interface InvoiceDiscounts {
     code: string;
     amount: number;
   } | null;
-  referral?: number;
   wallet?: number;
   manual?: number;
 }

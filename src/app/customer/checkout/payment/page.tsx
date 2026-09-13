@@ -4,7 +4,6 @@ import CheckoutPaymentClient from "./CheckoutPaymentClient";
 import { Coupon, CartItem } from "@/lib/types";
 import { buildCartCatalog } from "@/lib/catalog/buildCartCatalog";
 import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
-import { calculateReferralDiscount } from "@/lib/pricing";
 import { validateCouponAction } from "@/app/actions/coupon.actions";
 
 export interface ServiceDisplayLine {
@@ -50,26 +49,16 @@ export default async function UnifiedCheckoutPaymentPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [addressResult, platformSettings, profileResult, completedBookingsResult] = await Promise.all([
+  const [addressResult, platformSettings, profileResult] = await Promise.all([
     supabase.from("user_addresses").select("formatted_address, city, area, pincode, label").eq("id", addressId).eq("user_id", user.id).single(),
     fetchPlatformSettings(supabase),
-    supabase.from("profiles").select("referred_by, wallet_balance").eq("id", user.id).single(),
-    supabase.from("bookings").select("id", { count: "exact" }).eq("customer_id", user.id).eq("status", "completed"),
+    supabase.from("profiles").select("wallet_balance").eq("id", user.id).single(),
   ]);
 
   const addressObj = addressResult.data;
   if (!addressObj) redirect("/customer/dashboard");
 
   const taxRatePercent = platformSettings.taxRate;
-  const isReferred = !!profileResult.data?.referred_by;
-  const hasCompletedBookings = (completedBookingsResult.count ?? 0) > 0;
-
-  const referralCalc = calculateReferralDiscount(isReferred && !hasCompletedBookings, {
-    referrerReward: platformSettings.referralRewardReferrer,
-    referredDiscount: platformSettings.referralRewardReferred,
-    isEnabled: platformSettings.referralEnabled,
-  });
-  const referralDiscount = referralCalc.discountAmount;
   const walletBalance = Number(profileResult.data?.wallet_balance || 0);
 
   let scheduleDateObj: Date = new Date();
@@ -258,7 +247,6 @@ export default async function UnifiedCheckoutPaymentPage({
       scheduleDate={scheduleDateObj.toISOString()}
       pincode={addressObj.pincode}
       taxRatePercent={taxRatePercent}
-      referralDiscount={referralDiscount}
       walletBalance={walletBalance}
       orderFees={orderFees}
       couponCode={couponCode || null}

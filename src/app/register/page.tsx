@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import {
@@ -93,10 +93,20 @@ function Countdown({ seconds, onExpire }: { seconds: number; onExpire: () => voi
 
 // ─── Main Register Page ───────────────────────────────────────
 
-type Step = "details" | "otp";
+type Step = "details" | "otp" | "success";
 
 export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-surface-dim" />}>
+      <RegisterContent />
+    </Suspense>
+  );
+}
+
+function RegisterContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const deepLinkRef = searchParams.get("ref") ?? "";
   const [step, setStep] = useState<Step>("details");
   const [role, setRole] = useState<"customer" | "partner">("customer");
   const [fullName, setFullName] = useState("");
@@ -108,8 +118,12 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [canResend, setCanResend] = useState(false);
   const [countdownKey, setCountdownKey] = useState(0);
-  const [referralCode, setReferralCode] = useState("");
+  const [referralCode, setReferralCode] = useState<string>(() =>
+    deepLinkRef.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10)
+  );
   const [showReferral, setShowReferral] = useState(false);
+  const [successRedirect, setSuccessRedirect] = useState<string | null>(null);
+  const [registeredInfo, setRegisteredInfo] = useState("");
 
   const handleSendOtp = useCallback(async () => {
     setError("");
@@ -166,6 +180,11 @@ export default function RegisterPage() {
 
     if (!result.success) {
       setError(result.error || "Registration failed.");
+    } else if (result.info) {
+      // Non-blocking referral message — surface it before redirecting.
+      setSuccessRedirect(result.redirectTo ?? "/customer/dashboard");
+      setRegisteredInfo(result.info);
+      setStep("success");
     } else if (result.redirectTo) {
       router.push(result.redirectTo);
     }
@@ -447,6 +466,34 @@ export default function RegisterPage() {
                         Complete Registration
                       </span>
                     )}
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {/* ── STEP 3: Success (non-blocking referral message) ── */}
+            {step === "success" && (
+              <>
+                <div className="space-y-5 relative z-10">
+                  <div className="flex flex-col items-center text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-success/10 flex items-center justify-center mb-4">
+                      <span className="material-symbols-outlined text-[32px] text-success">verified</span>
+                    </div>
+                    <h2 className="text-2xl font-extrabold tracking-tight text-primary text-center">Account created!</h2>
+                    <p className="text-on-surface-variant text-sm font-medium mt-1.5 text-center max-w-xs">
+                      {registeredInfo}
+                    </p>
+                  </div>
+
+                  <Button
+                    type="button"
+                    onClick={() => successRedirect && router.push(successRedirect)}
+                    className="w-full py-4 bg-primary font-extrabold text-[15px] rounded-xl hover:scale-[1.02] hover:-translate-y-0.5 active:scale-95 shadow-lg shadow-secondary/25 transition-all duration-300 border-none cursor-pointer"
+                  >
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                      Continue
+                    </span>
                   </Button>
                 </div>
               </>

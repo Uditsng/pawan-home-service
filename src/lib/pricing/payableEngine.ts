@@ -3,7 +3,9 @@
  * payable amount. Reproduces the exact ordering used by the payment server:
  *   sum(per-service total_price, GST + coupon already applied)
  *   + sum(enabled order fees)
- *   → subtract wallet → subtract referral discount → final payable.
+ *   → subtract wallet → final payable.
+ * Referral rewards live in the customer's wallet (credited at registration),
+ * so no checkout-time referral discount exists.
  */
 import type {
   CartLineItem,
@@ -14,7 +16,7 @@ import type {
 } from "./types";
 
 /**
- * Computes the final payable from an aggregate total before wallet/referral,
+ * Computes the final payable from an aggregate total before wallet,
  * injecting any configured fixed order fees.
  * `totalBeforeWallet` is the sum of per-service `breakdown.total_price`
  * (each already includes GST and any coupon discount).
@@ -22,7 +24,6 @@ import type {
 export function calculateFinalPayable(input: FinalPayableInput): FinalPayableResult {
   const totalBeforeWallet = Math.max(0, Number(input.totalBeforeWallet || 0));
   const walletAmountToUse = Math.max(0, Number(input.walletAmountToUse || 0));
-  const referralDiscount = Math.max(0, Number(input.referralDiscount || 0));
 
   let orderFeesTotal = 0;
   if (input.orderFees && Array.isArray(input.orderFees)) {
@@ -36,9 +37,9 @@ export function calculateFinalPayable(input: FinalPayableInput): FinalPayableRes
 
   const grossTotal = totalBeforeWallet + orderFeesTotal;
   const walletApplied = Math.min(walletAmountToUse, grossTotal);
-  const finalPayable = Math.max(0, grossTotal - walletApplied - referralDiscount);
+  const finalPayable = Math.max(0, grossTotal - walletApplied);
 
-  return { walletApplied, referralDiscount, orderFeesTotal, finalPayable };
+  return { walletApplied, orderFeesTotal, finalPayable };
 }
 
 /**
@@ -49,7 +50,6 @@ export function calculateCart(input: {
   lineItems: CartLineItem[];
   orderFees?: OrderFeeItem[];
   walletBalanceToUse?: number;
-  referralDiscount?: number;
 }): CartPricingResult {
   let subtotal = 0;
   let gstTotal = 0;
@@ -70,7 +70,6 @@ export function calculateCart(input: {
     totalBeforeWallet,
     orderFees: activeFees,
     walletAmountToUse: input.walletBalanceToUse,
-    referralDiscount: input.referralDiscount,
   });
 
   return {
@@ -82,7 +81,6 @@ export function calculateCart(input: {
     couponDiscountTotal,
     totalBeforeWallet,
     walletApplied: payable.walletApplied,
-    referralDiscount: payable.referralDiscount,
     finalPayable: payable.finalPayable,
   };
 }

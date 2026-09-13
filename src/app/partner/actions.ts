@@ -330,8 +330,8 @@ export async function completeJob(
     partner_id: user.id,
   });
 
-  // Fire referral reward (fire-and-forget — never blocks completion)
-  void supabase.rpc("complete_referral_reward", { p_booking_id: bookingId });
+  // Fire legacy referral reward for pre-migration referrals (fire-and-forget — never blocks completion)
+  void supabase.rpc("complete_legacy_referral_reward", { p_booking_id: bookingId });
 
   // ─── Notification: Customer ────────────────────────────────
   const { data: completeBooking } = await supabase
@@ -892,8 +892,8 @@ export async function verifyCompletionOtp(
   await logBookingEvent(supabase, bookingId, "COMPLETION_OTP_VERIFIED", "SYSTEM");
   await logBookingEvent(supabase, bookingId, "JOB_COMPLETED", "PARTNER", { partner_id: user.id });
 
-  // Fire referral reward (fire-and-forget — never blocks completion)
-  void supabase.rpc("complete_referral_reward", { p_booking_id: bookingId });
+  // Fire legacy referral reward for pre-migration referrals (fire-and-forget — never blocks completion)
+  void supabase.rpc("complete_legacy_referral_reward", { p_booking_id: bookingId });
 
   await supabase.from("booking_audit_trail").insert({
     booking_id: bookingId,

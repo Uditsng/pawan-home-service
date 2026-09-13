@@ -46,7 +46,6 @@ interface Props {
   scheduleDate: string;
   pincode: string;
   taxRatePercent: number;
-  referralDiscount: number;
   walletBalance: number;
   orderFees?: { id: string; name: string; amount: number }[];
   couponCode: string | null;
@@ -74,7 +73,6 @@ export default function CheckoutPaymentClient({
   scheduleDate,
   pincode,
   // taxRatePercent,
-  referralDiscount,
   walletBalance,
   orderFees = [],
   couponObj,
@@ -144,9 +142,8 @@ export default function CheckoutPaymentClient({
         lineItems,
         orderFees,
         walletBalanceToUse: useWallet ? walletBalance : 0,
-        referralDiscount,
       }),
-    [lineItems, orderFees, useWallet, walletBalance, referralDiscount]
+    [lineItems, orderFees, useWallet, walletBalance]
   );
 
   // Authoritative pricing summary from server-side coupon validation.
@@ -195,7 +192,7 @@ export default function CheckoutPaymentClient({
     : finalPrice;
 
   // Calculate overall savings from all applied discounts
-  const totalSavings = displayDiscount + referralDiscount + walletApplied;
+  const totalSavings = displayDiscount + walletApplied;
 
   // GSTIN format validation (15-character Indian GSTIN pattern)
   const isGstinValid = useMemo(() => {
@@ -313,7 +310,6 @@ export default function CheckoutPaymentClient({
           time,
           walletAmountToUse: walletApplied,
           couponCode: appliedCoupon?.code ?? undefined,
-          referralDiscount,
         });
 
         if (rzOrder.freeOrder) {
@@ -323,7 +319,6 @@ export default function CheckoutPaymentClient({
             addressId, date, time,
             walletAmountToUse: walletApplied,
             couponCode: appliedCoupon?.code ?? undefined,
-            referralDiscount,
             businessName: bookAsBusiness ? businessName : undefined,
             businessGstin: bookAsBusiness ? businessGstin : undefined,
           });
@@ -389,7 +384,6 @@ export default function CheckoutPaymentClient({
                 addressId, date, time,
                 walletAmountToUse: walletApplied,
                 couponCode: appliedCoupon?.code ?? undefined,
-                referralDiscount,
                 businessName: bookAsBusiness ? businessName : undefined,
                 businessGstin: bookAsBusiness ? businessGstin : undefined,
               });
@@ -776,16 +770,6 @@ export default function CheckoutPaymentClient({
                 <div className="flex justify-between items-center text-sm font-bold text-green-600">
                   <span>Coupon Discount{appliedCoupon?.code ? ` (${appliedCoupon.code})` : ""}</span>
                   <span>-₹{displayDiscount}</span>
-                </div>
-              )}
-
-              {referralDiscount > 0 && (
-                <div className="flex justify-between items-center text-sm font-bold text-green-600">
-                  <span className="flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>card_giftcard</span>
-                    Referral Discount
-                  </span>
-                  <span>-₹{referralDiscount}</span>
                 </div>
               )}
 

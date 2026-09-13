@@ -247,7 +247,7 @@ export default function InvoicesConsole({
           <p className="text-2xl font-bold text-primary font-headline mt-1">₹{totalGst.toLocaleString()}</p>
           <div className="flex items-center gap-1.5 mt-1">
             <span className="w-1.5 h-1.5 rounded-full bg-secondary" />
-            <span className="text-[10px] font-black text-secondary uppercase tracking-widest">Tax Ledger</span>
+            <span className="text-[10px] font-black text-secondary uppercase tracking-widest">Tax Summary</span>
           </div>
         </div>
         <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/15 shadow-sm">

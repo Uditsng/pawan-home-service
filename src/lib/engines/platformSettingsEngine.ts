@@ -24,6 +24,9 @@ export interface PlatformSettings {
   freeCancellationWindow: string;// legacy display label, e.g. "15 Minutes"
   freeCancellationWindowMinutes: number;// authoritative numeric value, e.g. 15
   partnerPenaltyRate: number;   // e.g. 10 (percent)
+  walletRechargeMin: number;    // e.g. 20 (₹)
+  walletRechargeMax: number;    // e.g. 100000 (₹)
+  walletRechargePresets: number[]; // e.g. [200, 500, 1000, 2000]
   serviceAreas: string[];
   serviceablePincodes: string[];
   orderFees: OrderFee[];
@@ -39,6 +42,9 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   freeCancellationWindow: "15 Minutes",
   freeCancellationWindowMinutes: 15,
   partnerPenaltyRate: 10,
+  walletRechargeMin: 20,
+  walletRechargeMax: 100000,
+  walletRechargePresets: [200, 500, 1000, 2000],
   serviceAreas: ["Roorkee", "Chandigarh", "Dehradun", "Haridwar"],
   serviceablePincodes: ["247667", "160017", "248001", "249401"],
   orderFees: [],
@@ -85,6 +91,16 @@ export async function fetchPlatformSettings(supabase: SupabaseClient): Promise<P
       return fallback;
     };
 
+    const parseNumberArray = (val: unknown, fallback: number[]): number[] => {
+      if (!Array.isArray(val)) return fallback;
+      const parsed: number[] = [];
+      for (const item of val) {
+        const num = parseFloat(String(item).replace(/%/g, "").trim());
+        if (!isNaN(num) && isFinite(num) && num > 0) parsed.push(Math.round(num));
+      }
+      return parsed.length > 0 ? parsed : fallback;
+    };
+
     const parseOrderFees = (val: unknown): OrderFee[] => {
       if (!Array.isArray(val)) return [];
       const parsed: OrderFee[] = [];
@@ -119,6 +135,9 @@ export async function fetchPlatformSettings(supabase: SupabaseClient): Promise<P
       freeCancellationWindow: String(settingsMap["free_cancellation_window"] || "15 Minutes"),
       freeCancellationWindowMinutes: parseNum(settingsMap["free_cancellation_window_minutes"], DEFAULT_PLATFORM_SETTINGS.freeCancellationWindowMinutes),
       partnerPenaltyRate: parseNum(settingsMap["partner_penalty_rate"], DEFAULT_PLATFORM_SETTINGS.partnerPenaltyRate),
+      walletRechargeMin: parseNum(settingsMap["wallet_recharge_min"], DEFAULT_PLATFORM_SETTINGS.walletRechargeMin),
+      walletRechargeMax: parseNum(settingsMap["wallet_recharge_max"], DEFAULT_PLATFORM_SETTINGS.walletRechargeMax),
+      walletRechargePresets: parseNumberArray(settingsMap["wallet_recharge_presets"], DEFAULT_PLATFORM_SETTINGS.walletRechargePresets),
       serviceAreas: parseStringArray(settingsMap["service_areas"], DEFAULT_PLATFORM_SETTINGS.serviceAreas),
       serviceablePincodes: parseStringArray(settingsMap["serviceable_pincodes"], DEFAULT_PLATFORM_SETTINGS.serviceablePincodes),
       orderFees: parseOrderFees(settingsMap["order_fees"]),

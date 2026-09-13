@@ -362,7 +362,8 @@ export type NotificationType =
   | 'time_remaining_30m'
   | 'time_completed'
   | 'referral_reward'
-  | 'referral_bonus';
+  | 'referral_bonus'
+  | 'wallet_recharge';
 
 export interface AppNotification {
   id: string;

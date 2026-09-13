@@ -97,6 +97,67 @@ export async function POST(request: Request) {
 
   try {
     if (eventType === "payment.captured" || eventType === "order.paid") {
+      // ── Wallet recharge path ──────────────────────────────────────
+      // If this Razorpay order belongs to a wallet top-up, credit the
+      // customer's CASH balance via the atomic service-role RPC. Booking
+      // reconciliation below is deliberately untouched.
+      if (razorpayOrderId) {
+        const { data: recharge } = await supabaseAdmin
+          .from("wallet_recharges")
+          .select("id, user_id, amount, status")
+          .eq("razorpay_order_id", razorpayOrderId)
+          .limit(1)
+          .maybeSingle();
+
+        if (recharge) {
+          const captured = Number(paymentEntity.amount || 0) / 100;
+          const { data: rzResult } = await supabaseAdmin.rpc(
+            "complete_wallet_recharge",
+            {
+              p_recharge_id: recharge.id,
+              p_razorpay_order_id: razorpayOrderId,
+              p_payment_id: razorpayPaymentId,
+              p_signature: signature,
+              p_gateway_verified_amount: captured,
+              p_method: (paymentEntity.method as string | undefined) ?? null,
+            }
+          );
+
+          const rz = (rzResult ?? {}) as {
+            success?: boolean;
+            already_credited?: boolean;
+            error?: string;
+            credited?: number;
+          };
+
+          if (rz.success && !rz.already_credited) {
+            void notifyCustomer(
+              recharge.user_id,
+              "Wallet Recharged",
+              `₹${Number(rz.credited ?? recharge.amount).toLocaleString("en-IN")} has been added to your wallet.`,
+              "wallet_recharge",
+              { recharge_id: recharge.id }
+            );
+          }
+
+          if (eventRecordId) {
+            await supabaseAdmin
+              .from("payment_webhook_events")
+              .update({
+                status: rz.success ? "processed" : "failed",
+                processed_at: rz.success ? new Date().toISOString() : null,
+              })
+              .eq("id", eventRecordId);
+          }
+
+          return NextResponse.json({
+            status: rz.success ? "reconciled" : "processing_failed",
+            reason: rz.error || (rz.already_credited ? "already_credited" : undefined),
+            recharge_id: recharge.id,
+          });
+        }
+      }
+
       // Find internal payment record by razorpay_order_id or razorpay_payment_id
       const { data: existingPayment } = await supabaseAdmin
         .from("payments")
@@ -220,6 +281,32 @@ export async function POST(request: Request) {
         order_id: targetOrderId,
         reconciled_bookings: childBookings.map((b) => b.id),
       });
+    }
+
+    // Payment failed → mark any matching wallet recharge as failed (no credit).
+    if (eventType === "payment.failed" && razorpayOrderId) {
+      const { data: failedRecharge } = await supabaseAdmin
+        .from("wallet_recharges")
+        .select("id, status")
+        .eq("razorpay_order_id", razorpayOrderId)
+        .limit(1)
+        .maybeSingle();
+
+      if (failedRecharge && !["success", "refunded"].includes(failedRecharge.status)) {
+        await supabaseAdmin.rpc("update_wallet_recharge_status", {
+          p_recharge_id: failedRecharge.id,
+          p_status: "failed",
+        });
+      }
+
+      if (eventRecordId) {
+        await supabaseAdmin
+          .from("payment_webhook_events")
+          .update({ status: "processed", processed_at: new Date().toISOString() })
+          .eq("id", eventRecordId);
+      }
+
+      return NextResponse.json({ status: "processed" });
     }
 
     // For other webhook event types (refunds, etc.)

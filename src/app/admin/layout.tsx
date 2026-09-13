@@ -20,6 +20,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "Waitlists", href: "/admin/waitlist", icon: "notifications_active" },
     { name: "CarryBuddy", href: "/admin/shopping-assistant", icon: "shopping_bag" },
     { name: "Finance", href: "/admin/finance", icon: "payments" },
+    { name: "Wallet", href: "/admin/wallet", icon: "account_balance_wallet" },
     { name: "Invoices", href: "/admin/invoices", icon: "receipt_long" },
     { name: "Referrals", href: "/admin/referrals", icon: "volunteer_activism" },
     { name: "Reviews", href: "/admin/reviews", icon: "rate_review" },

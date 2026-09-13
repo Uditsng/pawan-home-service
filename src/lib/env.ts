@@ -35,6 +35,7 @@ const envSchema = z.object({
   // Optional — Razorpay
   NEXT_PUBLIC_RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
 
   // Optional — Firebase Admin (FCM push). Degrades gracefully if absent.
   FIREBASE_PROJECT_ID: z.string().optional(),

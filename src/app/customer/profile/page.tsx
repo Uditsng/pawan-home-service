@@ -76,6 +76,14 @@ export default async function ProfilePage() {
 
         {/* Links List */}
         <div className="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden flex flex-col">
+          <Link href="/customer/offers" className="flex items-center justify-between p-4 md:p-5 border-b border-outline-variant hover:bg-surface-container-low transition-colors group">
+            <div className="flex items-center gap-3 md:gap-4">
+              <span className="material-symbols-outlined text-on-surface-variant text-lg md:text-xl">local_activity</span>
+              <span className="font-semibold text-sm md:text-base text-on-surface">Offers & deals</span>
+            </div>
+            <span className="material-symbols-outlined text-on-surface-variant/30 text-lg md:text-xl group-hover:text-on-surface-variant/60 transition-colors">chevron_right</span>
+          </Link>
+
           <Link href="/customer/profile/addresses" className="flex items-center justify-between p-4 md:p-5 border-b border-outline-variant hover:bg-surface-container-low transition-colors group">
             <div className="flex items-center gap-3 md:gap-4">
               <span className="material-symbols-outlined text-on-surface-variant text-lg md:text-xl">location_on</span>

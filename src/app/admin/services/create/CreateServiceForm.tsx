@@ -3,6 +3,7 @@
 import { useState, useActionState, useTransition, useMemo } from "react";
 import { Button } from "@/components/ui/Button";
 import { ImageUploadField } from "@/components/ui/ImageUploadField";
+import { GalleryUploadField } from "@/components/ui/GalleryUploadField";
 import ServiceCardThumbnail from "@/components/ServiceCardThumbnail";
 import { ServiceIconComponent, SERVICE_ICON_OPTIONS, ICON_GROUPS } from "@/utils/serviceIcon";
 import { PricingModel } from "@/lib/types";
@@ -674,8 +675,7 @@ export function CreateServiceForm({
             </div>
 
             <div className="pt-2">
-              <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Service Image</label>
-              <ImageUploadField onValueChange={setPreviewImageUrl} />
+              <GalleryUploadField onValueChange={(urls) => setPreviewImageUrl(urls[0] ?? "")} />
             </div>
 
             {/* Warranty / Guarantee Tag */}

@@ -16,6 +16,7 @@ export interface ServiceWithSubcategory {
   gst_applicable?: boolean | null;
   pricing_config?: unknown;
   image_url?: string;
+  image_urls?: string[] | null;
   poster_url?: string | null;
   page_content?: ServicePageContent | null;
   price_breakdown?: string | null;

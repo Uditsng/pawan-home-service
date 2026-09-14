@@ -4,6 +4,7 @@ import DynamicServiceConfigurator from "@/components/DynamicServiceConfigurator"
 import { ServiceIconComponent } from "@/utils/serviceIcon";
 import { formatStartingPrice } from "@/lib/pricing";
 import { Service } from "@/lib/types";
+import { ServiceImageCarousel } from "@/components/ServiceImageCarousel";
 import {
   getCachedServiceDetails,
   getCachedServiceReviews,
@@ -113,6 +114,8 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
 
   const displayImage = service.image_url || catImageMap[service.category || ''] || '/assets/hero_cleaning_1773410829223.png';
 
+  const galleryImages = service.image_urls?.length ? service.image_urls : [displayImage];
+
   return (
     <div className="bg-surface font-body text-on-surface antialiased min-h-screen pb-[calc(9rem+env(safe-area-inset-bottom,0))] md:pb-40">
       {/* Top Banner & Header */}
@@ -167,16 +170,8 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
             </div>
           </div>
           <div className="flex-1 w-full md:w-auto">
-            <div className="relative w-full h-50 md:h-75 lg:h-88 max-w-lg mx-auto md:mx-0">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={displayImage}
-                alt={service.title}
-                loading="lazy"
-                decoding="async"
-                referrerPolicy="no-referrer"
-                className="absolute inset-0 w-full h-full object-cover rounded-2xl md:rounded-3xl shadow-xl border border-outline-variant/20"
-              />
+            <div className="relative w-full h-50 md:h-75 lg:h-88 max-w-lg mx-auto md:mx-0 rounded-2xl md:rounded-3xl shadow-xl border border-outline-variant/20 overflow-hidden">
+              <ServiceImageCarousel images={galleryImages} alt={service.title} />
             </div>
           </div>
         </div>

@@ -116,7 +116,8 @@ export interface Service {
   gst_applicable?: boolean;
   tags?: string[];
   keywords?: string[];
-  image_url?: string | null;
+image_url?: string | null;
+  image_urls?: string[] | null;
   preparation_instructions?: string | null;
   warranty?: string | null;
   revisit_policy?: string | null;

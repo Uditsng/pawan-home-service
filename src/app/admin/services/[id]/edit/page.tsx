@@ -84,6 +84,15 @@ export default async function AdminEditServicePage({ params }: { params: Promise
     const description = formData.get("description") as string;
     const image_url = formData.get("image_url") as string || null;
     const poster_url = formData.get("poster_url") as string || null;
+    const image_urls_raw = formData.get("image_urls") as string;
+    let image_urls: string[] = [];
+    try {
+      if (image_urls_raw) image_urls = JSON.parse(image_urls_raw);
+    } catch (e) {
+      console.error("Failed to parse image_urls", e);
+    }
+    if (!Array.isArray(image_urls)) image_urls = [];
+    image_urls = image_urls.map((u) => u?.trim()).filter(Boolean);
     const pricing_model = (formData.get("pricing_model") as string) || "fixed";
     const duration_rates_raw = formData.get("duration_rates_json") as string;
 
@@ -147,7 +156,8 @@ export default async function AdminEditServicePage({ params }: { params: Promise
       price_breakdown,
       description,
       page_content,
-      image_url,
+      image_url: image_urls.length > 0 ? image_urls[0] : image_url,
+      image_urls,
       poster_url,
       pricing_model,
       pricing_config,

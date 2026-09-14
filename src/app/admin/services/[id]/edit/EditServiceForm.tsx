@@ -3,6 +3,7 @@
 import { useState, useActionState, useMemo } from "react";
 import { Button } from "@/components/ui/Button";
 import { ImageUploadField } from "@/components/ui/ImageUploadField";
+import { GalleryUploadField } from "@/components/ui/GalleryUploadField";
 import ServiceCardThumbnail from "@/components/ServiceCardThumbnail";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
 import { PricingModel, ServiceVariant, ServiceAddon } from "@/lib/types";
@@ -31,6 +32,7 @@ type ServiceInitialData = {
   title: string;
   subcategory_id: string | null;
   image_url?: string | null;
+  image_urls?: string[] | null;
   poster_url?: string | null;
   base_price: number;
   original_price?: number | null;
@@ -99,7 +101,9 @@ export function EditServiceForm({
   const [selectedSubcatId, setSelectedSubcatId] = useState<string>(initialData.subcategory_id || "");
 
   // Live image URL surfaced from ImageUploadField for the preview tab
-  const [previewImageUrl, setPreviewImageUrl] = useState<string>(initialData.image_url || "");
+  const [previewImageUrl, setPreviewImageUrl] = useState<string>(
+    initialData.image_urls?.[0] || initialData.image_url || ""
+  );
 
   // Page Content Lists
   const pageContent = initialData.page_content || {};
@@ -400,8 +404,10 @@ export function EditServiceForm({
           </div>
 
           <div className="pt-2">
-            <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Service Image</label>
-            <ImageUploadField defaultValue={initialData.image_url || ""} onValueChange={setPreviewImageUrl} />
+            <GalleryUploadField
+              defaultValue={initialData.image_urls ?? (initialData.image_url ? [initialData.image_url] : [])}
+              onValueChange={(urls) => setPreviewImageUrl(urls[0] ?? "")}
+            />
           </div>
 
           {status === "upcoming" && (

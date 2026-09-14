@@ -54,6 +54,7 @@ export function calculateCart(input: {
   let subtotal = 0;
   let gstTotal = 0;
   let couponDiscountTotal = 0;
+  let offerDiscountTotal = 0;
   let totalBeforeWallet = 0;
 
   for (const item of input.lineItems) {
@@ -61,6 +62,7 @@ export function calculateCart(input: {
     subtotal += Number(b.total_price || 0) - Number(b.gst_amount || 0);
     gstTotal += Number(b.gst_amount || 0);
     couponDiscountTotal += Number(b.coupon_discount || 0);
+    offerDiscountTotal += Number(b.offer_discount || 0);
     totalBeforeWallet += Number(b.total_price || 0);
   }
 
@@ -79,6 +81,7 @@ export function calculateCart(input: {
     orderFees: activeFees,
     orderFeesTotal: payable.orderFeesTotal,
     couponDiscountTotal,
+    offerDiscountTotal,
     totalBeforeWallet,
     walletApplied: payable.walletApplied,
     finalPayable: payable.finalPayable,

@@ -6,6 +6,7 @@ import { notifyCustomer, notifyAdmins } from "@/lib/notifications";
 import { triggerDispatchBatch } from "@/app/actions/dispatch";
 import { Coupon, CartItem, Order } from "@/lib/types";
 import { calculateFinalPayable } from "@/lib/pricing";
+import { allocateOfferAcrossLines } from "@/lib/pricing/offerEngine";
 import { computeCartLineItems } from "@/lib/pricing/cartCatalog";
 import { buildCartCatalog } from "@/lib/catalog/buildCartCatalog";
 import type { PricingBreakdown, OrderFeeItem } from "@/lib/pricing/types";
@@ -68,6 +69,9 @@ async function computeServiceBreakdowns(
     couponCode?: string | null;
     customerId?: string | null;
     frozenOrderFees?: OrderFeeItem[];
+    /** Server-allocated per-service offer discount (rupees). Applied in the
+     *  final pass so breakdowns carry offer_discount for booking_pricing. */
+    offerAmountsByService?: Record<string, number>;
   }
 ): Promise<{
   breakdowns: Record<string, PricingBreakdown>;
@@ -77,6 +81,7 @@ async function computeServiceBreakdowns(
   validatedCoupon: Coupon | null;
   orderFees: OrderFeeItem[];
   orderFeesTotal: number;
+  offerDiscountTotal: number;
   pricingSummary: {
     originalSubtotal: number;
     discountAmount: number;
@@ -178,6 +183,7 @@ async function computeServiceBreakdowns(
     scheduledDate,
     pincode: options.pincode,
     coupon: validatedCoupon,
+    offerAmountsByService: options.offerAmountsByService,
   });
 
   const breakdowns: Record<string, PricingBreakdown> = {};
@@ -185,19 +191,21 @@ async function computeServiceBreakdowns(
   let totalAmount = 0;
   let discountAmount = 0;
   let taxAmount = 0;
+  let offerDiscountTotal = 0;
 
   for (const line of lineItems) {
     breakdowns[line.serviceId] = line.breakdown;
     totalAmount += line.breakdown.total_price;
     discountAmount += line.breakdown.coupon_discount;
+    offerDiscountTotal += line.breakdown.offer_discount || 0;
     taxAmount += line.breakdown.gst_amount;
   }
   for (const [id, src] of Object.entries(serviceSources)) {
     titleMap[id] = src.title;
   }
 
-  // originalSubtotal (pre-coupon) = final payable + coupon discount.
-  const originalSubtotal = totalAmount + discountAmount;
+  // originalSubtotal (pre-coupon, pre-offer) = final payable + coupon + offer.
+  const originalSubtotal = totalAmount + discountAmount + offerDiscountTotal;
   pricingSummary = {
     originalSubtotal,
     discountAmount,
@@ -215,6 +223,7 @@ async function computeServiceBreakdowns(
     orderFees,
     orderFeesTotal,
     pricingSummary,
+    offerDiscountTotal,
   };
 }
 
@@ -225,6 +234,7 @@ export async function createRazorpayOrderAction(payload: {
   time: string;
   walletAmountToUse?: number;
   couponCode?: string;
+  offerEntitlementId?: string;
 }): Promise<RazorpayOrderResult> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -238,19 +248,91 @@ export async function createRazorpayOrderAction(payload: {
     .from("user_addresses").select("formatted_address, city, pincode, latitude, longitude").eq("id", payload.addressId).eq("user_id", user.id).single();
   if (!addr) throw new Error("Address not found");
 
-  const computeResult = await computeServiceBreakdowns(supabase, payload.services, {
+  // Pass 1 — without offer, to get pre-offer line totals used for allocation.
+  let computeResult = await computeServiceBreakdowns(supabase, payload.services, {
     date: payload.date,
     time: payload.time,
     pincode: addr.pincode,
     couponCode: payload.couponCode,
   });
 
-  const totalAmount = computeResult.totalAmount;
+  let totalAmount = computeResult.totalAmount;
+  let offerSnapshot: { entitlementId: string; applicationId: string; appliedAmount: number } | null = null;
+  // Internal orders-table UUID. Distinct from the Razorpay gateway order id.
+  const internalOrderId = crypto.randomUUID();
+
+  if (payload.offerEntitlementId) {
+    const serviceIds = payload.services.map((s) => s.serviceId);
+
+    // Seed the pending order row first — offer_applications.order_id requires
+    // the orders row to exist (FK). Its final amounts are set below / at verify.
+    const { error: seedError } = await supabase.from("orders").insert({
+      id: internalOrderId,
+      customer_id: user.id,
+      status: "pending",
+      total_amount: 0,
+      city: addr.city,
+      address: addr.formatted_address,
+      pincode: addr.pincode,
+      latitude: addr.latitude && Number(addr.latitude) !== 0 ? addr.latitude : null,
+      longitude: addr.longitude && Number(addr.longitude) !== 0 ? addr.longitude : null,
+      scheduled_date: new Date().toISOString(),
+      item_count: payload.services.length,
+      payment_status: "pending",
+      coupon_code: payload.couponCode || null,
+      order_fees: computeResult.orderFees,
+      offer_entitlement_id: payload.offerEntitlementId,
+    });
+
+    if (seedError) {
+      console.error("[payment] Offer order seed failed:", seedError);
+      throw new Error("Could not initialize your order.");
+    }
+
+    const { data: reserveRes, error: reserveError } = await supabase.rpc("reserve_offer_benefit", {
+      p_entitlement_id: payload.offerEntitlementId,
+      p_customer_id: user.id,
+      p_order_id: internalOrderId,
+      p_service_ids: serviceIds,
+      p_cart_total: totalAmount,
+    });
+
+    const reserve = reserveRes as { success?: boolean; error?: string; application_id?: string; applied_amount?: number } | null;
+    if (reserveError || !reserve || !reserve.success) {
+      console.error("[payment] Offer reservation failed:", reserveError || reserve?.error);
+      // Deleting the order row cascades the (partial) reservation.
+      await supabase.from("orders").delete().eq("id", internalOrderId);
+      throw new Error(reserve?.error || "This offer could not be applied to your order.");
+    }
+
+    const appliedAmount = Math.max(0, Number(reserve.applied_amount || 0));
+    const preOfferLineTotals: Record<string, number> = {};
+    for (const s of payload.services) {
+      preOfferLineTotals[s.serviceId] = computeResult.breakdowns[s.serviceId]?.total_price || 0;
+    }
+    const allocated = allocateOfferAcrossLines(preOfferLineTotals, appliedAmount);
+
+    // Pass 2 — authoritative breakdowns WITH the offer applied.
+    computeResult = await computeServiceBreakdowns(supabase, payload.services, {
+      date: payload.date,
+      time: payload.time,
+      pincode: addr.pincode,
+      couponCode: payload.couponCode,
+      offerAmountsByService: allocated,
+    });
+    totalAmount = computeResult.totalAmount;
+    offerSnapshot = {
+      entitlementId: payload.offerEntitlementId,
+      applicationId: String(reserve.application_id || ""),
+      appliedAmount,
+    };
+  }
+
   const { originalSubtotal, taxAmount, couponValid } =
     computeResult.pricingSummary;
 
   // Final amount the customer actually pays via Razorpay = post-coupon,
-  // post-order-fees, post-wallet, post-referral. This must match verifyRazorpayPaymentAction
+  // post-offer, post-order-fees, post-wallet. Must match verifyRazorpayPaymentAction
   // exactly so the gateway amount equals the captured amount.
   const finalOrderAmount = calculateFinalPayable({
     totalBeforeWallet: totalAmount,
@@ -259,6 +341,18 @@ export async function createRazorpayOrderAction(payload: {
   }).finalPayable;
 
   if (finalOrderAmount <= 0) {
+    // Free order. When an offer is reserved, keep the seeded order row and
+    // reservation so verify can confirm and redeem it against the zero amount.
+    if (offerSnapshot) {
+      await supabase.from("orders").update({
+        total_amount: 0,
+        original_subtotal: originalSubtotal,
+        tax_amount: taxAmount,
+        final_amount: 0,
+        coupon_valid_at_creation: couponValid,
+        offer_discount: offerSnapshot.appliedAmount,
+      }).eq("id", internalOrderId);
+    }
     return { freeOrder: true, amount: 0, currency: "INR" };
   }
 
@@ -285,37 +379,75 @@ export async function createRazorpayOrderAction(payload: {
   if (!response.ok) {
     const errBody = await response.text();
     console.error("[Razorpay] API Error:", errBody);
+    // The offer reservation must be released before the order row is dropped.
+    if (offerSnapshot) {
+      await supabase.rpc("release_offer_reservation", {
+        p_order_id: internalOrderId,
+        p_customer_id: user.id,
+      });
+      await supabase.from("orders").delete().eq("id", internalOrderId);
+    }
     throw new Error("Payment gateway order creation failed.");
   }
 
   const orderData = await response.json();
-  const orderId = orderData.id;
 
-  // Persist authoritative pricing and order_fees snapshot to orders table (immutable for this order's lifecycle)
-  await supabase.from("orders").insert({
-    customer_id: user.id,
-    status: "pending",
-    total_amount: finalOrderAmount,
-    city: addr.city,
-    address: addr.formatted_address,
-    pincode: addr.pincode,
-    latitude: addr.latitude && Number(addr.latitude) !== 0 ? addr.latitude : null,
-    longitude: addr.longitude && Number(addr.longitude) !== 0 ? addr.longitude : null,
-    scheduled_date: new Date().toISOString(), // will be overridden with real date later
-    item_count: payload.services.length,
-    payment_status: "pending",
-    // Pricing snapshot fields — immutable for this order
-    coupon_code: payload.couponCode || null,
-    original_subtotal: originalSubtotal,
-    tax_amount: taxAmount,
-    final_amount: finalOrderAmount,
-    coupon_valid_at_creation: couponValid,
-    order_fees: computeResult.orderFees,
-  });
+  // Persist authoritative pricing and order_fees snapshot (immutable for this
+  // order's lifecycle). Offer orders update the seeded row with final amounts.
+  if (offerSnapshot) {
+    const { error: offerOrderError } = await supabase.from("orders").update({
+      status: "pending",
+      total_amount: finalOrderAmount,
+      payment_status: "pending",
+      original_subtotal: originalSubtotal,
+      tax_amount: taxAmount,
+      final_amount: finalOrderAmount,
+      coupon_valid_at_creation: couponValid,
+      coupon_code: payload.couponCode || null,
+      order_fees: computeResult.orderFees,
+      offer_entitlement_id: offerSnapshot.entitlementId,
+      offer_discount: offerSnapshot.appliedAmount,
+    }).eq("id", internalOrderId);
+
+    if (offerOrderError) {
+      console.error("[payment] Offer order snapshot failed:", offerOrderError);
+      await supabase.rpc("release_offer_reservation", { p_order_id: internalOrderId, p_customer_id: user.id });
+      await supabase.from("orders").delete().eq("id", internalOrderId);
+      throw new Error("Failed to persist your order.");
+    }
+  } else {
+    const { error: orderError } = await supabase.from("orders").insert({
+      id: internalOrderId,
+      customer_id: user.id,
+      status: "pending",
+      total_amount: finalOrderAmount,
+      city: addr.city,
+      address: addr.formatted_address,
+      pincode: addr.pincode,
+      latitude: addr.latitude && Number(addr.latitude) !== 0 ? addr.latitude : null,
+      longitude: addr.longitude && Number(addr.longitude) !== 0 ? addr.longitude : null,
+      scheduled_date: new Date().toISOString(), // will be overridden with real date later
+      item_count: payload.services.length,
+      payment_status: "pending",
+      // Pricing snapshot fields — immutable for this order
+      coupon_code: payload.couponCode || null,
+      original_subtotal: originalSubtotal,
+      tax_amount: taxAmount,
+      final_amount: finalOrderAmount,
+      coupon_valid_at_creation: couponValid,
+      order_fees: computeResult.orderFees,
+      offer_entitlement_id: null,
+      offer_discount: 0,
+    });
+    if (orderError) {
+      console.error("[payment] Order creation failed:", orderError);
+      throw new Error("Failed to persist your order.");
+    }
+  }
 
   return {
     freeOrder: false,
-    orderId,
+    orderId: orderData.id,
     amount: orderData.amount / 100,
     currency: orderData.currency,
     keyId,
@@ -335,6 +467,7 @@ export async function verifyRazorpayPaymentAction(payload: {
   time: string;
   walletAmountToUse?: number;
   couponCode?: string;
+  offerEntitlementId?: string;
   businessName?: string;
   businessGstin?: string;
 }): Promise<VerificationResult> {
@@ -459,15 +592,61 @@ export async function verifyRazorpayPaymentAction(payload: {
     }
   }
 
+  // 4a. Offer context — the server-side reservation created at order creation.
+  let offerContext: {
+    entitlementId: string;
+    offerId: string;
+    applicationId: string;
+    appliedAmount: number;
+  } | null = null;
+  if (payload.offerEntitlementId && pendingOrderSnapshot) {
+    const { data: app } = await supabase
+      .from("offer_applications")
+      .select("id, amount, entitlement_id, offer_entitlements(offer_id)")
+      .eq("order_id", pendingOrderSnapshot.id)
+      .eq("status", "reserved")
+      .maybeSingle();
+
+    if (app) {
+      const offerEntO = Array.isArray(app.offer_entitlements) ? app.offer_entitlements[0] : app.offer_entitlements;
+      const rawOfferId = (offerEntO as { offer_id?: string } | null)?.offer_id;
+      offerContext = {
+        entitlementId: String(app.entitlement_id),
+        offerId: String(rawOfferId ?? ""),
+        applicationId: String(app.id),
+        appliedAmount: Math.max(0, Number(app.amount || 0)),
+      };
+    }
+  }
+
   // Authoritative server-side pricing recomputation using the frozen snapshot
-  const { breakdowns, totalAmount, titleMap, validatedCoupon, pricingSummary, orderFees } =
-    await computeServiceBreakdowns(supabase, payload.services, {
+  let computePass = await computeServiceBreakdowns(supabase, payload.services, {
+    date: payload.date,
+    time: payload.time,
+    pincode: addr.pincode,
+    couponCode: payload.couponCode,
+    frozenOrderFees,
+  });
+
+  // When an offer was reserved, allocate its recorded amount across lines and
+  // recompute authoritative breakdowns (so offer_discount lands on each line).
+  if (offerContext) {
+    const preOfferLineTotals: Record<string, number> = {};
+    for (const s of payload.services) {
+      preOfferLineTotals[s.serviceId] = computePass.breakdowns[s.serviceId]?.total_price || 0;
+    }
+    const allocated = allocateOfferAcrossLines(preOfferLineTotals, offerContext.appliedAmount);
+    computePass = await computeServiceBreakdowns(supabase, payload.services, {
       date: payload.date,
       time: payload.time,
       pincode: addr.pincode,
       couponCode: payload.couponCode,
       frozenOrderFees,
+      offerAmountsByService: allocated,
     });
+  }
+
+  const { breakdowns, totalAmount, titleMap, validatedCoupon, pricingSummary, orderFees } = computePass;
 
   const { originalSubtotal: snapshotOriginalSubtotal, discountAmount: snapshotDiscountAmount, taxAmount: snapshotTaxAmount, couponValid } = pricingSummary;
   const walletAmountToUse = payload.walletAmountToUse ?? 0;
@@ -521,6 +700,8 @@ export async function verifyRazorpayPaymentAction(payload: {
         final_amount: finalOrderAmount,
         coupon_valid_at_creation: couponValid,
         order_fees: orderFees,
+        offer_entitlement_id: offerContext?.entitlementId ?? pendingOrderSnapshot.offer_entitlement_id ?? null,
+        offer_discount: offerContext?.appliedAmount ?? pendingOrderSnapshot.offer_discount ?? 0,
       })
       .eq("id", pendingOrderSnapshot.id)
       .select("id")
@@ -528,6 +709,9 @@ export async function verifyRazorpayPaymentAction(payload: {
 
     if (updateError || !updatedOrder) {
       console.error("[payment] Order update failed:", JSON.stringify(updateError));
+      if (offerContext) {
+        await supabase.rpc("release_offer_reservation", { p_order_id: pendingOrderSnapshot.id, p_customer_id: user.id });
+      }
       return { success: false, error: `Failed to update order. ${updateError?.message || ""}` };
     }
     order = updatedOrder;
@@ -550,6 +734,8 @@ export async function verifyRazorpayPaymentAction(payload: {
         final_amount: finalOrderAmount,
         coupon_valid_at_creation: couponValid,
         order_fees: orderFees,
+        offer_entitlement_id: offerContext?.entitlementId ?? null,
+        offer_discount: offerContext?.appliedAmount ?? 0,
       })
       .select("id")
       .single();
@@ -570,8 +756,30 @@ export async function verifyRazorpayPaymentAction(payload: {
     });
     if (walletError || !walletRes || !(walletRes as { success?: boolean }).success) {
       console.error("[payment] Wallet debit failed:", walletError || (walletRes as { error?: string })?.error);
+      if (offerContext) {
+        await supabase.rpc("release_offer_reservation", { p_order_id: order.id, p_customer_id: user.id });
+      }
       await supabase.from("orders").delete().eq("id", order.id);
       return { success: false, error: (walletRes as { error?: string })?.error || "Failed to debit wallet balance." };
+    }
+  }
+
+  // 6b. Consume the offer reservation — atomic, idempotent, server-side.
+  // Runs AFTER the wallet debit so an earlier failure never consumes the offer.
+  if (offerContext) {
+    const { data: applyRes, error: applyError } = await supabase.rpc("apply_offer_redemption", {
+      p_application_id: offerContext.applicationId,
+      p_customer_id: user.id,
+      p_booking_id: null,
+    });
+    const applyResult = applyRes as { success?: boolean; error?: string } | null;
+    if (applyError || !applyRes || !applyResult?.success) {
+      console.error("[payment] Offer redemption failed:", applyError || applyResult?.error);
+      await supabase.rpc("release_offer_reservation", { p_order_id: order.id, p_customer_id: user.id });
+      return {
+        success: false,
+        error: applyResult?.error || "Your offer could not be applied. Please contact support.",
+      };
     }
   }
 
@@ -648,6 +856,20 @@ export async function verifyRazorpayPaymentAction(payload: {
       continue;
     }
 
+    // Link the offer redemption / application to the first created booking so
+    // customers and admins can trace the offer to its fulfilled booking.
+    if (offerContext && isFirstBooking) {
+      await supabase
+        .from("offer_redemptions")
+        .update({ booking_id: booking.id })
+        .eq("entitlement_id", offerContext.entitlementId)
+        .eq("order_id", order.id);
+      await supabase
+        .from("offer_applications")
+        .update({ booking_id: booking.id })
+        .eq("id", offerContext.applicationId);
+    }
+
     const bookingSurcharges = [
       ...(breakdown.surcharges || []),
       ...(isFirstBooking && orderFees.length > 0 ? orderFees : []),
@@ -670,6 +892,9 @@ export async function verifyRazorpayPaymentAction(payload: {
       discount_amount: breakdown.discount_amount,
       coupon_discount: breakdown.coupon_discount,
       wallet_discount: breakdown.wallet_discount,
+      offer_id: offerContext?.offerId ?? null,
+      offer_entitlement_id: offerContext?.entitlementId ?? null,
+      offer_discount: breakdown.offer_discount || 0,
       total_price: breakdown.total_price,
     });
 

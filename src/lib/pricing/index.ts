@@ -9,6 +9,7 @@ export * from "./types";
 export * from "./pricingEngine";
 export * from "./taxEngine";
 export * from "./discountEngine";
+export * from "./offerEngine";
 export * from "./payableEngine";
 export * from "./validators";
 export * from "./cartCatalog";

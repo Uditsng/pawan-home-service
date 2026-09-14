@@ -243,6 +243,15 @@ export function calculatePricingBreakdown(input: PricingInput): PricingBreakdown
   // Calculate price before wallet usage
   let payableAmount = Math.max(0, subtotal + gstAmount + travelFee - couponDiscount);
 
+  // 6.5 Apply Offer Card discount (post-coupon, pre-wallet — same ordering as
+  // the server and the reserve_offer_benefit RPC). The per-line allocation is
+  // server-computed at order level; the engine merely clamps it to payable.
+  let offerDiscount = 0;
+  if (input.offerAmountForLine && input.offerAmountForLine > 0) {
+    offerDiscount = Math.min(input.offerAmountForLine, payableAmount);
+    payableAmount = Math.max(0, payableAmount - offerDiscount);
+  }
+
   // 7. Apply Wallet usage
   let walletDiscount = 0;
   if (input.walletBalanceToUse && input.walletBalanceToUse > 0) {
@@ -266,6 +275,9 @@ export function calculatePricingBreakdown(input: PricingInput): PricingBreakdown
     discount_amount: discountAmount,
     coupon_discount: couponDiscount,
     wallet_discount: walletDiscount,
+    offer_id: null,
+    offer_entitlement_id: null,
+    offer_discount: offerDiscount,
     total_price: payableAmount,
   };
 }

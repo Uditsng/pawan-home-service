@@ -79,6 +79,13 @@ export interface PricingInput {
 
   coupon?: CouponInput | null;
 
+  /**
+   * Offer Card discount allocated to THIS line (rupees, order-level amount
+   * already allocated proportionally by the server). Applied after coupon,
+   * before wallet — identical ordering to the server and the RPC math.
+   */
+  offerAmountForLine?: number;
+
   walletBalanceToUse?: number;
   gstRate?: number; // default 18
   gstEnabled?: boolean; // default true
@@ -91,6 +98,26 @@ export interface CouponInput {
   discount_value: number;
   min_booking_amount?: number | null;
   max_discount?: number | null;
+}
+
+/**
+ * Offer Card benefit definition (mirrors the `offers` table).
+ * `benefitValue` semantics depend on `offerType`:
+ *   FIXED_DISCOUNT       — flat rupees off (per redemption)
+ *   PERCENTAGE_DISCOUNT  — % of cart (capped by maxDiscount)
+ *   SERVICE_CREDIT       — a value pool drawn across multiple bookings
+ */
+export type OfferBenefitType = "FIXED_DISCOUNT" | "PERCENTAGE_DISCOUNT" | "SERVICE_CREDIT";
+
+export interface OfferBenefit {
+  offerType: OfferBenefitType;
+  benefitValue: number;
+  maxDiscount?: number | null;
+  minBookingAmount?: number;
+  /** Remaining pool for SERVICE_CREDIT entitlements (ignored for discount types). */
+  remainingValue?: number;
+  /** Remaining uses for discount-type entitlements. */
+  remainingUses?: number;
 }
 
 /**
@@ -151,6 +178,7 @@ export interface CartPricingResult {
   orderFees: OrderFeeItem[];
   orderFeesTotal: number;
   couponDiscountTotal: number;
+  offerDiscountTotal: number;
   totalBeforeWallet: number;
   walletApplied: number;
   finalPayable: number;

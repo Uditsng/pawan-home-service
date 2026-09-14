@@ -225,6 +225,8 @@ export interface Order {
   final_amount?: number;
   coupon_valid_at_creation?: boolean;
   order_fees?: OrderFeeItem[];
+  offer_entitlement_id?: string | null;
+  offer_discount?: number;
   created_at: string;
   updated_at: string;
 }
@@ -363,7 +365,8 @@ export type NotificationType =
   | 'time_completed'
   | 'referral_reward'
   | 'referral_bonus'
-  | 'wallet_recharge';
+  | 'wallet_recharge'
+  | 'offer_purchase';
 
 export interface AppNotification {
   id: string;
@@ -462,6 +465,9 @@ export interface BookingPricing {
   discount_amount: number;
   coupon_discount: number;
   wallet_discount: number;
+  offer_id: string | null;
+  offer_entitlement_id: string | null;
+  offer_discount: number;
   total_price: number;
   created_at: string;
 }
@@ -553,6 +559,77 @@ export interface Coupon {
   expires_at: string | null;
   created_at: string;
   applicable_to_service_id: string | null; // NULL = all services; specific UUID = that service only
+}
+
+// ─── Offer Cards (Promotional Offer Engine) ────────────────────────────────
+
+export type OfferType = "FIXED_DISCOUNT" | "PERCENTAGE_DISCOUNT" | "SERVICE_CREDIT";
+export type OfferValidityModel = "fixed_dates" | "relative_days";
+export type OfferStatus = "draft" | "active" | "paused" | "expired" | "archived";
+export type OfferUsageLimitType = "one_time" | "multiple";
+export type OfferEligibility = "all" | "new" | "existing";
+export type OfferEntitlementStatus = "active" | "expired" | "consumed" | "cancelled" | "reversed";
+
+export interface Offer {
+  id: string;
+  code: string;
+  name: string;
+  title: string;
+  description: string | null;
+  display_text: string | null;
+  artwork_url: string | null;
+  offer_type: OfferType;
+  purchase_price: number;
+  benefit_value: number;
+  max_discount: number | null;
+  min_booking_amount: number;
+  validity_model: OfferValidityModel;
+  valid_from: string | null;
+  valid_until: string | null;
+  valid_days: number | null;
+  status: OfferStatus;
+  usage_limit_type: OfferUsageLimitType;
+  max_redemptions_per_customer: number | null;
+  eligibility: OfferEligibility;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OfferEntitlement {
+  id: string;
+  offer_id: string;
+  customer_id: string;
+  purchase_id: string | null;
+  offer_type: OfferType;
+  original_value: number;
+  remaining_value: number;
+  total_uses: number;
+  remaining_uses: number;
+  purchased_price: number;
+  status: OfferEntitlementStatus;
+  activated_at: string;
+  expires_at: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OfferPurchase {
+  id: string;
+  offer_id: string;
+  customer_id: string;
+  amount: number;
+  method: "wallet" | "razorpay" | "free";
+  status: "created" | "pending" | "success" | "failed" | "cancelled" | "refunded" | "reconciled";
+  razorpay_order_id: string | null;
+  razorpay_payment_id: string | null;
+  razorpay_signature: string | null;
+  payment_method: string | null;
+  failure_reason: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
 }
 
 

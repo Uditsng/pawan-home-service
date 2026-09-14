@@ -6,15 +6,17 @@ import { Capacitor } from "@capacitor/core";
 import { createRazorpayOrderAction, verifyRazorpayPaymentAction } from "@/app/actions/payment";
 import { validateCouponAction, listAvailableCoupons, type AvailableCoupon } from "@/app/actions/coupon.actions";
 import { CouponSelector } from "./CouponSelector";
+import { OfferSelector } from "./OfferSelector";
 import { Coupon, CartItem } from "@/lib/types";
 import { formatDuration } from "@/lib/pricing";
 import { calculateCart } from "@/lib/pricing/payableEngine";
 import { computeCartLineItems } from "@/lib/pricing/cartCatalog";
+import { calculateOfferDiscount } from "@/lib/pricing/offerEngine";
 import type { CartCatalog } from "@/lib/pricing/cartCatalog";
-import type { PricingBreakdown } from "@/lib/pricing/types";
+import type { PricingBreakdown, OfferBenefit } from "@/lib/pricing/types";
 import { Card } from "@/components/ui/Card";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
-import type { ServiceDisplayLine } from "./page";
+import type { ServiceDisplayLine, CheckoutOfferEntitlement } from "./page";
 
 interface Address {
   formatted_address: string;
@@ -59,6 +61,7 @@ interface Props {
     finalPayable: number;
   };
   appliedCouponCode: string | null;
+  offerEntitlements: CheckoutOfferEntitlement[];
 }
 
 export default function CheckoutPaymentClient({
@@ -78,6 +81,7 @@ export default function CheckoutPaymentClient({
   couponObj,
   pricingSummary,
   appliedCouponCode,
+  offerEntitlements,
 }: Props) {
   const router = useRouter();
   const [isAgreed, setIsAgreed] = useState(false);
@@ -123,6 +127,12 @@ export default function CheckoutPaymentClient({
     return null;
   });
 
+  // Offer entitlement state. `offerEntitlements` are the customer's usable
+  // entitlements pre-filtered server-side for this cart; the server reserves
+  // and re-validates the selected one at payment time (authority).
+  const [offerEntitlementId, setOfferEntitlementId] = useState<string | null>(null);
+  const [showOffers, setShowOffers] = useState(false);
+
   // Prices are computed entirely client-side through the shared pricing engine.
   // The server recomputes the same engine at payment time (authority) — no
   // server pricing calls happen while this screen is open or the wallet toggles.
@@ -144,6 +154,52 @@ export default function CheckoutPaymentClient({
         walletBalanceToUse: useWallet ? walletBalance : 0,
       }),
     [lineItems, orderFees, useWallet, walletBalance]
+  );
+
+  // ─── Offer selection & pricing ──────────────────────────────────────────
+  // `apply_offer_redemption` runs AFTER the coupon but BEFORE wallet. The
+  // server reserves the benefit against the post-coupon, pre-wallet, pre-offer
+  // cart total, so the preview mirrors exactly that number. Display total =
+  // post-offer gross − wallet, which equals the Razorpay charge.
+  const selectedEntitlement = useMemo(
+    () => offerEntitlements.find((e) => e.id === offerEntitlementId) ?? null,
+    [offerEntitlements, offerEntitlementId]
+  );
+
+  const offerBenefit = useMemo<OfferBenefit | null>(() => {
+    if (!selectedEntitlement?.offers) return null;
+    return {
+      offerType: selectedEntitlement.offer_type,
+      benefitValue: Number(selectedEntitlement.offers.benefit_value) || 0,
+      maxDiscount:
+        selectedEntitlement.offers.max_discount != null
+          ? Number(selectedEntitlement.offers.max_discount)
+          : undefined,
+      minBookingAmount: Number(selectedEntitlement.offers.min_booking_amount) || 0,
+      remainingValue:
+        selectedEntitlement.offer_type === "SERVICE_CREDIT"
+          ? Number(selectedEntitlement.remaining_value)
+          : undefined,
+      remainingUses:
+        selectedEntitlement.offer_type !== "SERVICE_CREDIT"
+          ? Number(selectedEntitlement.remaining_uses)
+          : undefined,
+    };
+  }, [selectedEntitlement]);
+
+  const preOfferOrderTotal = useMemo(() => {
+    if (appliedCoupon) {
+      return Math.max(
+        0,
+        appliedCoupon.pricingSummary.originalSubtotal - appliedCoupon.pricingSummary.discountAmount
+      );
+    }
+    return cartResult.totalBeforeWallet;
+  }, [appliedCoupon, cartResult.totalBeforeWallet]);
+
+  const offerApplied = useMemo(
+    () => Math.max(0, calculateOfferDiscount(preOfferOrderTotal, offerBenefit)),
+    [preOfferOrderTotal, offerBenefit]
   );
 
   // Authoritative pricing summary from server-side coupon validation.
@@ -187,12 +243,18 @@ export default function CheckoutPaymentClient({
     : totalPriceWithoutGst;
   const displayTax = useAuthoritative ? authoritativePricing.taxAmount : totalGst;
   const displayDiscount = useAuthoritative ? authoritativePricing.discountAmount : totalCouponDiscount;
+
+  // Client-side pre-offer gross (services + fees, before wallet).
+  const offerFreeGross = Math.max(0, finalPrice + walletApplied);
+  const postOfferGross = Math.max(0, offerFreeGross - offerApplied);
+  const walletShown = Math.min(walletApplied, postOfferGross);
+
   const displayTotal = useAuthoritative
-    ? Math.max(0, authoritativePricing.finalPayable - walletApplied)
-    : finalPrice;
+    ? Math.max(0, authoritativePricing.finalPayable - offerApplied - walletShown)
+    : Math.max(0, postOfferGross - walletShown);
 
   // Calculate overall savings from all applied discounts
-  const totalSavings = displayDiscount + walletApplied;
+  const totalSavings = displayDiscount + walletApplied + offerApplied;
 
   // GSTIN format validation (15-character Indian GSTIN pattern)
   const isGstinValid = useMemo(() => {
@@ -303,6 +365,11 @@ export default function CheckoutPaymentClient({
 
     startTransition(async () => {
       try {
+        if (selectedEntitlement && offerApplied <= 0) {
+          setErrorMessage("Your selected offer can no longer be applied to this order. Remove it and try again.");
+          return;
+        }
+
         const rzOrder = await createRazorpayOrderAction({
           services: checkoutServices,
           addressId,
@@ -310,6 +377,7 @@ export default function CheckoutPaymentClient({
           time,
           walletAmountToUse: walletApplied,
           couponCode: appliedCoupon?.code ?? undefined,
+          offerEntitlementId: selectedEntitlement?.id ?? undefined,
         });
 
         if (rzOrder.freeOrder) {
@@ -319,6 +387,7 @@ export default function CheckoutPaymentClient({
             addressId, date, time,
             walletAmountToUse: walletApplied,
             couponCode: appliedCoupon?.code ?? undefined,
+            offerEntitlementId: selectedEntitlement?.id ?? undefined,
             businessName: bookAsBusiness ? businessName : undefined,
             businessGstin: bookAsBusiness ? businessGstin : undefined,
           });
@@ -384,6 +453,7 @@ export default function CheckoutPaymentClient({
                 addressId, date, time,
                 walletAmountToUse: walletApplied,
                 couponCode: appliedCoupon?.code ?? undefined,
+                offerEntitlementId: selectedEntitlement?.id ?? undefined,
                 businessName: bookAsBusiness ? businessName : undefined,
                 businessGstin: bookAsBusiness ? businessGstin : undefined,
               });
@@ -678,6 +748,85 @@ export default function CheckoutPaymentClient({
                   onClose={() => setShowCoupons(false)}
                 />
               )}
+
+              {offerEntitlements.length > 0 && (
+                <div className="border-t border-dashed border-outline-variant/30 pt-4 space-y-3">
+                  <div className="flex items-center justify-between border-b border-outline-variant/10 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-primary font-bold text-xl">local_activity</span>
+                      <h3 className="font-headline text-sm font-bold text-on-surface">Offer Cards</h3>
+                    </div>
+                    {!selectedEntitlement && (
+                      <button
+                        type="button"
+                        onClick={() => setShowOffers(true)}
+                        disabled={isPending}
+                        className="text-xs font-bold text-primary hover:text-primary/80 transition-colors flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>Use an Offer</span>
+                        <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {selectedEntitlement?.offers ? (
+                    <div className="flex items-center justify-between p-3.5 bg-secondary/10 rounded-2xl border border-secondary/30">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-secondary/20 flex items-center justify-center shrink-0">
+                          <span className="material-symbols-outlined text-primary text-lg font-bold">local_activity</span>
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-black text-sm text-on-surface truncate">{selectedEntitlement.offers.title}</p>
+                            <span className="text-[10px] font-bold text-primary bg-secondary/20 px-2 py-0.5 rounded-full">Applied</span>
+                          </div>
+                          <p className="text-[11px] text-primary font-semibold mt-0.5">
+                            You saved ₹{offerApplied} with this offer
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setOfferEntitlementId(null)}
+                        disabled={isPending}
+                        className="px-3 py-1.5 text-xs font-bold text-error hover:bg-error/10 rounded-xl transition-colors shrink-0 cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-3 p-3 bg-surface-container-low rounded-2xl border border-outline-variant/10">
+                      <span className="material-symbols-outlined text-on-surface-variant/60 text-[20px] shrink-0 mt-0.5">sell</span>
+                      <div className="flex-1">
+                        <p className="text-xs font-semibold text-on-surface-variant">
+                          Use a purchased Offer Card to save more on this booking.
+                        </p>
+                        <p className="text-[10px] text-on-surface-variant/80 mt-0.5">
+                          Offer Cards are applied after coupons, before your wallet.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowOffers(true)}
+                        disabled={isPending}
+                        className="px-3 py-1.5 rounded-xl bg-primary text-white text-[10px] font-black uppercase tracking-wider hover:bg-primary/90 transition-colors shrink-0 cursor-pointer"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  )}
+
+                  {showOffers && (
+                    <OfferSelector
+                      entitlements={offerEntitlements}
+                      preOfferOrderTotal={preOfferOrderTotal}
+                      selectedId={offerEntitlementId}
+                      onSelect={(id) => setOfferEntitlementId(id)}
+                      onClose={() => setShowOffers(false)}
+                    />
+                  )}
+                </div>
+              )}
             </div>
 
             {/* BUSINESS GST BILLING */}
@@ -770,6 +919,13 @@ export default function CheckoutPaymentClient({
                 <div className="flex justify-between items-center text-sm font-bold text-green-600">
                   <span>Coupon Discount{appliedCoupon?.code ? ` (${appliedCoupon.code})` : ""}</span>
                   <span>-₹{displayDiscount}</span>
+                </div>
+              )}
+
+              {offerApplied > 0 && selectedEntitlement?.offers && (
+                <div className="flex justify-between items-center text-sm font-bold text-green-600">
+                  <span>Offer Discount ({selectedEntitlement.offers.title})</span>
+                  <span>-₹{offerApplied}</span>
                 </div>
               )}
 

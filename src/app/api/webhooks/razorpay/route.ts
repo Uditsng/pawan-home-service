@@ -158,6 +158,72 @@ export async function POST(request: Request) {
         }
       }
 
+      // ── Offer purchase path ──────────────────────────────────────
+      // Standalone offer purchases (a customer buying an Offer Card) carry a
+      // distinct Razorpay receipt; reconcile them into entitlements atomically.
+      if (razorpayOrderId) {
+        const { data: offerPurchase } = await supabaseAdmin
+          .from("offer_purchases")
+          .select("id, offer_id, customer_id, amount, status")
+          .eq("razorpay_order_id", razorpayOrderId)
+          .limit(1)
+          .maybeSingle();
+
+        if (offerPurchase) {
+          const captured = Number(paymentEntity.amount || 0) / 100;
+          const { data: ofrResult } = await supabaseAdmin.rpc(
+            "complete_offer_purchase",
+            {
+              p_purchase_id: offerPurchase.id,
+              p_razorpay_order_id: razorpayOrderId,
+              p_payment_id: razorpayPaymentId,
+              p_signature: signature,
+              p_gateway_verified_amount: captured,
+              p_method: (paymentEntity.method as string | undefined) ?? null,
+            }
+          );
+
+          const ofr = (ofrResult ?? {}) as {
+            success?: boolean;
+            already_completed?: boolean;
+            error?: string;
+            entitlement_id?: string;
+          };
+
+          if (ofr.success && !ofr.already_completed) {
+            const { data: offerRow } = await supabaseAdmin
+              .from("offers")
+              .select("title")
+              .eq("id", offerPurchase.offer_id)
+              .maybeSingle();
+            const offerTitle = (offerRow as { title?: string } | null)?.title || "offer";
+            void notifyCustomer(
+              offerPurchase.customer_id,
+              "Offer Activated",
+              `Your ${offerTitle} offer is now active. Apply it at checkout.`,
+              "offer_purchase",
+              { entitlement_id: ofr.entitlement_id, offer_id: offerPurchase.offer_id }
+            );
+          }
+
+          if (eventRecordId) {
+            await supabaseAdmin
+              .from("payment_webhook_events")
+              .update({
+                status: ofr.success ? "processed" : "failed",
+                processed_at: ofr.success ? new Date().toISOString() : null,
+              })
+              .eq("id", eventRecordId);
+          }
+
+          return NextResponse.json({
+            status: ofr.success ? "reconciled" : "processing_failed",
+            reason: ofr.error || (ofr.already_completed ? "already_activated" : undefined),
+            offer_purchase_id: offerPurchase.id,
+          });
+        }
+      }
+
       // Find internal payment record by razorpay_order_id or razorpay_payment_id
       const { data: existingPayment } = await supabaseAdmin
         .from("payments")
@@ -283,7 +349,7 @@ export async function POST(request: Request) {
       });
     }
 
-    // Payment failed → mark any matching wallet recharge as failed (no credit).
+    // Payment failed → mark any matching wallet recharge or offer purchase as failed.
     if (eventType === "payment.failed" && razorpayOrderId) {
       const { data: failedRecharge } = await supabaseAdmin
         .from("wallet_recharges")
@@ -295,6 +361,20 @@ export async function POST(request: Request) {
       if (failedRecharge && !["success", "refunded"].includes(failedRecharge.status)) {
         await supabaseAdmin.rpc("update_wallet_recharge_status", {
           p_recharge_id: failedRecharge.id,
+          p_status: "failed",
+        });
+      }
+
+      const { data: failedOfferPurchase } = await supabaseAdmin
+        .from("offer_purchases")
+        .select("id, status")
+        .eq("razorpay_order_id", razorpayOrderId)
+        .limit(1)
+        .maybeSingle();
+
+      if (failedOfferPurchase && !["success", "refunded"].includes(failedOfferPurchase.status)) {
+        await supabaseAdmin.rpc("update_offer_purchase_status", {
+          p_purchase_id: failedOfferPurchase.id,
           p_status: "failed",
         });
       }

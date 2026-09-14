@@ -1,10 +1,11 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import CheckoutPaymentClient from "./CheckoutPaymentClient";
-import { Coupon, CartItem } from "@/lib/types";
+import { Coupon, CartItem, OfferType, OfferStatus, OfferValidityModel, OfferEligibility } from "@/lib/types";
 import { buildCartCatalog } from "@/lib/catalog/buildCartCatalog";
 import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 import { validateCouponAction } from "@/app/actions/coupon.actions";
+import { isOfferCurrentlyActive } from "@/lib/offers/format";
 
 export interface ServiceDisplayLine {
   serviceId: string;
@@ -26,6 +27,55 @@ export interface ServiceDisplayLine {
     destination: string | null;
     expectedBags: string | null;
   };
+}
+
+export interface CheckoutOfferEntitlement {
+  id: string;
+  offer_id: string;
+  offer_type: OfferType;
+  remaining_value: number;
+  remaining_uses: number;
+  expires_at: string | null;
+  offers: {
+    code: string;
+    title: string;
+    artwork_url: string | null;
+    offer_type: OfferType;
+    benefit_value: number;
+    max_discount: number | null;
+    min_booking_amount: number;
+  } | null;
+}
+
+interface OfferEntitlementRow {
+  id: string;
+  offer_id: string;
+  offer_type: string;
+  remaining_value: number | null;
+  remaining_uses: number | null;
+  expires_at: string | null;
+  offers: {
+    code: string;
+    title: string;
+    artwork_url: string | null;
+    offer_type: string;
+    benefit_value: number | null;
+    max_discount: number | null;
+    min_booking_amount: number | null;
+    status: OfferStatus;
+    validity_model: OfferValidityModel;
+    valid_from: string | null;
+    valid_until: string | null;
+    eligibility: OfferEligibility;
+  } | { code: string; title: string; artwork_url: string | null; offer_type: string;
+    benefit_value: number | null; max_discount: number | null; min_booking_amount: number | null;
+    status: OfferStatus; validity_model: OfferValidityModel; valid_from: string | null;
+    valid_until: string | null; eligibility: OfferEligibility }[]
+    | null;
+}
+
+function isTimestampPast(iso: string | null): boolean {
+  return !!iso && new Date(iso).getTime() <= Date.now();
 }
 
 export default async function UnifiedCheckoutPaymentPage({
@@ -234,6 +284,88 @@ export default async function UnifiedCheckoutPaymentPage({
     .filter((f) => f.enabled && f.amount > 0)
     .map((f) => ({ id: f.id, name: f.name, amount: f.amount }));
 
+  // ─── Offer entitlements applicable to this cart ─────────────────────
+  const cartServiceIds = availableItems.map((i) => i.serviceId);
+  const applicableOffers: CheckoutOfferEntitlement[] = [];
+
+  const { data: entitlementRows } = await supabase
+    .from("offer_entitlements")
+    .select(`
+      id, offer_id, offer_type, remaining_value, remaining_uses, expires_at,
+      offers ( id, code, title, artwork_url, offer_type, benefit_value, max_discount,
+               min_booking_amount, status, validity_model, valid_from, valid_until, eligibility )
+    `)
+    .eq("customer_id", user.id)
+    .eq("status", "active")
+    .limit(30);
+
+  const candidateRows = ((entitlementRows || []) as unknown as OfferEntitlementRow[])
+    .filter((r) => {
+      const offer = Array.isArray(r.offers) ? r.offers[0] : r.offers;
+      if (!offer) return false;
+      if (!isOfferCurrentlyActive(offer)) return false;
+      if (isTimestampPast(r.expires_at)) return false;
+      if (offer.offer_type === "SERVICE_CREDIT" && Number(r.remaining_value) <= 0) return false;
+      if (offer.offer_type !== "SERVICE_CREDIT" && Number(r.remaining_uses) < 1) return false;
+      return true;
+    });
+
+  if (candidateRows.length > 0) {
+    const candidateOfferIds = Array.from(
+      new Set(candidateRows.map((r) => r.offer_id))
+    );
+
+    const [{ data: eligibleRows }, { count: completedCount }] = await Promise.all([
+      supabase
+        .from("offer_eligible_services")
+        .select("offer_id, service_id")
+        .in("offer_id", candidateOfferIds),
+      supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("customer_id", user.id)
+        .eq("status", "completed"),
+    ]);
+
+    const eligibleByOffer = new Map<string, Set<string>>();
+    for (const row of eligibleRows || []) {
+      const set = eligibleByOffer.get(row.offer_id) || new Set<string>();
+      set.add(row.service_id);
+      eligibleByOffer.set(row.offer_id, set);
+    }
+    const hasCompleted = (completedCount || 0) > 0;
+
+    for (const r of candidateRows) {
+      const offer = Array.isArray(r.offers) ? r.offers[0] : r.offers;
+      if (!offer) continue;
+
+      if (offer.eligibility === "new" && hasCompleted) continue;
+      if (offer.eligibility === "existing" && !hasCompleted) continue;
+
+      const eligibleIds = eligibleByOffer.get(r.offer_id) || new Set<string>();
+      if (eligibleIds.size === 0) continue;
+      if (!cartServiceIds.every((id) => eligibleIds.has(id))) continue;
+
+      applicableOffers.push({
+        id: r.id,
+        offer_id: r.offer_id,
+        offer_type: r.offer_type as OfferType,
+        remaining_value: Number(r.remaining_value || 0),
+        remaining_uses: Number(r.remaining_uses || 0),
+        expires_at: r.expires_at,
+        offers: {
+          code: offer.code,
+          title: offer.title,
+          artwork_url: offer.artwork_url,
+          offer_type: offer.offer_type as OfferType,
+          benefit_value: Number(offer.benefit_value || 0),
+          max_discount: offer.max_discount != null ? Number(offer.max_discount) : null,
+          min_booking_amount: Number(offer.min_booking_amount || 0),
+        },
+      });
+    }
+  }
+
   return (
     <CheckoutPaymentClient
       services={services}
@@ -253,6 +385,7 @@ export default async function UnifiedCheckoutPaymentPage({
       couponObj={couponObj}
       pricingSummary={pricingSummary}
       appliedCouponCode={appliedCouponCode}
+      offerEntitlements={applicableOffers}
     />
   );
 }

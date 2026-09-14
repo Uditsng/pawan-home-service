@@ -82,7 +82,12 @@ export function mapPricingRule(rule: ServicePricingRule): NonNullable<PricingInp
 export function buildCartPricingInput(
   item: CartItem,
   catalog: CartCatalog,
-  options?: { scheduledDate?: string | Date; pincode?: string; coupon?: CouponInput | null }
+  options?: {
+    scheduledDate?: string | Date;
+    pincode?: string;
+    coupon?: CouponInput | null;
+    offerAmountForLine?: number;
+  }
 ): PricingInput | null {
   const service = catalog.services[item.serviceId];
   if (!service) return null;
@@ -103,6 +108,7 @@ export function buildCartPricingInput(
     pincode: options?.pincode,
     surchargeRules: (catalog.rules[item.serviceId] || []).map(mapPricingRule),
     coupon: options?.coupon ?? null,
+    offerAmountForLine: options?.offerAmountForLine,
     gstRate: catalog.taxRate,
     gstEnabled: catalog.gstEnabled,
     gstApplicable: item.gstApplicable ?? service.gst_applicable ?? true,
@@ -115,11 +121,19 @@ export function buildCartPricingInput(
 export function computeCartLineItems(
   items: CartItem[],
   catalog: CartCatalog,
-  options?: { scheduledDate?: string | Date; pincode?: string; coupon?: CouponInput | null }
+  options?: {
+    scheduledDate?: string | Date;
+    pincode?: string;
+    coupon?: CouponInput | null;
+    offerAmountsByService?: Record<string, number>;
+  }
 ): CartLineItem[] {
   const lineItems: CartLineItem[] = [];
   for (const item of items) {
-    const input = buildCartPricingInput(item, catalog, options);
+    const input = buildCartPricingInput(item, catalog, {
+      ...options,
+      offerAmountForLine: options?.offerAmountsByService?.[item.serviceId],
+    });
     if (!input) continue;
     lineItems.push({ serviceId: item.serviceId, breakdown: calculatePricingBreakdown(input) });
   }

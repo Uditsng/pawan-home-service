@@ -1,12 +1,11 @@
 import Image from "next/image";
-import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/utils/supabase/server";
 import DashboardGridClient from "./DashboardGridClient";
 import { getCachedCategories } from "@/utils/supabase/cachedCategoryQueries";
 import { getCachedUpcomingServices } from "@/utils/supabase/cachedServiceQueries";
 import { getCachedPlatformSettings } from "@/lib/engines/platformSettingsEngine";
-import { OfferCard } from "@/components/Offers/OfferCard";
+import { OfferPromoSheet } from "@/components/Offers/OfferPromoSheet";
 import { isOfferCurrentlyActive } from "@/lib/offers/format";
 import type { Offer } from "@/lib/types";
 
@@ -33,7 +32,7 @@ export default async function CustomerDashboard() {
   const { data: { user } } = await supabase.auth.getUser();
 
   // Parallelize independent queries
-  const [servicesResult, categories, upcomingServices, settings, defaultAddressRes, offersResult] = await Promise.all([
+  const [servicesResult, categories, upcomingServices, settings, defaultAddressRes, offersResult, entitlementsRes] = await Promise.all([
     supabase
       .from('services')
       .select(`
@@ -62,6 +61,9 @@ export default async function CustomerDashboard() {
           .maybeSingle()
       : Promise.resolve({ data: null }),
     supabase.from("offers").select("*").eq("status", "active").order("created_at", { ascending: false }).limit(6),
+    user
+      ? supabase.from("offer_entitlements").select("offer_id").eq("customer_id", user.id).limit(50)
+      : Promise.resolve({ data: [] }),
   ]);
 
   const availableServices = (servicesResult.data || []) as unknown as ServiceWithSubcategory[];
@@ -71,6 +73,13 @@ export default async function CustomerDashboard() {
   const liveOffers = ((offersResult.data || []) as Offer[]).filter((o) =>
     isOfferCurrentlyActive(o)
   );
+
+  const ownedOfferIds = new Set(
+    ((entitlementsRes.data || []) as { offer_id: string }[]).map((e) => e.offer_id)
+  );
+
+  // Prominently surface the newest offer the customer doesn't already own.
+  const promoOffer = liveOffers.find((o) => !ownedOfferIds.has(o.id)) ?? null;
 
   // Evaluate location availability
   const liveCities = (settings.serviceAreas || []).map((c) => c.toLowerCase());
@@ -106,37 +115,8 @@ export default async function CustomerDashboard() {
           userCity={userCity}
         />
 
-        {/* Offers Strip */}
-        {liveOffers.length > 0 && (
-          <section className="mb-8 md:mb-12 px-1">
-            <div className="flex items-end justify-between mb-3">
-              <div>
-                <h3 className="font-headline text-lg md:text-xl font-bold text-on-surface">Offers</h3>
-                <p className="text-on-surface-variant text-xs md:text-sm mt-0.5">
-                  Deals you can buy once and apply at checkout
-                </p>
-              </div>
-              <Link
-                href="/customer/offers"
-                className="inline-flex items-center gap-1 text-xs md:text-sm font-bold text-primary hover:gap-2 transition-all"
-              >
-                View all
-                <span className="material-symbols-outlined text-base">arrow_forward</span>
-              </Link>
-            </div>
-            <div className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar -mx-1 px-1 pb-1">
-              {liveOffers.map((o) => (
-                <Link key={o.id} href={`/customer/offers/${o.id}`} className="shrink-0 w-60 md:w-64 group">
-                  <OfferCard
-                    offer={o}
-                    size="sm"
-                    className="group-hover:scale-[1.02] group-hover:shadow-[0_20px_50px_-12px_rgba(0,34,97,0.55)] transition-all"
-                  />
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
+        {/* Prominent Offer Popup */}
+        {promoOffer && <OfferPromoSheet offer={promoOffer} />}
 
         {/* Reliable & Trustworthy Section */}
         <section className="mb-8 md:mb-12 px-1">

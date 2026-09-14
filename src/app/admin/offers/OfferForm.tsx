@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { OfferCard } from "@/components/Offers/OfferCard";
-import { ImageUploadField } from "@/components/ui/ImageUploadField";
 import type { Offer, OfferType, OfferUsageLimitType } from "@/lib/types";
 import type { OfferFormState } from "./actions";
 
@@ -49,7 +48,6 @@ export function OfferForm({ action, services, offer, isEdit, initialServiceIds }
   const [selectedServices, setSelectedServices] = useState<string[]>(initialServiceIds ?? []);
   const [purchasePrice, setPurchasePrice] = useState<number>(offer?.purchase_price ?? 0);
   const [benefitValue, setBenefitValue] = useState<number>(offer?.benefit_value ?? 0);
-  const [artworkUrl, setArtworkUrl] = useState<string>(offer?.artwork_url ?? "");
 
   useEffect(() => {
     if (state.type === "success") {
@@ -112,7 +110,7 @@ export function OfferForm({ action, services, offer, isEdit, initialServiceIds }
     title: "Premium Offer",
     description: null,
     display_text: "Flat discount on your favorite services",
-    artwork_url: artworkUrl || null,
+    artwork_url: null,
     offer_type: offerType,
     purchase_price: purchasePrice,
     benefit_value: benefitValue,
@@ -214,23 +212,6 @@ export function OfferForm({ action, services, offer, isEdit, initialServiceIds }
               placeholder="Shown on the card (e.g. Valid on all pest control services)"
               defaultValue={offer?.display_text ?? ""}
               className={fieldClass}
-            />
-          </div>
-          <div className="md:col-span-3">
-            <label className={labelClass}>
-              Offer Artwork
-            </label>
-            <ImageUploadField
-              name="artwork_url"
-              defaultValue={offer?.artwork_url ?? ""}
-              onValueChange={setArtworkUrl}
-              title="Offer Artwork Image"
-              description="Define or upload the image displayed on the offer card. Uploaded images are optimized and stored in the services bucket."
-              aspect={16 / 9}
-              aspectLabel="16:9"
-              outputWidth={1280}
-              outputHeight={720}
-              fileNameSuffix="offer"
             />
           </div>
           <div className="md:col-span-3">

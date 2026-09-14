@@ -9,10 +9,10 @@ import {
   createOfferPurchaseAction,
   verifyOfferPurchaseAction,
   markOfferPurchaseStateAction,
-  purchaseOfferWithWalletAction,
   claimFreeOfferAction,
 } from "@/app/actions/offers";
 import { invalidateCacheKeys } from "@/lib/cache/invalidation";
+import { formatOfferBenefit } from "@/lib/offers/format";
 import type { Offer, OfferEntitlement } from "@/lib/types";
 
 interface RazorpaySuccessResponse {
@@ -28,9 +28,9 @@ interface CustomWindow {
 interface OfferPurchaseClientProps {
   offer: Offer;
   myEntitlement: OfferEntitlement | null;
-  walletBalance: number;
   purchasable: boolean;
   userId: string;
+  eligibleServices: { id: string; title: string }[];
 }
 
 type MessageState = { type: "success" | "error" | "info"; text: string } | null;
@@ -42,9 +42,9 @@ function formatINR(amount: number): string {
 export function OfferPurchaseClient({
   offer,
   myEntitlement,
-  walletBalance,
   purchasable,
   userId,
+  eligibleServices,
 }: OfferPurchaseClientProps) {
   const router = useRouter();
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
@@ -61,7 +61,6 @@ export function OfferPurchaseClient({
   }, []);
 
   const isFree = offer.purchase_price <= 0;
-  const canAfford = walletBalance >= offer.purchase_price;
 
   const handleRazorpay = async () => {
     if (isProcessing) return;
@@ -123,7 +122,7 @@ export function OfferPurchaseClient({
               razorpay_signature: response.razorpay_signature,
             });
             if (verifyRes.success) {
-              invalidateCacheKeys(["wallet", "notifications", `partner_jobs_${userId}`]);
+              invalidateCacheKeys(["notifications", `partner_jobs_${userId}`]);
               setMessage({
                 type: "success",
                 text: verifyRes.alreadyActivated
@@ -159,22 +158,6 @@ export function OfferPurchaseClient({
       setMessage({ type: "error", text: (err as Error).message || "Failed to start the payment. Please try again." });
       setIsProcessing(null);
     }
-  };
-
-  const handleWallet = async () => {
-    if (isProcessing) return;
-    setMessage(null);
-    setIsProcessing("wallet");
-    const res = await purchaseOfferWithWalletAction(offer.id);
-    if (!res.success) {
-      setMessage({ type: "error", text: res.error || "Could not purchase this offer." });
-      setIsProcessing(null);
-      return;
-    }
-    invalidateCacheKeys(["wallet", "notifications", `partner_jobs_${userId}`]);
-    setMessage({ type: "success", text: `${offer.title} purchased from your wallet!` });
-    router.refresh();
-    setIsProcessing(null);
   };
 
   const handleFreeClaim = async () => {
@@ -258,21 +241,7 @@ export function OfferPurchaseClient({
           </div>
         </div>
       ) : (
-        <div className="bg-surface-container-lowest rounded-3xl border border-outline-variant/15 p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-black uppercase tracking-widest text-on-surface-variant/70">Price</p>
-              <p className="text-2xl font-black text-primary font-headline mt-0.5">
-                {isFree ? "Free" : formatINR(offer.purchase_price)}
-              </p>
-            </div>
-            {!isFree && (
-              <div className="text-right">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/70">Wallet balance</p>
-                <p className="text-sm font-bold text-on-surface mt-0.5">{formatINR(walletBalance)}</p>
-              </div>
-            )}
-          </div>
+        <div className="bg-surface-container-lowest rounded-3xl border border-outline-variant/15 p-1 space-y-2">
 
           {isFree ? (
             <button
@@ -284,34 +253,77 @@ export function OfferPurchaseClient({
               {isProcessing === "free" ? "Claiming…" : "Claim free offer"}
             </button>
           ) : (
-            <div className="space-y-2.5">
-              <button
-                type="button"
-                disabled={isProcessing !== null}
-                onClick={handleRazorpay}
-                className="w-full py-3.5 rounded-xl bg-primary text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/25 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isProcessing === "razorpay" ? "Opening payment…" : `Pay ${formatINR(offer.purchase_price)} with card / UPI`}
-              </button>
-              <button
-                type="button"
-                disabled={isProcessing !== null || !canAfford}
-                onClick={handleWallet}
-                className="w-full py-3.5 rounded-xl border-2 border-primary/25 text-primary font-black text-xs uppercase tracking-widest hover:bg-primary/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {!canAfford
-                  ? "Insufficient wallet balance"
-                  : isProcessing === "wallet"
-                  ? "Purchasing…"
-                  : "Pay from wallet"}
-              </button>
-            </div>
+            <button
+              type="button"
+              disabled={isProcessing !== null}
+              onClick={handleRazorpay}
+              className="w-full py-3.5 rounded-xl bg-primary text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/25 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isProcessing === "razorpay" ? "Opening payment…" : `PAY ${formatINR(offer.purchase_price)}`}
+            </button>
           )}
 
           <p className="text-[10px] text-on-surface-variant/70 leading-relaxed">
-            Powered by Razorpay. Purchased offers are non-refundable once activated and remain valid for their listed window.
+            Purchased offers are non-refundable once activated and remain valid for their listed window.
           </p>
         </div>
+      )}
+
+      {/* Rules */}
+      <section className="bg-surface-container-lowest rounded-3xl border border-outline-variant/15 p-5 space-y-2">
+        <h2 className="text-sm font-bold text-primary font-headline">Offer details</h2>
+        <dl className="text-xs space-y-2">
+          <div className="flex justify-between gap-2">
+            <dt className="text-on-surface-variant">Benefit</dt>
+            <dd className="font-bold text-secondary">{formatOfferBenefit(offer)}</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-on-surface-variant">Minimum booking</dt>
+            <dd className="font-bold text-on-surface">{offer.min_booking_amount > 0 ? `₹${offer.min_booking_amount}` : "None"}</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-on-surface-variant">Who can buy</dt>
+            <dd className="font-bold text-on-surface">
+              {offer.eligibility === "new" ? "New customers only" : offer.eligibility === "existing" ? "Existing customers only" : "All customers"}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-on-surface-variant">Validity</dt>
+            <dd className="font-bold text-on-surface">
+              {offer.validity_model === "fixed_dates"
+                ? offer.valid_until
+                  ? `Until ${new Date(offer.valid_until).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`
+                  : "—"
+                : `${offer.valid_days} days from purchase`}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-on-surface-variant">Redemption</dt>
+            <dd className="font-bold text-on-surface">
+              {offer.usage_limit_type === "one_time" ? "One-time use" : `Up to ${offer.max_redemptions_per_customer} bookings`}
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      {/* Use this offer on */}
+      {eligibleServices.length > 0 && (
+        <section className="bg-surface-container-lowest rounded-3xl border border-outline-variant/15 p-5 space-y-3">
+          <h2 className="text-sm font-bold text-primary font-headline">Use this offer on</h2>
+          <ul className="space-y-1.5">
+            {eligibleServices.map((s) => (
+              <li key={s.id} className="flex items-center gap-2.5 text-xs font-semibold text-on-surface">
+                <span className="w-6 h-6 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-[#059669] text-sm drop-shadow-sm">check_circle</span>
+                </span>
+                {s.title}
+              </li>
+            ))}
+          </ul>
+          <p className="text-[10px] text-on-surface-variant/70 leading-relaxed">
+            The offer applies automatically at checkout when the services in your cart are covered by this offer.
+          </p>
+        </section>
       )}
     </>
   );

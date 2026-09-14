@@ -48,7 +48,6 @@ interface ParsedOfferInput {
   title: string;
   description: string | null;
   display_text: string | null;
-  artwork_url: string | null;
   offer_type: "FIXED_DISCOUNT" | "PERCENTAGE_DISCOUNT" | "SERVICE_CREDIT";
   purchase_price: number;
   benefit_value: number;
@@ -101,7 +100,6 @@ function parseOfferInput(formData: FormData): { input: ParsedOfferInput; service
       title,
       description: (String(formData.get("description") || "")).trim() || null,
       display_text: (String(formData.get("display_text") || "")).trim() || null,
-      artwork_url: (String(formData.get("artwork_url") || "")).trim() || null,
       offer_type: offerType as ParsedOfferInput["offer_type"],
       purchase_price: purchasePrice,
       benefit_value: benefitValue,

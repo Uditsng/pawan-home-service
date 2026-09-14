@@ -290,18 +290,6 @@ export default function DashboardGridClient({
       ) : (
         <>
           <DashboardCarousel />
-          {upcomingServices.length > 0 && (
-            <div className="mb-4 md:mb-6 bg-yellow-100 rounded-2xl">
-              <ComingSoonStrip
-                services={upcomingServices}
-                hrefFor={(service) => {
-                  const catName = service.subcategories?.categories?.category_name || "services";
-                  const catSlug = catName.toLowerCase().replace(/\s+/g, "-").replace(/&/g, "and");
-                  return `/customer/services/${catSlug}/${service.id}`;
-                }}
-              />
-            </div>
-          )}
         </>
       )}
 
@@ -367,6 +355,20 @@ export default function DashboardGridClient({
           )}
         </div>
       </section>
+
+      {/* Upcoming Services (Coming Soon) */}
+      {upcomingServices.length > 0 && (
+        <div className="bg-yellow-100 rounded-2xl">
+          <ComingSoonStrip
+            services={upcomingServices}
+            hrefFor={(service) => {
+              const catName = service.subcategories?.categories?.category_name || "services";
+              const catSlug = catName.toLowerCase().replace(/\s+/g, "-").replace(/&/g, "and");
+              return `/customer/services/${catSlug}/${service.id}`;
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

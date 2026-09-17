@@ -349,11 +349,15 @@ export type NotificationType =
   | 'booking_confirmed'
   | 'partner_assigned'
   | 'partner_reassigned'
+  | 'partner_rejected'
   | 'new_job_offer'
   | 'service_started'
   | 'service_completed'
   | 'booking_cancelled'
   | 'booking_rescheduled'
+  | 'dispatch_exhausted'
+  | 'booking_payment_failed'
+  | 'sos_alert'
   | 'review_received'
   | 'general'
   | 'extension_requested'
@@ -366,6 +370,8 @@ export type NotificationType =
   | 'time_completed'
   | 'referral_reward'
   | 'referral_bonus'
+  | 'partner_referral_reward'
+  | 'partner_referral_bonus'
   | 'wallet_recharge'
   | 'offer_purchase';
 
@@ -379,6 +385,9 @@ export interface AppNotification {
   is_read: boolean;
   booking_id?: string | null;
   role?: string | null;
+  opened_at?: string | null;
+  read_at?: string | null;
+  pinned?: boolean;
   created_at: string;
 }
 
@@ -387,6 +396,9 @@ export interface NotificationToken {
   user_id: string;
   fcm_token: string;
   platform: 'web' | 'android' | 'ios';
+  is_active?: boolean;
+  app_version?: string | null;
+  last_token_error_at?: string | null;
   last_seen: string;
   created_at: string;
 }

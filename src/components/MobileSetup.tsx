@@ -4,8 +4,41 @@ import { useEffect, useRef, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { PluginListenerHandle } from "@capacitor/core";
 import { registerTokenAction, deleteTokenAction } from "@/app/actions/notification-tokens";
+import { reportNotificationReceipt } from "@/app/actions/notification-receipts";
 import { createClient } from "@/utils/supabase/client";
 import type { Session } from "@supabase/supabase-js";
+import { channelForType, NOTIFICATION_CHANNELS } from "@/lib/notifications/types";
+import type { NotificationType } from "@/lib/types";
+import type { Importance, Visibility } from "@capacitor/push-notifications";
+
+interface ReceiptSignature {
+  type: NotificationType;
+  metadata: Record<string, unknown>;
+  bookingId: string | null;
+  campaignId: string | null;
+}
+
+// Extract the receipt signature from a push/local notification data payload.
+// The FCM data payload carries `type` + a JSON `metadata` string; booking refs
+// may appear top-level (legacy) or inside metadata (current).
+function receiptSignatureFromData(data: Record<string, unknown> | null | undefined): ReceiptSignature {
+  let metadata: Record<string, unknown> = {};
+  if (data && data.metadata) {
+    if (typeof data.metadata === "string") {
+      try {
+        metadata = JSON.parse(data.metadata) as Record<string, unknown>;
+      } catch {
+        metadata = {};
+      }
+    } else {
+      metadata = data.metadata as Record<string, unknown>;
+    }
+  }
+  const bookingId = (metadata?.booking_id as string) || (data?.booking_id as string) || null;
+  const campaignId = (metadata?.campaign_id as string) || null;
+  const type = ((data?.type as string) || "general") as NotificationType;
+  return { type, metadata, bookingId, campaignId };
+}
 
 export default function MobileSetup() {
   const pathname = usePathname();
@@ -131,31 +164,28 @@ export default function MobileSetup() {
           return;
         }
 
-        // 2b. Create the custom notification channels for Android FIRST
+        // 2b. Create the custom notification channels for Android FIRST.
         // Channels must exist before register() is called so any notification
         // delivered immediately after registration uses the correct channel + sound.
+        // The map lives in @/lib/notifications/types.ts (single source of truth) —
+        // Android locks channels after creation, so only fresh installs see changes.
         if (Capacitor.getPlatform() === "android") {
-          try {
-            await PushNotifications.createChannel({
-              id: "service_assignment",
-              name: "New Service Requests",
-              description: "High importance alerts for new jobs assigned to partners",
-              importance: 5, // Importance.HIGH/MAX (5)
-              visibility: 1, // Visibility.PUBLIC (1)
-              sound: "service_alert", // Maps to android/app/src/main/res/raw/service_alert.wav
-              vibration: true,
-            });
-            await PushNotifications.createChannel({
-              id: "phs_bookings",
-              name: "Bookings and General",
-              description: "General notifications for bookings and account updates",
-              importance: 4, // Importance.HIGH (4)
-              visibility: 1, // Visibility.PUBLIC (1)
-              vibration: true,
-            });
-
-          } catch (channelErr) {
-            console.error("[Push] Failed to create custom notification channels:", channelErr);
+          for (const channel of Object.values(NOTIFICATION_CHANNELS)) {
+            try {
+              await PushNotifications.createChannel({
+                id: channel.id,
+                name: channel.name,
+                description: channel.description,
+                importance: channel.importance as Importance, // 5 = MAX, 4 = HIGH, 3 = DEFAULT
+                visibility: channel.visibility as Visibility, // Visibility.PUBLIC (1)
+                // Pass a custom sound only when one exists; omitting falls back
+                // to the OS default for the channel.
+                ...(channel.sound && channel.sound !== "default" ? { sound: channel.sound } : {}),
+                vibration: channel.vibration,
+              });
+            } catch (channelErr) {
+              console.error(`[Push] Failed to create notification channel "${channel.id}":`, channelErr);
+            }
           }
         }
 
@@ -163,10 +193,19 @@ export default function MobileSetup() {
         registrationListener = await PushNotifications.addListener("registration", async (token) => {
           const platform = Capacitor.getPlatform() as "android" | "ios";
           try {
+            let appVersion: string | undefined;
+            try {
+              const { App } = await import("@capacitor/app");
+              const info = await App.getInfo();
+              appVersion = info.version || undefined;
+            } catch {
+              // App plugin unavailable — app_version stays null
+            }
+
             const supabase = createClient();
             const { data: { session } } = await supabase.auth.getSession();
             const accessToken = session?.access_token || undefined;
-            const res = await registerTokenAction(token.value, platform, accessToken);
+            const res = await registerTokenAction(token.value, platform, accessToken, appVersion);
             if (res.success) {
               localStorage.setItem("fcm_token", token.value);
             } else {
@@ -189,24 +228,24 @@ export default function MobileSetup() {
 
         // 2f. Handle foreground notifications (app is active)
         receiveListener = await PushNotifications.addListener("pushNotificationReceived", async (notification) => {
-          
-          const currentPath = window.location.pathname;
-          const isPartnerRoute = currentPath.startsWith("/partner");
-          // A partner receives new_job_offer and partner_assigned regardless of
-          // what screen they are on. extension_requested is also a high-alert type.
-          const isPartnerJobAlert =
-            notification.data?.type === "new_job_offer" ||
-            notification.data?.type === "partner_assigned" ||
-            (notification.data?.type === "extension_requested" && isPartnerRoute);
+          const signature = receiptSignatureFromData(notification.data);
+          const channel = channelForType(signature.type);
 
           // Log structured pipeline stage 6 (OS / foreground client receipt)
           // Invalidate cache immediately on receiving a notification in the foreground
           // to fix caching/outdated UI issue
-          const bookingId = notification.data?.booking_id as string | undefined;
-          await invalidateCacheKeys(bookingId);
+          await invalidateCacheKeys(signature.bookingId);
+
+          // Soft receipt: the message reached the active app → ledger "delivered".
+          void reportNotificationReceipt({
+            event: "delivered",
+            type: signature.type,
+            metadata: signature.metadata,
+          });
 
           // Schedule local notification to display manually in foreground
           try {
+            const isAndroid = Capacitor.getPlatform() === "android";
             await LocalNotifications.schedule({
               notifications: [
                 {
@@ -215,9 +254,12 @@ export default function MobileSetup() {
                   id: Math.floor(Math.random() * 100000),
                   schedule: { at: new Date(Date.now() + 50) },
                   extra: notification.data,
-                  // Play custom sound and vibrate only for partner job alerts in the partner portal
-                  sound: isPartnerJobAlert ? (Capacitor.getPlatform() === "android" ? "service_alert" : "service_alert.wav") : undefined,
-                  channelId: isPartnerJobAlert ? "service_assignment" : "phs_bookings",
+                  // On Android the channel (created from the canonical
+                  // NOTIFICATION_CHANNELS map) governs sound + importance, so we
+                  // pass only the channelId. On iOS the sound file is explicit.
+                  ...(isAndroid
+                    ? { channelId: channel.id }
+                    : { sound: channel.sound === "service_alert" ? "service_alert.wav" : "default" }),
                 }
               ]
             });
@@ -265,11 +307,23 @@ export default function MobileSetup() {
 
         // 2h. Handle click actions (app is backgrounded or killed, user taps push notification)
         actionListener = await PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
+          const signature = receiptSignatureFromData(action.notification.data);
+          void reportNotificationReceipt({
+            event: "opened",
+            type: signature.type,
+            metadata: signature.metadata,
+          });
           handleNotificationClick(action.notification.data);
         });
 
         // 2i. Handle local notification click actions (foreground notification tap)
         localActionListener = await LocalNotifications.addListener("localNotificationActionPerformed", (action) => {
+          const signature = receiptSignatureFromData(action.notification.extra);
+          void reportNotificationReceipt({
+            event: "opened",
+            type: signature.type,
+            metadata: signature.metadata,
+          });
           handleNotificationClick(action.notification.extra);
         });
 

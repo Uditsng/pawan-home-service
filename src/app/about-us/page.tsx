@@ -256,10 +256,10 @@ export default function AboutUsPage() {
               <span className="text-on-surface-variant font-semibold text-[10px] uppercase tracking-wider">Business Entity</span>
               <span className="font-bold text-primary text-xs">PHS Cleaning Company</span>
             </div>
-            <div className="flex justify-between items-center border-b border-outline-variant/10 pb-1.5">
+            {/* <div className="flex justify-between items-center border-b border-outline-variant/10 pb-1.5">
               <span className="text-on-surface-variant font-semibold text-[10px] uppercase tracking-wider">Owner / Proprietor</span>
               <span className="font-bold text-primary text-xs">Pavan Kumar</span>
-            </div>
+            </div> */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b border-outline-variant/10 pb-1.5 gap-1 sm:gap-4">
               <span className="text-on-surface-variant font-semibold text-[10px] uppercase tracking-wider shrink-0">Registered Office</span>
               <span className="font-semibold text-primary text-xs text-left sm:text-right max-w-md">

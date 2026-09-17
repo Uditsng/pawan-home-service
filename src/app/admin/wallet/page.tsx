@@ -108,6 +108,8 @@ export default async function AdminWalletPage() {
   const sourceLabels: Record<string, string> = {
     referral_reward:  "Referral Reward",
     referral_bonus:   "Referral Bonus",
+    partner_referral_reward: "Partner Referral Reward",
+    partner_referral_bonus:  "Partner Referral Bonus",
     booking_discount: "Booking Discount",
     admin_adjustment: "Admin Adjustment",
     refund:           "Refund",

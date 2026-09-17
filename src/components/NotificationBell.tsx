@@ -7,6 +7,9 @@ import type { AppNotification } from "@/lib/types";
 import type { RealtimePostgresChangesPayload, AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { Capacitor } from "@capacitor/core";
 import { playJobAlertTone } from "@/lib/sound";
+import { IN_APP_AUDIBLE_TYPES, shouldChimeInApp } from "@/lib/notifications/types";
+import type { Portal } from "@/lib/notifications/types";
+import { reportNotificationReceipt } from "@/app/actions/notification-receipts";
 
 // ─── Icon Map ────────────────────────────────────────────
 const typeIcons: Record<string, string> = {
@@ -35,9 +38,6 @@ const typeColors: Record<string, string> = {
   general: "bg-gray-500/10 text-gray-600",
 };
 
-// High-priority types that trigger in-app alert sound for partners
-const HIGH_PRIORITY_TYPES = new Set(["new_job_offer", "partner_assigned", "extension_requested"]);
-
 
 // ─── Time Ago ────────────────────────────────────────────────
 function timeAgo(dateStr: string): string {
@@ -64,6 +64,14 @@ const PAGE_SIZE = 15;
 export default function NotificationBell() {
   const router = useRouter();
   const pathname = usePathname();
+  // Portal gate for role-aware in-app chimes (canonical CHANNELS source).
+  const portal: Portal = pathname.startsWith("/partner")
+    ? "partner"
+    : pathname.startsWith("/admin")
+      ? "admin"
+      : pathname.startsWith("/customer")
+        ? "customer"
+        : "other";
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -178,12 +186,14 @@ export default function NotificationBell() {
             setNotifications((prev) => [newNotif, ...prev]);
             setUnreadCount((c) => c + 1);
 
-            // ── In-app alert for high-priority partner notifications ──────────
-            // When a new job offer or assignment arrives while the partner is
-            // actively using the app (foreground), FCM suppresses the system
-            // tray notification. We compensate with a Web Audio alert tone
-            // and a brief visual flash on the bell button so they never miss a job.
-            if (HIGH_PRIORITY_TYPES.has(newNotif.type)) {
+            // ── Role-aware in-app alert for urgent notifications ──────────
+            // When an urgent notification arrives while the user is actively
+            // using the app (foreground), FCM suppresses the system tray
+            // notification. We compensate with a Web Audio alert tone and a
+            // brief visual flash on the bell button so they never miss it.
+            // Mirrors the OS channel rule: job alerts chime for partners,
+            // critical alerts chime for everyone.
+            if (shouldChimeInApp(newNotif.type, portal)) {
               // On native, the OS local notification (scheduled in MobileSetup)
               // already plays the alert sound, so only chime on the web build
               // to avoid a doubled/overlapping alert tone.
@@ -218,7 +228,7 @@ export default function NotificationBell() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, supabase, fetchUnreadCount]);
+  }, [userId, supabase, fetchUnreadCount, portal]);
 
   // ─── Cache Invalidation Event Listener ──────────────────────
   useEffect(() => {
@@ -260,6 +270,8 @@ export default function NotificationBell() {
   async function markAsRead(notifId: string) {
     console.log(`[Notification Pipeline] [8. READ_STATE] NotificationId: ${notifId}, Action: MARK_READ`);
 
+    const targetNotif = notifications.find((n) => n.id === notifId);
+
     const { error } = await supabase
       .from("notifications")
       .update({ is_read: true })
@@ -270,6 +282,16 @@ export default function NotificationBell() {
         prev.map((n) => (n.id === notifId ? { ...n, is_read: true } : n))
       );
       setUnreadCount((c) => Math.max(0, c - 1));
+
+      // Hard receipt: the user read this row → ledger "read".
+      if (targetNotif) {
+        void reportNotificationReceipt({
+          event: "read",
+          notificationId: notifId,
+          type: targetNotif.type,
+          metadata: (targetNotif.metadata as Record<string, unknown> | null | undefined) ?? null,
+        });
+      }
     }
   }
 
@@ -295,6 +317,14 @@ export default function NotificationBell() {
     if (!userId) return;
     console.log(`[Notification Pipeline] [8. READ_STATE] UserId: ${userId}, Action: MARK_ALL_READ`);
 
+    // Capture the affected rows first so we can report an exact "read" receipt
+    // for each (works regardless of which page of the bell is loaded).
+    const { data: unreadRows } = await supabase
+      .from("notifications")
+      .select("id, type, metadata")
+      .eq("user_id", userId)
+      .eq("is_read", false);
+
     const { error } = await supabase
       .from("notifications")
       .update({ is_read: true })
@@ -306,6 +336,20 @@ export default function NotificationBell() {
         prev.map((n) => ({ ...n, is_read: true }))
       );
       setUnreadCount(0);
+
+      for (const n of unreadRows || []) {
+        const row = n as {
+          id: string;
+          type: AppNotification["type"];
+          metadata?: Record<string, unknown> | null;
+        };
+        void reportNotificationReceipt({
+          event: "read",
+          notificationId: row.id,
+          type: row.type,
+          metadata: row.metadata ?? null,
+        });
+      }
     }
   }
 
@@ -412,10 +456,10 @@ export default function NotificationBell() {
                   >
                     {/* Icon */}
                     <div
-                      className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center mt-0.5 ${colorClass} ${HIGH_PRIORITY_TYPES.has(notif.type) && !notif.is_read ? "ring-1 ring-secondary/40" : ""}`}
+                      className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center mt-0.5 ${colorClass} ${IN_APP_AUDIBLE_TYPES.has(notif.type) && !notif.is_read ? "ring-1 ring-secondary/40" : ""}`}
                     >
-                      <span className={`material-symbols-outlined text-[18px] ${HIGH_PRIORITY_TYPES.has(notif.type) && !notif.is_read ? "animate-pulse" : ""}`}
-                        style={HIGH_PRIORITY_TYPES.has(notif.type) ? { fontVariationSettings: "'FILL' 1" } : undefined}>
+                      <span className={`material-symbols-outlined text-[18px] ${IN_APP_AUDIBLE_TYPES.has(notif.type) && !notif.is_read ? "animate-pulse" : ""}`}
+                        style={IN_APP_AUDIBLE_TYPES.has(notif.type) ? { fontVariationSettings: "'FILL' 1" } : undefined}>
                         {iconName}
                       </span>
                     </div>

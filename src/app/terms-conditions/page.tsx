@@ -326,10 +326,10 @@ export default function TermsConditionsPage() {
                   <span className="text-on-surface-variant font-semibold text-[10px] uppercase tracking-wider">Company</span>
                   <span className="font-bold text-primary text-xs">PHS Cleaning Company</span>
                 </div>
-                <div className="flex justify-between items-center border-b border-outline-variant/10 pb-2">
+                {/* <div className="flex justify-between items-center border-b border-outline-variant/10 pb-2">
                   <span className="text-on-surface-variant font-semibold text-[10px] uppercase tracking-wider">Proprietor</span>
                   <span className="font-bold text-primary text-xs">Pavan Kumar</span>
-                </div>
+                </div> */}
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b border-outline-variant/10 pb-2 gap-1 sm:gap-4">
                   <span className="text-on-surface-variant font-semibold text-[10px] uppercase tracking-wider shrink-0">Office Address</span>
                   <span className="font-semibold text-primary text-xs text-left sm:text-right max-w-sm">

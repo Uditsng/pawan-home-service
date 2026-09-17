@@ -119,11 +119,12 @@ function RegisterContent() {
   const [canResend, setCanResend] = useState(false);
   const [countdownKey, setCountdownKey] = useState(0);
   const [referralCode, setReferralCode] = useState<string>(() =>
-    deepLinkRef.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10)
+    deepLinkRef.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16)
   );
   const [showReferral, setShowReferral] = useState(false);
   const [successRedirect, setSuccessRedirect] = useState<string | null>(null);
   const [registeredInfo, setRegisteredInfo] = useState("");
+  const [registeredInvite, setRegisteredInvite] = useState(false);
 
   const handleSendOtp = useCallback(async () => {
     setError("");
@@ -188,6 +189,7 @@ function RegisterContent() {
     } else if (result.redirectTo) {
       router.push(result.redirectTo);
     }
+    setRegisteredInvite(result.infoKind === "partner_invite");
   }, [otp, phone, email, password, fullName, role, referralCode, router]);
 
   return (
@@ -270,7 +272,7 @@ function RegisterContent() {
                       <input
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        placeholder="Pavan Kumar"
+                        placeholder="Full Name"
                         className="w-full pl-10 pr-4 py-3.5 bg-white/70 backdrop-blur-md rounded-xl text-sm font-semibold text-primary focus:outline-none focus:ring-4 focus:ring-secondary/20 focus:bg-white/90 transition-all border border-white/80 focus:border-secondary/60 shadow-xs placeholder:text-on-surface-variant/40"
                       />
                     </div>
@@ -346,7 +348,7 @@ function RegisterContent() {
                           </span>
                           <input
                             value={referralCode}
-                            onChange={(e) => setReferralCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10))}
+                            onChange={(e) => setReferralCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16))}
                             placeholder="E.G. PHS100"
                             className="w-full pl-10 pr-4 py-3 bg-white/70 backdrop-blur-md rounded-xl text-sm font-bold text-primary focus:outline-none focus:ring-4 focus:ring-secondary/20 focus:bg-white/90 transition-all border border-white/80 focus:border-secondary/60 shadow-xs placeholder:text-on-surface-variant/40 tracking-widest uppercase"
                           />
@@ -480,7 +482,22 @@ function RegisterContent() {
                       <span className="material-symbols-outlined text-[32px] text-success">verified</span>
                     </div>
                     <h2 className="text-2xl font-extrabold tracking-tight text-primary text-center">Account created!</h2>
-                    <p className="text-on-surface-variant text-sm font-medium mt-1.5 text-center max-w-xs">
+
+                    {registeredInvite && (
+                      <div className="mt-4 bg-success/10 border border-success/25 rounded-2xl p-3.5 text-left flex items-center gap-3 w-full max-w-xs">
+                        <div className="w-9 h-9 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
+                          <span className="material-symbols-outlined text-[#059669]" style={{ fontVariationSettings: "'FILL' 1" }}>badge</span>
+                        </div>
+                        <div>
+                          <p className="text-[13px] font-bold text-on-surface">Referred by a PHS professional</p>
+                          <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                            Your joining bonus is reserved — it arrives in your wallet after your first completed booking.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <p className="text-on-surface-variant text-sm font-medium mt-2 text-center max-w-xs">
                       {registeredInfo}
                     </p>
                   </div>

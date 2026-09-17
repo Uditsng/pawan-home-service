@@ -386,6 +386,7 @@ export default async function UnifiedCheckoutPaymentPage({
       pricingSummary={pricingSummary}
       appliedCouponCode={appliedCouponCode}
       offerEntitlements={applicableOffers}
+      cancellationWindowMinutes={platformSettings.freeCancellationWindowMinutes}
     />
   );
 }

@@ -16,6 +16,7 @@ import type { CartCatalog } from "@/lib/pricing/cartCatalog";
 import type { PricingBreakdown, OfferBenefit } from "@/lib/pricing/types";
 import { Card } from "@/components/ui/Card";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
+import { formatFreeWindowLabel } from "@/utils/bookingPolicy";
 import type { ServiceDisplayLine, CheckoutOfferEntitlement } from "./page";
 
 interface Address {
@@ -62,6 +63,7 @@ interface Props {
   };
   appliedCouponCode: string | null;
   offerEntitlements: CheckoutOfferEntitlement[];
+  cancellationWindowMinutes: number;
 }
 
 export default function CheckoutPaymentClient({
@@ -82,6 +84,7 @@ export default function CheckoutPaymentClient({
   pricingSummary,
   appliedCouponCode,
   offerEntitlements,
+  cancellationWindowMinutes,
 }: Props) {
   const router = useRouter();
   const [isAgreed, setIsAgreed] = useState(false);
@@ -631,7 +634,7 @@ export default function CheckoutPaymentClient({
                   <div>
                     <p className="text-xs font-bold text-on-surface">Cancellation & Refund Policy</p>
                     <p className="text-[11px] text-on-surface-variant leading-relaxed mt-0.5">
-                      Free cancellation is allowed within <span className="font-bold text-on-surface">15 minutes</span> of booking. Cancellations made after this 15-minute window may incur a platform convenience fee.
+                      Free cancellation is allowed within <span className="font-bold text-on-surface">{formatFreeWindowLabel(cancellationWindowMinutes)}</span> of booking. Cancellations made after this {formatFreeWindowLabel(cancellationWindowMinutes)} free-cancellation window may incur a platform convenience fee.
                     </p>
                   </div>
                 </div>

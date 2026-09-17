@@ -18,10 +18,10 @@ export default function SupportClient() {
       label: "Business Entity",
       value: "PHS Cleaning Company (Sole Proprietorship)",
     },
-    {
-      label: "Proprietor & Owner",
-      value: "Pavan Kumar",
-    },
+    // {
+    //   label: "Proprietor & Owner",
+    //   value: "Pavan Kumar",
+    // },
     {
       label: "Registered Office Address",
       value: "C1-40, Gulmohar Vihar, Near Shivaji Pulia, Naubasta, Kanpur, Uttar Pradesh – 208014, India",

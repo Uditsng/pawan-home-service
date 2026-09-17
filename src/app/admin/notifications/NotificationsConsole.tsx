@@ -379,6 +379,12 @@ export function NotificationsConsole({
           </div>
 
           <div className="flex gap-2 w-full md:w-auto shrink-0 justify-end">
+            <Link href="/admin/notifications/test">
+              <Button variant="ghost" size="sm" className="text-xs">
+                <span className="material-symbols-outlined text-[16px] mr-1.5">monitor_heart</span>
+                Diagnostics
+              </Button>
+            </Link>
             <Link href="/admin/notifications/templates">
               <Button variant="ghost" size="sm" className="text-xs">
                 <span className="material-symbols-outlined text-[16px] mr-1.5">auto_stories</span>

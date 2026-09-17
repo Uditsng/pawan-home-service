@@ -153,6 +153,36 @@ export default async function PartnerDashboardPage() {
           </div>
         )}
 
+        {/* Referral Program Teaser */}
+        {platformSettings.partnerReferralEnabled && platformSettings.partnerReferralRewardPartner > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm p-4 sm:p-5 border border-outline-variant/15 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-secondary/10 flex items-center justify-center shrink-0 text-secondary">
+                <span className="material-symbols-outlined text-2xl text-secondary drop-shadow-xs" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  card_giftcard
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase tracking-widest font-extrabold text-secondary font-label block">
+                  Refer &amp; Earn
+                </span>
+                <p className="font-bold text-sm sm:text-base text-on-surface mt-0.5 leading-snug font-headline">
+                  Earn ₹{platformSettings.partnerReferralRewardPartner} per referral!
+                </p>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  Share your code with customers — get rewarded when they join or book.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/partner/referrals"
+              className="bg-primary text-white hover:bg-primary/90 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-extrabold tracking-wide uppercase transition-all active:scale-95 shadow-xs self-end sm:self-center"
+            >
+              Share Code
+            </Link>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Earnings Card (Asymmetric Bento Style) */}
           <div className="lg:col-span-4 bg-surface-container-lowest border border-outline-variant/15 shadow-xs rounded-3xl p-6 relative overflow-hidden group">

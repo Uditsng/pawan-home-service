@@ -2,8 +2,12 @@
  * Notification Token Management — Server Actions
  *
  * Handles registration, refresh, and deletion of FCM device tokens.
- * Used by the client-side service worker or Capacitor plugin to
- * register push notification capabilities.
+ * Used by the client-side Capacitor plugin to register push tokens.
+ *
+ * Multi-device: a user may have multiple tokens (e.g. phone + tablet).
+ * The one-token-per-platform eviction has been removed in M2.
+ * Invalid/unregistered tokens are deactivated (is_active = false)
+ * rather than deleted, preserving audit history.
  */
 
 "use server";
@@ -15,19 +19,20 @@ import { createAdminClient } from "@/utils/supabase/admin";
 
 /**
  * Register an FCM token for the current authenticated user.
- * Uses upsert with the unique(user_id, fcm_token) constraint
- * to prevent duplicate registrations.
+ *
+ * Steps:
+ *   1. Evict the token from any OTHER user (cross-user reassignment).
+ *   2. Upsert the token with is_active = true (reactivates if previously
+ *      deactivated by an FCM unregistered error).
+ *
+ * Multi-device: multiple tokens per user per platform are now allowed.
+ * Old 1-per-platform eviction has been removed (M2).
  */
-function maskFcmToken(token: string | null | undefined) {
-  if (!token || token.length === 0) return "<empty>";
-  if (token.length <= 16) return token;
-  return `${token.slice(0, 8)}...${token.slice(-8)}`;
-}
-
 export async function registerTokenAction(
   fcmToken: string,
   platform: "web" | "android" | "ios" = "web",
-  accessToken?: string
+  accessToken?: string,
+  appVersion?: string
 ): Promise<{ success: boolean; error?: string }> {
   if (!fcmToken || typeof fcmToken !== "string" || fcmToken.trim().length === 0) {
     console.warn("[notification-tokens] Invalid FCM token detected in registerTokenAction.");
@@ -45,19 +50,17 @@ export async function registerTokenAction(
     return { success: false, error: "Invalid platform." };
   }
 
+  // ── Authenticate ────────────────────────────────────────────────────────
   let user: import("@supabase/supabase-js").User | null = null;
-  let authError: import("@supabase/supabase-js").AuthError | null = null;
   const supabaseAdmin = createAdminClient();
 
   if (accessToken) {
-    const { data: authData, error: aErr } = await supabaseAdmin.auth.getUser(accessToken);
+    const { data: authData } = await supabaseAdmin.auth.getUser(accessToken);
     user = authData?.user || null;
-    authError = aErr;
   } else {
     const supabase = await createClient();
-    const { data: authData, error: aErr } = await supabase.auth.getUser();
+    const { data: authData } = await supabase.auth.getUser();
     user = authData?.user || null;
-    authError = aErr;
   }
 
   if (!user) {
@@ -65,30 +68,10 @@ export async function registerTokenAction(
     return { success: false, error: "Not authenticated." };
   }
 
-  const { data: existingTokens, error: existingTokensError } = await supabaseAdmin
-    .from("notification_tokens")
-    .select("fcm_token, platform, last_seen")
-    .eq("user_id", user.id)
-    .eq("platform", platform);
-
-  if (existingTokensError) {
-    console.error("[notification-tokens] Failed to read existing notification_tokens:", existingTokensError.message);
-  }
-
-  const { data: existingDeviceTokens, error: existingDeviceTokensError } = await supabaseAdmin
-    .from("device_tokens")
-    .select("device_token, platform, last_seen_at")
-    .eq("user_id", user.id)
-    .eq("platform", platform);
-
-  if (existingDeviceTokensError) {
-    console.error("[notification-tokens] Failed to read existing device_tokens:", existingDeviceTokensError.message);
-  }
-
-  // ── Step 1: Evict this token from any OTHER user account ─────────────────
-  // FCM tokens are device-scoped. If another account previously logged in on
-  // this device, the same token may exist under a different user_id. Remove it
-  // from the old owner first to prevent duplicate pushes across accounts.
+  // ── Step 1: Evict token from OTHER users ────────────────────────────────
+  // FCM tokens are device-scoped. If another account previously logged in
+  // on this device, the same token may exist under a different user_id.
+  // Remove it from the old owner to prevent duplicate pushes across accounts.
   await supabaseAdmin
     .from("notification_tokens")
     .delete()
@@ -101,30 +84,16 @@ export async function registerTokenAction(
     .eq("device_token", fcmToken.trim())
     .neq("user_id", user.id);
 
-  // ── Step 2: Remove ALL stale tokens for this user on this platform ────────
-  // A user may have accumulated multiple tokens on the same device (e.g. from
-  // app reinstalls or account switches). Enforce exactly 1 active token per
-  // user per platform to guarantee they never receive duplicate notifications.
-  await supabaseAdmin
-    .from("notification_tokens")
-    .delete()
-    .eq("user_id", user.id)
-    .eq("platform", platform)
-    .neq("fcm_token", fcmToken.trim());
-
-  await supabaseAdmin
-    .from("device_tokens")
-    .delete()
-    .eq("user_id", user.id)
-    .eq("platform", platform)
-    .neq("device_token", fcmToken.trim());
-
-  // ── Step 3: Upsert the current token ─────────────────────────────────────
+  // ── Step 2: Upsert token (reactivates if previously deactivated) ────────
+  // Multi-device: we no longer evict other tokens on the same platform.
+  // A user with a phone + tablet should keep both tokens active.
   const { error } = await supabaseAdmin.from("notification_tokens").upsert(
     {
       user_id: user.id,
       fcm_token: fcmToken.trim(),
       platform,
+      is_active: true,
+      app_version: appVersion || null,
       last_seen: new Date().toISOString(),
     },
     {
@@ -137,6 +106,7 @@ export async function registerTokenAction(
     return { success: false, error: "Failed to register token." };
   }
 
+  // Keep legacy device_tokens table in sync
   const { error: deviceError } = await supabaseAdmin.from("device_tokens").upsert(
     {
       user_id: user.id,
@@ -207,7 +177,7 @@ export async function deleteTokenAction(
     return { success: false, error: "Failed to delete token." };
   }
 
-  // Keep device_tokens in sync
+  // Keep legacy device_tokens in sync
   await supabaseAdmin
     .from("device_tokens")
     .delete()

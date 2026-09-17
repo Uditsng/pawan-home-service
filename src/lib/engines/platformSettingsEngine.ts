@@ -21,6 +21,10 @@ export interface PlatformSettings {
   referralEnabled: boolean;      // e.g. true/false
   referralRewardReferrer: number;// e.g. 50 (₹)
   referralRewardReferred: number;// e.g. 50 (₹)
+  partnerReferralEnabled: boolean;       // e.g. true/false
+  partnerReferralRewardPartner: number;  // e.g. 100 (₹) to the professional
+  partnerReferralRewardCustomer: number; // e.g. 50 (₹) to the referred customer
+  partnerReferralRewardTrigger: "registration" | "first_booking" | "admin";
   freeCancellationWindow: string;// legacy display label, e.g. "15 Minutes"
   freeCancellationWindowMinutes: number;// authoritative numeric value, e.g. 15
   partnerPenaltyRate: number;   // e.g. 10 (percent)
@@ -39,6 +43,10 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   referralEnabled: true,
   referralRewardReferrer: 50,
   referralRewardReferred: 50,
+  partnerReferralEnabled: true,
+  partnerReferralRewardPartner: 100,
+  partnerReferralRewardCustomer: 50,
+  partnerReferralRewardTrigger: "first_booking",
   freeCancellationWindow: "15 Minutes",
   freeCancellationWindowMinutes: 15,
   partnerPenaltyRate: 10,
@@ -101,6 +109,12 @@ export async function fetchPlatformSettings(supabase: SupabaseClient): Promise<P
       return parsed.length > 0 ? parsed : fallback;
     };
 
+    const parsePartnerReferralTrigger = (val: unknown): "registration" | "first_booking" | "admin" => {
+      const s = String(val ?? "").trim().toLowerCase();
+      if (s === "registration" || s === "first_booking" || s === "admin") return s;
+      return DEFAULT_PLATFORM_SETTINGS.partnerReferralRewardTrigger;
+    };
+
     const parseOrderFees = (val: unknown): OrderFee[] => {
       if (!Array.isArray(val)) return [];
       const parsed: OrderFee[] = [];
@@ -132,6 +146,10 @@ export async function fetchPlatformSettings(supabase: SupabaseClient): Promise<P
       referralEnabled: parseBool(settingsMap["referral_enabled"], DEFAULT_PLATFORM_SETTINGS.referralEnabled),
       referralRewardReferrer: parseNum(settingsMap["referral_reward_referrer"], DEFAULT_PLATFORM_SETTINGS.referralRewardReferrer),
       referralRewardReferred: parseNum(settingsMap["referral_reward_referred"], DEFAULT_PLATFORM_SETTINGS.referralRewardReferred),
+      partnerReferralEnabled: parseBool(settingsMap["partner_referral_enabled"], DEFAULT_PLATFORM_SETTINGS.partnerReferralEnabled),
+      partnerReferralRewardPartner: parseNum(settingsMap["partner_referral_reward_partner"], DEFAULT_PLATFORM_SETTINGS.partnerReferralRewardPartner),
+      partnerReferralRewardCustomer: parseNum(settingsMap["partner_referral_reward_customer"], DEFAULT_PLATFORM_SETTINGS.partnerReferralRewardCustomer),
+      partnerReferralRewardTrigger: parsePartnerReferralTrigger(settingsMap["partner_referral_reward_trigger"]),
       freeCancellationWindow: String(settingsMap["free_cancellation_window"] || "15 Minutes"),
       freeCancellationWindowMinutes: parseNum(settingsMap["free_cancellation_window_minutes"], DEFAULT_PLATFORM_SETTINGS.freeCancellationWindowMinutes),
       partnerPenaltyRate: parseNum(settingsMap["partner_penalty_rate"], DEFAULT_PLATFORM_SETTINGS.partnerPenaltyRate),

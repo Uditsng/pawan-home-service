@@ -1,13 +1,33 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/utils/supabase/admin";
-import { sendNotification } from "@/lib/notifications";
+import {
+  sendNotification,
+  drainNotificationDeliveries,
+  refreshCampaignStats,
+  countPendingDeliveries,
+} from "@/lib/notifications";
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Scheduled-campaign dispatcher (cron-triggered).
+ *
+ * Finds campaigns whose scheduled_at has arrived, enqueues their delivery
+ * ledger rows, then drains them inline. Large fan-outs that exceed this
+ * invocation are left as `sending` (with a lease) and are finished by the
+ * drain worker (#/api/notifications/deliver) on its next pass.
+ *
+ * Auth: Bearer <CRON_SECRET> or X-Cron-Secret <CRON_SECRET>
+ */
 export async function GET(request: Request) {
   // Authorization check for cron worker trigger
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
+  if (!cronSecret) {
+    // Fail closed in production (see /api/notifications/deliver).
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json({ error: "CRON_SECRET is not configured." }, { status: 500 });
+    }
+  } else {
     const authHeader = request.headers.get("authorization");
     const headerSecret = request.headers.get("x-cron-secret");
     const isBearerValid = authHeader === `Bearer ${cronSecret}`;
@@ -61,10 +81,14 @@ export async function GET(request: Request) {
         continue;
       }
 
-      // 2. Mark sending
+      // 2. Mark sending (lease enables drain-worker recovery)
       await supabaseAdmin
         .from("admin_notifications")
-        .update({ status: "sending", updated_at: now })
+        .update({
+          status: "sending",
+          lease_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+          updated_at: now,
+        })
         .eq("id", campaign.id);
 
       try {
@@ -124,21 +148,12 @@ export async function GET(request: Request) {
           continue;
         }
 
-        // 4. Fetch tokens for recipient logs mapping
-        const { data: tokenRows } = await supabaseAdmin
-          .from("notification_tokens")
-          .select("user_id, fcm_token, platform")
-          .in("user_id", targetUserIds);
-
-        // 5. Send notifications in chunks of 500
+        // 4. Enqueue recipient notifications (ledger-backed; FCM dispatch is
+        //    handled by the inline drain below and the #/deliver worker).
         const chunkSize = 500;
-        let totalSuccess = 0;
-        let totalFailure = 0;
-        const logRows: unknown[] = [];
-
         for (let i = 0; i < targetUserIds.length; i += chunkSize) {
           const chunk = targetUserIds.slice(i, i + chunkSize);
-          
+
           await sendNotification({
             userIds: chunk,
             title: campaign.title,
@@ -150,62 +165,45 @@ export async function GET(request: Request) {
               deep_link: campaign.deep_link || null,
             },
           });
-
-          // Log construction
-          chunk.forEach(uid => {
-            const userTokens = tokenRows?.filter(t => t.user_id === uid) || [];
-            if (userTokens.length === 0) {
-              logRows.push({
-                notification_id: campaign.id,
-                user_id: uid,
-                device_token: null,
-                platform: null,
-                status: "failed",
-                failure_reason: "No registered device token found.",
-              });
-              totalFailure++;
-            } else {
-              userTokens.forEach(tok => {
-                logRows.push({
-                  notification_id: campaign.id,
-                  user_id: uid,
-                  device_token: tok.fcm_token,
-                  platform: tok.platform,
-                  status: "sent",
-                  sent_at: now,
-                });
-                totalSuccess++;
-              });
-            }
-          });
         }
 
-        // 6. Write logs
-        if (logRows.length > 0) {
-          await supabaseAdmin.from("notification_logs").insert(logRows);
+        // 5. Drain inline for this run; finish via the drain worker if huge.
+        const maxDrainPasses = Math.ceil(targetUserIds.length / 200) * 2 + 5;
+        let stillPending = 0;
+        for (let pass = 0; pass < maxDrainPasses; pass++) {
+          await drainNotificationDeliveries({ batchSize: 450 });
+          stillPending = await countPendingDeliveries(supabaseAdmin, campaign.id);
+          if (stillPending === 0) break;
         }
 
-        // 7. Mark campaign complete
-        await supabaseAdmin
+        await refreshCampaignStats(supabaseAdmin, campaign.id);
+
+        if (stillPending > 0) {
+          await supabaseAdmin
+            .from("admin_notifications")
+            .update({
+              status: "sending",
+              lease_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+              updated_at: now,
+            })
+            .eq("id", campaign.id);
+        }
+
+        const { data: final } = await supabaseAdmin
           .from("admin_notifications")
-          .update({
-            status: "completed",
-            recipient_count: targetUserIds.length,
-            success_count: totalSuccess,
-            failure_count: totalFailure,
-            updated_at: now,
-          })
-          .eq("id", campaign.id);
+          .select("status, recipient_count, success_count, failure_count")
+          .eq("id", campaign.id)
+          .single();
 
         processedCampaigns.push({
           id: campaign.id,
           title: campaign.title,
-          status: "completed",
-          recipients: targetUserIds.length,
-          success: totalSuccess,
-          failed: totalFailure,
+          status: (final && (final as { status: string }).status) || "sending",
+          recipients: final ? (final as { recipient_count: number }).recipient_count : targetUserIds.length,
+          success: final ? (final as { success_count: number }).success_count : 0,
+          failed: final ? (final as { failure_count: number }).failure_count : 0,
+          deferred: stillPending > 0,
         });
-
       } catch (sendErr) {
         console.error(`[Scheduler] Send error for campaign ${campaign.id}:`, sendErr);
         await supabaseAdmin

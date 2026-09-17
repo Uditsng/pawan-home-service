@@ -10,7 +10,7 @@ import {
 } from "@/lib/twilio";
 import { otpSendLimiter, otpVerifyLimiter, loginLimiter, passwordResetLimiter } from "@/lib/rate-limit";
 import { logAdminAuditAction } from "@/utils/auditLogger";
-import { notifyCustomer } from "@/lib/notifications";
+import { notifyCustomer, notifyPartner } from "@/lib/notifications";
 
 
 // ─── REGISTRATION FLOW ────────────────────────────────────────
@@ -85,7 +85,13 @@ export async function sendRegistrationOtp(
  * Step 2: Verify OTP, then create Supabase user + profile, then auto-login.
  * Called from the Register page "Complete Registration" button.
  */
-export async function verifyOtpAndRegister(formData: FormData): Promise<{ success: boolean; error?: string; redirectTo?: string; info?: string }> {
+export async function verifyOtpAndRegister(formData: FormData): Promise<{
+  success: boolean;
+  error?: string;
+  redirectTo?: string;
+  info?: string;
+  infoKind?: "partner_invite";
+}> {
   const phone = formData.get("phone") as string;
   const otp = formData.get("otp") as string;
   const email = formData.get("email") as string;
@@ -177,9 +183,12 @@ export async function verifyOtpAndRegister(formData: FormData): Promise<{ succes
   // failures never block account creation, but a non-blocking message is
   // returned for the UI to surface.
   let info: string | undefined;
+  let infoKind: "partner_invite" | undefined;
   const referralCode = formData.get("referral_code") as string | null;
   if (referralCode && referralCode.trim().length > 0) {
-    info = await applyAndRewardReferral(data.user.id, referralCode.trim().toUpperCase());
+    const applied = await applyAndRewardReferral(data.user.id, referralCode.trim().toUpperCase());
+    info = applied.info;
+    infoKind = applied.infoKind;
   }
 
   // Auto-login: if email confirmation is disabled, session is available immediately
@@ -192,20 +201,60 @@ export async function verifyOtpAndRegister(formData: FormData): Promise<{ succes
   }
 
   const redirectTo = role === "partner" ? "/partner/pending" : "/customer/dashboard";
-  return { success: true, redirectTo, info };
+  return { success: true, redirectTo, info, infoKind };
+}
+
+export interface ReferralApplyResult {
+  info?: string;
+  infoKind?: "partner_invite";
 }
 
 /**
  * Apply + reward a referral code synchronously at registration.
  *
- * New wallet_v1 referrals are credited atomically to BOTH parties by
- * reward_customer_referral(). Returns a human-readable, non-blocking message
- * only when something needs surfacing to the UI (invalid code, transient
- * reward failure) — success returns undefined and hands off to notifications.
+ * Partner referral codes are tried FIRST — they are intent-specific (each
+ * resolves to exactly one professional) and fully independent of the
+ * customer program. A code that isn't a partner code returns a distinct
+ * "Partner referral code not found" error, which lets us fall through to the
+ * customer program unchanged. `info` is a human-readable, non-blocking
+ * message surfaced on the success step; `undefined` = silent success.
  */
-async function applyAndRewardReferral(newUserId: string, code: string): Promise<string | undefined> {
+async function applyAndRewardReferral(newUserId: string, code: string): Promise<ReferralApplyResult> {
   const supabase = await createClient();
 
+  // 1. Partner referral program.
+  const partnerApply = await supabase.rpc("apply_partner_referral_code", {
+    p_new_user_id: newUserId,
+    p_code: code,
+  });
+
+  const partnerPayload = partnerApply.data as
+    | { success?: boolean; error?: string; referral_id?: string; trigger?: string; pending?: boolean }
+    | null;
+
+  const isPartnerCodeNotFound =
+    !partnerApply.error &&
+    partnerPayload?.success === false &&
+    typeof partnerPayload?.error === "string" &&
+    partnerPayload.error.startsWith("Partner referral code not found");
+
+  if (!partnerApply.error && partnerPayload?.success === true) {
+    return settlePartnerReferralReward(
+      newUserId,
+      partnerPayload.referral_id as string,
+      partnerPayload.trigger,
+      partnerPayload.pending
+    );
+  }
+
+  if (!isPartnerCodeNotFound) {
+    // Hard failure (network / program disabled) — surface it instead of
+    // blindly falling through to avoid cross-program attribution mistakes.
+    const reason = partnerApply.error?.message || partnerPayload?.error || "invalid or expired code";
+    return { info: `Your referral (${code}) could not be applied — ${reason}.` };
+  }
+
+  // 2. Customer referral program (legacy behaviour preserved exactly).
   const applyResult = await supabase.rpc("apply_referral_code", {
     p_new_user_id: newUserId,
     p_code: code,
@@ -214,11 +263,11 @@ async function applyAndRewardReferral(newUserId: string, code: string): Promise<
   const applyPayload = applyResult.data as { success?: boolean; error?: string; referral_id?: string } | null;
   if (applyResult.error || !applyPayload?.success) {
     const reason = applyResult.error?.message || applyPayload?.error || "invalid or expired code";
-    return `Your referral (${code}) could not be applied — ${reason}.`;
+    return { info: `Your referral (${code}) could not be applied — ${reason}.` };
   }
 
   const referralId = applyPayload.referral_id;
-  if (!referralId) return undefined;
+  if (!referralId) return {};
 
   // Reward both parties atomically; retry transient RPC failures.
   let rewarded = false;
@@ -258,9 +307,73 @@ async function applyAndRewardReferral(newUserId: string, code: string): Promise<
   } catch { /* silent */ }
 
   if (!rewarded) {
-    return `Your referral (${code}) is saved — your reward will be credited shortly.`;
+    return { info: `Your referral (${code}) is saved — your reward will be credited shortly.` };
   }
-  return undefined;
+  return {};
+}
+
+/**
+ * Handle a successfully-applied PARTNER referral code at registration.
+ *
+ * With the default 'first_booking' trigger the reward is decoupled: no wallet
+ * money moves yet and the customer is simply told what happens next (signalled
+ * to the UI via infoKind 'partner_invite' so it can render an invite banner).
+ * With the 'registration' trigger the RPC has ALREADY credited both wallets —
+ * we only surface the bonus notification here (wallet credit is the source of truth).
+ */
+async function settlePartnerReferralReward(
+  newUserId: string,
+  referralId: string,
+  trigger: string | undefined,
+  pending: boolean | undefined
+): Promise<ReferralApplyResult> {
+  if (trigger === "registration" && pending !== true) {
+    try {
+      await notifyCustomer(
+        newUserId,
+        "Joining reward unlocked",
+        "Your PHS partner-referral bonus is now in your wallet. Use it on your next booking!",
+        "partner_referral_bonus",
+        { referral_id: referralId }
+      );
+
+      // At signup the session cookie may not exist yet, so use a service-role
+      // read to resolve the referring professional for the partner alert.
+      const { createAdminClient } = await import("@/utils/supabase/admin");
+      const adminClient = createAdminClient();
+      const { data: ref } = await adminClient
+        .from("partner_referrals")
+        .select("partner_id, partner_reward")
+        .eq("id", referralId)
+        .maybeSingle();
+
+      if (ref?.partner_id) {
+        await notifyPartner(
+          ref.partner_id,
+          "You earned a partner referral reward!",
+          `A customer joined PHS with your code — ₹${Number(ref.partner_reward).toLocaleString("en-IN")} is now in your wallet.`,
+          "partner_referral_reward",
+          { referral_id: referralId }
+        );
+      }
+    } catch { /* notification must never break registration */ }
+    return {};
+  }
+
+  try {
+    await notifyCustomer(
+      newUserId,
+      "You joined with a professional referral",
+      "Complete your first booking and your PHS joining bonus lands in your wallet automatically.",
+      "general",
+      { referral_id: referralId, program: "partner", reward_pending: true }
+    );
+  } catch { /* notification must never break registration */ }
+
+  return {
+    infoKind: "partner_invite",
+    info: "You joined with a PHS professional's referral — your joining bonus is credited automatically after your first completed booking.",
+  };
 }
 
 // ─── LOGIN FLOW ───────────────────────────────────────────────

@@ -133,6 +133,16 @@ export default async function PartnerProfilePage() {
             <span className="material-symbols-outlined text-on-surface-variant/50 group-hover:text-primary group-hover:translate-x-1 transition-all">chevron_right</span>
           </Link>
 
+          <Link href="/partner/referrals" prefetch={false} className="flex items-center justify-between p-4 sm:p-5 hover:bg-surface-container-low transition-colors group">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-2xl bg-green-500/10 flex items-center justify-center text-[#059669]">
+                <span className="material-symbols-outlined text-xl drop-shadow-sm">card_giftcard</span>
+              </div>
+              <span className="font-bold text-sm sm:text-base text-on-surface">Refer & Earn</span>
+            </div>
+            <span className="material-symbols-outlined text-on-surface-variant/50 group-hover:text-primary group-hover:translate-x-1 transition-all">chevron_right</span>
+          </Link>
+
           <Link href="/partner/profile/bank" prefetch={false} className="flex items-center justify-between p-4 sm:p-5 hover:bg-surface-container-low transition-colors group">
             <div className="flex items-center gap-3.5">
               <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">

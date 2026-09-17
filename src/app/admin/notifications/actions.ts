@@ -4,7 +4,15 @@ import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { requireAdmin } from "@/utils/supabase/auth-checks";
 import { revalidatePath } from "next/cache";
-import { sendNotification } from "@/lib/notifications";
+import { sendNotification, drainNotificationDeliveries, refreshCampaignStats, countPendingDeliveries } from "@/lib/notifications";
+
+// Campaign finalization shape read back from the DB after ledger drain.
+interface CampaignSendResult {
+  status: string;
+  recipient_count: number;
+  success_count: number;
+  failure_count: number;
+}
 
 // Helper to check for missing database tables
 function handleDbError(error: unknown) {
@@ -414,10 +422,13 @@ export async function sendNotificationCampaignAction(campaignId: string) {
     throw new Error("This campaign has already been sent or is currently sending.");
   }
 
-  // 2. Mark sending
+  // 2. Mark sending (lease enables crash recovery by a later worker)
   await supabaseAdmin
     .from("admin_notifications")
-    .update({ status: "sending" })
+    .update({
+      status: "sending",
+      lease_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+    })
     .eq("id", campaignId);
 
   try {
@@ -482,21 +493,14 @@ export async function sendNotificationCampaignAction(campaignId: string) {
 
     const hasSpamWarning = recentSent && recentSent.length > 0;
 
-    // 5. Fetch tokens for recipient logs mapping
-    const { data: tokenRows } = await supabaseAdmin
-      .from("notification_tokens")
-      .select("user_id, fcm_token, platform")
-      .in("user_id", targetUserIds);
-
-    // 6. Invoke pipeline in chunks of 500 (FCM limit for multicast)
+    // 6. Enqueue recipient notifications (ledger-backed). Token presence and
+    //    per-device status are recorded as notification_deliveries rows; the
+    //    drain worker below / cron handles the actual FCM dispatch.
     const chunkSize = 500;
-    let totalSuccess = 0;
-    let totalFailure = 0;
-    const logRows: Record<string, unknown>[] = [];
 
     for (let i = 0; i < targetUserIds.length; i += chunkSize) {
       const chunk = targetUserIds.slice(i, i + chunkSize);
-      
+
       // Dispatch via FCM + User Inbox Database (idempotency built-in)
       await sendNotification({
         userIds: chunk,
@@ -510,60 +514,53 @@ export async function sendNotificationCampaignAction(campaignId: string) {
         },
       });
 
-      // Construct Logs
-      chunk.forEach(uid => {
-        const userTokens = tokenRows?.filter(t => t.user_id === uid) || [];
-        if (userTokens.length === 0) {
-          logRows.push({
-            notification_id: campaignId,
-            user_id: uid,
-            device_token: null,
-            platform: null,
-            status: "failed",
-            failure_reason: "No registered device token found.",
-          });
-          totalFailure++;
-        } else {
-          userTokens.forEach(tok => {
-            logRows.push({
-              notification_id: campaignId,
-              user_id: uid,
-              device_token: tok.fcm_token,
-              platform: tok.platform,
-              status: "sent",
-              sent_at: new Date().toISOString(),
-            });
-            totalSuccess++;
-          });
-        }
-      });
+      // No per-recipient log rows here — delivery state lives in
+      // notification_deliveries and is finalised from ledger truth below.
     }
 
-    // 7. Write Logs to Audit Table
-    if (logRows.length > 0) {
-      await supabaseAdmin.from("notification_logs").insert(logRows);
+    // 7. Drain inline so "send now" completes promptly. Claims are global
+    //    FIFO (oldest first); any other queued campaign rows get dispatched
+    //    too, which is safe because claim RPCs use FOR UPDATE SKIP LOCKED.
+    const maxDrainPasses = Math.ceil(targetUserIds.length / 200) * 2 + 5;
+    let stillPending = 0;
+    for (let pass = 0; pass < maxDrainPasses; pass++) {
+      await drainNotificationDeliveries({ batchSize: 450 });
+      stillPending = await countPendingDeliveries(supabaseAdmin, campaignId);
+      if (stillPending === 0) break;
     }
 
-    // 8. Update campaign completion stats
-    await supabaseAdmin
+    // 8. Finalise from ledger truth (honest counters; marks completed only
+    //    when every delivery row is terminal).
+    await refreshCampaignStats(supabaseAdmin, campaignId);
+    if (stillPending > 0) {
+      await supabaseAdmin
+        .from("admin_notifications")
+        .update({
+          status: "sending",
+          lease_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", campaignId);
+    }
+
+    const { data: final, error: finalErr } = await supabaseAdmin
       .from("admin_notifications")
-      .update({
-        status: "completed",
-        recipient_count: targetUserIds.length,
-        success_count: totalSuccess,
-        failure_count: totalFailure,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", campaignId);
+      .select("status, recipient_count, success_count, failure_count")
+      .eq("id", campaignId)
+      .single();
+
+    if (finalErr) handleDbError(finalErr);
+    const result = (final || {}) as CampaignSendResult;
 
     revalidatePath("/admin/notifications");
     revalidatePath(`/admin/notifications/${campaignId}`);
 
     return {
       success: true,
-      recipients: targetUserIds.length,
-      successCount: totalSuccess,
-      failureCount: totalFailure,
+      status: result.status,
+      recipients: result.recipient_count,
+      successCount: result.success_count,
+failureCount: result.failure_count,
       spamWarning: hasSpamWarning,
     };
   } catch (err) {

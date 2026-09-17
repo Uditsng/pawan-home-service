@@ -32,6 +32,57 @@ async function getAuthenticatedPartner() {
   return { supabase, user, error: null };
 }
 
+// ─── Helper: Partner referral reward check (fire-and-forget) ──
+// Invoked whenever a partner completes a job. The RPC is idempotent and only
+// pays when the referred customer hits their FIRST completed booking (or the
+// configured trigger). Never blocks completion.
+async function firePartnerReferralCheck(customerId: string): Promise<void> {
+  if (!customerId) return;
+
+  const supabase = await createClient();
+  const result = await supabase.rpc("reward_partner_referral_for_customer", {
+    p_customer_id: customerId,
+  });
+
+  const payload = result.data as
+    | {
+        success?: boolean;
+        skipped?: boolean;
+        pending?: boolean;
+        already_rewarded?: boolean;
+        reason?: string;
+        referral_id?: string;
+        partner_id?: string;
+        partner_reward?: number;
+        customer_reward?: number;
+      }
+    | null;
+
+  if (result.error || !payload?.success || payload.skipped || payload.pending || payload.already_rewarded) return;
+
+  const referralId = payload.referral_id as string;
+  const reward = Number(payload.partner_reward ?? 0);
+  const bonus = Number(payload.customer_reward ?? 0);
+
+  if (payload.partner_id) {
+    void notifyPartner(
+      payload.partner_id,
+      "Referred customer completed their first booking!",
+      `₹${reward.toLocaleString("en-IN")} credited to your wallet.`,
+      "partner_referral_reward",
+      { referral_id: referralId }
+    );
+  }
+
+  void notifyCustomer(
+    customerId,
+    "Your joining bonus is live!",
+    `₹${bonus.toLocaleString("en-IN")} added to your wallet — thank you for your first booking.`,
+    "partner_referral_bonus",
+    { referral_id: referralId }
+  );
+}
+
 // ─── Helper: Log a booking event ─────────────────────────────
 
 async function logBookingEvent(
@@ -355,6 +406,9 @@ export async function completeJob(
       "service_completed",
       { booking_id: bookingId }
     );
+
+    // Fire partner referral reward check (fire-and-forget — never blocks completion)
+    void firePartnerReferralCheck(completeBooking.customer_id);
   }
 
   revalidatePath("/partner", "layout");
@@ -907,6 +961,11 @@ export async function verifyCompletionOtp(
     actor: "PARTNER",
     metadata: { partner_id: user.id }
   });
+
+  // Fire partner referral reward check (fire-and-forget — never blocks completion)
+  if (booking.customer_id) {
+    void firePartnerReferralCheck(booking.customer_id);
+  }
 
   // Notify customer
   if (booking.customer_id) {

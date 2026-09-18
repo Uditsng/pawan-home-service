@@ -3,13 +3,14 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ServiceIconComponent } from "@/utils/serviceIcon";
+import { ServiceVisual } from "@/components/ServiceVisual";
 import ServiceCardThumbnail from "@/components/ServiceCardThumbnail";
 
 interface SuggestionSubcategory {
   id: string;
   subcategory_name: string;
   icon_name: string;
+  image_url?: string | null;
   category_name: string;
   category_slug: string;
   score: number;
@@ -158,10 +159,14 @@ export default function SearchInput({ defaultValue = "" }: { defaultValue?: stri
                       className="flex items-center justify-between p-2 rounded-xl hover:bg-surface-container transition-colors group"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
-                          <ServiceIconComponent
+                        <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0 overflow-hidden">
+                          <ServiceVisual
+                            imageUrl={sub.image_url}
                             iconName={sub.icon_name}
-                            className="w-4 h-4 text-[#059669] drop-shadow-sm"
+                            alt={sub.subcategory_name}
+                            containerClassName="w-full h-full"
+                            iconClassName="w-4 h-4 text-[#059669]"
+                            thumbnailSize={64}
                           />
                         </div>
                         <div>

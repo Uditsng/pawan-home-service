@@ -3,7 +3,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { getCachedCategories } from "@/utils/supabase/cachedCategoryQueries";
 import { getCachedAllSubcategories } from "@/utils/supabase/cachedSubcategoryQueries";
-import { ServiceIconComponent } from "@/utils/serviceIcon";
+import { ServiceVisual } from "@/components/ServiceVisual";
 
 const normalizeSlug = (str: string) =>
   str.toLowerCase().replace(/&/g, "and").replace(/\s+/g, "-").replace(/[-_]+/g, "-");
@@ -61,10 +61,14 @@ export default async function PublicServicesPage() {
                     href={`/services/${cat.slug}/${sub.id}`}
                     className="bg-surface-container-low p-4 md:p-5 rounded-2xl flex flex-col items-center justify-center text-center border border-outline-variant/10 shadow-sm aspect-square cursor-pointer hover:bg-surface-container-high active:scale-95 transition-all"
                   >
-                    <div className="w-14 h-14 md:w-18 md:h-18 rounded-xl md:rounded-2xl bg-green-500/10 mb-3 md:mb-4 flex items-center justify-center text-[#059669]">
-                      <ServiceIconComponent
+                    <div className="w-14 h-14 md:w-18 md:h-18 rounded-xl md:rounded-2xl bg-green-500/10 mb-3 md:mb-4 flex items-center justify-center text-[#059669] overflow-hidden">
+                      <ServiceVisual
+                        imageUrl={sub.image_url}
                         iconName={sub.icon_name || "sparkles"}
-                        className="w-8 h-8 md:w-10 md:h-10 text-[#059669] drop-shadow-sm"
+                        alt={sub.subcategory_name}
+                        containerClassName="w-full h-full"
+                        iconClassName="w-8 h-8 md:w-10 md:h-10 text-[#059669]"
+                        thumbnailSize={192}
                       />
                     </div>
                     <span className="font-headline font-bold text-[13px] md:text-base text-on-surface leading-tight line-clamp-2">

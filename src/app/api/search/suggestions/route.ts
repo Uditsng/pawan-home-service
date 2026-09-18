@@ -6,6 +6,7 @@ export interface SuggestionSubcategory {
   id: string;
   subcategory_name: string;
   icon_name: string;
+  image_url?: string | null;
   category_name: string;
   category_slug: string;
   score: number;
@@ -30,6 +31,7 @@ interface RawSubcategory {
   id: string;
   subcategory_name: string;
   icon_name: string;
+  image_url?: string | null;
   categories: {
     category_name: string;
   } | null;
@@ -112,6 +114,7 @@ export async function GET(request: Request) {
           id,
           subcategory_name,
           icon_name,
+          image_url,
           categories (
             category_name
           )
@@ -163,6 +166,7 @@ export async function GET(request: Request) {
           id: sub.id,
           subcategory_name: sub.subcategory_name,
           icon_name: sub.icon_name || "sparkles",
+          image_url: sub.image_url || null,
           category_name: catName,
           category_slug: getSlug(catName),
           score,

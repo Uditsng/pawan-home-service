@@ -3,12 +3,13 @@ import { createClient } from "@/utils/supabase/server";
 import SearchInput from "@/components/SearchInput";
 import Link from "next/link";
 import ServiceCardThumbnail from "@/components/ServiceCardThumbnail";
-import { ServiceIconComponent } from "@/utils/serviceIcon";
+import { ServiceVisual } from "@/components/ServiceVisual";
 import { parseSearchTokens, calculateRelevanceScore } from "@/utils/searchEngine";
 
 interface CategoryResult {
   id: string;
   category_name: string;
+  image_url?: string | null;
   score?: number;
 }
 
@@ -16,6 +17,7 @@ interface SubcategoryResult {
   id: string;
   subcategory_name: string;
   icon_name: string;
+  image_url?: string | null;
   categories: {
     category_name: string;
   } | null;
@@ -41,17 +43,6 @@ interface ServiceResult {
     } | null;
   } | null;
 }
-
-const getCategoryIconName = (categoryName: string) => {
-  const normalized = categoryName.toLowerCase();
-  if (normalized.includes("clean")) return "cleaning_services";
-  if (normalized.includes("pest")) return "bug_report";
-  if (normalized.includes("repair") || normalized.includes("maintenance")) return "construction";
-  if (normalized.includes("renov") || normalized.includes("logistics")) return "truck-inbound-svgrepo-com";
-  if (normalized.includes("personal") || normalized.includes("assist")) return "save_water";
-  if (normalized.includes("groom") || normalized.includes("wellness")) return "carpenter";
-  return "cleaning_services";
-};
 
 export default async function SearchPage({
   searchParams,
@@ -151,6 +142,7 @@ export default async function SearchPage({
           id,
           subcategory_name,
           icon_name,
+          image_url,
           categories (
             category_name
           )
@@ -161,7 +153,7 @@ export default async function SearchPage({
       // Search Categories
       supabase
         .from("categories")
-        .select("id, category_name")
+        .select("id, category_name, image_url")
         .or(categoryOrFilter)
         .limit(8),
     ]);
@@ -281,7 +273,6 @@ export default async function SearchPage({
                       {subcategoriesResults.map((sub) => {
                         const parentCatName = sub.categories?.category_name || "Services";
                         const catSlug = getSlug(parentCatName);
-                        const iconName = sub.icon_name || "sparkles";
 
                         return (
                           <Link
@@ -290,10 +281,14 @@ export default async function SearchPage({
                             className="bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant/10 shadow-xs flex items-center justify-between hover:border-primary/30 hover:shadow-sm transition-all group"
                           >
                             <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
-                                <ServiceIconComponent
-                                  iconName={iconName}
-                                  className="w-5 h-5 text-[#059669] drop-shadow-sm"
+                              <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0 overflow-hidden">
+                                <ServiceVisual
+                                  imageUrl={sub.image_url}
+                                  iconName={sub.icon_name || "sparkles"}
+                                  alt={sub.subcategory_name}
+                                  containerClassName="w-full h-full"
+                                  iconClassName="w-5 h-5 text-[#059669]"
+                                  thumbnailSize={96}
                                 />
                               </div>
                               <div className="min-w-0">
@@ -398,7 +393,6 @@ export default async function SearchPage({
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {categoriesResults.map((cat) => {
                         const catSlug = getSlug(cat.category_name);
-                        const iconName = getCategoryIconName(cat.category_name);
 
                         return (
                           <Link
@@ -407,10 +401,13 @@ export default async function SearchPage({
                             className="bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant/10 shadow-xs flex items-center justify-between hover:border-primary/30 transition-all group"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
-                                <ServiceIconComponent
-                                  iconName={iconName}
-                                  className="w-5 h-5 text-[#059669] drop-shadow-sm"
+                              <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0 overflow-hidden">
+                                <ServiceVisual
+                                  imageUrl={cat.image_url}
+                                  alt={cat.category_name}
+                                  containerClassName="w-full h-full"
+                                  iconClassName="w-5 h-5 text-[#059669]"
+                                  thumbnailSize={96}
                                 />
                               </div>
                               <div>

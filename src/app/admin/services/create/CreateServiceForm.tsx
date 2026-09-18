@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useActionState, useTransition, useMemo } from "react";
+import { useState, useActionState, useMemo } from "react";
 import { Button } from "@/components/ui/Button";
 import { ImageUploadField } from "@/components/ui/ImageUploadField";
 import { GalleryUploadField } from "@/components/ui/GalleryUploadField";
 import ServiceCardThumbnail from "@/components/ServiceCardThumbnail";
-import { ServiceIconComponent, SERVICE_ICON_OPTIONS, ICON_GROUPS } from "@/utils/serviceIcon";
+import { ServiceIconComponent } from "@/utils/serviceIcon";
 import { PricingModel } from "@/lib/types";
 import { calculatePricingBreakdown, formatDuration, PricingInput } from "@/lib/pricing";
 import { FormFieldConfig } from "@/utils/bookingValidation";
@@ -14,11 +14,13 @@ type Subcategory = {
   id: string;
   subcategory_name: string;
   icon_name: string;
+  image_url?: string | null;
 };
 
 type Category = {
   id: string;
   category_name: string;
+  image_url?: string | null;
   subcategories: Subcategory[];
 };
 
@@ -27,208 +29,15 @@ type FormActionState = {
   message: string | null;
 };
 
-type AddCategoryResult = { id: string; category_name: string } | { error: string };
-type AddSubcategoryResult = { id: string; subcategory_name: string; icon_name: string; category_id: string } | { error: string };
-
 interface CreateServiceFormProps {
   categories: Category[];
   action: (prevState: FormActionState, formData: FormData) => Promise<FormActionState>;
-  addCategoryAction: (name: string) => Promise<AddCategoryResult>;
-  addSubcategoryAction: (categoryId: string, name: string, iconName: string) => Promise<AddSubcategoryResult>;
   taxRate?: number;
 }
 
-// Add Category Modal Component
-function AddCategoryModal({
-  error,
-  onClose,
-  onSave,
-}: {
-  error?: string | null;
-  onClose: () => void;
-  onSave: (name: string) => Promise<void>;
-}) {
-  const [name, setName] = useState("");
-  const [isPending, startTransition] = useTransition();
-
-  const handleSubmit = () => {
-    if (!name.trim()) return;
-    startTransition(async () => {
-      await onSave(name.trim());
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-      <div className="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-sm p-6 border border-outline-variant/20">
-        <h3 className="text-primary font-bold text-base mb-4 flex items-center gap-2">
-          <span className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-xs font-black">+</span>
-          New Category
-        </h3>
-        {error && (
-          <div className="mb-4 bg-error/10 border border-error/20 text-error px-3 py-2 rounded-lg flex items-center gap-2 text-xs font-bold animate-fade-in">
-            <span className="material-symbols-outlined text-sm">error</span>
-            <span>{error}</span>
-          </div>
-        )}
-        <div className="mb-4">
-          <label className="block text-sm font-bold text-on-surface-variant mb-1.5">Category Name</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full border border-outline-variant/20 rounded-lg p-3 bg-surface-container focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
-            placeholder="e.g. Cleaning & Housekeeping"
-            autoFocus
-            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-          />
-        </div>
-        <div className="flex gap-2 justify-end">
-          <Button type="button" variant="ghost" onClick={onClose} disabled={isPending}>Cancel</Button>
-          <Button type="button" variant="primary" onClick={handleSubmit} disabled={isPending || !name.trim()}>
-            {isPending ? "Saving…" : "Save Category"}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Add Subcategory Modal Component
-function AddSubcategoryModal({
-  categories,
-  error,
-  onClose,
-  onSave,
-}: {
-  categories: Category[];
-  error?: string | null;
-  onClose: () => void;
-  onSave: (categoryId: string, name: string, iconName: string) => Promise<void>;
-}) {
-  const [categoryId, setCategoryId] = useState(categories[0]?.id ?? "");
-  const [name, setName] = useState("");
-  const [selectedIcon, setSelectedIcon] = useState("sparkles");
-  const [activeGroup, setActiveGroup] = useState(ICON_GROUPS[0]);
-  const [isPending, startTransition] = useTransition();
-
-  const filteredIcons = SERVICE_ICON_OPTIONS.filter((o) => o.group === activeGroup);
-
-  const handleSubmit = () => {
-    if (!name.trim() || !categoryId) return;
-    startTransition(async () => {
-      await onSave(categoryId, name.trim(), selectedIcon);
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-      <div className="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-lg p-6 border border-outline-variant/20 max-h-[90vh] overflow-y-auto">
-        <h3 className="text-primary font-bold text-base mb-4 flex items-center gap-2">
-          <span className="w-7 h-7 rounded-lg bg-secondary/15 flex items-center justify-center text-secondary text-xs font-black">+</span>
-          New Sub-category
-        </h3>
-        {error && (
-          <div className="mb-4 bg-error/10 border border-error/20 text-error px-3 py-2 rounded-lg flex items-center gap-2 text-xs font-bold animate-fade-in">
-            <span className="material-symbols-outlined text-sm">error</span>
-            <span>{error}</span>
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-bold text-on-surface-variant mb-1.5">Parent Category</label>
-            <select
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full border border-outline-variant/20 rounded-lg p-3 bg-surface-container focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
-            >
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>{cat.category_name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-on-surface-variant mb-1.5">Sub-category Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full border border-outline-variant/20 rounded-lg p-3 bg-surface-container focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
-              placeholder="e.g. Cockroach Control"
-              autoFocus
-            />
-          </div>
-        </div>
-
-        {/* Icon Picker */}
-        <div>
-          <label className="block text-sm font-bold text-on-surface-variant mb-2">
-            Choose Icon
-          </label>
-
-          <div className="flex items-center gap-3 mb-3 p-3 bg-surface-container rounded-xl border border-outline-variant/15">
-            <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
-              <ServiceIconComponent iconName={selectedIcon} className="w-5 h-5 text-emerald-600" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-on-surface">
-                {SERVICE_ICON_OPTIONS.find((o) => o.name === selectedIcon)?.label ?? selectedIcon}
-              </p>
-              <p className="text-[10px] text-on-surface-variant font-mono">{selectedIcon}</p>
-            </div>
-          </div>
-
-          <div className="flex gap-1.5 flex-wrap mb-2">
-            {ICON_GROUPS.map((group) => (
-              <button
-                key={group}
-                type="button"
-                onClick={() => setActiveGroup(group)}
-                className={`text-[10px] font-bold px-2.5 py-1 rounded-full transition-all ${activeGroup === group
-                  ? "bg-primary text-white"
-                  : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
-                  }`}
-              >
-                {group}
-              </button>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-8 gap-1.5 p-3 bg-surface-container rounded-xl border border-outline-variant/15 max-h-40 overflow-y-auto">
-            {filteredIcons.map((opt) => (
-              <button
-                key={opt.name}
-                type="button"
-                title={opt.label}
-                onClick={() => setSelectedIcon(opt.name)}
-                className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${selectedIcon === opt.name
-                  ? "bg-green-500/20 ring-2 ring-emerald-500 scale-110"
-                  : "bg-surface-container-lowest hover:bg-green-500/10 hover:scale-105"
-                  }`}
-              >
-                <ServiceIconComponent iconName={opt.name} className="w-4 h-4 text-emerald-600" />
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex gap-2 justify-end mt-4">
-          <Button type="button" variant="ghost" onClick={onClose} disabled={isPending}>Cancel</Button>
-          <Button type="button" variant="primary" onClick={handleSubmit} disabled={isPending || !name.trim() || !categoryId}>
-            {isPending ? "Saving…" : "Save Sub-category"}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function CreateServiceForm({
-  categories: initialCategories,
+  categories,
   action,
-  addCategoryAction,
-  addSubcategoryAction,
   taxRate = 18,
 }: CreateServiceFormProps) {
   const [state, formAction, isPending] = useActionState(action, { type: null, message: null });
@@ -239,13 +48,8 @@ export function CreateServiceForm({
   const [activeTab, setActiveTab] = useState<"basic" | "pricing" | "variants" | "addons" | "content" | "preview">("basic");
 
   // Local Category States
-  const [localCategories, setLocalCategories] = useState<Category[]>(initialCategories);
   const [selectedSubcatId, setSelectedSubcatId] = useState<string>("");
   const [selectedIcon, setSelectedIcon] = useState<string>("sparkles");
-
-  // Modal Visibility
-  const [showAddCategory, setShowAddCategory] = useState(false);
-  const [showAddSubcategory, setShowAddSubcategory] = useState(false);
 
   // General Form States
   const [title, setTitle] = useState("");
@@ -329,7 +133,7 @@ export function CreateServiceForm({
   const handleSubcategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const subcatId = e.target.value;
     setSelectedSubcatId(subcatId);
-    for (const cat of localCategories) {
+    for (const cat of categories) {
       const subcat = cat.subcategories.find((s) => s.id === subcatId);
       if (subcat) {
         setSelectedIcon(subcat.icon_name);
@@ -351,34 +155,6 @@ export function CreateServiceForm({
     setFaqs((prev) => { const n = [...prev]; n[i] = { ...n[i], [field]: val }; return n; });
   const addFaq = () => setFaqs((prev) => [...prev, { question: "", answer: "" }]);
   const removeFaq = (i: number) => setFaqs((prev) => prev.filter((_, idx) => idx !== i));
-
-  // Save new category
-  const [catError, setCatError] = useState<string | null>(null);
-
-  const handleSaveCategory = async (name: string) => {
-    setCatError(null);
-    const result = await addCategoryAction(name);
-    if ("error" in result) { setCatError(result.error); setTimeout(() => setCatError(null), 3000); return; }
-    setLocalCategories((prev) => [...prev, { id: result.id, category_name: result.category_name, subcategories: [] }]);
-    setShowAddCategory(false);
-  };
-
-  // Save new subcategory
-  const handleSaveSubcategory = async (categoryId: string, name: string, iconName: string) => {
-    setCatError(null);
-    const result = await addSubcategoryAction(categoryId, name, iconName);
-    if ("error" in result) { setCatError(result.error); setTimeout(() => setCatError(null), 3000); return; }
-    setLocalCategories((prev) =>
-      prev.map((cat) =>
-        cat.id === categoryId
-          ? { ...cat, subcategories: [...cat.subcategories, { id: result.id, subcategory_name: result.subcategory_name, icon_name: result.icon_name }] }
-          : cat
-      )
-    );
-    setSelectedSubcatId(result.id);
-    setSelectedIcon(result.icon_name);
-    setShowAddSubcategory(false);
-  };
 
   // Compile final pricing config dynamically
   const pricingConfigObj = useMemo(() => {
@@ -457,10 +233,6 @@ export function CreateServiceForm({
   ]);
 
   return (
-    <>
-      {showAddCategory && <AddCategoryModal error={catError} onClose={() => { setShowAddCategory(false); setCatError(null); }} onSave={handleSaveCategory} />}
-      {showAddSubcategory && <AddSubcategoryModal categories={localCategories} error={catError} onClose={() => { setShowAddSubcategory(false); setCatError(null); }} onSave={handleSaveSubcategory} />}
-
       <form action={formAction} className="space-y-6">
         {state?.type === "error" && (
           <div className="bg-error/10 border border-error/20 text-error px-4 py-3 rounded-lg flex items-center gap-3">
@@ -559,7 +331,7 @@ export function CreateServiceForm({
                     className="grow border border-outline-variant/20 rounded-lg p-3 bg-surface focus:ring-2 focus:ring-primary/20 outline-none text-xs font-bold text-primary"
                   >
                     <option value="">-- Choose a sub-category --</option>
-                    {localCategories.map((cat) => (
+                    {categories.map((cat) => (
                       <optgroup key={cat.id} label={cat.category_name}>
                         {cat.subcategories.map((sub) => (
                           <option key={sub.id} value={sub.id}>{sub.subcategory_name}</option>
@@ -571,14 +343,6 @@ export function CreateServiceForm({
                   <div className="rounded-xl bg-green-500/10 p-3 flex items-center justify-center min-w-11 shrink-0">
                     <ServiceIconComponent iconName={selectedIcon} className="w-5 h-5 text-emerald-600 drop-shadow-sm" />
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowAddSubcategory(true)}
-                    className="shrink-0 rounded-lg border border-secondary/30 bg-secondary/10 hover:bg-secondary/20 text-secondary px-3.5 py-1.5 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
-                  >
-                    + Sub-cat
-                  </button>
                 </div>
               </div>
             </div>
@@ -643,7 +407,7 @@ export function CreateServiceForm({
                     className="grow border border-outline-variant/20 rounded-lg p-3 bg-surface focus:ring-2 focus:ring-primary/20 outline-none text-xs font-bold text-primary"
                   >
                     <option value="">-- Choose a sub-category --</option>
-                    {localCategories.map((cat) => (
+                    {categories.map((cat) => (
                       <optgroup key={cat.id} label={cat.category_name}>
                         {cat.subcategories.map((sub) => (
                           <option key={sub.id} value={sub.id}>{sub.subcategory_name}</option>
@@ -655,21 +419,6 @@ export function CreateServiceForm({
                   <div className="rounded-xl bg-green-500/10 p-3 flex items-center justify-center min-w-11 shrink-0">
                     <ServiceIconComponent iconName={selectedIcon} className="w-5 h-5 text-emerald-600 drop-shadow-sm" />
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowAddSubcategory(true)}
-                    className="shrink-0 rounded-lg border border-secondary/30 bg-secondary/10 hover:bg-secondary/20 text-secondary px-3.5 py-1.5 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
-                  >
-                    + Sub-cat
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddCategory(true)}
-                    className="shrink-0 rounded-lg border border-primary/20 bg-primary/10 hover:bg-primary/15 text-primary px-3.5 py-1.5 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
-                  >
-                    + Category
-                  </button>
                 </div>
               </div>
             </div>
@@ -1707,6 +1456,5 @@ export function CreateServiceForm({
           )}
         </div>
       </form>
-    </>
   );
 }

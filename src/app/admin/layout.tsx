@@ -16,6 +16,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "Customers", href: "/admin/customers", icon: "group" },
     { name: "Professionals", href: "/admin/partners", icon: "handshake" },
     { name: "Services", href: "/admin/services", icon: "handyman" },
+    { name: "Categories", href: "/admin/categories", icon: "category" },
     { name: "Coupons", href: "/admin/coupons", icon: "local_offer" },
     { name: "Offers", href: "/admin/offers", icon: "local_activity" },
     { name: "Waitlists", href: "/admin/waitlist", icon: "notifications_active" },

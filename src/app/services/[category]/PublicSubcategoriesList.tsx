@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ServiceIconComponent } from "@/utils/serviceIcon";
+import { ServiceVisual } from "@/components/ServiceVisual";
 
 interface Subcategory {
   id: string;
   subcategory_name: string;
   icon_name: string;
+  image_url?: string | null;
   categories: {
     id: string;
     category_name: string;
@@ -18,12 +19,14 @@ interface PublicSubcategoriesListProps {
   subcategories: Subcategory[];
   categoryTitle: string;
   categorySlug: string;
+  categoryImage?: string | null;
 }
 
 export default function PublicSubcategoriesList({
   subcategories,
   categoryTitle,
   categorySlug,
+  categoryImage = null,
 }: PublicSubcategoriesListProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -40,6 +43,16 @@ export default function PublicSubcategoriesList({
           <Link href="/" className="text-on-surface hover:opacity-80 transition-all flex items-center">
             <span className="material-symbols-outlined text-[22px] md:text-[24px]">arrow_back</span>
           </Link>
+          {categoryImage && (
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl overflow-hidden shrink-0 bg-surface-container-high">
+              <ServiceVisual
+                imageUrl={categoryImage}
+                alt={categoryTitle}
+                containerClassName="w-full h-full"
+                thumbnailSize={96}
+              />
+            </div>
+          )}
           <h1 className="text-primary font-black text-2xl md:text-3xl tracking-tight font-headline">
             {categoryTitle}
           </h1>
@@ -69,19 +82,21 @@ export default function PublicSubcategoriesList({
         {/* Subcategories Square Cards Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {filteredSubcategories.map((sub) => {
-            const iconName = sub.icon_name || "sparkles";
-
             return (
               <Link
                 key={sub.id}
                 href={`/services/${categorySlug}/${sub.id}`}
                 className="bg-surface-container-low p-4 md:p-6 rounded-2xl flex flex-col items-center justify-center text-center border border-outline-variant/10 shadow-sm aspect-square cursor-pointer hover:bg-surface-container-high active:scale-95 transition-all"
               >
-                {/* Icon Container conforming to Premium CSS standard */}
-                <div className="w-14 h-14 md:w-18 md:h-18 rounded-xl md:rounded-2xl bg-green-500/10 mb-3 md:mb-4 flex items-center justify-center text-[#059669] transition-transform active:scale-105">
-                  <ServiceIconComponent
-                    iconName={iconName}
-                    className="w-8 h-8 md:w-10 md:h-10 text-[#059669] drop-shadow-sm"
+                {/* Icon container conforming to Premium CSS standard; shows uploaded image when present */}
+                <div className="w-14 h-14 md:w-18 md:h-18 rounded-xl md:rounded-2xl bg-green-500/10 mb-3 md:mb-4 flex items-center justify-center text-[#059669] transition-transform active:scale-105 overflow-hidden">
+                  <ServiceVisual
+                    imageUrl={sub.image_url}
+                    iconName={sub.icon_name || "sparkles"}
+                    alt={sub.subcategory_name}
+                    containerClassName="w-full h-full"
+                    iconClassName="w-8 h-8 md:w-10 md:h-10 text-[#059669]"
+                    thumbnailSize={192}
                   />
                 </div>
                 <span className="font-headline font-bold text-[13px] md:text-base text-on-surface leading-tight md:leading-snug line-clamp-2">

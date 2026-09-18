@@ -4,7 +4,7 @@ import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { CreateServiceForm } from "./CreateServiceForm";
 import { requireAdmin } from "@/utils/supabase/auth-checks";
-import { revalidateCategories, revalidateSubcategories, revalidateServices } from "@/utils/supabase/cacheInvalidators";
+import { revalidateServices } from "@/utils/supabase/cacheInvalidators";
 import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 import { logAdminAuditAction } from "@/utils/auditLogger";
 
@@ -17,38 +17,6 @@ export default async function AdminCreateServicePage() {
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
   if (!profile || profile.role !== 'admin') redirect('/');
 
-  // ── Server action: create a new category ──────────────────────────────────
-  async function addCategoryAction(name: string) {
-    "use server";
-    await requireAdmin();
-    const db = await createClient();
-    const { data, error } = await db
-      .from("categories")
-      .insert({ category_name: name })
-      .select("id, category_name")
-      .single();
-    if (error) return { error: error.message };
-    revalidateCategories();
-    revalidatePath("/admin/services/create");
-    return { id: data.id, category_name: data.category_name };
-  }
-
-  // ── Server action: create a new subcategory ───────────────────────────────
-  async function addSubcategoryAction(categoryId: string, name: string, iconName: string) {
-    "use server";
-    await requireAdmin();
-    const db = await createClient();
-    const { data, error } = await db
-      .from("subcategories")
-      .insert({ category_id: categoryId, subcategory_name: name, icon_name: iconName })
-      .select("id, subcategory_name, icon_name, category_id")
-      .single();
-    if (error) return { error: error.message };
-    revalidateSubcategories();
-    revalidatePath("/admin/services/create");
-    return { id: data.id, subcategory_name: data.subcategory_name, icon_name: data.icon_name, category_id: data.category_id };
-  }
-
   // Fetch categories, subcategories, and platform settings in parallel
   const [categoriesRes, settings] = await Promise.all([
     supabase
@@ -56,10 +24,12 @@ export default async function AdminCreateServicePage() {
       .select(`
         id,
         category_name,
+        image_url,
         subcategories (
           id,
           subcategory_name,
-          icon_name
+          icon_name,
+          image_url
         )
       `),
     fetchPlatformSettings(supabase),
@@ -307,8 +277,6 @@ export default async function AdminCreateServicePage() {
       <CreateServiceForm
         categories={categoriesData || []}
         action={createServiceAction}
-        addCategoryAction={addCategoryAction}
-        addSubcategoryAction={addSubcategoryAction}
         taxRate={taxRate}
       />
     </div>

@@ -5,6 +5,7 @@ import { TAG_CATEGORIES } from "./cacheTags";
 export interface Category {
   id: string;
   category_name: string;
+  image_url?: string | null;
 }
 
 /**
@@ -16,7 +17,7 @@ export const getCachedCategories = unstable_cache(
     const supabase = createClient();
     const { data, error } = await supabase
       .from("categories")
-      .select("id, category_name")
+      .select("id, category_name, image_url")
       .order("category_name", { ascending: true });
 
     if (error) {

@@ -57,10 +57,12 @@ export default async function AdminEditServicePage({ params }: { params: Promise
     .select(`
       id,
       category_name,
+      image_url,
       subcategories (
         id,
         subcategory_name,
-        icon_name
+        icon_name,
+        image_url
       )
     `);
 

@@ -6,9 +6,11 @@ export interface SubcategoryWithCategory {
   id: string;
   subcategory_name: string;
   icon_name: string;
+  image_url?: string | null;
   categories: {
     id: string;
     category_name: string;
+    image_url?: string | null;
   } | null;
 }
 
@@ -25,9 +27,11 @@ export const getCachedAllSubcategories = unstable_cache(
         id,
         subcategory_name,
         icon_name,
+        image_url,
         categories (
           id,
-          category_name
+          category_name,
+          image_url
         )
       `)
       .order("subcategory_name", { ascending: true });

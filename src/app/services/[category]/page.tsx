@@ -51,6 +51,7 @@ export default async function PublicCategorySubcategoryListingPage({
         subcategories={displaySubcategories}
         categoryTitle={categoryTitle}
         categorySlug={categorySlug}
+        categoryImage={matchedCategory?.image_url ?? (displaySubcategories[0]?.categories?.image_url ?? null)}
       />
       <Footer />
     </>

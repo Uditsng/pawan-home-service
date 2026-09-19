@@ -171,8 +171,8 @@ export function OfferForm({ action, services, offer, isEdit, initialServiceIds }
               required
               placeholder="e.g. FESTIVE100"
               defaultValue={offer?.code ?? ""}
-              disabled={isEdit}
-              className={`${fieldClass} uppercase font-mono font-bold tracking-wider`}
+              readOnly={isEdit}
+              className={`${fieldClass} uppercase font-mono font-bold tracking-wider read-only:opacity-60 read-only:bg-surface-container-low`}
             />
             {isEdit && <p className="text-[11px] text-on-surface-variant opacity-70 mt-1">Codes cannot be changed after creation.</p>}
           </div>

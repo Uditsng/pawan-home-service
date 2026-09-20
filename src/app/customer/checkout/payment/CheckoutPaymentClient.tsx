@@ -92,6 +92,8 @@ export default function CheckoutPaymentClient({
   const [isPending, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [useWallet, setUseWallet] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"online" | "cash">("online");
+  const cashMode = paymentMethod === "cash";
   const [bookAsBusiness, setBookAsBusiness] = useState(false);
   const [businessName, setBusinessName] = useState("");
   const [businessGstin, setBusinessGstin] = useState("");
@@ -370,18 +372,22 @@ export default function CheckoutPaymentClient({
           addressId,
           date,
           time,
-          walletAmountToUse: walletShown,
+          walletAmountToUse: cashMode ? 0 : walletShown,
           couponCode: appliedCoupon?.code ?? undefined,
           offerEntitlementId: selectedEntitlement?.id ?? undefined,
+          paymentMethod,
         });
 
-        if (rzOrder.freeOrder) {
+        // Cash (pay-on-completion) and free (wallet/offer-covered) orders never
+        // open the gateway — commit directly, mirroring the existing free path.
+        if (rzOrder.freeOrder || rzOrder.cash) {
           const verifyRes = await verifyRazorpayPaymentAction({
-            isFree: true,
+            isFree: !!rzOrder.freeOrder,
+            paymentMethod,
             orderId: rzOrder.internalOrderId,
             services: checkoutServices,
             addressId, date, time,
-            walletAmountToUse: walletShown,
+            walletAmountToUse: cashMode ? 0 : walletShown,
             couponCode: appliedCoupon?.code ?? undefined,
             offerEntitlementId: selectedEntitlement?.id ?? undefined,
             businessName: bookAsBusiness ? businessName : undefined,
@@ -635,7 +641,9 @@ export default function CheckoutPaymentClient({
               </div>
             </div>
 
+            
             {/* WALLET */}
+            {!cashMode && (
             <div className="bg-white border border-outline-variant/10 rounded-3xl p-4 md:p-5 shadow-xs space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -662,6 +670,7 @@ export default function CheckoutPaymentClient({
                 </p>
               )}
             </div>
+            )}
 
             {/* COUPON */}
             <div className="bg-white border border-outline-variant/10 rounded-3xl p-5 md:p-6 shadow-xs space-y-4">
@@ -946,8 +955,53 @@ export default function CheckoutPaymentClient({
               </div>
             </div>
 
+            {/* PAYMENT METHOD */}
+            <div className="bg-white border border-outline-variant/10 rounded-2xl p-3 md:p-4 space-y-2">
+              <div>
+                <p className="text-xs font-bold text-on-surface">Payment Method</p>
+                <p className="text-xs text-on-surface-variant/70 mt-0.5">Select how you will pay for this service.</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => setPaymentMethod("online")}
+                  className={`p-3 rounded-xl border text-left cursor-pointer disabled:opacity-50 ${paymentMethod === "online"
+                      ? "border-secondary bg-secondary/10"
+                      : "border-outline-variant/40 bg-surface-container-lowest hover:bg-surface-container-low"
+                    }`}
+                >
+                  <p className="text-xs font-semibold text-on-surface">Pay Online</p>
+                  {displayTotal === 0 && !cashMode ? (
+                    <p className="text-[10px] text-success mt-0.5 font-semibold">Fully covered by wallet</p>
+                  ) : (
+                    <p className="text-[10px] text-on-surface-variant mt-0.5">
+                      Pay ₹{displayTotal.toLocaleString("en-IN")} online
+                    </p>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => setPaymentMethod("cash")}
+                  className={`p-3 rounded-xl border text-left cursor-pointer disabled:opacity-50 ${cashMode
+                      ? "border-secondary bg-secondary/10"
+                      : "border-outline-variant/40 bg-surface-container-lowest hover:bg-surface-container-low"
+                    }`}
+                >
+                  <p className="text-xs font-semibold text-on-surface">Pay Cash</p>
+                  <p className="text-[10px] text-on-surface-variant mt-0.5">
+                    Pay ₹{postOfferGross.toLocaleString("en-IN")} to professional
+                  </p>
+                </button>
+              </div>
+            </div>
+
+
             {/* TERMS CHECKBOX */}
-            <div className="px-2 py-1">
+            <div className="px-2 py-1 mb-10">
               <label className="flex items-start gap-3 cursor-pointer group select-none">
                 <div className="relative shrink-0 mt-0.5">
                   <input id="terms-confirm" type="checkbox" checked={isAgreed} onChange={(e) => setIsAgreed(e.target.checked)} disabled={isPending} className="sr-only peer" />
@@ -979,8 +1033,8 @@ export default function CheckoutPaymentClient({
                   </>
                 ) : (
                   <>
-                    {displayTotal === 0 ? "Book for FREE with Wallet" : `Pay ₹${displayTotal} & Book`}
-                    <span className="material-symbols-outlined text-[24px]">payments</span>
+                    {displayTotal === 0 && !cashMode ? "Book for FREE with Wallet" : cashMode ? `Pay ₹${displayTotal} Cash & Book` : `Pay ₹${displayTotal} & Book`}
+                    <span className="material-symbols-outlined text-[24px]">{cashMode ? "currency_rupee" : "payments"}</span>
                   </>
                 )}
               </button>
@@ -1010,8 +1064,7 @@ export default function CheckoutPaymentClient({
                   </>
                 ) : (
                   <>
-                    {displayTotal === 0 ? "Book with Wallet" : `Pay ₹${displayTotal}`}
-                    <span className="material-symbols-outlined text-[20px] md:text-[24px]">payments</span>
+                    {displayTotal === 0 && !cashMode ? "Book with Wallet" : cashMode ? `Pay ₹${displayTotal} Cash` : `Pay ₹${displayTotal}`}
                   </>
                 )}
               </button>

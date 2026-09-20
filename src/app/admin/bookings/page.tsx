@@ -11,6 +11,8 @@ export interface SerializedBooking {
   pincode: string | null;
   address: string | null;
   payment_method: string | null;
+  payment_status: string | null;
+  cash_received_at: string | null;
   scheduled_date: string | null;
   created_at: string;
   accepted_at: string | null;
@@ -94,6 +96,8 @@ export default async function AdminBookingsPage() {
       pincode,
       address,
       payment_method,
+      payment_status,
+      cash_received_at,
       scheduled_date,
       created_at,
       accepted_at,
@@ -123,7 +127,8 @@ export default async function AdminBookingsPage() {
     if (
       error.code === "42703" ||
       error.message?.includes("address") ||
-      error.message?.includes("payment_method")
+      error.message?.includes("payment_method") ||
+      error.message?.includes("cash_received_at")
     ) {
       isSchemaError = true;
       const { data: fallbackData, error: fallbackError } = await supabase
@@ -182,6 +187,8 @@ export default async function AdminBookingsPage() {
       pincode: (b.pincode as string) || null,
       address: (b.address as string) || null,
       payment_method: (b.payment_method as string) || "UPI",
+      payment_status: (b.payment_status as string) || "paid",
+      cash_received_at: (b.cash_received_at as string) || null,
       scheduled_date: (b.scheduled_date as string) || null,
       created_at: String(b.created_at || ""),
       accepted_at: (b.accepted_at as string) || null,

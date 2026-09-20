@@ -38,10 +38,15 @@ export interface RazorpayOrderResult {
   /** Internal `orders.id` — present for free orders so verify can resolve the
    *  seeded order + offer reservation and enforce idempotency. */
   internalOrderId?: string;
+  /** Cash (pay-on-completion) orders skip the gateway entirely — the client
+   *  goes straight to verify, exactly like the free path. */
+  cash?: boolean;
   amount: number;
   currency: string;
   keyId?: string;
 }
+
+export type CheckoutPaymentMethod = "online" | "cash";
 
 export interface VerificationResult {
   success: boolean;
@@ -255,10 +260,13 @@ export async function createRazorpayOrderAction(payload: {
   walletAmountToUse?: number;
   couponCode?: string;
   offerEntitlementId?: string;
+  paymentMethod?: CheckoutPaymentMethod;
 }): Promise<RazorpayOrderResult> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
+
+  const isCash = payload.paymentMethod === "cash";
 
   if (!payload.services || payload.services.length === 0) {
     throw new Error("No services specified");
@@ -382,6 +390,72 @@ export async function createRazorpayOrderAction(payload: {
     throw new Error("Razorpay credentials missing on server.");
   }
 
+  if (isCash) {
+    // Cash (pay-on-completion) orders never touch the gateway. Persist the
+    // internal order row with payment_status 'pending' so verify can resolve
+    // it (and any offer reservation) — mirroring the free-path machinery.
+    if (offerSnapshot) {
+      const { error: cashOfferError } = await supabase.from("orders").update({
+        status: "pending",
+        total_amount: finalOrderAmount,
+        payment_status: "pending",
+        original_subtotal: originalSubtotal,
+        tax_amount: taxAmount,
+        final_amount: finalOrderAmount,
+        coupon_valid_at_creation: couponValid,
+        coupon_code: payload.couponCode || null,
+        order_fees: computeResult.orderFees,
+        offer_entitlement_id: offerSnapshot.entitlementId,
+        offer_discount: offerSnapshot.appliedAmount,
+      }).eq("id", internalOrderId);
+
+      if (cashOfferError) {
+        console.error("[payment] Cash order snapshot failed:", cashOfferError);
+        await supabase.rpc("release_offer_reservation", {
+          p_order_id: internalOrderId,
+          p_customer_id: user.id,
+        });
+        await supabase.from("orders").delete().eq("id", internalOrderId);
+        throw new Error("Failed to persist your order.");
+      }
+    } else {
+      const { error: cashOrderError } = await supabase.from("orders").insert({
+        id: internalOrderId,
+        customer_id: user.id,
+        status: "pending",
+        total_amount: finalOrderAmount,
+        city: addr.city,
+        address: addr.formatted_address,
+        pincode: addr.pincode,
+        latitude: addr.latitude && Number(addr.latitude) !== 0 ? addr.latitude : null,
+        longitude: addr.longitude && Number(addr.longitude) !== 0 ? addr.longitude : null,
+        scheduled_date: new Date().toISOString(), // will be overridden with real date later
+        item_count: payload.services.length,
+        payment_status: "pending",
+        coupon_code: payload.couponCode || null,
+        original_subtotal: originalSubtotal,
+        tax_amount: taxAmount,
+        final_amount: finalOrderAmount,
+        coupon_valid_at_creation: couponValid,
+        order_fees: computeResult.orderFees,
+        offer_entitlement_id: null,
+        offer_discount: 0,
+      });
+      if (cashOrderError) {
+        console.error("[payment] Cash order creation failed:", cashOrderError);
+        throw new Error("Failed to persist your order.");
+      }
+    }
+
+    return {
+      freeOrder: false,
+      cash: true,
+      internalOrderId,
+      amount: finalOrderAmount,
+      currency: "INR",
+    };
+  }
+
   const authHeader = "Basic " + Buffer.from(keyId + ":" + keySecret).toString("base64");
   const response = await fetch("https://api.razorpay.com/v1/orders", {
     method: "POST",
@@ -495,10 +569,13 @@ export async function verifyRazorpayPaymentAction(payload: {
   offerEntitlementId?: string;
   businessName?: string;
   businessGstin?: string;
+  paymentMethod?: CheckoutPaymentMethod;
 }): Promise<VerificationResult> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
+
+  const isCash = payload.paymentMethod === "cash";
 
   if (!payload.services || payload.services.length === 0) {
     return { success: false, error: "No services specified." };
@@ -508,7 +585,7 @@ export async function verifyRazorpayPaymentAction(payload: {
   let rzOrderNotes: Record<string, string> | undefined;
 
   // 1. Signature Verification & Gateway Order Retrieval
-  if (!payload.isFree) {
+  if (!payload.isFree && !isCash) {
     if (!payload.razorpay_order_id || !payload.razorpay_payment_id || !payload.razorpay_signature) {
       return { success: false, error: "Missing payment credentials." };
     }
@@ -608,13 +685,26 @@ export async function verifyRazorpayPaymentAction(payload: {
   }
 
   // Duplicate guards.
-  if (payload.isFree) {
+  if (payload.isFree || isCash) {
     // Free (wallet-only) orders have no gateway payment id to dedupe on. The
     // order row is the idempotency key: a repeated free verify would otherwise
     // re-debit the wallet and duplicate bookings under one order.
     if (pendingOrderSnapshot && pendingOrderSnapshot.payment_status === "paid") {
       console.warn("[payment] Free order already processed:", pendingOrderSnapshot.id);
       return { success: false, error: "This order has already been processed." };
+    }
+    // Cash orders keep payment_status 'pending' until service completion, so a
+    // paid-check can never catch a duplicate verify — guard on bookings instead.
+    if (isCash && pendingOrderSnapshot) {
+      const { data: existingCashBookings } = await supabase
+        .from("bookings")
+        .select("id")
+        .eq("order_id", pendingOrderSnapshot.id)
+        .limit(1)
+        .maybeSingle();
+      if (existingCashBookings) {
+        return { success: false, error: "This order has already been processed." };
+      }
     }
   } else if (payload.razorpay_order_id) {
     const { data: existingPayment } = await supabase
@@ -718,7 +808,7 @@ export async function verifyRazorpayPaymentAction(payload: {
   const { breakdowns, totalAmount, titleMap, validatedCoupon, pricingSummary, orderFees } = computePass;
 
   const { originalSubtotal: snapshotOriginalSubtotal, discountAmount: snapshotDiscountAmount, taxAmount: snapshotTaxAmount, couponValid } = pricingSummary;
-  const walletRequested = Math.max(0, Number(payload.walletAmountToUse ?? 0));
+  const walletRequested = isCash ? 0 : Math.max(0, Number(payload.walletAmountToUse ?? 0));
 
   // CRITICAL: never debit more than the actual payable. `walletApplied` is
   // capped inside calculateFinalPayable — a wallet balance can never be the
@@ -735,7 +825,7 @@ export async function verifyRazorpayPaymentAction(payload: {
   const walletDebit = Math.max(0, walletApplied);
 
   // 4b. Security Validation: Amount Mismatch Guard
-  if (!payload.isFree) {
+  if (!payload.isFree && !isCash) {
     if (Math.abs(rzAmount - finalOrderAmount) > 1) {
       console.error(
         `[Razorpay] Payment amount mismatch: Gateway charged ₹${rzAmount}, but server computed ₹${finalOrderAmount}.`
@@ -745,7 +835,7 @@ export async function verifyRazorpayPaymentAction(payload: {
         error: "Payment amount mismatch detected. Please contact support.",
       };
     }
-  } else {
+  } else if (payload.isFree) {
     if (finalOrderAmount > 0) {
       console.error(
         `[Razorpay] Free order rejected: server computed payable of ₹${finalOrderAmount} (must be <= 0).`
@@ -770,7 +860,7 @@ export async function verifyRazorpayPaymentAction(payload: {
         pincode: addr.pincode,
         scheduled_date: timestamp.toISOString(),
         item_count: payload.services.length,
-        payment_status: "paid",
+        payment_status: isCash ? "pending" : "paid",
         coupon_code: payload.couponCode || null,
         original_subtotal: snapshotOriginalSubtotal,
         tax_amount: snapshotTaxAmount,
@@ -809,7 +899,7 @@ export async function verifyRazorpayPaymentAction(payload: {
         pincode: addr.pincode,
         scheduled_date: timestamp.toISOString(),
         item_count: payload.services.length,
-        payment_status: "paid",
+        payment_status: isCash ? "pending" : "paid",
         coupon_code: payload.couponCode || null,
         original_subtotal: snapshotOriginalSubtotal,
         tax_amount: snapshotTaxAmount,
@@ -831,7 +921,7 @@ export async function verifyRazorpayPaymentAction(payload: {
 
   // 6. Debit wallet if applicable — always the server-capped `walletDebit`,
   // never the raw client-supplied amount.
-  if (walletDebit > 0) {
+  if (walletDebit > 0 && !isCash) {
     const { data: walletRes, error: walletError } = await supabase.rpc("use_wallet_balance", {
       p_user_id: user.id,
       p_amount: walletDebit,
@@ -866,16 +956,19 @@ export async function verifyRazorpayPaymentAction(payload: {
     }
   }
 
-  // 7. Create payment record
-  await supabase.from("payments").insert({
-    customer_id: user.id,
-    order_id: order.id,
-    amount: finalOrderAmount,
-    payment_status: "completed",
-    razorpay_order_id: payload.razorpay_order_id ?? null,
-    razorpay_payment_id: payload.razorpay_payment_id ?? null,
-    razorpay_signature: payload.razorpay_signature ?? null,
-  });
+  // 7. Create payment record (cash bookings have no gateway receipt — the
+  // partner collects cash after the service, {payment_status} flips at completion)
+  if (!isCash) {
+    await supabase.from("payments").insert({
+      customer_id: user.id,
+      order_id: order.id,
+      amount: finalOrderAmount,
+      payment_status: "completed",
+      razorpay_order_id: payload.razorpay_order_id ?? null,
+      razorpay_payment_id: payload.razorpay_payment_id ?? null,
+      razorpay_signature: payload.razorpay_signature ?? null,
+    });
+  }
 
   // 8. Create coupon usage record (if coupon was applied) — for BOTH paid and
   // free orders. The `(coupon_id, order_id)` UNIQUE prevents double-usage.
@@ -902,6 +995,14 @@ export async function verifyRazorpayPaymentAction(payload: {
 
   // 9. Create child bookings
   let isFirstBooking = true;
+  // Truthful payment-method label for this order (feeds invoices + admin).
+  // Online bookings were silently defaulting to 'Cash' on the DB column — now
+  // every path writes the true method.
+  let bookingPaymentMethod = "Razorpay";
+  if (isCash) bookingPaymentMethod = "Cash";
+  else if (payload.isFree) bookingPaymentMethod = walletDebit > 0 ? "Wallet" : offerContext ? "Offer" : "Razorpay";
+  else if (walletDebit > 0) bookingPaymentMethod = "Wallet + Razorpay";
+
   for (const item of payload.services) {
     const breakdown = breakdowns[item.serviceId];
     if (!breakdown) continue;
@@ -919,7 +1020,8 @@ export async function verifyRazorpayPaymentAction(payload: {
         address: addr.formatted_address,
         pincode: addr.pincode,
         scheduled_date: timestamp.toISOString(),
-        payment_status: "paid",
+        payment_status: isCash ? "pending" : "paid",
+        payment_method: bookingPaymentMethod,
         selected_duration_minutes: item.duration ?? null,
         base_price: breakdown.base_price,
         final_price: breakdown.total_price,
@@ -1023,8 +1125,10 @@ export async function verifyRazorpayPaymentAction(payload: {
     const title = titleMap[item.serviceId] || "Service";
     void notifyCustomer(
       user.id,
-      "Booking Confirmed & Paid!",
-      `Your booking for ${title} on ${payload.date} at ${payload.time} has been placed. We are matching a professional.`,
+      isCash ? "Booking Confirmed!" : "Booking Confirmed & Paid!",
+      isCash
+        ? `Your booking for ${title} on ${payload.date} at ${payload.time} has been placed. Please keep ₹${breakdown.total_price.toLocaleString("en-IN")} ready in cash for your Professional.`
+        : `Your booking for ${title} on ${payload.date} at ${payload.time} has been placed. We are matching a professional.`,
       "booking_created",
       { booking_id: booking.id, service_title: title }
     );

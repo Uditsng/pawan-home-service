@@ -101,6 +101,7 @@ export default function JobsClient({
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [enteredOtps, setEnteredOtps]   = useState<Record<string, string>>({});
   const [currentTime, setCurrentTime]   = useState<Date>(new Date());
+  const [cashConfirmIds, setCashConfirmIds] = useState<Record<string, boolean>>({});
 
   // Time Extension states
   const [extensionModalOpen, setExtensionModalOpen] = useState(false);
@@ -655,6 +656,18 @@ export default function JobsClient({
             <p className="text-[10px] font-bold text-amber-600 mb-1">
               {isCompletionExpired ? "Completion OTP has expired:" : "Enter Completion OTP from customer:"}
             </p>
+            {job.payment_method === "Cash" && (
+              <label className="flex items-start gap-2 text-[10px] font-bold text-[#059669] bg-green-500/10 px-2.5 py-2 rounded-lg border border-secondary/20 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={!!cashConfirmIds[job.id]}
+                  disabled={isCompletionExpired || isPending}
+                  onChange={(e) => setCashConfirmIds((prev) => ({ ...prev, [job.id]: e.target.checked }))}
+                  className="accent-secondary mt-0.5 shrink-0"
+                />
+                <span>Cash received — ₹{Number(job.total_amount || 0).toLocaleString("en-IN")} paid to me</span>
+              </label>
+            )}
             <div className="flex gap-2">
               <input
                 type="text"
@@ -668,7 +681,7 @@ export default function JobsClient({
               {!isCompletionExpired ? (
                 <button
                   disabled={isPending || enteredOtp.length !== 6}
-                  onClick={() => handleAction(() => verifyCompletionOtp(job.id, enteredOtp), "Completion OTP verified! Service closed.")}
+                  onClick={() => handleAction(() => verifyCompletionOtp(job.id, enteredOtp, !!cashConfirmIds[job.id]), "Completion OTP verified! Service closed.")}
                   className="bg-linear-to-br from-[#00685f] to-[#008378] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md hover:brightness-110 active:scale-95 disabled:opacity-50"
                 >
                   Verify OTP

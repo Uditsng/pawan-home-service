@@ -175,6 +175,9 @@ export interface Booking {
   expected_bags?: number | null;
   latitude?: number | null;
   longitude?: number | null;
+  payment_method?: string | null;
+  payment_status?: 'pending' | 'paid' | 'failed' | 'refunded' | null;
+  cash_received_at?: string | null;
 }
 
 // ─── Cart & Orders ───────────────────────────────────────────

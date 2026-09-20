@@ -19,6 +19,7 @@ import {
   manualAssignPartnerAction,
   reassignPartnerAction,
   getBookingPricingAction,
+  markCashReceivedAction,
 } from "./actions";
 import type { BookingPricingData } from "./actions";
 
@@ -280,6 +281,7 @@ export function BookingsCommand({
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [cityFilter, setCityFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState("");
+  const [paymentFilter, setPaymentFilter] = useState<"all" | "cash" | "online">("all");
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -488,6 +490,14 @@ export function BookingsCommand({
     // City filter
     if (cityFilter !== "All" && booking.city !== cityFilter) return false;
 
+    // Payment method filter
+    if (paymentFilter !== "all") {
+      const method = (booking.payment_method || "").toLowerCase();
+      const isCash = method === "cash";
+      if (paymentFilter === "cash" && !isCash) return false;
+      if (paymentFilter === "online" && isCash) return false;
+    }
+
     // Date filter
     if (dateFilter && booking.created_at) {
       const bookingDate = format(new Date(booking.created_at), "yyyy-MM-dd");
@@ -577,6 +587,29 @@ export function BookingsCommand({
         setCancelReason("");
       } catch (err: unknown) {
         setActionError((err as Error).message || "Failed to update booking status.");
+      }
+    });
+  };
+
+  const handleMarkCashReceived = (bookingId: string) => {
+    setDropdownMenu(null);
+    setActionError(null);
+
+    startTransition(async () => {
+      try {
+        const form = new FormData();
+        form.append("bookingId", bookingId);
+        const res = await markCashReceivedAction(form);
+        if (res?.error) throw new Error(res.error);
+        const settledAt = new Date().toISOString();
+        setBookings((prev) =>
+          prev.map((b) => (b.id === bookingId ? { ...b, payment_status: "paid", cash_received_at: settledAt } : b))
+        );
+        if (selectedBooking?.id === bookingId) {
+          setSelectedBooking((prev) => (prev ? { ...prev, payment_status: "paid", cash_received_at: settledAt } : null));
+        }
+      } catch (err: unknown) {
+        setActionError((err as Error).message || "Failed to mark cash as received.");
       }
     });
   };
@@ -934,6 +967,26 @@ export function BookingsCommand({
             </button>
           ))}
         </div>
+
+        {/* Payment Method Segment Pills */}
+        <div className="mt-2 flex w-max bg-surface-container p-1 rounded-xl border border-outline-variant/10">
+          {[
+            { key: "all" as const, label: "All Payments" },
+            { key: "cash" as const, label: "Cash" },
+            { key: "online" as const, label: "Online / Wallet" },
+          ].map((p) => (
+            <button
+              key={p.key}
+              onClick={() => { setPaymentFilter(p.key); setCurrentPage(1); }}
+              className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${paymentFilter === p.key
+                  ? "bg-secondary text-white shadow-md shadow-secondary/20"
+                  : "text-on-surface-variant hover:text-primary"
+                }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
       </Card>
 
       {/* ─── 3. HIGH-DENSITY DATA TABLE ──────────────────────── */}
@@ -1076,9 +1129,27 @@ export function BookingsCommand({
                         <p className="text-sm font-bold text-primary font-headline tracking-tighter leading-none">
                           ₹{booking.total_amount.toLocaleString()}
                         </p>
-                        <p className="text-[9px] font-bold text-on-surface-variant/50 uppercase tracking-widest leading-none mt-0.5">
-                          {booking.payment_method || "UPI"}
-                        </p>
+                        {(() => {
+                          const method = (booking.payment_method || "").toLowerCase();
+                          if (method === "cash") {
+                            return booking.payment_status === "paid" ? (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest leading-none mt-0.5 text-emerald-700">
+                                <span className="w-1 h-1 rounded-full bg-emerald-600 shrink-0"></span>
+                                Cash Received
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest leading-none mt-0.5 text-amber-700">
+                                <span className="w-1 h-1 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
+                                Cash Due
+                              </span>
+                            );
+                          }
+                          return (
+                            <p className="text-[9px] font-bold text-on-surface-variant/50 uppercase tracking-widest leading-none mt-0.5">
+                              {booking.payment_method || "UPI"}
+                            </p>
+                          );
+                        })()}
                       </td>
 
                       {/* Col 7: Actions */}
@@ -1171,7 +1242,18 @@ export function BookingsCommand({
                     </div>
                     <div className="text-center">
                       <p className="text-[8px] font-black uppercase text-on-surface-variant/40 tracking-wider">Payment</p>
-                      <p className="text-primary font-black text-xs mt-0.5">{booking.payment_method || "UPI"}</p>
+                      {(() => {
+                        const method = (booking.payment_method || "").toLowerCase();
+                        if (method === "cash") {
+                          const settled = booking.payment_status === "paid";
+                          return (
+                            <p className={`text-[10px] font-black mt-0.5 ${settled ? "text-emerald-700" : "text-amber-700"}`}>
+                              {settled ? "Cash Received" : "Cash Due"}
+                            </p>
+                          );
+                        }
+                        return <p className="text-primary font-black text-xs mt-0.5">{booking.payment_method || "UPI"}</p>;
+                      })()}
                     </div>
                     <div className="text-center">
                       <p className="text-[8px] font-black uppercase text-on-surface-variant/40 tracking-wider">Professional</p>
@@ -1511,7 +1593,18 @@ export function BookingsCommand({
                       </div>
                       <div>
                         <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70">Payment</p>
-                        <p className="text-xs font-bold text-primary mt-1">{selectedBooking.payment_method || "UPI"}</p>
+                        {(() => {
+                          const method = (selectedBooking.payment_method || "").toLowerCase();
+                          if (method === "cash") {
+                            const settled = selectedBooking.payment_status === "paid";
+                            return (
+                              <p className={`text-xs font-bold mt-1 ${settled ? "text-emerald-700" : "text-amber-700"}`}>
+                                {settled ? "Cash Received" : "Cash Due"}
+                              </p>
+                            );
+                          }
+                          return <p className="text-xs font-bold text-primary mt-1">{selectedBooking.payment_method || "UPI"}</p>;
+                        })()}
                       </div>
                       <div>
                         <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70">City / Zone</p>
@@ -1655,6 +1748,27 @@ export function BookingsCommand({
                       <p className="text-xs text-on-surface-variant/60 italic">Price details not available.</p>
                     )}
                   </div>
+
+                  {/* Cash Settlement */}
+                  {(selectedBooking.payment_method || "").toLowerCase() === "cash" && selectedBooking.payment_status !== "paid" && (
+                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
+                      <span className="material-symbols-outlined text-amber-600 text-xl shrink-0">payments</span>
+                      <div className="flex-1">
+                        <p className="text-xs font-black uppercase tracking-widest text-amber-700">Cash settlement pending</p>
+                        <p className="text-[10px] text-on-surface-variant/80 font-semibold mt-0.5">
+                          Customer paid the professional in cash. Confirm receipt to settle this booking.
+                        </p>
+                        <Button
+                          variant="primary"
+                          disabled={isPending}
+                          onClick={() => handleMarkCashReceived(selectedBooking.id)}
+                          className="mt-2 bg-amber-600 hover:bg-amber-700 text-white text-[10px] uppercase tracking-widest font-black py-2 px-4 rounded-lg disabled:opacity-50 transition-all"
+                        >
+                          {isPending ? "Confirming…" : "Mark Cash Received"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* OTP Security & Timing */}
                   <h5 className="text-xs font-bold uppercase tracking-widest text-primary">OTP Security & Timing</h5>

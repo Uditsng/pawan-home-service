@@ -478,3 +478,56 @@ export async function getBookingPricingAction(bookingId: string) {
     offer_title: offerTitle,
   };
 }
+
+/**
+ * Mark Cash Received (Admin Settlement Override)
+ * Settles the payment_status of a Cash booking that the partner confirmed
+ * to the customer but the customer could not confirm in-app.
+ */
+export async function markCashReceivedAction(formData: FormData) {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const bookingId = formData.get("bookingId");
+  if (!bookingId || typeof bookingId !== "string") {
+    return { error: "Missing booking id." };
+  }
+
+  const { data: booking, error: fetchError } = await supabase
+    .from("bookings")
+    .select("id, payment_method, payment_status, cash_received_at")
+    .eq("id", bookingId)
+    .single();
+
+  if (fetchError) {
+    return { error: fetchError.message };
+  }
+
+  if (!booking || booking.payment_method !== "Cash") {
+    return { error: "This booking is not a cash booking." };
+  }
+
+  if (booking.payment_status === "paid" && booking.cash_received_at) {
+    return { error: "Cash already marked as received for this booking." };
+  }
+
+  const now = new Date().toISOString();
+  const { error: updateError } = await supabase
+    .from("bookings")
+    .update({ payment_status: "paid", cash_received_at: now })
+    .eq("id", bookingId);
+
+  if (updateError) {
+    return { error: updateError.message };
+  }
+
+  await supabase.from("booking_audit_trail").insert({
+    booking_id: bookingId,
+    action: "CASH_SETTLED",
+    actor: "ADMIN",
+    metadata: { admin_override: true, cash_received_at: now },
+  });
+
+  revalidatePath("/admin/bookings");
+  return { success: true };
+}

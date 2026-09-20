@@ -856,14 +856,15 @@ export async function requestCompletion(
 // Transition: otp_pending -> completed
 export async function verifyCompletionOtp(
   bookingId: string,
-  enteredOtp: string
+  enteredOtp: string,
+  cashReceived: boolean = false
 ): Promise<{ success: boolean; error?: string }> {
   const { supabase, user, error: authError } = await getAuthenticatedPartner();
   if (!user) return { success: false, error: authError ?? "Not authenticated" };
 
   const { data: booking, error: fetchError } = await supabase
     .from("bookings")
-    .select("status, partner_id, completion_otp, completion_otp_expires_at, completion_otp_verified, failed_otp_attempts, customer_id")
+    .select("status, partner_id, completion_otp, completion_otp_expires_at, completion_otp_verified, failed_otp_attempts, customer_id, payment_method")
     .eq("id", bookingId)
     .single();
 
@@ -914,16 +915,31 @@ export async function verifyCompletionOtp(
 
   // Success: Update status to completed
   const now = new Date().toISOString();
+  const isCashBooking = booking.payment_method === "Cash";
+
+  const updateData: Record<string, unknown> = {
+    status: "completed",
+    completion_otp_verified: true,
+    completion_otp_verified_at: now,
+    service_completed_at: now,
+    completed_at: now,
+    failed_otp_attempts: 0,
+  };
+
+  // Cash bookings settle only when the partner confirms they received cash.
+  // Unconfirmed cash bookings stay payment_status 'pending' (paid shown later).
+  if (isCashBooking) {
+    if (cashReceived) {
+      updateData.payment_status = "paid";
+      updateData.cash_received_at = now;
+    } else {
+      updateData.payment_status = "pending";
+    }
+  }
+
   const { error: updateError } = await supabase
     .from("bookings")
-    .update({
-      status: "completed",
-      completion_otp_verified: true,
-      completion_otp_verified_at: now,
-      service_completed_at: now,
-      completed_at: now,
-      failed_otp_attempts: 0
-    })
+    .update(updateData)
     .eq("id", bookingId);
 
   if (updateError) {

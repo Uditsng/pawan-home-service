@@ -59,7 +59,15 @@ export function calculateCart(input: {
 
   for (const item of input.lineItems) {
     const b = item.breakdown;
-    subtotal += Number(b.total_price || 0) - Number(b.gst_amount || 0);
+    // Pre-discount subtotal: re-add coupon/offer/wallet so the billing
+    // "Subtotal" row reflects the true order value while coupon/offer/wallet
+    // appear as their own line items (no double-counting of discounts).
+    subtotal +=
+      Number(b.total_price || 0) +
+      Number(b.coupon_discount || 0) +
+      Number(b.offer_discount || 0) +
+      Number(b.wallet_discount || 0) -
+      Number(b.gst_amount || 0);
     gstTotal += Number(b.gst_amount || 0);
     couponDiscountTotal += Number(b.coupon_discount || 0);
     offerDiscountTotal += Number(b.offer_discount || 0);

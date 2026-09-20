@@ -11,6 +11,7 @@ import { Coupon, CartItem } from "@/lib/types";
 import { formatDuration } from "@/lib/pricing";
 import { calculateCart } from "@/lib/pricing/payableEngine";
 import { computeCartLineItems } from "@/lib/pricing/cartCatalog";
+import { applyOrderLevelCoupon } from "@/lib/pricing/discountEngine";
 import { calculateOfferDiscount } from "@/lib/pricing/offerEngine";
 import type { CartCatalog } from "@/lib/pricing/cartCatalog";
 import type { PricingBreakdown, OfferBenefit } from "@/lib/pricing/types";
@@ -139,14 +140,39 @@ export default function CheckoutPaymentClient({
   // Prices are computed entirely client-side through the shared pricing engine.
   // The server recomputes the same engine at payment time (authority) — no
   // server pricing calls happen while this screen is open or the wallet toggles.
+  const activeCouponObj = appliedCoupon?.couponObj ?? null;
+
+  // Coupon is applied ONCE per order: compute the order-level allocation once,
+  // then feed each line its paisa-exact share. This is the exact same math
+  // computeServiceBreakdowns runs server-side, so the preview and the charged
+  // amount can never diverge.
+  const baseLineItems = useMemo(
+    () =>
+      computeCartLineItems(items, catalog, {
+        scheduledDate: scheduleDate,
+        pincode,
+      }),
+    [items, catalog, scheduleDate, pincode]
+  );
+
+  const couponAllocation = useMemo(() => {
+    if (!activeCouponObj) return undefined;
+    const bases: Record<string, number> = {};
+    for (const line of baseLineItems) {
+      bases[line.serviceId] =
+        line.breakdown.total_price - line.breakdown.gst_amount - line.breakdown.travel_fee;
+    }
+    return applyOrderLevelCoupon(bases, activeCouponObj).perServiceAllocation;
+  }, [baseLineItems, activeCouponObj]);
+
   const lineItems = useMemo(
     () =>
       computeCartLineItems(items, catalog, {
         scheduledDate: scheduleDate,
         pincode,
-        coupon: couponObj,
+        couponAllocation,
       }),
-    [items, catalog, scheduleDate, pincode, couponObj]
+    [items, catalog, scheduleDate, pincode, couponAllocation]
   );
 
   const cartResult = useMemo(
@@ -190,74 +216,40 @@ export default function CheckoutPaymentClient({
     };
   }, [selectedEntitlement]);
 
-  const preOfferOrderTotal = useMemo(() => {
-    if (appliedCoupon) {
-      return Math.max(
-        0,
-        appliedCoupon.pricingSummary.originalSubtotal - appliedCoupon.pricingSummary.discountAmount
-      );
-    }
-    return cartResult.totalBeforeWallet;
-  }, [appliedCoupon, cartResult.totalBeforeWallet]);
+  // Post-coupon, pre-offer, pre-fee gross — exactly the cart total the server
+  // passes to reserve_offer_benefit when the offer is selected.
+  const preOfferOrderTotal = useMemo(
+    () => Math.max(0, cartResult.totalBeforeWallet),
+    [cartResult.totalBeforeWallet]
+  );
 
   const offerApplied = useMemo(
     () => Math.max(0, calculateOfferDiscount(preOfferOrderTotal, offerBenefit)),
     [preOfferOrderTotal, offerBenefit]
   );
 
-  // Authoritative pricing summary from server-side coupon validation.
-  // When available, these values are used for display (they are immutable snapshots
-  // for the Razorpay order lifecycle per approved decision #11).
-  // The client-side cartResult is still used for the actual payment flow,
-  // since the server revalidates at payment time.
-  const authoritativePricing = useMemo(() => {
-    if (appliedCoupon) {
-      return {
-        originalSubtotal: appliedCoupon.pricingSummary.originalSubtotal,
-        discountAmount: appliedCoupon.pricingSummary.discountAmount,
-        taxAmount: appliedCoupon.pricingSummary.taxAmount,
-        finalPayable: appliedCoupon.pricingSummary.finalPayable,
-        useAuthoritative: true,
-      };
-    }
-    return {
-      originalSubtotal: 0,
-      discountAmount: 0,
-      taxAmount: 0,
-      finalPayable: 0,
-      useAuthoritative: false,
-    };
-  }, [appliedCoupon]);
-
-  const useAuthoritative = authoritativePricing.useAuthoritative;
-
-  const totalPriceWithoutGst = cartResult.subtotal;
-  const totalGst = cartResult.gstTotal;
-  const totalCouponDiscount = cartResult.couponDiscountTotal;
+  // Totals come from the canonical client-side engine — the same breakdowns the
+  // server recomputes at payment time (no parallel display math). `subtotal` is
+  // pre-GST, pre-discount; coupon/offer/wallet/GST render as their own rows so
+  // nothing double-counts.
+  const displaySubtotal = cartResult.subtotal;
+  const displayTax = cartResult.gstTotal;
+  const displayDiscount = cartResult.couponDiscountTotal;
   const walletApplied = cartResult.walletApplied;
-  const finalPrice = cartResult.finalPayable;
+  const orderFeesTotal = cartResult.orderFeesTotal;
 
-  // Display values prefer the server-authoritative pricing summary (when a
-  // coupon has been validated) and fall back to the client-side cart result.
-  // In authoritative mode the server returns a post-tax pre-coupon subtotal, so
-  // we split out GST to keep the line structure consistent with the client.
-  const displaySubtotal = useAuthoritative
-    ? authoritativePricing.originalSubtotal - authoritativePricing.taxAmount
-    : totalPriceWithoutGst;
-  const displayTax = useAuthoritative ? authoritativePricing.taxAmount : totalGst;
-  const displayDiscount = useAuthoritative ? authoritativePricing.discountAmount : totalCouponDiscount;
-
-  // Client-side pre-offer gross (services + fees, before wallet).
-  const offerFreeGross = Math.max(0, finalPrice + walletApplied);
+  // Pre-offer gross (services + fees, before cash/wallet & offer).
+  const offerFreeGross = Math.max(0, cartResult.totalBeforeWallet + orderFeesTotal);
   const postOfferGross = Math.max(0, offerFreeGross - offerApplied);
   const walletShown = Math.min(walletApplied, postOfferGross);
 
-  const displayTotal = useAuthoritative
-    ? Math.max(0, authoritativePricing.finalPayable - offerApplied - walletShown)
-    : Math.max(0, postOfferGross - walletShown);
+  // Displayed total = post-offer gross − wallet. The gateway charge is the same
+  // maths (offer included, wallet capped), so this equals the Razorpay amount.
+  const displayTotal = Math.max(0, postOfferGross - walletShown);
 
-  // Calculate overall savings from all applied discounts
-  const totalSavings = displayDiscount + walletApplied + offerApplied;
+  // Savings = discounts only (coupon + offer). Wallet is a payment method, not
+  // a discount, so it no longer inflates this figure.
+  const displaySavings = displayDiscount + offerApplied;
 
   // GSTIN format validation (15-character Indian GSTIN pattern)
   const isGstinValid = useMemo(() => {
@@ -306,7 +298,7 @@ export default function CheckoutPaymentClient({
               taxAmount: res.taxAmount,
               finalPayable: res.finalPayable,
             },
-            couponObj: null,
+            couponObj: res.coupon,
           });
           setCouponInput("");
           setShowCoupons(false);
@@ -378,7 +370,7 @@ export default function CheckoutPaymentClient({
           addressId,
           date,
           time,
-          walletAmountToUse: walletApplied,
+          walletAmountToUse: walletShown,
           couponCode: appliedCoupon?.code ?? undefined,
           offerEntitlementId: selectedEntitlement?.id ?? undefined,
         });
@@ -386,9 +378,10 @@ export default function CheckoutPaymentClient({
         if (rzOrder.freeOrder) {
           const verifyRes = await verifyRazorpayPaymentAction({
             isFree: true,
+            orderId: rzOrder.internalOrderId,
             services: checkoutServices,
             addressId, date, time,
-            walletAmountToUse: walletApplied,
+            walletAmountToUse: walletShown,
             couponCode: appliedCoupon?.code ?? undefined,
             offerEntitlementId: selectedEntitlement?.id ?? undefined,
             businessName: bookAsBusiness ? businessName : undefined,
@@ -452,9 +445,10 @@ export default function CheckoutPaymentClient({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
+                orderId: rzOrder.internalOrderId,
                 services: checkoutServices,
                 addressId, date, time,
-                walletAmountToUse: walletApplied,
+                walletAmountToUse: walletShown,
                 couponCode: appliedCoupon?.code ?? undefined,
                 offerEntitlementId: selectedEntitlement?.id ?? undefined,
                 businessName: bookAsBusiness ? businessName : undefined,
@@ -881,7 +875,7 @@ export default function CheckoutPaymentClient({
           {/* RIGHT COLUMN: SAVINGS BANNER, BILLING DETAILS, TERMS & DESKTOP CTA */}
           <div className="lg:col-span-5 xl:col-span-5 space-y-6 lg:sticky lg:top-8">
             {/* TOTAL SAVINGS BANNER */}
-            {totalSavings > 0 && (
+            {displaySavings > 0 && (
               <div className="bg-emerald-50 border border-emerald-200/80 rounded-3xl p-4 flex items-center gap-3 text-emerald-900 shadow-xs animate-in fade-in duration-300">
                 <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 flex items-center justify-center shrink-0 text-emerald-700">
                   <span className="material-symbols-outlined text-2xl font-bold">savings</span>
@@ -889,7 +883,7 @@ export default function CheckoutPaymentClient({
                 <div>
                   <p className="text-xs font-extrabold leading-tight">Total Savings on this Order</p>
                   <p className="text-sm font-black text-emerald-700 mt-0.5">
-                    You are saving ₹{totalSavings}!
+                    You are saving ₹{displaySavings}!
                   </p>
                 </div>
               </div>
@@ -932,13 +926,13 @@ export default function CheckoutPaymentClient({
                 </div>
               )}
 
-              {useWallet && walletApplied > 0 && (
+              {useWallet && walletShown > 0 && (
                 <div className="flex justify-between items-center text-sm font-bold text-green-600">
                   <span className="flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>account_balance_wallet</span>
                     Paid from Wallet
                   </span>
-                  <span>-₹{walletApplied}</span>
+                  <span>-₹{walletShown}</span>
                 </div>
               )}
 

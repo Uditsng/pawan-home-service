@@ -5,7 +5,7 @@
  */
 import type { CartItem, PricingModel, ServicePricingRule } from "@/lib/types";
 import { calculatePricingBreakdown } from "./pricingEngine";
-import type { CartLineItem, CouponInput, PricingInput } from "./types";
+import type { CartLineItem, PricingInput } from "./types";
 
 export interface CartServiceSource {
   base_price: number;
@@ -85,7 +85,7 @@ export function buildCartPricingInput(
   options?: {
     scheduledDate?: string | Date;
     pincode?: string;
-    coupon?: CouponInput | null;
+    couponAmountForLine?: number;
     offerAmountForLine?: number;
   }
 ): PricingInput | null {
@@ -107,7 +107,7 @@ export function buildCartPricingInput(
     scheduledDate: options?.scheduledDate,
     pincode: options?.pincode,
     surchargeRules: (catalog.rules[item.serviceId] || []).map(mapPricingRule),
-    coupon: options?.coupon ?? null,
+    couponAmountForLine: options?.couponAmountForLine,
     offerAmountForLine: options?.offerAmountForLine,
     gstRate: catalog.taxRate,
     gstEnabled: catalog.gstEnabled,
@@ -124,7 +124,8 @@ export function computeCartLineItems(
   options?: {
     scheduledDate?: string | Date;
     pincode?: string;
-    coupon?: CouponInput | null;
+    /** Order-level coupon discount distributed per service (see applyOrderLevelCoupon). */
+    couponAllocation?: Record<string, number>;
     offerAmountsByService?: Record<string, number>;
   }
 ): CartLineItem[] {
@@ -132,6 +133,7 @@ export function computeCartLineItems(
   for (const item of items) {
     const input = buildCartPricingInput(item, catalog, {
       ...options,
+      couponAmountForLine: options?.couponAllocation?.[item.serviceId],
       offerAmountForLine: options?.offerAmountsByService?.[item.serviceId],
     });
     if (!input) continue;

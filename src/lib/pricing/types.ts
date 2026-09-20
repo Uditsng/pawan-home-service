@@ -77,7 +77,12 @@ export interface PricingInput {
     } | null;
   }[];
 
-  coupon?: CouponInput | null;
+  /**
+   * Coupon discount allocated to THIS line (rupees; the order-level discount
+   * distributed paisa-exactly across lines by `applyOrderLevelCoupon`). Applied
+   * pre-GST-to-payable, before offer — identical ordering to the server.
+   */
+  couponAmountForLine?: number;
 
   /**
    * Offer Card discount allocated to THIS line (rupees, order-level amount
@@ -173,7 +178,7 @@ export interface FinalPayableResult {
 
 export interface CartPricingResult {
   lineItems: CartLineItem[];
-  subtotal: number; // pre-GST subtotal (sum of total_price − gst_amount)
+  subtotal: number; // pre-GST, pre-discount subtotal (incl. travel/platform fees per line)
   gstTotal: number;
   orderFees: OrderFeeItem[];
   orderFeesTotal: number;

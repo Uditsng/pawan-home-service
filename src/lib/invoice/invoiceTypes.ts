@@ -2,6 +2,12 @@
 // Invoice TypeScript Interfaces — Source of Truth
 // ============================================================
 
+/**
+ * Current immutable snapshot schema version. Invoices whose stored version
+ * predates this value are auto-regenerated from live data on next view.
+ */
+export const INVOICE_SNAPSHOT_VERSION = "2.0";
+
 export interface InvoiceSeller {
   company_name: string;
   legal_name: string;
@@ -59,11 +65,20 @@ export interface InvoicePayment {
   status: string;
   transaction_id: string;
   paid_at: string | null;
+  /** Amount paid from the PHS wallet (0 when no wallet was used). */
+  wallet?: number;
+  /** Amount charged through the online gateway (0 when fully covered by wallet/offer). */
+  online?: number;
 }
 
 export interface InvoiceDiscounts {
   coupon?: {
     code: string;
+    amount: number;
+  } | null;
+  offer?: {
+    id: string;
+    title: string;
     amount: number;
   } | null;
   wallet?: number;

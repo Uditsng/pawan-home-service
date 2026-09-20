@@ -1,5 +1,5 @@
 import { calculateInvoice } from "./calculateInvoice";
-import { InvoiceSnapshot, InvoiceSeller } from "./invoiceTypes";
+import { InvoiceSnapshot, InvoiceSeller, INVOICE_SNAPSHOT_VERSION } from "./invoiceTypes";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 
@@ -130,16 +130,57 @@ export async function compileInvoiceSnapshot(supabase: SupabaseClient, bookingId
     paymentMethod = "Razorpay";
   }
 
+  // 6.5 Real coupon code + offer title for the breakdown rows
+  let couponCode: string | null = null;
+  let offerTitle: string | null = null;
+  if (booking.order_id) {
+    const { data: order } = await supabase
+      .from("orders")
+      .select("coupon_code")
+      .eq("id", booking.order_id)
+      .maybeSingle();
+    couponCode = order?.coupon_code || null;
+  }
+  if (bookingPricing?.offer_id) {
+    const { data: offer } = await supabase
+      .from("offers")
+      .select("title")
+      .eq("id", bookingPricing.offer_id)
+      .maybeSingle();
+    offerTitle = offer?.title || null;
+  }
+
   // Calculate pricing
   const calculation = calculateInvoice({
     booking,
     bookingPricing,
+    couponCode,
+    offerTitle,
     extensions,
     taxRatePercent,
   });
 
+  // 6.6 Payment split — wallet vs online (what was actually charged)
+  const walletApplied = Math.max(0, Number(bookingPricing?.wallet_discount ?? booking.wallet_discount_applied ?? 0));
+  const orderFeesTotal = (calculation.lineItems || []).reduce(
+    (sum, item) => sum + (item.meta?.type === "fee" ? Number(item.total || 0) : 0),
+    0,
+  );
+  const chargedTotal = Number(booking.total_amount || 0) + orderFeesTotal;
+  const walletCoverage = Math.min(walletApplied, chargedTotal);
+  const onlineCoverage = Math.max(0, chargedTotal - walletCoverage);
+
+  let invoiceMethod = paymentMethod;
+  if (chargedTotal <= 0) {
+    invoiceMethod = bookingPricing?.offer_id ? "Offer (Free)" : walletCoverage > 0 ? "Wallet" : "Razorpay";
+  } else if (walletCoverage > 0 && onlineCoverage > 0) {
+    invoiceMethod = "Wallet + Razorpay";
+  } else if (walletCoverage > 0) {
+    invoiceMethod = "Wallet";
+  }
+
   const snapshot: InvoiceSnapshot = {
-    version: "1.0",
+    version: INVOICE_SNAPSHOT_VERSION,
     invoice_number: "", // Will be assigned by BEFORE INSERT DB trigger or set by save function
     invoice_date: new Date().toISOString(),
     financials: {
@@ -178,10 +219,12 @@ export async function compileInvoiceSnapshot(supabase: SupabaseClient, bookingId
       idx === 0 ? { ...item, meta: { ...item.meta, category: categoryName } } : item,
     ),
     payment: {
-      method: paymentMethod,
+      method: invoiceMethod,
       status: payment?.payment_status || booking.payment_status || "paid",
       transaction_id: transactionId,
       paid_at: payment?.created_at || booking.completed_at || new Date().toISOString(),
+      wallet: walletCoverage,
+      online: onlineCoverage,
     },
   };
 

@@ -141,6 +141,9 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
   if (calc.discounts.coupon && calc.discounts.coupon.amount > 0) {
     summaryRows.push({ label: `Coupon Discount (${calc.discounts.coupon.code})`, value: `-${CURRENCY(calc.discounts.coupon.amount)}` });
   }
+  if (calc.discounts.offer && calc.discounts.offer.amount > 0) {
+    summaryRows.push({ label: `Offer Discount (${calc.discounts.offer.title})`, value: `-${CURRENCY(calc.discounts.offer.amount)}` });
+  }
   if ((calc.discounts.wallet ?? 0) > 0) {
     summaryRows.push({ label: "Wallet Used", value: `-${CURRENCY(calc.discounts.wallet || 0)}` });
   }
@@ -148,6 +151,11 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
     summaryRows.push({ label: "Manual Discount", value: `-${CURRENCY(calc.discounts.manual || 0)}` });
   }
   summaryRows.push({ label: `GST (${calc.taxRate}%)`, value: CURRENCY(calc.taxAmount) });
+
+  // Payment split — wallet vs online (available on 2.0+ snapshots and dynamic fallback)
+  const walletPaid = Math.max(0, Number(payment.wallet ?? 0));
+  const onlinePaid = Math.max(0, Number(payment.online ?? 0));
+  const hasPaymentSplit = walletPaid > 0 || onlinePaid > 0;
 
   return (
     <div className="bg-surface text-on-surface antialiased min-h-screen pb-24 font-body">
@@ -288,6 +296,18 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
                   <span>Payment Mode</span>
                   <span className="font-bold text-on-surface uppercase">{payment.method}</span>
                 </p>
+                {hasPaymentSplit ? (
+                  <>
+                    <p className="flex justify-between">
+                      <span>Paid from Wallet</span>
+                      <span className="font-bold text-success">{CURRENCY(walletPaid)}</span>
+                    </p>
+                    <p className="flex justify-between">
+                      <span>Paid Online</span>
+                      <span className="font-bold text-on-surface">{CURRENCY(onlinePaid)}</span>
+                    </p>
+                  </>
+                ) : null}
                 <p className="flex justify-between">
                   <span>Transaction ID</span>
                   <span className="font-mono text-on-surface select-all font-bold">{payment.transaction_id || "—"}</span>

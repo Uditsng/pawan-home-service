@@ -2,7 +2,6 @@
  * Pricing Engine — Single Source of Truth for per-service price breakdowns.
  * Pure functions only: no React, Supabase, Server Actions, or side effects.
  */
-import { calculateCouponDiscount } from "./discountEngine";
 import { calculateGstBreakdown } from "./taxEngine";
 import type { PricingBreakdown, PricingInput } from "./types";
 
@@ -237,8 +236,15 @@ export function calculatePricingBreakdown(input: PricingInput): PricingBreakdown
   const gstAmount = gstBreakdown.gstAmount;
   const taxRatePercent = gstBreakdown.taxRatePercent;
 
-  // 6. Apply Coupon Codes
-  const couponDiscount = calculateCouponDiscount(subtotal, input.coupon);
+  // 6. Apply Coupon Codes.
+  // Coupons are applied ONCE per order (not per line) by `applyOrderLevelCoupon`,
+  // which allocates the paisa-exact order-level discount down to this line.
+  // The engine simply clamps the allocated amount to this line's payable, so a
+  // fixed coupon that exceeds the cart can never produce a negative payable.
+  const couponDiscount = Math.min(
+    Number(input.couponAmountForLine || 0),
+    Math.max(0, subtotal + gstAmount + travelFee)
+  );
 
   // Calculate price before wallet usage
   let payableAmount = Math.max(0, subtotal + gstAmount + travelFee - couponDiscount);

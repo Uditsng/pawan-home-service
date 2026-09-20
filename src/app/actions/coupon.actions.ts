@@ -2,10 +2,12 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { normalizeCouponCode, validateCoupon } from "@/lib/pricing/couponEngine";
+import { applyOrderLevelCoupon } from "@/lib/pricing/discountEngine";
 import { CartItem, Coupon } from "@/lib/types";
 import { computeCartLineItems } from "@/lib/pricing/cartCatalog";
 import { buildCartCatalog } from "@/lib/catalog/buildCartCatalog";
 import { combineDateTimeToISO } from "@/utils/schedule";
+import { fetchPlatformSettings, getActiveOrderFees } from "@/lib/engines/platformSettingsEngine";
 import type { ServiceCheckoutInput } from "@/app/actions/payment";
 
 /**
@@ -33,8 +35,13 @@ export type ValidateCouponActionResult =
       discountAmount: number;
       taxAmount: number;
       finalPayable: number;
+      orderFeesTotal: number;
       couponValid: boolean;
       applicableServiceId: string | null;
+      /** The validated coupon object — the pure pricing engine needs its
+       *  per-line order-level allocation (applyOrderLevelCoupon) to reproduce
+       *  these figures client-side without re-validating. */
+      coupon: Coupon;
       error: undefined;
     }
   | { success: false; error: string };
@@ -97,8 +104,12 @@ export async function validateCouponAction(
     pincode: addr.pincode,
   });
   let authoritativeSubtotal = 0;
+  // Per-line coupon-applicable base: pre-GST, pre-travel line subtotal.
+  const discountableBases: Record<string, number> = {};
   for (const line of baseLineItems) {
     authoritativeSubtotal += line.breakdown.total_price;
+    discountableBases[line.serviceId] =
+      line.breakdown.total_price - line.breakdown.gst_amount - line.breakdown.travel_fee;
   }
 
   // 2. Validate the coupon using the authoritative engine
@@ -128,13 +139,17 @@ export async function validateCouponAction(
     };
   }
 
-  // Pass 2 — with the validated coupon, to derive the authoritative
-  // discount/tax/final. Uses the canonical engine so it matches exactly what
-  // will be charged at checkout (no parallel pricing system).
+  // Coupon is applied ONCE per order; distribute the clamped, paisa-exact
+  // order-level discount across the lines that earned it.
+  const couponAllocation = applyOrderLevelCoupon(discountableBases, coupon).perServiceAllocation;
+
+  // Pass 2 — with the validated coupon's per-line allocation, to derive the
+  // authoritative discount/tax/final. Uses the canonical engine exclusively so
+  // it matches exactly what will be charged at checkout (no parallel system).
   const pricedLineItems = computeCartLineItems(items, catalog, {
     scheduledDate,
     pincode: addr.pincode,
-    coupon,
+    couponAllocation,
   });
   let totalAmount = 0;
   let discountAmount = 0;
@@ -145,9 +160,14 @@ export async function validateCouponAction(
     taxAmount += line.breakdown.gst_amount;
   }
 
-  // originalSubtotal (pre-coupon) = final payable + coupon discount.
+  // Order fees (service charge, etc.) are charged at checkout; include them in
+  // the authoritative final payable so the preview matches the gateway charge.
+  const platformSettings = await fetchPlatformSettings(supabase);
+  const orderFeesTotal = getActiveOrderFees(platformSettings).reduce((sum, f) => sum + f.amount, 0);
+
+  // originalSubtotal (pre-coupon) = final payable + coupon discount (before fees).
   const originalSubtotal = totalAmount + discountAmount;
-  const finalPayable = totalAmount;
+  const finalPayable = totalAmount + orderFeesTotal;
 
   // 4. Return the authoritative pricing summary
   return {
@@ -157,8 +177,10 @@ export async function validateCouponAction(
     discountAmount,
     taxAmount,
     finalPayable,
+    orderFeesTotal,
     couponValid: validationResult.eligible,
     applicableServiceId: coupon.applicable_to_service_id,
+    coupon,
     error: undefined,
   };
 }

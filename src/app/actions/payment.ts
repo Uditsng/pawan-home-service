@@ -13,6 +13,7 @@ import type { PricingBreakdown, OrderFeeItem } from "@/lib/pricing/types";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { combineDateTimeToISO } from "@/utils/schedule";
 import { normalizeCouponCode, validateCoupon } from "@/lib/pricing/couponEngine";
+import { applyOrderLevelCoupon } from "@/lib/pricing/discountEngine";
 import { fetchPlatformSettings, getActiveOrderFees } from "@/lib/engines/platformSettingsEngine";
 
 export interface ServiceCheckoutInput {
@@ -32,7 +33,11 @@ export interface ServiceCheckoutInput {
 
 export interface RazorpayOrderResult {
   freeOrder: boolean;
+  /** Razorpay gateway order id (only present for non-free orders). */
   orderId?: string;
+  /** Internal `orders.id` — present for free orders so verify can resolve the
+   *  seeded order + offer reservation and enforce idempotency. */
+  internalOrderId?: string;
   amount: number;
   currency: string;
   keyId?: string;
@@ -138,8 +143,13 @@ async function computeServiceBreakdowns(
     pincode: options.pincode,
   });
   let provisionalSubtotal = 0;
+  // Per-line coupon-applicable base: the pre-GST, pre-offer line subtotal
+  // (total_price has no coupon/offer/wallet in this first pass).
+  const discountableBases: Record<string, number> = {};
   for (const line of baseLineItems) {
     provisionalSubtotal += line.breakdown.total_price;
+    discountableBases[line.serviceId] =
+      line.breakdown.total_price - line.breakdown.gst_amount - line.breakdown.travel_fee;
   }
 
   let validatedCoupon: Coupon | null = null;
@@ -176,13 +186,23 @@ async function computeServiceBreakdowns(
     }
   }
 
-  // Pass 2 — with the validated coupon (null when absent/invalid). This is the
-  // authoritative pricing: the canonical engine applies the coupon exactly as
-  // the client did, so the charged amount matches the preview.
+  // Coupon is applied ONCE per order (not once per line). The order-level
+  // discount is clamped to the order subtotal and distributed paisa-exactly
+  // across the lines that earned it, so `discountAmount` can never overstate
+  // the true saving on multi-service carts.
+  let couponAllocation: Record<string, number> | undefined;
+  if (validatedCoupon && Object.keys(discountableBases).length > 0) {
+    couponAllocation = applyOrderLevelCoupon(discountableBases, validatedCoupon).perServiceAllocation;
+  }
+
+  // Pass 2 — with the validated coupon's per-line allocation (empty when
+  // absent/invalid). This is the authoritative pricing: the canonical engine
+  // applies the coupon exactly as the client did, so the charged amount
+  // matches the preview.
   const lineItems = computeCartLineItems(items, catalog, {
     scheduledDate,
     pincode: options.pincode,
-    coupon: validatedCoupon,
+    couponAllocation,
     offerAmountsByService: options.offerAmountsByService,
   });
 
@@ -353,7 +373,7 @@ export async function createRazorpayOrderAction(payload: {
         offer_discount: offerSnapshot.appliedAmount,
       }).eq("id", internalOrderId);
     }
-    return { freeOrder: true, amount: 0, currency: "INR" };
+    return { freeOrder: true, amount: 0, currency: "INR", internalOrderId };
   }
 
   const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.trim();
@@ -448,6 +468,7 @@ export async function createRazorpayOrderAction(payload: {
   return {
     freeOrder: false,
     orderId: orderData.id,
+    internalOrderId,
     amount: orderData.amount / 100,
     currency: orderData.currency,
     keyId,
@@ -461,6 +482,10 @@ export async function verifyRazorpayPaymentAction(payload: {
   razorpay_payment_id?: string;
   razorpay_signature?: string;
   isFree?: boolean;
+  /** Internal `orders.id` (from createRazorpayOrderAction). Carries the seeded
+   *  order row + offer reservation through the free (wallet-only) path where no
+   *  Razorpay gateway id exists. */
+  orderId?: string;
   services: ServiceCheckoutInput[];
   addressId: string;
   date: string;
@@ -518,8 +543,80 @@ export async function verifyRazorpayPaymentAction(payload: {
     rzOrderNotes = rzOrder.notes;
   }
 
-  // 1b. Duplicate payment guard
-  if (!payload.isFree && payload.razorpay_order_id) {
+  // 1b. Resolve the internal order + frozen fee snapshot + duplicate guards.
+  // `payload.orderId` is the internal `orders.id` created by the create action.
+  // Free (wallet-only) orders have NO Razorpay gateway id, so their seeded
+  // order row + offer reservation must be resolved by this internal id — the
+  // old razorpay-order-id-only lookup silently dropped the offer on
+  // wallet-redeemed orders, over-charging the wallet or rejecting the booking.
+  let frozenOrderFees: OrderFeeItem[] | undefined;
+  let pendingOrderSnapshot: Order | null = null;
+
+  const referenceOrderId = payload.orderId;
+  if (referenceOrderId) {
+    const { data: referenceOrder } = await supabase
+      .from("orders")
+      .select("*")
+      .eq("id", referenceOrderId)
+      .eq("customer_id", user.id)
+      .maybeSingle();
+    if (referenceOrder) {
+      pendingOrderSnapshot = referenceOrder as Order;
+      if (
+        Array.isArray(pendingOrderSnapshot.order_fees) &&
+        pendingOrderSnapshot.order_fees.length > 0
+      ) {
+        frozenOrderFees = pendingOrderSnapshot.order_fees;
+      }
+    }
+  }
+
+  // Legacy fallback (clients without an internal order id): latest pending
+  // order row for the user, exactly as before.
+  if (!pendingOrderSnapshot && payload.razorpay_order_id) {
+    const { data: pendingOrder } = await supabase
+      .from("orders")
+      .select("*")
+      .eq("customer_id", user.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (pendingOrder) {
+      pendingOrderSnapshot = pendingOrder as Order;
+      if (
+        pendingOrderSnapshot.order_fees &&
+        Array.isArray(pendingOrderSnapshot.order_fees) &&
+        pendingOrderSnapshot.order_fees.length > 0
+      ) {
+        frozenOrderFees = pendingOrderSnapshot.order_fees;
+      }
+    }
+  }
+
+  // Fee fallback: Razorpay order notes when no orders row carried the snapshot.
+  if (!frozenOrderFees && rzOrderNotes?.order_fees) {
+    try {
+      const parsed = JSON.parse(rzOrderNotes.order_fees);
+      if (Array.isArray(parsed)) {
+        frozenOrderFees = parsed;
+      }
+    } catch {
+      // ignore parse error
+    }
+  }
+
+  // Duplicate guards.
+  if (payload.isFree) {
+    // Free (wallet-only) orders have no gateway payment id to dedupe on. The
+    // order row is the idempotency key: a repeated free verify would otherwise
+    // re-debit the wallet and duplicate bookings under one order.
+    if (pendingOrderSnapshot && pendingOrderSnapshot.payment_status === "paid") {
+      console.warn("[payment] Free order already processed:", pendingOrderSnapshot.id);
+      return { success: false, error: "This order has already been processed." };
+    }
+  } else if (payload.razorpay_order_id) {
     const { data: existingPayment } = await supabase
       .from("payments")
       .select("id")
@@ -531,16 +628,21 @@ export async function verifyRazorpayPaymentAction(payload: {
     }
   }
 
-  // 1c. Coupon usage idempotency check
-  if (!payload.isFree && payload.razorpay_order_id && payload.couponCode) {
-    const { data: existingUsage } = await supabase
-      .from("coupon_usages")
-      .select("id")
-      .eq("order_id", payload.razorpay_order_id)
-      .limit(1)
-      .maybeSingle();
-    if (existingUsage) {
-      console.log("[payment] Coupon already redeemed for order", payload.razorpay_order_id, "- skipping re-consumption.");
+  // Coupon dedup keyed on the INTERNAL order id (the `(coupon_id, order_id)`
+  // UNIQUE is the real guard — this is just an early exit). The old code
+  // compared against the Razorpay gateway id, which never matched.
+  if (payload.couponCode) {
+    const internalOrderId = payload.orderId ?? pendingOrderSnapshot?.id;
+    if (internalOrderId) {
+      const { data: existingUsage } = await supabase
+        .from("coupon_usages")
+        .select("id")
+        .eq("order_id", internalOrderId)
+        .limit(1)
+        .maybeSingle();
+      if (existingUsage) {
+        console.log("[payment] Coupon already redeemed for order", internalOrderId, "- skipping re-consumption.");
+      }
     }
   }
 
@@ -558,39 +660,6 @@ export async function verifyRazorpayPaymentAction(payload: {
   if (modifier === "AM" && hours === 12) hours = 0;
   const isoStr = `${payload.date}T${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:00+05:30`;
   const timestamp = new Date(isoStr);
-
-  // 4. Retrieve Frozen Pricing Snapshot
-  let frozenOrderFees: OrderFeeItem[] | undefined;
-  let pendingOrderSnapshot: Order | null = null;
-  if (payload.razorpay_order_id) {
-    const { data: pendingOrder } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("customer_id", user.id)
-      .eq("status", "pending")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (pendingOrder) {
-      pendingOrderSnapshot = pendingOrder as Order;
-      if (pendingOrderSnapshot.order_fees && Array.isArray(pendingOrderSnapshot.order_fees) && pendingOrderSnapshot.order_fees.length > 0) {
-        frozenOrderFees = pendingOrderSnapshot.order_fees;
-      }
-    }
-
-    // Fallback: If pendingOrder row not found or had no order_fees, check Razorpay order notes
-    if (!frozenOrderFees && rzOrderNotes?.order_fees) {
-      try {
-        const parsed = JSON.parse(rzOrderNotes.order_fees);
-        if (Array.isArray(parsed)) {
-          frozenOrderFees = parsed;
-        }
-      } catch {
-        // ignore parse error
-      }
-    }
-  }
 
   // 4a. Offer context — the server-side reservation created at order creation.
   let offerContext: {
@@ -649,13 +718,21 @@ export async function verifyRazorpayPaymentAction(payload: {
   const { breakdowns, totalAmount, titleMap, validatedCoupon, pricingSummary, orderFees } = computePass;
 
   const { originalSubtotal: snapshotOriginalSubtotal, discountAmount: snapshotDiscountAmount, taxAmount: snapshotTaxAmount, couponValid } = pricingSummary;
-  const walletAmountToUse = payload.walletAmountToUse ?? 0;
+  const walletRequested = Math.max(0, Number(payload.walletAmountToUse ?? 0));
 
-  const finalOrderAmount = calculateFinalPayable({
+  // CRITICAL: never debit more than the actual payable. `walletApplied` is
+  // capped inside calculateFinalPayable — a wallet balance can never be the
+  // server's only guard when the free path short-circuits the gateway.
+  // NOTE: `walletApplied` (not `min(walletApplied, finalOrderAmount)`) is the
+  // debit amount — on wallet-only free orders finalOrderAmount is 0 precisely
+  // because the wallet covers the whole charge, so the wallet must still move.
+  const { walletApplied, finalPayable } = calculateFinalPayable({
     totalBeforeWallet: totalAmount,
     orderFees,
-    walletAmountToUse,
-  }).finalPayable;
+    walletAmountToUse: walletRequested,
+  });
+  const finalOrderAmount = finalPayable;
+  const walletDebit = Math.max(0, walletApplied);
 
   // 4b. Security Validation: Amount Mismatch Guard
   if (!payload.isFree) {
@@ -719,6 +796,11 @@ export async function verifyRazorpayPaymentAction(payload: {
     const { data: createdOrder, error: orderError } = await supabase
       .from("orders")
       .insert({
+        // Deterministic id when the create action supplied one (free wallet-only
+        // orders have no row until here): a duplicate verify resolves the SAME
+        // row, sees payment_status = 'paid', and is blocked — wallet double-debit
+        // and duplicate bookings are impossible.
+        id: payload.orderId ?? undefined,
         customer_id: user.id,
         status: "pending",
         total_amount: finalOrderAmount,
@@ -747,11 +829,12 @@ export async function verifyRazorpayPaymentAction(payload: {
     order = createdOrder;
   }
 
-  // 6. Debit wallet if applicable
-  if (walletAmountToUse > 0) {
+  // 6. Debit wallet if applicable — always the server-capped `walletDebit`,
+  // never the raw client-supplied amount.
+  if (walletDebit > 0) {
     const { data: walletRes, error: walletError } = await supabase.rpc("use_wallet_balance", {
       p_user_id: user.id,
-      p_amount: walletAmountToUse,
+      p_amount: walletDebit,
       p_booking_id: order.id,
     });
     if (walletError || !walletRes || !(walletRes as { success?: boolean }).success) {
@@ -794,8 +877,9 @@ export async function verifyRazorpayPaymentAction(payload: {
     razorpay_signature: payload.razorpay_signature ?? null,
   });
 
-  // 8. Create coupon usage record (if coupon was applied)
-  if (!payload.isFree && payload.couponCode && validatedCoupon) {
+  // 8. Create coupon usage record (if coupon was applied) — for BOTH paid and
+  // free orders. The `(coupon_id, order_id)` UNIQUE prevents double-usage.
+  if (payload.couponCode && validatedCoupon) {
     const couponCodeNormalized = normalizeCouponCode(payload.couponCode);
 
     const { error: usageError } = await supabase.from("coupon_usages").insert({

@@ -405,10 +405,18 @@ export async function reassignPartnerAction(
 export interface BookingPricingData {
   base_price: number;
   addons_total: number;
+  travel_fee: number;
   gst_amount: number;
   discount_amount: number;
+  coupon_discount: number;
+  offer_id: string | null;
+  offer_entitlement_id: string | null;
+  offer_discount: number;
+  offer_title: string | null;
+  coupon_code: string | null;
+  order_id: string | null;
   wallet_discount: number;
-  surcharges?: Record<string, unknown> | null;
+  surcharges?: { id?: string; name: string; amount: number }[] | null;
   total_amount?: number;
   pricing_config?: Record<string, unknown> | null;
 }
@@ -431,5 +439,42 @@ export async function getBookingPricingAction(bookingId: string) {
     return null;
   }
 
-  return data as unknown as BookingPricingData;
+  // Resolve the parent order's coupon code and, when present, the offer title.
+  let couponCode: string | null = null;
+  let offerTitle: string | null = null;
+  let orderId: string | null = null;
+
+  const { data: booking } = await supabase
+    .from('bookings')
+    .select('order_id')
+    .eq('id', bookingId)
+    .maybeSingle();
+
+  if (booking?.order_id) {
+    orderId = booking.order_id as string;
+    const { data: order } = await supabase
+      .from('orders')
+      .select('coupon_code')
+      .eq('id', orderId)
+      .maybeSingle();
+    couponCode = order?.coupon_code || null;
+  }
+
+  const offerId = (data as { offer_id?: string | null } | null)?.offer_id ?? null;
+  if (offerId) {
+    const { data: offer } = await supabase
+      .from('offers')
+      .select('title')
+      .eq('id', offerId)
+      .maybeSingle();
+    offerTitle = offer?.title || null;
+  }
+
+  const pricing = data as unknown as BookingPricingData;
+  return {
+    ...pricing,
+    order_id: orderId,
+    coupon_code: couponCode,
+    offer_title: offerTitle,
+  };
 }

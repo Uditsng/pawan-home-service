@@ -258,15 +258,9 @@ export default async function UnifiedCheckoutPaymentPage({
         finalPayable: validationResult.finalPayable,
         couponValid: validationResult.couponValid,
       };
-      // Fetch the full coupon record for display purposes
-      const { data: couponData } = await supabase
-        .from("coupons")
-        .select("*")
-        .eq("code", validationResult.couponCode)
-        .single();
-      if (couponData) {
-        couponObj = couponData as unknown as Coupon;
-      }
+      // The validated coupon object powers the live order-level allocation
+      // (applyOrderLevelCoupon) — no separate re-fetch of the record.
+      couponObj = validationResult.coupon;
     } else {
       // Coupon invalid — clear it and reset summary
       appliedCouponCode = null;

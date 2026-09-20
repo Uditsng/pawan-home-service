@@ -99,6 +99,9 @@ function InvoiceDocument({ snapshot, logoDataUri }: { snapshot: InvoiceSnapshot;
   if (discounts?.coupon && discounts.coupon.amount > 0) {
     summaryRows.push({ label: `Coupon Discount (${discounts.coupon.code || "COUPON"})`, value: `-${CURRENCY(discounts.coupon.amount)}` });
   }
+  if (discounts?.offer && discounts.offer.amount > 0) {
+    summaryRows.push({ label: `Offer Discount (${discounts.offer.title || "Offer"})`, value: `-${CURRENCY(discounts.offer.amount)}` });
+  }
   if ((discounts?.wallet ?? 0) > 0) {
     summaryRows.push({ label: "Wallet Used", value: `-${CURRENCY(discounts.wallet || 0)}` });
   }
@@ -106,6 +109,15 @@ function InvoiceDocument({ snapshot, logoDataUri }: { snapshot: InvoiceSnapshot;
     summaryRows.push({ label: "Manual Discount", value: `-${CURRENCY(discounts.manual || 0)}` });
   }
   summaryRows.push({ label: `GST (${financials.tax_rate}%)`, value: CURRENCY(financials.tax_amount) });
+
+  const walletPaid = Math.max(0, Number(payment.wallet ?? 0));
+  const onlinePaid = Math.max(0, Number(payment.online ?? 0));
+  const hasPaymentSplit = walletPaid > 0 || onlinePaid > 0;
+  const paymentRows: { label: string; value: string }[] = [];
+  if (hasPaymentSplit) {
+    paymentRows.push({ label: "Paid from Wallet", value: CURRENCY(walletPaid) });
+    paymentRows.push({ label: "Paid Online", value: CURRENCY(onlinePaid) });
+  }
 
   return (
     <Document>
@@ -216,6 +228,12 @@ function InvoiceDocument({ snapshot, logoDataUri }: { snapshot: InvoiceSnapshot;
               <Text>Grand Total</Text>
               <Text>{CURRENCY(financials.grand_total)}</Text>
             </View>
+            {paymentRows.map((row, idx) => (
+              <View key={`pay-${idx}`} style={[styles.totalLine, { fontSize: 6 }]}>
+                <Text>{row.label}</Text>
+                <Text>{row.value}</Text>
+              </View>
+            ))}
           </View>
         </View>
 

@@ -1555,42 +1555,102 @@ export function BookingsCommand({
                         Loading pricing...
                       </div>
                     ) : bookingPricing ? (
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="text-on-surface-variant/70 font-semibold">Base Price</span>
-                          <span className="font-bold text-primary">₹{Number(bookingPricing.base_price).toLocaleString()}</span>
-                        </div>
-                        {Number(bookingPricing.addons_total) > 0 && (
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="text-on-surface-variant/70 font-semibold">Add-ons</span>
-                            <span className="font-bold text-primary">+₹{Number(bookingPricing.addons_total).toLocaleString()}</span>
+                      (() => {
+                        const feeItems = (bookingPricing.surcharges || []).filter(
+                          (s): s is { id: string; name: string; amount: number } =>
+                            !!s?.id && typeof s.amount === "number" && s.amount > 0,
+                        );
+                        const orderFeesTotal = feeItems.reduce((sum, f) => sum + f.amount, 0);
+                        const couponAmt = Number(bookingPricing.coupon_discount || 0);
+                        const offerAmt = Number(bookingPricing.offer_discount || 0);
+                        const walletAmt = Number(bookingPricing.wallet_discount || 0);
+                        const onlineAmt = Math.max(
+                          0,
+                          Number(selectedBooking.total_amount) + orderFeesTotal - walletAmt,
+                        );
+                        return (
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-on-surface-variant/70 font-semibold">Base Price</span>
+                              <span className="font-bold text-primary">₹{Number(bookingPricing.base_price).toLocaleString()}</span>
+                            </div>
+                            {Number(bookingPricing.addons_total) > 0 && (
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="text-on-surface-variant/70 font-semibold">Add-ons</span>
+                                <span className="font-bold text-primary">+₹{Number(bookingPricing.addons_total).toLocaleString()}</span>
+                              </div>
+                            )}
+                            {Number(bookingPricing.travel_fee) > 0 && (
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="text-on-surface-variant/70 font-semibold">Travel Fee</span>
+                                <span className="font-bold text-primary">+₹{Number(bookingPricing.travel_fee).toLocaleString()}</span>
+                              </div>
+                            )}
+                            {Number(bookingPricing.gst_amount) > 0 && (
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="text-on-surface-variant/70 font-semibold">GST</span>
+                                <span className="font-bold text-primary">+₹{Number(bookingPricing.gst_amount).toLocaleString()}</span>
+                              </div>
+                            )}
+                            {couponAmt > 0 && (
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="text-on-surface-variant/70 font-semibold">
+                                  Coupon {bookingPricing.coupon_code ? `(${bookingPricing.coupon_code})` : ""}
+                                </span>
+                                <span className="font-bold text-secondary">-₹{couponAmt.toLocaleString()}</span>
+                              </div>
+                            )}
+                            {offerAmt > 0 && (
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="text-on-surface-variant/70 font-semibold">
+                                  Offer {bookingPricing.offer_title ? `(${bookingPricing.offer_title})` : ""}
+                                </span>
+                                <span className="font-bold text-secondary">-₹{offerAmt.toLocaleString()}</span>
+                              </div>
+                            )}
+                            {Number(bookingPricing.wallet_discount) > 0 && (
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="text-on-surface-variant/70 font-semibold">Wallet Discount</span>
+                                <span className="font-bold text-secondary">-₹{Number(bookingPricing.wallet_discount).toLocaleString()}</span>
+                              </div>
+                            )}
+                            {feeItems.map((fee) => (
+                              <div key={fee.id} className="flex justify-between items-center text-xs">
+                                <span className="text-on-surface-variant/70 font-semibold">Order Fee — {fee.name}</span>
+                                <span className="font-bold text-primary">+₹{fee.amount.toLocaleString()}</span>
+                              </div>
+                            ))}
+                            <div className="border-t border-outline-variant/10 pt-2 mt-2">
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="font-bold text-primary">Total</span>
+                                <span className="font-bold text-primary text-sm">₹{selectedBooking.total_amount.toLocaleString()}</span>
+                              </div>
+                            </div>
+                            {walletAmt > 0 || onlineAmt > 0 ? (
+                              <div className="border-t border-outline-variant/10 pt-2 mt-1 space-y-1.5">
+                                {walletAmt > 0 ? (
+                                  <div className="flex justify-between items-center text-[11px]">
+                                    <span className="text-on-surface-variant/70 font-medium">Paid from Wallet</span>
+                                    <span className="font-bold text-success">₹{walletAmt.toLocaleString()}</span>
+                                  </div>
+                                ) : null}
+                                {onlineAmt > 0 ? (
+                                  <div className="flex justify-between items-center text-[11px]">
+                                    <span className="text-on-surface-variant/70 font-medium">Paid Online</span>
+                                    <span className="font-bold text-primary">₹{onlineAmt.toLocaleString()}</span>
+                                  </div>
+                                ) : null}
+                                {onlineAmt <= 0 && walletAmt > 0 ? (
+                                  <div className="flex justify-between items-center text-[11px]">
+                                    <span className="text-on-surface-variant/70 font-medium">Remaining</span>
+                                    <span className="font-bold text-success">₹0</span>
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : null}
                           </div>
-                        )}
-                        {Number(bookingPricing.gst_amount) > 0 && (
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="text-on-surface-variant/70 font-semibold">GST</span>
-                            <span className="font-bold text-primary">+₹{Number(bookingPricing.gst_amount).toLocaleString()}</span>
-                          </div>
-                        )}
-                        {Number(bookingPricing.discount_amount) > 0 && (
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="text-on-surface-variant/70 font-semibold">Discount</span>
-                            <span className="font-bold text-secondary">-₹{Number(bookingPricing.discount_amount).toLocaleString()}</span>
-                          </div>
-                        )}
-                        {Number(bookingPricing.wallet_discount) > 0 && (
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="text-on-surface-variant/70 font-semibold">Wallet Discount</span>
-                            <span className="font-bold text-secondary">-₹{Number(bookingPricing.wallet_discount).toLocaleString()}</span>
-                          </div>
-                        )}
-                        <div className="border-t border-outline-variant/10 pt-2 mt-2">
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="font-bold text-primary">Total</span>
-                            <span className="font-bold text-primary text-sm">₹{selectedBooking.total_amount.toLocaleString()}</span>
-                          </div>
-                        </div>
-                      </div>
+                        );
+                      })()
                     ) : (
                       <p className="text-xs text-on-surface-variant/60 italic">Price details not available.</p>
                     )}

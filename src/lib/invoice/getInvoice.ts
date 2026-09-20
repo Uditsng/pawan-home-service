@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { InvoiceSnapshot } from "./invoiceTypes";
+import { INVOICE_SNAPSHOT_VERSION } from "./invoiceTypes";
 import { generateAndSaveInvoice } from "./invoiceGenerator";
 
 export type InvoiceUserRole = "customer" | "partner" | "admin";
@@ -127,10 +128,13 @@ export async function resolveInvoice(params: {
 
   let invoice = await fetchInvoiceWithRelations(adminClient, bookingId);
 
-  // Recover when the invoice is missing entirely, or when a trigger-created
-  // invoice has no snapshot (pre-2026-08-01 bug). The app compiles a full,
-  // authoritative snapshot that the DB fallback compiler cannot match.
-  if (isCompleted && (!invoice || !invoice.snapshot)) {
+  // Recover when the invoice is missing entirely, when a trigger-created
+  // invoice has no snapshot (pre-2026-08-01 bug), or when the stored snapshot
+  // predates the current schema version (e.g. offer/fee/coupon decoding added
+  // in 2.0). In every case the app compiles a full, authoritative snapshot.
+  const needsRegeneration =
+    !invoice || !invoice.snapshot || invoice.snapshot.version !== INVOICE_SNAPSHOT_VERSION;
+  if (isCompleted && needsRegeneration) {
     try {
       await generateAndSaveInvoice(adminClient, bookingId);
       invoice = await fetchInvoiceWithRelations(adminClient, bookingId);

@@ -17,6 +17,7 @@ interface ImageUploadFieldProps {
   outputWidth?: number;
   outputHeight?: number;
   fileNameSuffix?: string;
+  uploadOnly?: boolean;
 }
 
 export function ImageUploadField({
@@ -30,8 +31,10 @@ export function ImageUploadField({
   outputWidth = 1280,
   outputHeight = 720,
   fileNameSuffix = "",
+  uploadOnly = false,
 }: ImageUploadFieldProps) {
   const [activeTab, setActiveTab] = useState<"upload" | "url">(() => {
+    if (uploadOnly) return "upload";
     return defaultValue && !defaultValue.startsWith("/assets/") ? "url" : "upload";
   });
   const [imageUrl, setImageUrl] = useState<string>(defaultValue);
@@ -232,37 +235,39 @@ export function ImageUploadField({
           <h3 className="text-sm font-bold text-primary font-headline">{title}</h3>
           <p className="text-[10px] text-on-surface-variant/70 mt-0.5">{description}</p>
         </div>
-        <div className="flex bg-surface-container rounded-lg p-0.5 border border-outline-variant/10 w-max shrink-0">
-          <button
-            type="button"
-            onClick={() => setActiveTab("upload")}
-            className={`px-3 py-1 text-[11px] font-bold rounded-md transition-all select-none cursor-pointer ${
-              activeTab === "upload"
-                ? "bg-primary text-white shadow-xs"
-                : "text-on-surface-variant/80 hover:text-primary"
-            }`}
-          >
-            Upload Image
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("url")}
-            className={`px-3 py-1 text-[11px] font-bold rounded-md transition-all select-none cursor-pointer ${
-              activeTab === "url"
-                ? "bg-primary text-white shadow-xs"
-                : "text-on-surface-variant/80 hover:text-primary"
-            }`}
-          >
-            Pasted URL
-          </button>
-        </div>
+        {!uploadOnly && (
+          <div className="flex bg-surface-container rounded-lg p-0.5 border border-outline-variant/10 w-max shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveTab("upload")}
+              className={`px-3 py-1 text-[11px] font-bold rounded-md transition-all select-none cursor-pointer ${
+                activeTab === "upload"
+                  ? "bg-primary text-white shadow-xs"
+                  : "text-on-surface-variant/80 hover:text-primary"
+              }`}
+            >
+              Upload Image
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("url")}
+              className={`px-3 py-1 text-[11px] font-bold rounded-md transition-all select-none cursor-pointer ${
+                activeTab === "url"
+                  ? "bg-primary text-white shadow-xs"
+                  : "text-on-surface-variant/80 hover:text-primary"
+              }`}
+            >
+              Pasted URL
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Hidden value submitted in form */}
       <input type="hidden" name={name} value={imageUrl} />
 
       {/* Content Inputs */}
-      {activeTab === "upload" ? (
+      {activeTab === "upload" || uploadOnly ? (
         <div className="space-y-3">
           <div className="flex items-center gap-3">
             <button

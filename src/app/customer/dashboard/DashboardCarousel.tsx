@@ -4,59 +4,35 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
-interface BannerItem {
+export interface BannerItem {
   src: string;
   title: string;
   link: string;
 }
 
-const originalBanners: BannerItem[] = [
-  {
-    src: "/assets/PHS Banner 1.jpeg",
-    title: "PHS Cleaning Company - Premium Home Services",
-    link: "/customer/services/cleaning"
-  },
-  {
-    src: "/assets/PHS Banner 2.jpeg",
-    title: "PHS Cleaning Company - Safe & Effective Pest Control",
-    link: "/customer/services/pest-control-services"
-  },
-  {
-    src: "/assets/PHS Banner 3.jpeg",
-    title: "PHS Cleaning Company - Premium Housekeeping & Cleaning",
-    link: "/customer/services/house-keeping"
-  },
-  {
-    src: "/assets/PHS Banner 4.jpeg",
-    title: "PHS Cleaning Company - Expert Maintenance & Repair",
-    link: "/services"
-  },
-  {
-    src: "/assets/PHS Banner 5.jpeg",
-    title: "PHS Cleaning Company - Comprehensive Home Solutions",
-    link: "/services"
-  }
-];
+interface DashboardCarouselProps {
+  banners: BannerItem[];
+}
 
-export default function DashboardCarousel() {
+export default function DashboardCarousel({ banners }: DashboardCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [centerIndex, setCenterIndex] = useState(originalBanners.length);
+  const [centerIndex, setCenterIndex] = useState(banners.length);
   const [activeIndex, setActiveIndex] = useState(0);
-  const banners = [...originalBanners, ...originalBanners, ...originalBanners];
+  const count = banners.length;
 
   // Initialize carousel to start centered in the duplicated array for infinite swiping
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el) return;
+    if (!el || count <= 0) return;
 
     const childWidth = el.firstElementChild?.clientWidth || 0;
     const gap = 16;
     const scrollStep = childWidth + gap;
 
-    el.scrollTo({ left: scrollStep * originalBanners.length, behavior: "instant" as ScrollBehavior });
-    setCenterIndex(originalBanners.length);
+    el.scrollTo({ left: scrollStep * count, behavior: "instant" as ScrollBehavior });
+    setCenterIndex(count);
     setActiveIndex(0);
-  }, []);
+  }, [count]);
 
   // Tracking center card and active index during scroll events
   const handleScroll = () => {
@@ -70,14 +46,14 @@ export default function DashboardCarousel() {
     if (scrollStep > 0) {
       const currentScrolledIndex = Math.round(el.scrollLeft / scrollStep);
       setCenterIndex(currentScrolledIndex);
-      setActiveIndex(currentScrolledIndex % originalBanners.length);
+      setActiveIndex(currentScrolledIndex % count);
     }
   };
 
   // Modern auto-play with interaction resetting
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el) return;
+    if (!el || count <= 0) return;
 
     const interval = setInterval(() => {
       const childWidth = el.firstElementChild?.clientWidth || 0;
@@ -85,8 +61,8 @@ export default function DashboardCarousel() {
       const scrollStep = childWidth + gap;
       let nextScroll = el.scrollLeft + scrollStep;
 
-      const maxScroll = scrollStep * originalBanners.length * 2;
-      const minScroll = scrollStep * originalBanners.length;
+      const maxScroll = scrollStep * count * 2;
+      const minScroll = scrollStep * count;
 
       // Infinite scroll wrap reset
       if (el.scrollLeft >= maxScroll) {
@@ -98,7 +74,7 @@ export default function DashboardCarousel() {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [centerIndex]);
+  }, [centerIndex, count]);
 
   // Click handler for pagination progress indicators
   const scrollToSlide = (index: number) => {
@@ -110,11 +86,13 @@ export default function DashboardCarousel() {
     const scrollStep = childWidth + gap;
 
     const currentScrolledIndex = Math.round(el.scrollLeft / scrollStep);
-    const currentBase = Math.floor(currentScrolledIndex / originalBanners.length) * originalBanners.length;
+    const currentBase = Math.floor(currentScrolledIndex / count) * count;
     const targetScrollIndex = currentBase + index;
 
     el.scrollTo({ left: targetScrollIndex * scrollStep, behavior: "smooth" });
   };
+
+  if (count === 0) return null;
 
   return (
     <section className="mb-6 md:mb-10 relative overflow-hidden">
@@ -133,9 +111,9 @@ export default function DashboardCarousel() {
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar gap-3 md:gap-4 pb-4 -mx-4 px-4 md:-mx-6 md:px-6 scroll-smooth"
+        className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar gap-3 md:gap-4 pb-0.5 -mx-4 px-4 md:-mx-6 md:px-6 scroll-smooth"
       >
-        {banners.map((banner, idx) => {
+        {[...banners, ...banners, ...banners].map((banner, idx) => {
           const isCenter = idx === centerIndex;
           return (
             <Link
@@ -148,15 +126,24 @@ export default function DashboardCarousel() {
               }`}
             >
               <div className="relative w-full h-full">
-                <Image
-                  src={banner.src}
-                  alt={banner.title}
-                  fill
-                  priority={idx === originalBanners.length}
-                  className="object-cover transform group-hover:scale-[1.03] transition-transform duration-700 ease-out"
-                  sizes="(max-w-768px) 88vw, (max-w-1024px) 75vw, 60vw"
-                />
-                
+                {banner.src.startsWith("http") ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={banner.src}
+                    alt={banner.title}
+                    className="object-cover absolute inset-0 w-full h-full transform group-hover:scale-[1.03] transition-transform duration-700 ease-out"
+                  />
+                ) : (
+                  <Image
+                    src={banner.src}
+                    alt={banner.title}
+                    fill
+                    priority={idx === count}
+                    className="object-cover transform group-hover:scale-[1.03] transition-transform duration-700 ease-out"
+                    sizes="(max-w-768px) 88vw, (max-w-1024px) 75vw, 60vw"
+                  />
+                )}
+
                 {/* Subtle glassmorphic visual highlight on hover */}
                 <div className="absolute inset-0 border-2 border-white/0 group-hover:border-white/10 rounded-2xl transition-colors duration-300 pointer-events-none"></div>
               </div>
@@ -167,7 +154,7 @@ export default function DashboardCarousel() {
 
       {/* Modern Pagination Dots with Running Progress Bar Indicators */}
       <div className="flex justify-center items-center gap-2 mt-2 md:mt-3">
-        {originalBanners.map((_, i) => {
+        {banners.map((_, i) => {
           const isActive = activeIndex === i;
           return (
             <button
@@ -187,6 +174,3 @@ export default function DashboardCarousel() {
     </section>
   );
 }
-
-
-

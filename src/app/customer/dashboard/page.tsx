@@ -2,6 +2,7 @@ import Image from "next/image";
 import BottomNav from "@/components/BottomNav";
 import { createClient } from "@/utils/supabase/server";
 import DashboardGridClient from "./DashboardGridClient";
+import type { BannerItem } from "./DashboardCarousel";
 import { getCachedCategories } from "@/utils/supabase/cachedCategoryQueries";
 import { getCachedUpcomingServices } from "@/utils/supabase/cachedServiceQueries";
 import { getCachedPlatformSettings } from "@/lib/engines/platformSettingsEngine";
@@ -32,7 +33,7 @@ export default async function CustomerDashboard() {
   const { data: { user } } = await supabase.auth.getUser();
 
   // Parallelize independent queries
-  const [servicesResult, categories, upcomingServices, settings, defaultAddressRes, offersResult, entitlementsRes] = await Promise.all([
+  const [servicesResult, categories, upcomingServices, settings, defaultAddressRes, offersResult, entitlementsRes, bannersRes] = await Promise.all([
     supabase
       .from('services')
       .select(`
@@ -64,10 +65,25 @@ export default async function CustomerDashboard() {
     user
       ? supabase.from("offer_entitlements").select("offer_id").eq("customer_id", user.id).limit(50)
       : Promise.resolve({ data: [] }),
+    supabase
+      .from("home_banners")
+      .select("title, image_url, link_url")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true }),
   ]);
 
   const availableServices = (servicesResult.data || []) as unknown as ServiceWithSubcategory[];
   const defaultAddress = defaultAddressRes.data;
+
+  // Carousel banners are admin-managed (see /admin/banners); order is preserved.
+  const banners: BannerItem[] = ((bannersRes.data || []) as { title: string; image_url: string; link_url: string }[])
+    .filter((b) => Boolean(b.image_url))
+    .map((b) => ({
+      src: b.image_url,
+      title: b.title,
+      link: b.link_url || "/services",
+    }));
 
   // `isOfferCurrentlyActive` already enforces the runtime validity window.
   const liveOffers = ((offersResult.data || []) as Offer[]).filter((o) =>
@@ -109,6 +125,7 @@ export default async function CustomerDashboard() {
           categories={categories}
           availableServices={availableServices}
           upcomingServices={upcomingServices}
+          banners={banners}
           isServiceable={isServiceable}
           hasAddress={hasAddress}
           userPincode={userPincode}

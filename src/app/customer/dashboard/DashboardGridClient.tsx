@@ -1,7 +1,7 @@
 "use client";
 import ServiceCardThumbnail from "@/components/ServiceCardThumbnail";
 import UnserviceableHeroBanner from "@/components/UnserviceableHeroBanner";
-import DashboardCarousel from "./DashboardCarousel";
+import DashboardCarousel, { type BannerItem } from "./DashboardCarousel";
 import { ComingSoonStrip } from "@/components/ComingSoonStrip";
 import { UpcomingService } from "@/utils/supabase/cachedServiceQueries";
 
@@ -40,6 +40,7 @@ interface DashboardGridClientProps {
   categories: Category[];
   availableServices: ServiceWithSubcategory[];
   upcomingServices?: UpcomingService[];
+  banners?: BannerItem[];
   isServiceable?: boolean;
   hasAddress?: boolean;
   userPincode?: string;
@@ -50,6 +51,7 @@ export default function DashboardGridClient({
   categories,
   availableServices,
   upcomingServices = [],
+  banners = [],
   isServiceable = true,
   hasAddress = true,
   userPincode = "",
@@ -195,7 +197,7 @@ export default function DashboardGridClient({
         />
       ) : (
         <>
-          <DashboardCarousel />
+          <DashboardCarousel banners={banners} />
         </>
       )}
 

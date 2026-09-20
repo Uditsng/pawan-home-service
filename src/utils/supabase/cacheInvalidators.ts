@@ -8,6 +8,7 @@ import {
   TAG_ADDONS,
   TAG_PRICING_RULES,
   TAG_PLATFORM_SETTINGS,
+  TAG_BANNERS,
 } from "./cacheTags";
 
 /**
@@ -88,4 +89,12 @@ export function revalidatePricingRules(serviceId?: string): void {
  */
 export function revalidatePlatformSettings(): void {
   revalidateTag(TAG_PLATFORM_SETTINGS, "default");
+}
+
+/**
+ * Revalidates the cached home banners.
+ * Called whenever a home banner is created, updated, reordered, or deleted.
+ */
+export function revalidateBanners(): void {
+  revalidateTag(TAG_BANNERS, "default");
 }

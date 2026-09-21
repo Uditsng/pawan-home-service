@@ -10,9 +10,11 @@ import NotificationBell from "./NotificationBell";
 interface PartnerHeaderProps {
   /** Initial status fetched server-side from profiles.status */
   initialStatus?: string;
+  /** Avatar URL for the mobile profile shortcut (server-fetched). */
+  avatarUrl?: string | null;
 }
 
-export default function PartnerHeader({ initialStatus = "offline" }: PartnerHeaderProps) {
+export default function PartnerHeader({ initialStatus = "offline", avatarUrl = null }: PartnerHeaderProps) {
   const pathname = usePathname();
   // Derive isOnline from the real DB status
   const [status, setStatus]         = useState<string>(initialStatus);
@@ -76,7 +78,7 @@ export default function PartnerHeader({ initialStatus = "offline" }: PartnerHead
   return (
     <header className="bg-surface-dim sticky top-0 z-50 transition-colors border-b border-outline-variant/15 pt-safe backdrop-blur-md bg-opacity-95">
       <div className="flex flex-col w-full max-w-7xl mx-auto">
-        <div className="flex justify-between items-center px-4 sm:px-6 lg:px-8 py-3.5">
+        <div className="flex justify-between items-center px-5 sm:px-6 lg:px-8 py-3 ">
           {/* Platform Logo */}
           <Link href="/partner/dashboard" className="flex items-center gap-2">
             <Image
@@ -120,7 +122,6 @@ export default function PartnerHeader({ initialStatus = "offline" }: PartnerHead
 
           {/* Right Actions */}
           <div className="flex items-center gap-3 sm:gap-4">
-            <NotificationBell />
             {/* Status Toggle */}
             <button
               onClick={handleToggle}
@@ -138,6 +139,23 @@ export default function PartnerHeader({ initialStatus = "offline" }: PartnerHead
                 {isPending ? "..." : labelText}
               </span>
             </button>
+            <NotificationBell />
+            {/* Profile shortcut */}
+            <Link
+              href="/partner/profile"
+              aria-label="Profile"
+              className={`flex items-center justify-center w-10 h-10 rounded-full overflow-hidden border border-outline-variant/120 transition-all active:scale-95 ${
+                pathname?.startsWith("/partner/profile")
+                  ? "border-secondary bg-secondary/10 text-primary"
+                  : "border-outline-variant/20 bg-surface-container-lowest text-on-surface-variant hover:text-primary"
+              }`}
+            >
+              {avatarUrl ? (
+                <Image src={avatarUrl} alt="Profile" width={36} height={36} className="object-cover w-full h-full" />
+              ) : (
+                <span className="material-symbols-outlined text-[22px]">person</span>
+              )}
+            </Link>
           </div>
         </div>
 

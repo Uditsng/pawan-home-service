@@ -7,7 +7,6 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { SerializedPartner, PartnerBooking, PartnerReview } from "./page";
-import type { PartnerDocument } from "@/lib/types";
 import {
   updatePartnerStatusAction,
   onboardPartnerAction,
@@ -19,6 +18,7 @@ import {
   getPartnerEarningsAction,
   deletePartnerDocumentAction,
   getAdminDocumentSignedUrlAction,
+  getAdminStorageSignedUrlAction,
   type PartnerEarningsSummary,
 } from "./actions";
 
@@ -167,7 +167,6 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
   const [kycError, setKycError] = useState<string | null>(null);
 
   // Document actions
-  const [docSignedUrls, setDocSignedUrls] = useState<Record<string, string | null>>({});
   const [docDeletingId, setDocDeletingId] = useState<string | null>(null);
   const [docDeleteConfirm, setDocDeleteConfirm] = useState<{ partnerId: string; docType: string; partnerName: string } | null>(null);
 
@@ -573,11 +572,32 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
     });
   };
 
-  const handleLoadDocSignedUrl = async (docId: string) => {
+  const handleLoadDocSignedUrl = async (doc: { id: string; file_url: string | null }) => {
+    // Legacy documents (synthetic IDs from JSONB fallback) need their storage
+    // path extracted from the old public URL and a fresh signed URL created.
+    if (doc.id.startsWith("legacy-") && doc.file_url) {
+      try {
+        const marker = "/storage/v1/object/public/partner-docs/";
+        const idx = doc.file_url.indexOf(marker);
+        const storagePath = idx !== -1 ? doc.file_url.slice(idx + marker.length) : null;
+
+        if (storagePath) {
+          const res = await getAdminStorageSignedUrlAction(storagePath);
+          if (res.success && res.signedUrl) {
+            window.open(res.signedUrl, "_blank");
+            return;
+          }
+        }
+        // Fallback: try opening the raw URL (may work if bucket is still public)
+        window.open(doc.file_url, "_blank");
+      } catch (err) {
+        console.error("Failed to get signed URL for legacy doc:", err);
+      }
+      return;
+    }
     try {
-      const res = await getAdminDocumentSignedUrlAction(docId);
+      const res = await getAdminDocumentSignedUrlAction(doc.id);
       if (res.success && res.signedUrl) {
-        setDocSignedUrls(prev => ({ ...prev, [docId]: res.signedUrl! }));
         window.open(res.signedUrl, "_blank");
       }
     } catch (err) {
@@ -1294,7 +1314,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                           {isUploaded ? (
                             <div className="flex gap-2 mt-2">
                               <button
-                                onClick={() => handleLoadDocSignedUrl(doc!.id)}
+                                onClick={() => handleLoadDocSignedUrl(doc!)}
                                 className="bg-primary text-white text-[10px] uppercase font-black tracking-widest px-3 py-1.5 rounded-lg hover:brightness-110 flex items-center gap-1 shrink-0"
                               >
                                 <span className="material-symbols-outlined text-[12px]">visibility</span> View

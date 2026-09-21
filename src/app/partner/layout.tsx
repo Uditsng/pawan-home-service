@@ -13,20 +13,24 @@ export default async function PartnerMobileLayout({
   const { data: { user } } = await supabase.auth.getUser();
 
   let initialStatus = "offline";
+  let avatarUrl: string | null = null;
   if (user) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("status")
+      .select("status, avatar_url")
       .eq("id", user.id)
       .single();
     if (profile?.status) {
       initialStatus = profile.status;
     }
+    if (profile?.avatar_url) {
+      avatarUrl = profile.avatar_url;
+    }
   }
 
   return (
     <PartnerVisibilityWrapper
-      header={<PartnerHeader initialStatus={initialStatus} />}
+      header={<PartnerHeader initialStatus={initialStatus} avatarUrl={avatarUrl} />}
       bottomNav={<PartnerBottomNav />}
     >
       {children}

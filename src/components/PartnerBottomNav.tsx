@@ -11,8 +11,7 @@ export default function PartnerBottomNav() {
     { label: "Jobs", href: "/partner/jobs", icon: "work" },
     { label: "Earnings", href: "/partner/earnings", icon: "payments" },
     { label: "Payouts", href: "/partner/payouts", icon: "savings" },
-    { label: "Performance", href: "/partner/performance", icon: "leaderboard" },
-    { label: "Profile", href: "/partner/profile", icon: "person" }
+    { label: "Performance", href: "/partner/performance", icon: "leaderboard" }
   ];
 
   return (

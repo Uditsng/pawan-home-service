@@ -673,6 +673,27 @@ export async function deletePartnerDocumentAction(
 }
 
 /**
+ * Admin: Generate a signed URL from a raw storage path (for legacy docs
+ * whose file_url is a public link that no longer works).
+ */
+export async function getAdminStorageSignedUrlAction(
+  storagePath: string
+): Promise<ActionResult & { signedUrl?: string }> {
+  await requireAdmin();
+  const admin = createAdminClient();
+
+  const { data, error } = await admin.storage
+    .from("partner-docs")
+    .createSignedUrl(storagePath, 3600);
+
+  if (!error && data?.signedUrl) {
+    return { success: true, signedUrl: data.signedUrl };
+  }
+
+  return { success: false, error: error?.message || "Failed to create signed URL." };
+}
+
+/**
  * Admin: Generate a signed URL for viewing a partner document.
  */
 export async function getAdminDocumentSignedUrlAction(

@@ -12,6 +12,8 @@ export const dynamic = "force-dynamic";
  * beyond the response window without partner acceptance. Escalates them
  * to the next batch of eligible professionals.
  *
+ * Also scans overdue police verification deadlines and notifies admins.
+ *
  * Protected via CRON_SECRET header or Authorization Bearer token.
  */
 export async function GET(request: Request) {
@@ -30,6 +32,8 @@ export async function GET(request: Request) {
   const supabaseAdmin = createAdminClient();
   const RESPONSE_WINDOW_SECONDS = 45;
   const MAX_TIERS = 10; // Up to 100 partners total
+
+  const results: Record<string, unknown> = {};
 
   try {
     const windowThreshold = new Date(Date.now() - RESPONSE_WINDOW_SECONDS * 1000).toISOString();
@@ -51,38 +55,70 @@ export async function GET(request: Request) {
     }
 
     if (!bookings || bookings.length === 0) {
-      return NextResponse.json({ processed: 0, message: "No pending bookings due for escalation." });
-    }
+      results.dispatch = { processed: 0, message: "No pending bookings due for escalation." };
+    } else {
+      const dispatchResults = [];
 
-    const results = [];
+      for (const b of bookings) {
+        const nextTier = (b.broadcast_tier || 0) + 1;
+        const res = await triggerDispatchBatch(b.id, nextTier);
 
-    for (const b of bookings) {
-      const nextTier = (b.broadcast_tier || 0) + 1;
-      const res = await triggerDispatchBatch(b.id, nextTier);
+        if (res.reason === "exhausted") {
+          const svcTitle = (b.services as unknown as { title: string } | null)?.title ?? "Service";
+          void notifyAdmins(
+            "Dispatch Exhausted \u00B7 Action Required",
+            `Booking #${b.id.substring(0, 8)} (${svcTitle} in ${b.pincode}) has exhausted all eligible professionals. Manual assignment required.`,
+            "partner_reassigned",
+            { booking_id: b.id }
+          );
+        }
 
-      if (res.reason === "exhausted") {
-        const svcTitle = (b.services as unknown as { title: string } | null)?.title ?? "Service";
-        void notifyAdmins(
-          "Dispatch Exhausted · Action Required",
-          `Booking #${b.id.substring(0, 8)} (${svcTitle} in ${b.pincode}) has exhausted all eligible professionals. Manual assignment required.`,
-          "partner_reassigned",
-          { booking_id: b.id }
-        );
+        dispatchResults.push({
+          booking_id: b.id,
+          tier: nextTier,
+          dispatched: res.dispatched,
+          reason: res.reason,
+          error: res.error,
+        });
       }
-
-      results.push({
-        booking_id: b.id,
-        tier: nextTier,
-        dispatched: res.dispatched,
-        reason: res.reason,
-        error: res.error,
-      });
+      results.dispatch = { processed: bookings.length, details: dispatchResults };
     }
 
-    return NextResponse.json({
-      processed: bookings.length,
-      details: results,
-    });
+    // ─── Police Verification Deadline Scan ────────────────────────────
+    // Find active partners whose police verification is overdue
+    const now = new Date().toISOString();
+    const { data: overdueDocs, error: policeErr } = await supabaseAdmin
+      .from("partner_documents")
+      .select("id, partner_id, police_due_at, profiles!inner(full_name, email, status)")
+      .eq("doc_type", "police_verification")
+      .eq("profiles.status", "active")
+      .is("file_url", null)
+      .not("police_due_at", "is", null)
+      .lt("police_due_at", now);
+
+    if (!policeErr && overdueDocs && overdueDocs.length > 0) {
+      // Notify admins about overdue police verifications
+      const overduePartners = overdueDocs.map((d) => {
+        const prof = d.profiles as unknown as { full_name: string; email: string };
+        return `${prof.full_name} (${prof.email})`;
+      });
+
+      void notifyAdmins(
+        "Police Verification Overdue",
+        `${overduePartners.length} partner(s) have overdue police verification: ${overduePartners.join(", ")}. These partners remain active but should be flagged.`,
+        "partner_reassigned",
+        { overdue_count: overduePartners.length }
+      );
+
+      results.policeOverdue = {
+        count: overdueDocs.length,
+        partners: overduePartners,
+      };
+    } else {
+      results.policeOverdue = { count: 0 };
+    }
+
+    return NextResponse.json(results);
   } catch (err) {
     console.error("[dispatch-cron] Crash:", err);
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });

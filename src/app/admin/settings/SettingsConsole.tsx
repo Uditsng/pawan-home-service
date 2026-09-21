@@ -18,6 +18,8 @@ interface SettingsConsoleProps {
   initialServiceablePincodes?: string[];
   initialReferralRewardReferrer: string;
   initialReferralRewardReferred: string;
+  initialPartnerPayoutMin: string;
+  initialPartnerPayoutsEnabled: boolean;
   initialOrderFees?: OrderFee[];
   demandAnalytics?: DemandAnalyticsData;
 }
@@ -33,6 +35,8 @@ export function SettingsConsole({
   initialServiceablePincodes = [],
   initialReferralRewardReferrer,
   initialReferralRewardReferred,
+  initialPartnerPayoutMin,
+  initialPartnerPayoutsEnabled,
   initialOrderFees = [],
   demandAnalytics = { topPincodes: [], recentRequests: [], totalRequests: 0 },
 }: SettingsConsoleProps) {
@@ -46,6 +50,8 @@ export function SettingsConsole({
   const [serviceablePincodes, setServiceablePincodes] = useState<string[]>(initialServiceablePincodes);
   const [referralRewardReferrer, setReferralRewardReferrer] = useState(initialReferralRewardReferrer);
   const [referralRewardReferred, setReferralRewardReferred] = useState(initialReferralRewardReferred);
+  const [partnerPayoutMin, setPartnerPayoutMin] = useState(initialPartnerPayoutMin);
+  const [partnerPayoutsEnabled, setPartnerPayoutsEnabled] = useState(initialPartnerPayoutsEnabled);
   const [orderFees, setOrderFees] = useState<OrderFee[]>(initialOrderFees);
   const [newCity, setNewCity] = useState("");
   const [newPincode, setNewPincode] = useState("");
@@ -192,6 +198,8 @@ export function SettingsConsole({
         serviceable_pincodes: serviceablePincodes,
         referral_reward_referrer: referralRewardReferrer,
         referral_reward_referred: referralRewardReferred,
+        partner_payout_min: partnerPayoutMin,
+        partner_payouts_enabled: partnerPayoutsEnabled,
         order_fees: orderFees,
       });
       setSaveSuccess(true);
@@ -419,6 +427,57 @@ export function SettingsConsole({
             </div>
           </div>
           <p className="text-[9px] text-on-surface-variant/50 pt-1 border-t border-outline-variant/10">Credited on 1st completed job</p>
+        </Card>
+
+        {/* 5. Partner Payouts */}
+        <Card variant="solid" className="p-3.5 flex flex-col justify-between space-y-3 rounded-2xl border-outline-variant/15">
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between border-b border-outline-variant/10 pb-2">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-base">account_balance</span>
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-primary">Pro Payouts</h3>
+                  <p className="text-[10px] text-on-surface-variant/60 font-medium">Earnings withdrawal rules</p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={partnerPayoutsEnabled}
+                  onChange={(e) => setPartnerPayoutsEnabled(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-8 h-4.5 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-secondary"></div>
+              </label>
+            </div>
+            <div className="space-y-2">
+              <div>
+                <label className="text-[10px] font-bold text-on-surface-variant/70 uppercase">Minimum Payout (₹)</label>
+                <div className="relative mt-1 flex items-center">
+                  <span className="absolute left-2.5 text-xs font-bold text-on-surface-variant/40">₹</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="1000000"
+                    disabled={!partnerPayoutsEnabled}
+                    value={partnerPayoutMin}
+                    onChange={(e) => setPartnerPayoutMin(e.target.value)}
+                    className={`w-full pl-6 pr-2.5 py-1.5 rounded-lg bg-surface border border-outline-variant/20 text-xs font-bold text-primary outline-none focus:ring-1 focus:ring-secondary ${!partnerPayoutsEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-on-surface-variant/70 uppercase">Auto-Deduction</label>
+                <input
+                  type="text"
+                  value={`${Math.max(0, 100 - (parseFloat(platformCommission) || 0))}% Partner Share`}
+                  disabled
+                  className="w-full mt-1 px-2.5 py-1.5 rounded-lg bg-surface-container/60 border border-outline-variant/15 text-xs font-bold text-on-surface-variant/70 cursor-not-allowed"
+                />
+              </div>
+            </div>
+          </div>
+          <p className="text-[9px] text-on-surface-variant/50 pt-1 border-t border-outline-variant/10">Partners withdraw via /partner/payouts</p>
         </Card>
       </div>
 

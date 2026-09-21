@@ -179,6 +179,14 @@ export const NOTIFICATION_TYPE_CHANNEL: Record<NotificationType, string> = {
   partner_referral_bonus: "phs_general",
   wallet_recharge: "phs_general",
   offer_purchase: "phs_general",
+  payout_requested: "phs_general",
+  payout_approved: "phs_general",
+  payout_rejected: "phs_general",
+  payout_processing: "phs_general",
+  payout_paid: "phs_general",
+  payout_cancelled: "phs_general",
+  kyc_action_required: "phs_general",
+  kyc_police_overdue: "phs_general",
 };
 
 /** Helper to resolve the channel config for a notification type. */

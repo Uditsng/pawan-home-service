@@ -2,296 +2,212 @@
 
 import { useState, useTransition } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { uploadRemainingKycAction } from "./actions";
+import { uploadPartnerDocumentAction, getPartnerDocumentSignedUrl } from "./actions";
 import { Button } from "@/components/ui/Button";
-import type { KycDocumentsData } from "@/lib/types";
+import {
+  DOC_TYPE_CONFIG,
+  KYC_ALL_TYPES,
+  STATUS_LABELS,
+} from "@/lib/documents/partnerDocConfig";
+import type { PartnerDocument, PartnerDocumentType, KycDocumentsData } from "@/lib/types";
 
 interface KycDetailsClientProps {
   kycStatus: string;
   kycRejectionReason: string | null;
   kycDocuments: KycDocumentsData | null;
+  documents: PartnerDocument[];
   userId: string;
 }
 
-interface FieldSpec {
-  key: keyof KycDocumentsData;
-  label: string;
-  type: "document" | "text" | "number";
-}
-
-const KYC_FIELDS: FieldSpec[] = [
-  { key: "aadhaar_url", label: "Aadhaar Card", type: "document" },
-  { key: "pan_url", label: "PAN Card", type: "document" },
-  { key: "dl_url", label: "Driving Licence", type: "document" },
-  { key: "selfie_url", label: "Selfie Photo", type: "document" },
-  { key: "address_proof_url", label: "Address Proof", type: "document" },
-  { key: "police_verification_url", label: "Police Verification", type: "document" },
-  { key: "experience_years", label: "Years of Experience", type: "number" },
-  { key: "police_station_details", label: "Nearby Police Station", type: "text" },
-  { key: "bank_name", label: "Bank Name", type: "text" },
-  { key: "bank_account_no", label: "Account Number", type: "text" },
-  { key: "bank_ifsc", label: "IFSC Code", type: "text" },
-];
-
-function getFilePath(userId: string, key: string, ext: string): string {
-  return `${userId}/${key}-${Date.now()}.${ext}`;
-}
-
-function compressImage(file: File, quality = 0.7, maxWidth = 1600): Promise<File> {
-  return new Promise((resolve) => {
-    if (!file.type.startsWith("image/")) {
-      return resolve(file);
-    }
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        let width = img.width;
-        let height = img.height;
-        if (width > maxWidth) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx?.drawImage(img, 0, 0, width, height);
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(
-                new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
-                  type: "image/jpeg",
-                  lastModified: Date.now(),
-                })
-              );
-            } else {
-              resolve(file);
-            }
-          },
-          "image/jpeg",
-          quality
-        );
-      };
-      img.onerror = () => resolve(file);
-    };
-    reader.onerror = () => resolve(file);
-  });
-}
-
-function isFieldUploaded(docs: KycDocumentsData | null, key: keyof KycDocumentsData): boolean {
-  if (!docs) return false;
-  const val = docs[key];
-  return val !== undefined && val !== null && val !== "";
-}
-
-function maskAccountNo(accNum: string): string {
-  if (accNum.length <= 4) return accNum;
-  return `\u2022\u2022\u2022\u2022 \u2022\u2022\u2022\u2022 ${accNum.slice(-4)}`;
-}
+const AADHAAR_TYPES: PartnerDocumentType[] = ["aadhaar_front", "aadhaar_back"];
 
 export default function KycDetailsClient({
   kycStatus,
   kycRejectionReason,
   kycDocuments,
+  documents,
   userId,
 }: KycDetailsClientProps) {
   const [isPending, startTransition] = useTransition();
+  const [isUploading, setIsUploading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [showWarningModal, setShowWarningModal] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
 
-  const docs = kycDocuments;
-  const missingFields = KYC_FIELDS.filter((f) => !isFieldUploaded(docs, f.key));
-  const canUploadRemaining = kycStatus === "approved" && missingFields.length > 0;
-
-  const [uploadedUrls, setUploadedUrls] = useState<Record<string, string>>({});
-  const [fileNames, setFileNames] = useState<Record<string, string>>({});
-  const [textValues, setTextValues] = useState<Record<string, string>>({});
-
-  function renderStatusBanner() {
-    if (kycStatus === "approved" && missingFields.length === 0) {
-      return (
-        <div className="bg-success/10 border border-success/20 rounded-xl p-3 text-xs font-bold text-success flex items-center gap-2">
-          <span className="material-symbols-outlined text-sm">check_circle</span>
-          All KYC details are complete and verified.
-        </div>
-      );
-    }
-    if (kycStatus === "approved" && missingFields.length > 0) {
-      return (
-        <div className="bg-warning/10 border border-warning/20 rounded-xl p-3 text-xs font-bold text-warning-container">
-          Your KYC is approved but {missingFields.length} detail{missingFields.length > 1 ? "s are" : " is"} missing. Fill them in below.
-        </div>
-      );
-    }
-    if (kycStatus === "pending") {
-      return (
-        <div className="bg-primary/10 border border-primary/20 rounded-xl p-3 text-xs font-bold text-primary">
-          Your documents are under review. You will be notified once complete.
-        </div>
-      );
-    }
-    if (kycStatus === "rejected") {
-      return (
-        <div className="bg-error/10 border border-error/20 rounded-xl p-3 text-xs font-bold text-error">
-          KYC rejected.{kycRejectionReason ? ` Reason: ${kycRejectionReason}` : ""} Please resubmit from the verification page.
-        </div>
-      );
-    }
-    return (
-      <div className="bg-surface-container rounded-xl p-3 text-xs font-bold text-on-surface-variant">
-        Documents saved as draft. Please submit from the verification page.
-      </div>
-    );
+  // Build a map of doc_type -> PartnerDocument
+  const docMap: Record<string, PartnerDocument> = {};
+  for (const d of documents) {
+    docMap[d.doc_type] = d;
   }
 
-  function renderFieldValue(spec: FieldSpec) {
-    const val = docs?.[spec.key];
-    if (!val) {
-      return <span className="text-xs text-on-surface-variant/60">Not uploaded</span>;
-    }
+  const canUpload = kycStatus === "approved" || kycStatus === "action_required";
 
-    const isUrl = typeof val === "string" && val.startsWith("http");
-    if (isUrl) {
-      return (
-        <a
-          href={val}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs font-bold text-primary underline underline-offset-2"
-        >
-          View document
-        </a>
-      );
-    }
+  // Uploaded required docs count
+  const requiredTypes = KYC_ALL_TYPES.filter((t) => t !== "police_verification");
+  const completedCount = requiredTypes.filter(
+    (t) => docMap[t]?.status === "approved" || docMap[t]?.status === "pending"
+  ).length;
 
-    const displayValue = spec.type === "number" ? `${val} Years` : String(val);
+  function getStatusBadge(status: string) {
+    const info = STATUS_LABELS[status] || STATUS_LABELS.missing;
     return (
-      <span className="text-sm font-bold text-primary">
-        {spec.key === "bank_account_no" ? maskAccountNo(String(val)) : displayValue}
+      <span className={`text-[10px] font-black uppercase tracking-widest ${info.color}`}>
+        {info.label}
       </span>
     );
   }
 
-  function handleDocFileChange(key: string, e: React.ChangeEvent<HTMLInputElement>) {
+  function handleDocUpload(docType: PartnerDocumentType, e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setErrorMsg(null);
 
-    const allowedTypes = ["image/jpeg", "image/png", "application/pdf"];
-    if (!allowedTypes.includes(file.type)) {
-      setErrorMsg("Only JPG, PNG, and PDF files are allowed.");
+    const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    if (!allowed.includes(file.type)) {
+      setErrorMsg("Please upload JPG, PNG, WebP, or PDF.");
       return;
     }
-
     const isImage = file.type.startsWith("image/");
-    const sizeLimit = isImage ? 10 * 1024 * 1024 : 2 * 1024 * 1024;
-    if (file.size > sizeLimit) {
-      setErrorMsg(`${file.name} exceeds the ${isImage ? "10MB" : "2MB"} size limit.`);
+    const limit = isImage ? 10 * 1024 * 1024 : 2 * 1024 * 1024;
+    if (file.size > limit) {
+      setErrorMsg(`File too large. Max ${isImage ? "10 MB" : "2 MB"}.`);
       return;
     }
 
-    setFileNames((prev) => ({ ...prev, [key]: file.name }));
     setIsUploading(true);
-
     (async () => {
       try {
-        const fileToUpload = isImage ? await compressImage(file) : file;
         const supabase = createClient();
-        const ext = fileToUpload.name.split(".").pop() || "";
-        const filePath = getFilePath(userId, key, ext);
+        const ext = file.name.split(".").pop() || "";
+        const filePath = `${userId}/${docType}-${Date.now()}.${ext}`;
 
         const { error: uploadError } = await supabase.storage
           .from("partner-docs")
-          .upload(filePath, fileToUpload);
-
+          .upload(filePath, file);
         if (uploadError) throw new Error(uploadError.message);
 
         const { data: { publicUrl } } = supabase.storage
           .from("partner-docs")
           .getPublicUrl(filePath);
 
-        setUploadedUrls((prev) => ({ ...prev, [key]: publicUrl }));
+        const result = await uploadPartnerDocumentAction(docType, publicUrl, filePath);
+        if (result.success) {
+          setSuccessMsg(`${DOC_TYPE_CONFIG[docType].label} uploaded. Admin has been notified.`);
+        } else {
+          setErrorMsg(result.error || "Upload failed.");
+        }
       } catch (err) {
         console.error(err);
-        setErrorMsg(`Failed to upload ${file.name}. Please try again.`);
-        setFileNames((prev) => ({ ...prev, [key]: "" }));
+        setErrorMsg("Upload failed. Please try again.");
       } finally {
         setIsUploading(false);
       }
     })();
   }
 
-  function handleSubmitClick() {
-    setErrorMsg(null);
-
-    for (const field of missingFields) {
-      if (field.type === "document" && !uploadedUrls[field.key]) {
-        setErrorMsg(`Please upload your ${field.label}.`);
-        return;
-      }
-      if (field.type === "text" && !textValues[field.key]?.trim()) {
-        setErrorMsg(`Please enter your ${field.label}.`);
-        return;
-      }
-      if (field.type === "number") {
-        const numVal = Number(textValues[field.key]);
-        if (!textValues[field.key] || isNaN(numVal) || numVal < 0) {
-          setErrorMsg(`Please enter valid ${field.label}.`);
-          return;
-        }
-      }
-    }
-
-    setShowWarningModal(true);
-  }
-
-  function handleConfirmSubmit() {
-    setShowWarningModal(false);
-    setErrorMsg(null);
-
+  function handleViewDoc(docId: string) {
     startTransition(async () => {
-      const payload: Partial<KycDocumentsData> = {};
-
-      for (const field of missingFields) {
-        if (field.type === "document") {
-          const url = uploadedUrls[field.key];
-          if (url) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (payload as any)[field.key] = url;
-          }
-        } else if (field.type === "number") {
-          const val = textValues[field.key];
-          if (val) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (payload as any)[field.key] = Number(val);
-          }
-        } else {
-          const val = textValues[field.key];
-          if (val?.trim()) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (payload as any)[field.key] = field.key === "bank_ifsc" ? val.trim().toUpperCase() : val.trim();
-          }
-        }
-      }
-
-      const result = await uploadRemainingKycAction(payload);
-      if (result.success) {
-        setSuccessMsg("Details submitted. Admin team has been notified.");
+      const result = await getPartnerDocumentSignedUrl(docId);
+      if (result.signedUrl) {
+        window.open(result.signedUrl, "_blank");
       } else {
-        setErrorMsg(result.error || "Submission failed.");
+        setErrorMsg(result.error || "Could not load document.");
       }
     });
   }
 
+  // ─── Render single doc row ───
+  function renderDocRow(docType: PartnerDocumentType, opts?: { subLabel?: string }) {
+    const cfg = DOC_TYPE_CONFIG[docType];
+    const doc = docMap[docType];
+    const status = doc?.status || "missing";
+    const canReupload = canUpload && ["missing", "deferred", "rejected", "resubmit_required"].includes(status);
+
+    return (
+      <div
+        key={docType}
+        className={`px-4 py-3 flex items-center justify-between gap-3 ${
+          status === "rejected" || status === "resubmit_required" ? "bg-error/5" : ""
+        } ${status === "deferred" ? "bg-warning/5" : ""}`}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 bg-green-500/10 rounded-lg flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[#059669] text-sm drop-shadow-sm">
+              {cfg.icon}
+            </span>
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-bold text-on-surface truncate">
+              {cfg.label}
+              {opts?.subLabel && <span className="text-on-surface-variant"> ({opts.subLabel})</span>}
+            </p>
+            {(status === "rejected" || status === "resubmit_required") && doc?.rejection_reason && (
+              <p className="text-[10px] text-error font-medium mt-0.5 truncate">
+                {doc.rejection_reason}
+              </p>
+            )}
+            {status === "deferred" && doc?.due_at && (
+              <p className="text-[10px] text-warning-container font-medium mt-0.5">
+                Due by {new Date(doc.due_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {getStatusBadge(status)}
+
+          {doc?.id && (status === "approved" || status === "pending") && (
+            <button
+              type="button"
+              onClick={() => handleViewDoc(doc.id)}
+              disabled={isPending}
+              className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline cursor-pointer disabled:opacity-50"
+            >
+              View
+            </button>
+          )}
+
+          {canReupload && (
+            <label className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline cursor-pointer">
+              {isUploading ? "Uploading..." : "Upload"}
+              <input
+                type="file"
+                accept={cfg.acceptAttr}
+                className="hidden"
+                onChange={(e) => handleDocUpload(docType, e)}
+                disabled={isUploading}
+              />
+            </label>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5 max-w-2xl mx-auto">
-      {renderStatusBanner()}
+      {/* Status banner */}
+      {kycStatus === "approved" && (
+        <div className="bg-success/10 border border-success/20 rounded-xl p-3 text-xs font-bold text-success flex items-center gap-2">
+          <span className="material-symbols-outlined text-sm">check_circle</span>
+          Your KYC is verified. {completedCount < requiredTypes.length && `${completedCount}/${requiredTypes.length} documents approved.`}
+        </div>
+      )}
+      {kycStatus === "pending" && (
+        <div className="bg-primary/10 border border-primary/20 rounded-xl p-3 text-xs font-bold text-primary">
+          Your documents are under review. You will be notified once complete.
+        </div>
+      )}
+      {kycStatus === "rejected" && (
+        <div className="bg-error/10 border border-error/20 rounded-xl p-3 text-xs font-bold text-error">
+          KYC rejected.{kycRejectionReason ? ` Reason: ${kycRejectionReason}` : ""} Please re-upload from below.
+        </div>
+      )}
+      {kycStatus === "action_required" && (
+        <div className="bg-warning/10 border border-warning/20 rounded-xl p-3 text-xs font-bold text-warning-container">
+          Please update the highlighted documents below.
+        </div>
+      )}
 
       {errorMsg && (
         <div className="bg-error/10 border border-error/20 text-error p-3 rounded-xl text-xs font-bold">
@@ -304,124 +220,58 @@ export default function KycDetailsClient({
         </div>
       )}
 
-      {/* Uploaded Details */}
+      {/* Documents list */}
       <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 divide-y divide-outline-variant/15">
         <div className="px-4 py-3">
-          <h3 className="text-sm font-bold text-on-surface">Your KYC Details</h3>
-          <p className="text-[11px] text-on-surface-variant">Uploaded details are locked and cannot be changed.</p>
+          <h3 className="text-sm font-bold text-on-surface">Document Verification</h3>
+          <p className="text-[11px] text-on-surface-variant">
+            {canUpload ? "Re-upload any rejected or missing documents below." : "Documents are locked after approval."}
+          </p>
         </div>
-        {KYC_FIELDS.map((spec) => {
-          const uploaded = isFieldUploaded(docs, spec.key);
-          return (
-            <div key={spec.key} className="px-4 py-3 flex items-center justify-between gap-3">
-              <span className="text-xs font-bold text-on-surface shrink-0">{spec.label}</span>
-              <div className="flex items-center gap-2 min-w-0">
-                {renderFieldValue(spec)}
-                {uploaded && (
-                  <span className="material-symbols-outlined text-success text-sm shrink-0">check_circle</span>
-                )}
-              </div>
-            </div>
-          );
-        })}
+
+        {/* Aadhaar group */}
+        {AADHAAR_TYPES.map((t) => renderDocRow(t, { subLabel: t === "aadhaar_front" ? "Front" : "Back" }))}
+
+        {/* Other doc types */}
+        {KYC_ALL_TYPES.filter((t) => !AADHAAR_TYPES.includes(t)).map((t) => renderDocRow(t))}
       </div>
 
-      {/* Upload Remaining */}
-      {canUploadRemaining && (
-        <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 divide-y divide-outline-variant/15">
-          <div className="px-4 py-3">
-            <h3 className="text-sm font-bold text-on-surface">Upload Remaining Details</h3>
-            <p className="text-[11px] text-on-surface-variant">{missingFields.length} field{missingFields.length > 1 ? "s" : ""} remaining</p>
-          </div>
-          <div className="px-4 py-4 space-y-4">
-            {missingFields.filter((f) => f.type === "document").map((spec) => (
-              <div key={spec.key}>
-                <label className="text-[11px] font-bold text-on-surface-variant block mb-1.5">{spec.label} *</label>
-                <label className="flex items-center gap-2 bg-surface-container-low border border-dashed border-outline-variant/40 rounded-xl px-3 py-2.5 cursor-pointer hover:border-primary/40 transition-colors">
-                  <span className="material-symbols-outlined text-on-surface-variant text-lg">upload</span>
-                  <span className="text-xs font-bold text-on-surface truncate">
-                    {uploadedUrls[spec.key] ? fileNames[spec.key] || "Uploaded" : "Choose file"}
-                  </span>
-                  {uploadedUrls[spec.key] && (
-                    <span className="material-symbols-outlined text-success text-sm ml-auto shrink-0">check_circle</span>
-                  )}
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,application/pdf"
-                    className="sr-only"
-                    onChange={(e) => handleDocFileChange(spec.key, e)}
-                    disabled={isUploading}
-                  />
-                </label>
-              </div>
-            ))}
-
-            {missingFields.filter((f) => f.type !== "document").map((spec) => (
-              <div key={spec.key}>
-                <label className="text-[11px] font-bold text-on-surface-variant block mb-1.5">{spec.label} *</label>
-                <input
-                  type={spec.type === "number" ? "number" : "text"}
-                  placeholder={
-                    spec.key === "bank_ifsc" ? "SBIN0001234"
-                    : spec.key === "bank_name" ? "State Bank of India"
-                    : spec.key === "bank_account_no" ? "Account number"
-                    : spec.key === "police_station_details" ? "Station name"
-                    : "e.g. 5"
-                  }
-                  value={textValues[spec.key] || ""}
-                  onChange={(e) => setTextValues((prev) => ({ ...prev, [spec.key]: e.target.value }))}
-                  className="w-full bg-surface-container-low text-primary p-2.5 rounded-xl border border-outline-variant/40 focus:border-primary focus:outline-none font-semibold text-sm"
-                />
-              </div>
-            ))}
-          </div>
-          <div className="px-4 pb-4">
-            <Button
-              type="button"
-              variant="primary"
-              onClick={handleSubmitClick}
-              disabled={isPending || isUploading}
-              className="w-full py-2.5 bg-secondary hover:brightness-105 text-primary rounded-xl font-bold text-sm disabled:opacity-50"
-            >
-              {isUploading ? "Uploading..." : isPending ? "Submitting..." : "Submit Remaining Details"}
-            </Button>
-          </div>
+      {/* Scalar details (read-only) */}
+      <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 divide-y divide-outline-variant/15">
+        <div className="px-4 py-3">
+          <h3 className="text-sm font-bold text-on-surface">Professional Details</h3>
+          <p className="text-[11px] text-on-surface-variant">Submit from the verification page to update.</p>
         </div>
-      )}
-
-      {/* Warning Modal */}
-      {showWarningModal && (
-        <div className="fixed inset-0 bg-primary/25 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="absolute inset-0 cursor-pointer" onClick={() => setShowWarningModal(false)} />
-          <div className="relative w-full max-w-sm bg-white rounded-2xl overflow-hidden shadow-2xl p-5 border border-outline-variant/30 animate-in zoom-in-95 duration-200">
-            <h3 className="text-sm font-headline font-black text-on-surface mb-2 text-center">
-              Confirm Submission
-            </h3>
-            <p className="text-xs text-on-surface-variant text-center mb-5 leading-relaxed">
-              You <strong>cannot change</strong> these details after submitting. Make sure everything is correct.
-            </p>
-            <div className="space-y-2">
-              <Button
-                type="button"
-                variant="primary"
-                onClick={handleConfirmSubmit}
-                disabled={isPending}
-                className="w-full py-2.5 bg-secondary hover:brightness-105 text-primary rounded-xl font-bold text-sm disabled:opacity-50"
-              >
-                {isPending ? "Submitting..." : "Yes, Submit"}
-              </Button>
-              <Button
-                type="button"
-                variant="slate"
-                onClick={() => setShowWarningModal(false)}
-                className="w-full py-2.5 bg-surface-container hover:bg-surface-container-high text-on-surface rounded-xl font-bold text-sm"
-              >
-                Go Back
-              </Button>
-            </div>
+        {[
+          { label: "Years of Experience", val: kycDocuments?.experience_years ? `${kycDocuments.experience_years} Years` : null },
+          { label: "Police Station", val: kycDocuments?.police_station_details || null },
+          { label: "Bank Name", val: kycDocuments?.bank_name || null },
+          { label: "Account Number", val: kycDocuments?.bank_account_no ? `\u2022\u2022\u2022\u2022 ${kycDocuments.bank_account_no.slice(-4)}` : null },
+          { label: "IFSC Code", val: kycDocuments?.bank_ifsc || null },
+        ].map(({ label, val }) => (
+          <div key={label} className="px-4 py-3 flex items-center justify-between gap-3">
+            <span className="text-xs font-bold text-on-surface shrink-0">{label}</span>
+            <span className="text-xs font-medium text-on-surface-variant text-right">{val || "Not set"}</span>
           </div>
+        ))}
+      </div>
+
+      {/* UPI details */}
+      <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 divide-y divide-outline-variant/15">
+        <div className="px-4 py-3">
+          <h3 className="text-sm font-bold text-on-surface">UPI Details</h3>
+          <p className="text-[11px] text-on-surface-variant">Manage from your <a href="/partner/profile/bank" className="text-primary font-bold hover:underline">Bank & Payments</a> page.</p>
         </div>
-      )}
+        {[
+          { label: "UPI ID", val: kycDocuments?.upi_id || null },
+          { label: "UPI Number", val: kycDocuments?.upi_number || null },
+        ].map(({ label, val }) => (
+          <div key={label} className="px-4 py-3 flex items-center justify-between gap-3">
+            <span className="text-xs font-bold text-on-surface shrink-0">{label}</span>
+            <span className="text-xs font-medium text-on-surface-variant text-right">{val || "Not set"}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

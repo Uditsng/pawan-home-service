@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/Button";
 import { calculatePartnerEarningsBreakdown} from "@/lib/engines/commissionEngine";
@@ -181,9 +182,6 @@ export function FinanceConsole({ initialBookings, commissionPercent = 20 }: Prop
   const [statusFilter, setStatusFilter] = useState<"all" | "settled" | "pending">("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [showPayoutModal, setShowPayoutModal] = useState(false);
-  const [isProcessingPayout, setIsProcessingPayout] = useState(false);
-  const [payoutSuccess, setPayoutSuccess] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
   const periodBookings = useMemo(() => filterPeriod(initialBookings, period), [initialBookings, period]);
@@ -252,19 +250,6 @@ export function FinanceConsole({ initialBookings, commissionPercent = 20 }: Prop
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
-
-  const handleProcessPayout = () => {
-    setIsProcessingPayout(true);
-    setPayoutSuccess(false);
-    setTimeout(() => {
-      setIsProcessingPayout(false);
-      setPayoutSuccess(true);
-      setTimeout(() => {
-        setShowPayoutModal(false);
-        setPayoutSuccess(false);
-      }, 1500);
-    }, 1500);
   };
 
   const totalBookings = periodBookings.length;
@@ -342,13 +327,13 @@ export function FinanceConsole({ initialBookings, commissionPercent = 20 }: Prop
             ₹{metrics.pendingPayout.toLocaleString()}
           </p>
           {metrics.pendingPayout > 0 && (
-            <button
-              onClick={() => setShowPayoutModal(true)}
+            <Link
+              href="/admin/payouts"
               className="text-[9px] font-black text-secondary hover:underline uppercase tracking-widest mt-2 flex items-center gap-1"
             >
               <span className="material-symbols-outlined text-sm">account_balance_wallet</span>
-              Settle Now
-            </button>
+              Review Payouts
+            </Link>
           )}
         </div>
       </div>
@@ -626,60 +611,6 @@ export function FinanceConsole({ initialBookings, commissionPercent = 20 }: Prop
         {topService && <span>Top: {topService}</span>}
         <span>Period: <span className="font-bold text-on-surface">₹{metrics.totalCollected.toLocaleString()}</span></span>
       </div>
-
-      {/* Payout Modal */}
-      {showPayoutModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" onClick={() => setShowPayoutModal(false)} />
-          <div className="bg-surface relative w-full max-w-sm rounded-[28px] border border-outline-variant/20 p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="space-y-4">
-              <div className="w-12 h-12 bg-secondary/10 text-secondary rounded-2xl flex items-center justify-center">
-                <span className="material-symbols-outlined text-2xl">account_balance_wallet</span>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold tracking-tight text-primary font-headline">Process Payouts</h3>
-                <p className="text-xs text-on-surface-variant font-medium mt-1 leading-relaxed">
-                  Settle all outstanding professional payments for the current period.
-                </p>
-              </div>
-              <div className="bg-surface-container-low p-4 rounded-2xl border border-outline-variant/10 space-y-2">
-                <div className="flex justify-between items-center text-xs font-bold text-on-surface-variant">
-                  <span>Pending Settlements</span>
-                  <span className="text-primary">
-                    {periodBookings.filter((b) => b.status !== "completed").length} Transactions
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-sm font-black text-primary border-t border-outline-variant/10 pt-2">
-                  <span>Total Payout Amount</span>
-                  <span className="text-secondary text-lg">₹{metrics.pendingPayout.toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-2 mt-6">
-              <Button variant="ghost" onClick={() => setShowPayoutModal(false)} className="flex-1 py-3 text-xs">
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                onClick={handleProcessPayout}
-                disabled={isProcessingPayout || payoutSuccess}
-                className="flex-1 py-3 text-xs"
-              >
-                {isProcessingPayout ? (
-                  <span className="flex items-center gap-2">
-                    <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                    Processing...
-                  </span>
-                ) : payoutSuccess ? (
-                  "Settled!"
-                ) : (
-                  "Pay Out Funds"
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 import { calculatePartnerEarningsBreakdown } from "@/lib/engines/commissionEngine";
+import type { PayoutSummary } from "../payouts/actions";
 import { EarningsClient } from "./EarningsClient";
 
 interface RawBooking {
@@ -127,7 +128,7 @@ export default async function EarningsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [bookingsResult, pricingResult, platformSettings] = await Promise.all([
+  const [bookingsResult, pricingResult, platformSettings, payoutSummaryResult] = await Promise.all([
     supabase
       .from("bookings")
       .select(`*,
@@ -141,6 +142,7 @@ export default async function EarningsPage() {
       .from("booking_pricing")
       .select("booking_id, base_price, addons_total, gst_amount, total_price"),
     fetchPlatformSettings(supabase),
+    supabase.rpc("get_partner_payout_summary", { p_partner_id: user.id }),
   ]);
 
   const bookings = (bookingsResult.data || []) as RawBooking[];
@@ -164,6 +166,8 @@ export default async function EarningsPage() {
       streak={streak}
       comparisons={comparisons}
       dailyTarget={dailyTarget}
+      payoutSummary={(payoutSummaryResult.data ?? null) as PayoutSummary | null}
+      minPayout={platformSettings.partnerPayoutMin}
     />
   );
 }

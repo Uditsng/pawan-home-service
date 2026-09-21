@@ -1,5 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { PartnersConsole } from "./PartnersConsole";
+import { mergePartnerDocuments } from "@/lib/documents/partnerDocConfig";
+import type { PartnerDocument } from "@/lib/types";
 
 export interface PartnerBooking {
   id: string;
@@ -47,9 +49,10 @@ export interface SerializedPartner {
   avatar_url: string | null;
   status: 'pending' | 'active' | 'offline' | 'busy' | 'suspended';
   service_tier: 'premium' | 'standard';
-  kyc_status: 'approved' | 'rejected' | 'pending';
+  kyc_status: 'approved' | 'rejected' | 'pending' | 'action_required';
   kyc_rejection_reason: string | null;
   kyc_documents: Record<string, unknown> | null;
+  partner_documents: PartnerDocument[];
   rating_avg: number;
   jobs_done: number;
   jobs_cancelled: number;
@@ -75,7 +78,7 @@ interface RawPartnerProfile {
   avatar_url?: string | null;
   status?: 'pending' | 'active' | 'offline' | 'busy' | 'suspended' | null;
   service_tier?: 'premium' | 'standard' | null;
-  kyc_status?: 'approved' | 'rejected' | 'pending' | null;
+  kyc_status?: 'approved' | 'rejected' | 'pending' | 'action_required' | null;
   kyc_rejection_reason?: string | null;
   kyc_documents?: Record<string, unknown> | null;
   rating_avg?: number | null;
@@ -225,6 +228,7 @@ export default async function AdminPartnersPage() {
           kyc_status: 'approved',
           kyc_rejection_reason: null,
           kyc_documents: null,
+          partner_documents: [],
           rating_avg: 5.0,
           rating_count: 0,
           jobs_offered_count: 0,
@@ -242,6 +246,25 @@ export default async function AdminPartnersPage() {
     }
   } else if (data) {
     partners = data as unknown as RawPartnerProfile[];
+  }
+
+  // Fetch partner_documents separately — the table may not exist yet on
+  // older databases, so we catch and silently degrade to an empty array.
+  const partnerIds = partners.map(p => p.id);
+  const docsByPartner = new Map<string, PartnerDocument[]>();
+  if (partnerIds.length > 0) {
+    const { data: docsData } = await supabase
+      .from("partner_documents")
+      .select("id, doc_type, status, file_url, storage_path, rejection_reason, police_due_at, uploaded_at, reviewed_at, partner_id")
+      .in("partner_id", partnerIds);
+
+    if (docsData) {
+      for (const doc of docsData as unknown as (PartnerDocument & { partner_id: string })[]) {
+        const list = docsByPartner.get(doc.partner_id) || [];
+        list.push(doc);
+        docsByPartner.set(doc.partner_id, list);
+      }
+    }
   }
 
   // Preprocess and safely type partners list
@@ -266,6 +289,12 @@ export default async function AdminPartnersPage() {
     const offered = p.jobs_offered_count || 0;
     const reliabilityRate = offered > 0 ? Math.round((accepted / offered) * 100) : 98;
 
+    // Merge partner_documents table with legacy kyc_documents JSONB fallback
+    // This ensures old data (pre-migration) is always visible
+    const tableDocs = docsByPartner.get(p.id) || [];
+    const legacyDocs = (p.kyc_documents as Record<string, string> | null) || null;
+    const mergedDocs = mergePartnerDocuments(tableDocs, legacyDocs, p.kyc_status || 'pending');
+
     return {
       id: p.id,
       full_name: p.full_name || "Unknown Professional",
@@ -277,6 +306,7 @@ export default async function AdminPartnersPage() {
       kyc_status: p.kyc_status || 'pending',
       kyc_rejection_reason: p.kyc_rejection_reason || null,
       kyc_documents: p.kyc_documents || null,
+      partner_documents: mergedDocs,
       rating_avg: p.rating_avg || 4.8,
       jobs_done: accepted,
       jobs_cancelled: p.jobs_cancelled_count || 0,

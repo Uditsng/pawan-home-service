@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { calculatePartnerEarningsBreakdown, formatPartnerShareBadge } from "@/lib/engines/commissionEngine";
 import type { EnrichedBooking } from "./page";
+import type { PayoutSummary } from "../payouts/actions";
 
 type Period = "today" | "week" | "month" | "all";
 
@@ -19,6 +20,8 @@ interface Props {
   streak: number;
   comparisons: Comparisons;
   dailyTarget: number;
+  payoutSummary: PayoutSummary | null;
+  minPayout: number;
 }
 
 const periods: { key: Period; label: string }[] = [
@@ -165,7 +168,7 @@ function motivationalMessage(payout: number, period: Period): string {
   return "Outstanding! Maxing out today!";
 }
 
-export function EarningsClient({ bookings, commissionPercent, streak, comparisons, dailyTarget }: Props) {
+export function EarningsClient({ bookings, commissionPercent, streak, comparisons, dailyTarget, payoutSummary, minPayout }: Props) {
   const [period, setPeriod] = useState<Period>("today");
 
   const { filtered, breakdown } = useMemo(
@@ -263,6 +266,31 @@ export function EarningsClient({ bookings, commissionPercent, streak, comparison
             </p>
           </div>
         </div>
+
+        {/* Payout balance banner */}
+        <Link
+          href="/partner/payouts"
+          className="flex items-center justify-between gap-3 bg-primary rounded-2xl p-3.5 border border-primary/20 shadow-md shadow-primary/10 hover:bg-primary/95 transition-colors"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 bg-secondary/20 rounded-xl flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-secondary text-xl drop-shadow-sm">account_balance_wallet</span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-[9px] uppercase tracking-wider font-bold text-secondary/90">Available to Withdraw</p>
+              <p className="text-lg font-black text-on-primary leading-tight">
+                ₹{(payoutSummary?.available ?? 0).toLocaleString("en-IN")}
+              </p>
+            </div>
+          </div>
+          <div className="text-right shrink-0">
+            <span className="text-[10px] font-bold text-on-primary/70">{payoutSummary?.payouts_enabled ? "Min ₹" + minPayout.toLocaleString("en-IN") : "Paused"}</span>
+            <p className="flex items-center gap-0.5 text-xs font-bold text-secondary mt-0.5">
+              Withdraw
+              <span className="material-symbols-outlined text-sm">chevron_right</span>
+            </p>
+          </div>
+        </Link>
 
         {/* 3 Metric Cards */}
         <div className="grid grid-cols-3 gap-1.5">

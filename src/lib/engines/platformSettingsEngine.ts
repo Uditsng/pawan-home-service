@@ -31,6 +31,8 @@ export interface PlatformSettings {
   walletRechargeMin: number;    // e.g. 20 (₹)
   walletRechargeMax: number;    // e.g. 100000 (₹)
   walletRechargePresets: number[]; // e.g. [200, 500, 1000, 2000]
+  partnerPayoutMin: number;     // e.g. 500 (₹) minimum payout request
+  partnerPayoutsEnabled: boolean; // feature switch for payout requests
   serviceAreas: string[];
   serviceablePincodes: string[];
   orderFees: OrderFee[];
@@ -53,6 +55,8 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   walletRechargeMin: 20,
   walletRechargeMax: 100000,
   walletRechargePresets: [200, 500, 1000, 2000],
+  partnerPayoutMin: 500,
+  partnerPayoutsEnabled: true,
   serviceAreas: ["Roorkee", "Chandigarh", "Dehradun", "Haridwar"],
   serviceablePincodes: ["247667", "160017", "248001", "249401"],
   orderFees: [],
@@ -156,6 +160,8 @@ export async function fetchPlatformSettings(supabase: SupabaseClient): Promise<P
       walletRechargeMin: parseNum(settingsMap["wallet_recharge_min"], DEFAULT_PLATFORM_SETTINGS.walletRechargeMin),
       walletRechargeMax: parseNum(settingsMap["wallet_recharge_max"], DEFAULT_PLATFORM_SETTINGS.walletRechargeMax),
       walletRechargePresets: parseNumberArray(settingsMap["wallet_recharge_presets"], DEFAULT_PLATFORM_SETTINGS.walletRechargePresets),
+      partnerPayoutMin: parseNum(settingsMap["partner_payout_min"], DEFAULT_PLATFORM_SETTINGS.partnerPayoutMin),
+      partnerPayoutsEnabled: parseBool(settingsMap["partner_payouts_enabled"], DEFAULT_PLATFORM_SETTINGS.partnerPayoutsEnabled),
       serviceAreas: parseStringArray(settingsMap["service_areas"], DEFAULT_PLATFORM_SETTINGS.serviceAreas),
       serviceablePincodes: parseStringArray(settingsMap["serviceable_pincodes"], DEFAULT_PLATFORM_SETTINGS.serviceablePincodes),
       orderFees: parseOrderFees(settingsMap["order_fees"]),

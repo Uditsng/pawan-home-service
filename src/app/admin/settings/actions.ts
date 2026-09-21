@@ -23,6 +23,8 @@ export async function updateSettingsAction(settings: {
   serviceable_pincodes?: string[];
   referral_reward_referrer?: string;
   referral_reward_referred?: string;
+  partner_payout_min?: string;
+  partner_payouts_enabled?: boolean;
   order_fees?: OrderFee[];
 }) {
   await requireAdmin();
@@ -103,6 +105,22 @@ export async function updateSettingsAction(settings: {
     await supabase
       .from("platform_settings")
       .upsert({ key: "referral_reward_referred", value: settings.referral_reward_referred, updated_at: new Date().toISOString() });
+  }
+
+  // Update partner payout minimum (₹) — string value like other numeric settings
+  if (settings.partner_payout_min !== undefined) {
+    const parsedMin = parseFloat(settings.partner_payout_min);
+    const validMin = isNaN(parsedMin) ? 0 : Math.max(0, Math.min(1000000, Math.round(parsedMin)));
+    await supabase
+      .from("platform_settings")
+      .upsert({ key: "partner_payout_min", value: String(validMin), updated_at: new Date().toISOString() });
+  }
+
+  // Update partner payouts feature switch
+  if (settings.partner_payouts_enabled !== undefined) {
+    await supabase
+      .from("platform_settings")
+      .upsert({ key: "partner_payouts_enabled", value: settings.partner_payouts_enabled ? "true" : "false", updated_at: new Date().toISOString() });
   }
 
   // Update order_fees with strict server-side validation

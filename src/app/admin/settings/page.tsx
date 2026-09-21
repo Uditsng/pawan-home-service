@@ -57,6 +57,8 @@ export default async function AdminSettingsPage() {
         initialServiceablePincodes={settings.serviceablePincodes}
         initialReferralRewardReferrer={String(settings.referralRewardReferrer)}
         initialReferralRewardReferred={String(settings.referralRewardReferred)}
+        initialPartnerPayoutMin={String(settings.partnerPayoutMin)}
+        initialPartnerPayoutsEnabled={settings.partnerPayoutsEnabled}
         initialOrderFees={settings.orderFees}
         demandAnalytics={demandAnalytics}
       />

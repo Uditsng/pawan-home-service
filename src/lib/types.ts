@@ -56,6 +56,7 @@ export interface Profile {
 
 export interface KycDocumentsData {
   aadhaar_url?: string;
+  aadhaar_back_url?: string;
   pan_url?: string;
   dl_url?: string;
   experience_years?: number;
@@ -66,6 +67,47 @@ export interface KycDocumentsData {
   bank_name?: string;
   bank_account_no?: string;
   bank_ifsc?: string;
+  upi_id?: string;
+  upi_number?: string;
+  upi_qr_url?: string;
+}
+
+// ─── Partner Documents (Normalized Table) ────────────────────
+
+export type PartnerDocumentType =
+  | 'aadhaar_front'
+  | 'aadhaar_back'
+  | 'pan'
+  | 'dl'
+  | 'selfie'
+  | 'address_proof'
+  | 'police_verification';
+
+export type PartnerDocumentStatus =
+  | 'missing'
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'resubmit_required'
+  | 'deferred'
+  | 'expired';
+
+export interface PartnerDocument {
+  id: string;
+  partner_id: string;
+  doc_type: PartnerDocumentType;
+  file_url: string | null;
+  storage_path: string | null;
+  status: PartnerDocumentStatus;
+  rejection_reason: string | null;
+  uploaded_at: string | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  due_at: string | null;
+  expires_at: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface PartnerProfile extends Profile {
@@ -376,7 +418,15 @@ export type NotificationType =
   | 'partner_referral_reward'
   | 'partner_referral_bonus'
   | 'wallet_recharge'
-  | 'offer_purchase';
+  | 'offer_purchase'
+  | 'payout_requested'
+  | 'payout_approved'
+  | 'payout_rejected'
+  | 'payout_processing'
+  | 'payout_paid'
+  | 'payout_cancelled'
+  | 'kyc_action_required'
+  | 'kyc_police_overdue';
 
 export interface AppNotification {
   id: string;

@@ -2,7 +2,8 @@ import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import KycDetailsClient from "./KycDetailsClient";
-import type { KycDocumentsData } from "@/lib/types";
+import { mergePartnerDocuments } from "@/lib/documents/partnerDocConfig";
+import type { PartnerDocument, KycDocumentsData } from "@/lib/types";
 
 export default async function PartnerKycPage() {
   const supabase = await createClient();
@@ -22,7 +23,19 @@ export default async function PartnerKycPage() {
     redirect("/login");
   }
 
+  const { data: documents } = await supabase
+    .from("partner_documents")
+    .select("*")
+    .eq("partner_id", user.id);
+
   const kycDocs = (profile.kyc_documents as KycDocumentsData | null) || null;
+
+  // Merge table rows with legacy JSONB fallback
+  const mergedDocs = mergePartnerDocuments(
+    (documents as PartnerDocument[]) || [],
+    kycDocs as Record<string, unknown> | null,
+    profile.kyc_status || "draft"
+  );
 
   return (
     <div className="bg-surface text-on-surface min-h-screen pb-24 lg:pb-12 flex flex-col font-body">
@@ -43,6 +56,7 @@ export default async function PartnerKycPage() {
           kycStatus={profile.kyc_status || "draft"}
           kycRejectionReason={profile.kyc_rejection_reason || null}
           kycDocuments={kycDocs}
+          documents={mergedDocs}
           userId={profile.id}
         />
       </main>

@@ -5,6 +5,8 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import { normaliseIndianPhone } from "@/lib/twilio";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/utils/supabase/auth-checks";
+import { logAdminAuditAction } from "@/utils/auditLogger";
+import type { NotificationType } from "@/lib/types";
 
 type ActionResult = { success: true } | { success: false; error: string };
 
@@ -197,12 +199,11 @@ export async function onboardPartnerAction(data: {
     return toActionError(profileError);
   }
 
-  // 2b. Best-effort: KYC is assumed approved when the admin adds a partner
-  //     directly (no documents needed). Skipped silently if the column is
-  //     missing so onboarding never breaks on an outdated schema.
+  // 2b. KYC is NOT auto-approved when the admin adds a partner
+  //     directly. The partner must upload documents via /partner/pending.
   const { error: kycError } = await admin
     .from('profiles')
-    .update({ kyc_status: 'approved' })
+    .update({ kyc_status: 'pending' })
     .eq('id', partnerId);
   if (kycError && kycError.code !== '42703' && !kycError.message?.includes('column')) {
     return toActionError(kycError);
@@ -484,13 +485,17 @@ export interface PartnerEarningsSummary {
   totalGst: number;
   jobsCount: number;
   monthlyTrend: { month: string; payout: number; jobs: number }[];
+  availableBalance: number;
+  paidBalance: number;
+  processingBalance: number;
+  pendingPayoutNumber: string | null;
 }
 
 export async function getPartnerEarningsAction(partnerId: string): Promise<PartnerEarningsSummary> {
   await requireAdmin();
   const supabase = await createClient();
 
-  const [settingsResult, bookingsResult] = await Promise.all([
+  const [settingsResult, bookingsResult, payoutResult] = await Promise.all([
     supabase.from("platform_settings").select("value").eq("key", "platform_commission").single(),
     supabase
       .from("bookings")
@@ -498,7 +503,15 @@ export async function getPartnerEarningsAction(partnerId: string): Promise<Partn
       .eq("partner_id", partnerId)
       .eq("status", "completed")
       .order("created_at", { ascending: false }),
+    supabase.rpc("get_partner_payout_summary", { p_partner_id: partnerId }),
   ]);
+
+  const payoutSummary = (payoutResult.data ?? null) as {
+    available?: number;
+    paid?: number;
+    processing?: number;
+    current_payout?: { payout_number?: string } | null;
+  } | null;
 
   const commissionPercent = Number(settingsResult.data?.value ?? 20);
   const bookings = (bookingsResult.data || []) as { id: string; total_amount: number; created_at: string }[];
@@ -563,5 +576,134 @@ export async function getPartnerEarningsAction(partnerId: string): Promise<Partn
     totalGst: totalGst,
     jobsCount: bookings.length,
     monthlyTrend,
+    availableBalance: Number(payoutSummary?.available ?? 0),
+    paidBalance: Number(payoutSummary?.paid ?? 0),
+    processingBalance: Number(payoutSummary?.processing ?? 0),
+    pendingPayoutNumber: payoutSummary?.current_payout?.payout_number ?? null,
   };
+}
+
+// ─── Partner Documents Actions ─────────────────────────────────
+
+/**
+ * Admin: Delete a partner document, forcing re-upload.
+ * Sets status to 'resubmit_required', clears file_url, notifies partner.
+ */
+export async function deletePartnerDocumentAction(
+  partnerId: string,
+  docType: string,
+  reason?: string
+): Promise<ActionResult> {
+  await requireAdmin();
+  const supabase = await createClient();
+  const admin = createAdminClient();
+
+  // Fetch current doc
+  const { data: doc, error: fetchError } = await supabase
+    .from("partner_documents")
+    .select("id, storage_path, file_url")
+    .eq("partner_id", partnerId)
+    .eq("doc_type", docType)
+    .single();
+
+  if (fetchError || !doc) {
+    return { success: false, error: "Document not found." };
+  }
+
+  // Update doc status
+  const { error } = await admin
+    .from("partner_documents")
+    .update({
+      file_url: null,
+      storage_path: null,
+      status: "resubmit_required",
+      rejection_reason: reason || "Document needs to be re-uploaded",
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: null, // admin client has no user context
+    })
+    .eq("id", doc.id);
+
+  if (error) return toActionError(error);
+
+  // Best-effort: delete the storage object
+  if (doc.storage_path) {
+    try {
+      await admin.storage.from("partner-docs").remove([doc.storage_path]);
+    } catch (storageErr) {
+      console.error("Storage delete failed (non-fatal):", storageErr);
+    }
+  }
+
+  // If KYC is pending and a required doc is deleted, set action_required
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("kyc_status")
+    .eq("id", partnerId)
+    .single();
+
+  if (profile?.kyc_status === "pending") {
+    await admin
+      .from("profiles")
+      .update({ kyc_status: "action_required", kyc_rejection_reason: reason || "Document needs to be re-uploaded" })
+      .eq("id", partnerId);
+  }
+
+  // Notify partner
+  try {
+    const { notifyCustomer } = await import("@/lib/notifications");
+    const docLabel = docType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    await notifyCustomer(partnerId, `Document ${docLabel} needs re-upload`, `Your ${docLabel} needs to be re-uploaded.`, "kyc_action_required" as NotificationType, {
+      doc_type: docType,
+    });
+  } catch (notifyErr) {
+    console.error("Failed to notify partner of doc deletion:", notifyErr);
+  }
+
+  // Audit log
+  await logAdminAuditAction({
+    action: "DELETE",
+    targetEntity: "partners",
+    recordId: partnerId,
+    recordTitle: `Document ${docType} deleted — re-upload required`,
+    newData: { doc_type: docType, reason: reason || null },
+  });
+
+  revalidatePath("/admin/partners");
+  return { success: true };
+}
+
+/**
+ * Admin: Generate a signed URL for viewing a partner document.
+ */
+export async function getAdminDocumentSignedUrlAction(
+  docId: string
+): Promise<ActionResult & { signedUrl?: string }> {
+  await requireAdmin();
+  const admin = createAdminClient();
+
+  const { data: doc, error: fetchError } = await admin
+    .from("partner_documents")
+    .select("id, storage_path, file_url")
+    .eq("id", docId)
+    .single();
+
+  if (fetchError || !doc) {
+    return { success: false, error: "Document not found." };
+  }
+
+  if (doc.storage_path) {
+    const { data, error } = await admin.storage
+      .from("partner-docs")
+      .createSignedUrl(doc.storage_path, 3600);
+
+    if (!error && data?.signedUrl) {
+      return { success: true, signedUrl: data.signedUrl };
+    }
+  }
+
+  if (doc.file_url) {
+    return { success: true, signedUrl: doc.file_url };
+  }
+
+  return { success: false, error: "Document file not available." };
 }

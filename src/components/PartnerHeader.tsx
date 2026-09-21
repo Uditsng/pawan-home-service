@@ -68,6 +68,7 @@ export default function PartnerHeader({ initialStatus = "offline" }: PartnerHead
     { label: "Dashboard", href: "/partner/dashboard", icon: "dashboard" },
     { label: "Jobs", href: "/partner/jobs", icon: "work" },
     { label: "Earnings", href: "/partner/earnings", icon: "payments" },
+    { label: "Payouts", href: "/partner/payouts", icon: "savings" },
     { label: "Performance", href: "/partner/performance", icon: "leaderboard" },
     { label: "Profile", href: "/partner/profile", icon: "person" },
   ];

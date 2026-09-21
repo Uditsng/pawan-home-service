@@ -3,9 +3,11 @@
 import React, { useState, useTransition, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { SerializedPartner, PartnerBooking, PartnerReview } from "./page";
+import type { PartnerDocument } from "@/lib/types";
 import {
   updatePartnerStatusAction,
   onboardPartnerAction,
@@ -15,6 +17,8 @@ import {
   getPartnerBookingsAction,
   getPartnerReviewsAction,
   getPartnerEarningsAction,
+  deletePartnerDocumentAction,
+  getAdminDocumentSignedUrlAction,
   type PartnerEarningsSummary,
 } from "./actions";
 
@@ -67,6 +71,16 @@ const MENU_WIDTH_PX = 192;
 const MENU_GAP_PX = 4;
 const VIEWPORT_MARGIN_PX = 8;
 const MENU_EST_HEIGHT_PX = 250;
+
+const STATUS_COLORS: Record<string, string> = {
+  pending: "text-primary",
+  approved: "text-success",
+  rejected: "text-error",
+  resubmit_required: "text-error",
+  missing: "text-on-surface-variant",
+  deferred: "text-warning",
+  expired: "text-error",
+};
 
 /**
  * Viewport-anchored placement for the fixed-position row actions menu.
@@ -151,6 +165,11 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
   const [kycRejectReason, setKycRejectReason] = useState("");
   const [kycSuccess, setKycSuccess] = useState<string | null>(null);
   const [kycError, setKycError] = useState<string | null>(null);
+
+  // Document actions
+  const [docSignedUrls, setDocSignedUrls] = useState<Record<string, string | null>>({});
+  const [docDeletingId, setDocDeletingId] = useState<string | null>(null);
+  const [docDeleteConfirm, setDocDeleteConfirm] = useState<{ partnerId: string; docType: string; partnerName: string } | null>(null);
 
   // Reviews Modal States
   const [selectedReviewsPartner, setSelectedReviewsPartner] = useState<SerializedPartner | null>(null);
@@ -292,6 +311,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
             kyc_status: 'approved',
             kyc_rejection_reason: null,
             kyc_documents: null,
+            partner_documents: [],
             rating_avg: 5.0,
             jobs_done: 0,
             jobs_cancelled: 0,
@@ -553,6 +573,54 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
     });
   };
 
+  const handleLoadDocSignedUrl = async (docId: string) => {
+    try {
+      const res = await getAdminDocumentSignedUrlAction(docId);
+      if (res.success && res.signedUrl) {
+        setDocSignedUrls(prev => ({ ...prev, [docId]: res.signedUrl! }));
+        window.open(res.signedUrl, "_blank");
+      }
+    } catch (err) {
+      console.error("Failed to get signed URL:", err);
+    }
+  };
+
+  const handleDeleteDoc = async (partnerId: string, docType: string) => {
+    setDocDeletingId(`${partnerId}:${docType}`);
+    try {
+      const res = await deletePartnerDocumentAction(partnerId, docType);
+      if (res.success) {
+        setPartners(prev => prev.map(p => {
+          if (p.id !== partnerId) return p;
+          return {
+            ...p,
+            partner_documents: p.partner_documents.map(d =>
+              d.doc_type === docType
+                ? { ...d, file_url: null, status: "resubmit_required", rejection_reason: "Deleted by admin — re-upload required" }
+                : d
+            ),
+          };
+        }));
+        setReviewKycPartner(prev => {
+          if (!prev || prev.id !== partnerId) return prev;
+          return {
+            ...prev,
+            partner_documents: prev.partner_documents.map(d =>
+              d.doc_type === docType
+                ? { ...d, file_url: null, status: "resubmit_required", rejection_reason: "Deleted by admin — re-upload required" }
+                : d
+            ),
+          };
+        });
+        setDocDeleteConfirm(null);
+      }
+    } catch (err) {
+      console.error("Failed to delete document:", err);
+    } finally {
+      setDocDeletingId(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
 
@@ -764,6 +832,10 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                         ) : partner.kyc_status === 'rejected' ? (
                           <span className="bg-red-100 text-red-800 border border-red-200 px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider rounded-full inline-flex items-center gap-1">
                             KYC Rejected
+                          </span>
+                        ) : partner.kyc_status === 'action_required' ? (
+                          <span className="bg-orange-100 text-orange-800 border border-orange-200 px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider rounded-full inline-flex items-center gap-1">
+                            <span className="w-1 h-1 bg-orange-500 rounded-full animate-pulse"></span> Action Required
                           </span>
                         ) : (
                           <span className="bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider rounded-full inline-flex items-center gap-1">
@@ -1144,71 +1216,109 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
             <div className="overflow-y-auto pr-1 space-y-6 flex-1 text-xs font-bold text-primary">
               {/* KYC Completion Summary */}
               {(() => {
-                const docs = reviewKycPartner.kyc_documents || {};
-                const allKeys = [
-                  "aadhaar_url", "pan_url", "dl_url", "selfie_url", "address_proof_url", "police_verification_url",
-                  "experience_years", "police_station_details", "bank_name", "bank_account_no", "bank_ifsc"
-                ];
-                const uploaded = allKeys.filter((k) => {
-                  const v = docs[k];
-                  return v !== undefined && v !== null && v !== "";
-                });
-                const missing = allKeys.length - uploaded.length;
+                const docs = reviewKycPartner.partner_documents || [];
+                const kycMandatory = ["aadhaar_front", "aadhaar_back", "pan", "dl", "selfie", "address_proof"];
+                const mandatoryUploaded = kycMandatory.filter(k => docs.some(d => d.doc_type === k && d.file_url));
+                const missing = kycMandatory.length - mandatoryUploaded.length;
+                const policeDoc = docs.find(d => d.doc_type === "police_verification");
+                const isOverdue = policeDoc?.due_at && new Date(policeDoc.due_at) < new Date() && !policeDoc?.file_url;
                 return (
-                  <div className={`p-3 rounded-xl border flex items-center gap-2 text-xs font-bold ${missing > 0 ? "bg-warning/10 border-warning/20 text-warning-container" : "bg-success/10 border-success/20 text-success"}`}>
-                    <span className="material-symbols-outlined text-sm">{missing > 0 ? "info" : "check_circle"}</span>
-                    {missing > 0
-                      ? `${uploaded.length}/${allKeys.length} fields uploaded \u00B7 ${missing} missing \u2014 partner can upload remaining after approval`
-                      : `All ${allKeys.length} fields uploaded \u2014 KYC is complete`
-                    }
+                  <div className="space-y-2">
+                    <div className={`p-3 rounded-xl border flex items-center gap-2 text-xs font-bold ${missing > 0 ? "bg-warning/10 border-warning/20 text-warning-container" : "bg-success/10 border-success/20 text-success"}`}>
+                      <span className="material-symbols-outlined text-sm">{missing > 0 ? "info" : "check_circle"}</span>
+                      {missing > 0
+                        ? `${mandatoryUploaded.length}/${kycMandatory.length} mandatory docs uploaded \u00B7 ${missing} missing`
+                        : `All ${kycMandatory.length} mandatory docs uploaded \u2014 KYC is complete`
+                      }
+                    </div>
+                    {isOverdue && (
+                      <div className="p-3 rounded-xl border bg-error/10 border-error/20 text-error flex items-center gap-2 text-xs font-bold">
+                        <span className="material-symbols-outlined text-sm">warning</span>
+                        Police verification overdue (due {new Date(policeDoc!.due_at!).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })})
+                      </div>
+                    )}
                   </div>
                 );
               })()}
 
-              {/* Document URLs Display */}
+              {/* Per-Document Status Cards */}
               <div>
-                <h4 className="text-xs font-headline font-black text-secondary uppercase tracking-wider mb-3">Identity Documents</h4>
-                {(() => {
-                  const docFields = [
-                    { key: "aadhaar_url", label: "Aadhaar Card" },
-                    { key: "pan_url", label: "PAN Card" },
-                    { key: "dl_url", label: "Driving Licence" },
-                    { key: "selfie_url", label: "Selfie Photo" },
-                    { key: "address_proof_url", label: "Address Proof" },
-                    { key: "police_verification_url", label: "Police Verification" },
-                  ];
-                  return (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {docFields.map(({ key, label }) => {
-                        const val = reviewKycPartner.kyc_documents?.[key];
-                        const isUploaded = typeof val === "string" && val.startsWith("http");
-                        return (
-                          <div key={key} className={`border rounded-xl p-3 flex items-center justify-between ${isUploaded ? "bg-success/5 border-success/20" : "bg-warning/5 border-warning/20"}`}>
+                <h4 className="text-xs font-headline font-black text-secondary uppercase tracking-wider mb-3">Documents</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {(() => {
+                    const docTypes = [
+                      { key: "aadhaar_front", label: "Aadhaar Card \u2014 Front" },
+                      { key: "aadhaar_back", label: "Aadhaar Card \u2014 Back" },
+                      { key: "pan", label: "PAN Card" },
+                      { key: "dl", label: "Driving Licence" },
+                      { key: "selfie", label: "Selfie Photo" },
+                      { key: "address_proof", label: "Address Proof" },
+                      { key: "police_verification", label: "Police Verification" },
+                    ];
+                    return docTypes.map(({ key, label }) => {
+                      const doc = reviewKycPartner.partner_documents?.find(d => d.doc_type === key);
+                      const isUploaded = doc?.file_url;
+                      const statusColor = !doc || doc.status === "missing"
+                        ? "bg-warning/5 border-warning/20"
+                        : doc.status === "approved"
+                          ? "bg-success/5 border-success/20"
+                          : doc.status === "rejected" || doc.status === "resubmit_required"
+                            ? "bg-error/5 border-error/20"
+                            : "bg-surface-container-low border-outline-variant/20";
+
+                      return (
+                        <div key={key} className={`border rounded-xl p-3 ${statusColor}`}>
+                          <div className="flex items-center justify-between mb-1">
                             <div className="flex items-center gap-2 min-w-0">
-                              <span className={`material-symbols-outlined text-sm ${isUploaded ? "text-success" : "text-warning"}`}>{isUploaded ? "check_circle" : "pending"}</span>
-                              <span className="font-bold uppercase tracking-wider text-[10px] text-on-surface-variant truncate">{label}</span>
+                              <span className={`material-symbols-outlined text-sm ${
+                                !doc || doc.status === "missing" ? "text-warning"
+                                  : doc.status === "approved" ? "text-success"
+                                    : doc.status === "rejected" || doc.status === "resubmit_required" ? "text-error"
+                                      : "text-primary"
+                              }`}>
+                                {isUploaded ? (doc?.status === "approved" ? "check_circle" : doc?.status === "rejected" ? "cancel" : "pending") : "pending"}
+                              </span>
+                              <div className="min-w-0">
+                                <span className="font-bold uppercase tracking-wider text-[10px] text-on-surface-variant block truncate">{label}</span>
+                                {doc?.status && doc.status !== "missing" && (
+                                  <span className={`text-[8px] font-bold uppercase tracking-wider ${STATUS_COLORS[doc.status] || "text-on-surface-variant"}`}>
+                                    {doc.status.replace(/_/g, " ")}
+                                  </span>
+                                )}
+                                {doc?.rejection_reason && (doc.status === "rejected" || doc.status === "resubmit_required") && (
+                                  <span className="text-[9px] text-error/80 block mt-0.5">{doc.rejection_reason}</span>
+                                )}
+                              </div>
                             </div>
-                            {isUploaded ? (
-                              <a
-                                href={val}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                          </div>
+                          {isUploaded ? (
+                            <div className="flex gap-2 mt-2">
+                              <button
+                                onClick={() => handleLoadDocSignedUrl(doc!.id)}
                                 className="bg-primary text-white text-[10px] uppercase font-black tracking-widest px-3 py-1.5 rounded-lg hover:brightness-110 flex items-center gap-1 shrink-0"
                               >
-                                <span className="material-symbols-outlined text-[12px]">open_in_new</span> View
-                              </a>
-                            ) : (
-                              <span className="text-[10px] font-bold text-warning uppercase tracking-wider shrink-0">Missing</span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
+                                <span className="material-symbols-outlined text-[12px]">visibility</span> View
+                              </button>
+                              <button
+                                onClick={() => setDocDeleteConfirm({ partnerId: reviewKycPartner.id, docType: key, partnerName: reviewKycPartner.full_name })}
+                                disabled={docDeletingId === `${reviewKycPartner.id}:${key}`}
+                                className="bg-error/10 text-error text-[10px] uppercase font-black tracking-widest px-3 py-1.5 rounded-lg hover:bg-error/20 flex items-center gap-1 shrink-0 disabled:opacity-50"
+                              >
+                                <span className="material-symbols-outlined text-[12px]">delete</span>
+                                {docDeletingId === `${reviewKycPartner.id}:${key}` ? "..." : "Delete"}
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] font-bold text-warning uppercase tracking-wider mt-2 block">Not uploaded</span>
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
               </div>
 
-              {/* Professional Info */}
+              {/* Professional Info (Scalars) */}
               <div>
                 <h4 className="text-xs font-headline font-black text-secondary uppercase tracking-wider mb-3">Professional Details</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1246,6 +1356,34 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                   ))}
                 </div>
               </div>
+
+              {/* UPI Info */}
+              {(() => {
+                const upiId = reviewKycPartner.kyc_documents?.upi_id;
+                const upiNumber = reviewKycPartner.kyc_documents?.upi_number;
+                const hasUpiId = typeof upiId === "string" && upiId.length > 0;
+                const hasUpiNumber = typeof upiNumber === "string" && upiNumber.length > 0;
+                if (!hasUpiId && !hasUpiNumber) return null;
+                return (
+                  <div>
+                    <h4 className="text-xs font-headline font-black text-secondary uppercase tracking-wider mb-3">UPI Details</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {hasUpiId && (
+                        <div className="border rounded-xl p-3 bg-success/5 border-success/20">
+                          <span className="text-[9px] uppercase tracking-wider text-on-surface-variant/50 block mb-1">UPI ID</span>
+                          <p className="text-xs font-bold text-primary">{upiId as string}</p>
+                        </div>
+                      )}
+                      {hasUpiNumber && (
+                        <div className="border rounded-xl p-3 bg-success/5 border-success/20">
+                          <span className="text-[9px] uppercase tracking-wider text-on-surface-variant/50 block mb-1">UPI Phone</span>
+                          <p className="text-xs font-bold text-primary">{upiNumber as string}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Rejection input field */}
               <div className="space-y-2">
@@ -1404,6 +1542,44 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
         document.body
       )}
       {/* ─── 8. REVIEWS & RATINGS DETAIL MODAL ─── */}
+
+      {/* ─── DOCUMENT DELETE CONFIRMATION MODAL ─── */}
+      {docDeleteConfirm && (
+        <div className="fixed inset-0 bg-primary/25 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="absolute inset-0 cursor-pointer" onClick={() => setDocDeleteConfirm(null)} />
+          <div className="relative w-full max-w-sm bg-white rounded-4xl overflow-hidden shadow-2xl p-6 border border-outline-variant/30 animate-in zoom-in-95 duration-200">
+            <div className="text-center mb-5">
+              <div className="w-14 h-14 bg-error/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <span className="material-symbols-outlined text-error text-2xl">delete_forever</span>
+              </div>
+              <h3 className="text-base font-bold font-headline text-primary uppercase">Delete Document</h3>
+              <p className="text-xs text-on-surface-variant mt-2 leading-relaxed">
+                This will remove the <span className="font-bold">{docDeleteConfirm.docType.replace(/_/g, " ")}</span> for <span className="font-bold">{docDeleteConfirm.partnerName}</span>. The partner will need to re-upload it.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                variant="slate"
+                onClick={() => setDocDeleteConfirm(null)}
+                className="flex-1 py-3 text-primary bg-surface-container hover:bg-surface-container-high rounded-xl"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={() => handleDeleteDoc(docDeleteConfirm.partnerId, docDeleteConfirm.docType)}
+                disabled={docDeletingId === `${docDeleteConfirm.partnerId}:${docDeleteConfirm.docType}`}
+                className="flex-1 py-3 bg-error hover:bg-error/90 text-white rounded-xl disabled:opacity-50"
+              >
+                {docDeletingId === `${docDeleteConfirm.partnerId}:${docDeleteConfirm.docType}` ? "Deleting..." : "Delete"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {selectedReviewsPartner && (
         <div className="fixed inset-0 bg-primary/25 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
           {/* Closer backdrop */}
@@ -1642,9 +1818,10 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                         <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full inline-block mt-1 ${
                           selectedProfilePartner.kyc_status === 'approved' ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20' :
                           selectedProfilePartner.kyc_status === 'rejected' ? 'bg-red-500/10 text-red-600 border border-red-500/20' :
+                          selectedProfilePartner.kyc_status === 'action_required' ? 'bg-orange-500/10 text-orange-600 border border-orange-500/20' :
                           'bg-amber-500/10 text-amber-700 border border-amber-500/20'
                         }`}>
-                          {selectedProfilePartner.kyc_status}
+                          {selectedProfilePartner.kyc_status === 'action_required' ? 'Action Required' : selectedProfilePartner.kyc_status}
                         </span>
                       </div>
                     </div>
@@ -1727,6 +1904,33 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                       </div>
                     ) : (
                       <p className="text-[10px] text-on-surface-variant/60 font-medium italic">No completed jobs data.</p>
+                    )}
+
+                    {/* Payout Ledger */}
+                    {drawerEarnings && (
+                      <div className="mt-3 grid grid-cols-3 gap-2">
+                        <div className="bg-primary rounded-lg p-2.5">
+                          <p className="text-[8px] uppercase tracking-wider text-secondary/90 font-bold">Available</p>
+                          <p className="text-sm font-black text-white">₹{drawerEarnings.availableBalance.toLocaleString()}</p>
+                        </div>
+                        <div className="bg-surface-container-low rounded-lg p-2.5">
+                          <p className="text-[8px] uppercase tracking-wider text-on-surface-variant/60 font-bold">Processing</p>
+                          <p className="text-sm font-black text-primary">₹{drawerEarnings.processingBalance.toLocaleString()}</p>
+                        </div>
+                        <div className="bg-surface-container-low rounded-lg p-2.5">
+                          <p className="text-[8px] uppercase tracking-wider text-on-surface-variant/60 font-bold">Paid</p>
+                          <p className="text-sm font-black text-primary">₹{drawerEarnings.paidBalance.toLocaleString()}</p>
+                        </div>
+                      </div>
+                    )}
+                    {drawerEarnings?.pendingPayoutNumber && (
+                      <Link
+                        href="/admin/payouts"
+                        className="inline-flex items-center gap-1.5 text-[10px] font-black text-secondary hover:underline mt-2 uppercase tracking-widest"
+                      >
+                        <span className="material-symbols-outlined text-sm">savings</span>
+                        Payout {drawerEarnings.pendingPayoutNumber} awaiting review
+                      </Link>
                     )}
                   </div>
 

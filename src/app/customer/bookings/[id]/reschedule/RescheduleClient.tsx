@@ -6,16 +6,18 @@ import DateSelector from "@/components/booking/DateSelector";
 import TimeSelector from "@/components/booking/TimeSelector";
 import { useRefresh } from "@/lib/refresh/RefreshContext";
 import { rescheduleBookingAction } from "@/app/actions/bookings";
-import { ALL_AVAILABLE_SLOTS, AVAILABLE_MORNING_SLOTS, AVAILABLE_AFTERNOON_SLOTS, filterTimeSlots } from "@/utils/schedule";
+import { generateTimeSlots, splitSlotsByPeriod, filterTimeSlots, type BookingScheduleConfig } from "@/utils/schedule";
 import { formatFreeWindowLabel } from "@/utils/bookingPolicy";
 import type { RescheduleBookingInfo } from "./page";
 
 export default function RescheduleClient({
   initialBooking,
   cancellationWindowMinutes,
+  scheduleConfig,
 }: {
   initialBooking: RescheduleBookingInfo;
   cancellationWindowMinutes: number;
+  scheduleConfig: BookingScheduleConfig;
 }) {
   const router = useRouter();
   const { invalidate } = useRefresh();
@@ -34,13 +36,16 @@ export default function RescheduleClient({
   const oldDateStr = oldDateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Kolkata" });
   const oldTimeStr = oldDateObj.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 
-  const filteredMorningSlots = useMemo(
-    () => filterTimeSlots(AVAILABLE_MORNING_SLOTS, selectedFullDate),
-    [selectedFullDate]
+  const generatedSlots = useMemo(() => generateTimeSlots(scheduleConfig), [scheduleConfig]);
+
+  const filteredSlots = useMemo(
+    () => filterTimeSlots(generatedSlots, selectedFullDate),
+    [generatedSlots, selectedFullDate]
   );
-  const filteredAfternoonSlots = useMemo(
-    () => filterTimeSlots(AVAILABLE_AFTERNOON_SLOTS, selectedFullDate),
-    [selectedFullDate]
+
+  const { morning: filteredMorningSlots, afternoon: filteredAfternoonSlots } = useMemo(
+    () => splitSlotsByPeriod(filteredSlots, scheduleConfig),
+    [filteredSlots, scheduleConfig]
   );
 
   const allSlots = useMemo(
@@ -154,7 +159,7 @@ export default function RescheduleClient({
 
         <button
           onClick={handleConfirm}
-          disabled={!effectiveSelectedTime || isSubmitting || ALL_AVAILABLE_SLOTS.length === 0}
+          disabled={!effectiveSelectedTime || isSubmitting}
           className={`w-full py-3.5 rounded-xl font-headline font-extrabold text-sm md:text-base flex items-center justify-center gap-2 transition-all mb-2
             ${!effectiveSelectedTime || isSubmitting
               ? "bg-surface-container text-on-surface/30 cursor-not-allowed"

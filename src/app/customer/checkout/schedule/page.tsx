@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import ScheduleClient from "./ScheduleClient";
+import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 
 export default async function CheckoutSchedulePage({ searchParams }: { searchParams: Promise<{ serviceId?: string; duration?: string; selectedPackages?: string }> }) {
   const resolvedSearchParams = await searchParams;
@@ -61,12 +62,17 @@ export default async function CheckoutSchedulePage({ searchParams }: { searchPar
 
   const durationVal = durationParam ? parseInt(durationParam, 10) : undefined;
 
+  // Read the schedule config directly (uncached) so a Supabase Dashboard edit
+  // is reflected on the very next page load — no code deploy required.
+  const settings = await fetchPlatformSettings(supabase);
+
   return (
     <ScheduleClient
       service={service}
       initialAddresses={savedAddresses || []}
       duration={durationVal}
       selectedPackages={selectedPackages}
+      scheduleConfig={settings.scheduleConfig}
     />
   );
 }

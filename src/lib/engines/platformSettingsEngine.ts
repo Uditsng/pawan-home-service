@@ -6,6 +6,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 // is publicly readable (anon policy).
 import { createClient } from "@/utils/supabase/client";
 import { TAG_PLATFORM_SETTINGS } from "@/utils/supabase/cacheTags";
+import { normalizeScheduleConfig, type BookingScheduleConfig } from "@/utils/schedule";
 
 export interface OrderFee {
   id: string;
@@ -36,6 +37,7 @@ export interface PlatformSettings {
   serviceAreas: string[];
   serviceablePincodes: string[];
   orderFees: OrderFee[];
+  scheduleConfig: BookingScheduleConfig;
 }
 
 export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
@@ -60,6 +62,7 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   serviceAreas: ["Roorkee", "Chandigarh", "Dehradun", "Haridwar"],
   serviceablePincodes: ["247667", "160017", "248001", "249401"],
   orderFees: [],
+  scheduleConfig: { startHour: 7, endHour: 21, intervalMinutes: 30, afternoonStartHour: 12 },
 };
 
 /**
@@ -165,6 +168,7 @@ export async function fetchPlatformSettings(supabase: SupabaseClient): Promise<P
       serviceAreas: parseStringArray(settingsMap["service_areas"], DEFAULT_PLATFORM_SETTINGS.serviceAreas),
       serviceablePincodes: parseStringArray(settingsMap["serviceable_pincodes"], DEFAULT_PLATFORM_SETTINGS.serviceablePincodes),
       orderFees: parseOrderFees(settingsMap["order_fees"]),
+      scheduleConfig: normalizeScheduleConfig(settingsMap["booking_schedule_config"]),
     };
   } catch (err) {
     console.error("fetchPlatformSettings error:", err);

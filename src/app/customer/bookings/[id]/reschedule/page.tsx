@@ -2,7 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { isReschedulableStatus } from "@/utils/bookingPolicy";
-import { getCachedPlatformSettings } from "@/lib/engines/platformSettingsEngine";
+import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 import RescheduleClient from "./RescheduleClient";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -62,12 +62,13 @@ export default async function ReschedulePage({ params }: ReschedulePageProps) {
     redirect(`/customer/bookings/${bookingId}/tracking`);
   }
 
-  const settings = await getCachedPlatformSettings();
+  const settings = await fetchPlatformSettings(supabase);
 
   return (
     <RescheduleClient
       initialBooking={booking}
       cancellationWindowMinutes={settings.freeCancellationWindowMinutes}
+      scheduleConfig={settings.scheduleConfig}
     />
   );
 }

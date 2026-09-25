@@ -4,7 +4,8 @@ import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { notifyCustomer, notifyPartner } from "@/lib/notifications";
 import { triggerDispatchBatch } from "@/app/actions/dispatch";
-import { ALL_AVAILABLE_SLOTS } from "@/utils/schedule";
+import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
+import { isValidBookingSlot } from "@/utils/schedule";
 
 interface BookingActionResult {
   success: boolean;
@@ -172,7 +173,14 @@ export async function rescheduleBookingAction(
   }
 
   const cleanTime = time.trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date.trim()) || !ALL_AVAILABLE_SLOTS.includes(cleanTime)) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date.trim())) {
+    return { success: false, error: "Please choose a valid date and time slot." };
+  }
+
+  // Validate against the live schedule config (same source as the UI and the
+  // parse_slot_timestamp DB validation) — the RPC remains authoritative.
+  const settings = await fetchPlatformSettings(supabase);
+  if (!isValidBookingSlot(cleanTime, settings.scheduleConfig)) {
     return { success: false, error: "Please choose a valid date and time slot." };
   }
 

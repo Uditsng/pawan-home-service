@@ -11,7 +11,7 @@ import { Service, PricingModel } from "@/lib/types";
 import { validateBooking, BookingState, FormFieldConfig } from "@/utils/bookingValidation";
 import DateSelector from "@/components/booking/DateSelector";
 import TimeSelector from "@/components/booking/TimeSelector";
-import { AVAILABLE_MORNING_SLOTS, AVAILABLE_AFTERNOON_SLOTS, filterTimeSlots } from "@/utils/schedule";
+import { generateTimeSlots, splitSlotsByPeriod, filterTimeSlots, type BookingScheduleConfig } from "@/utils/schedule";
 
 interface Address {
   id: string;
@@ -29,7 +29,8 @@ export default function ScheduleClient({
   service,
   initialAddresses,
   duration,
-  selectedPackages
+  selectedPackages,
+  scheduleConfig,
 }: {
   service: {
     id: string;
@@ -43,6 +44,7 @@ export default function ScheduleClient({
   initialAddresses: Address[];
   duration?: number;
   selectedPackages?: string;
+  scheduleConfig: BookingScheduleConfig;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -164,18 +166,21 @@ export default function ScheduleClient({
   const monthShort = selectedFullDate.toLocaleString('default', { month: 'short' });
   const selectedDateNum = selectedFullDate.getDate();
 
-  // Pre-determined time slots (7:00 AM to 9:00 PM, 30-min intervals)
+  // Time slots are generated from the platform schedule config (no hardcoded
+  // lists) — editing `booking_schedule_config` in Supabase changes them here.
   const today = useMemo(() => new Date(), []);
 
+  const generatedSlots = useMemo(() => generateTimeSlots(scheduleConfig), [scheduleConfig]);
+
   // Filter slots based on date and time
-  const filteredMorningSlots = useMemo(
-    () => filterTimeSlots(AVAILABLE_MORNING_SLOTS, selectedFullDate, today),
-    [selectedFullDate, today]
+  const filteredSlots = useMemo(
+    () => filterTimeSlots(generatedSlots, selectedFullDate, today),
+    [generatedSlots, selectedFullDate, today]
   );
 
-  const filteredAfternoonSlots = useMemo(
-    () => filterTimeSlots(AVAILABLE_AFTERNOON_SLOTS, selectedFullDate, today),
-    [selectedFullDate, today]
+  const { morning: filteredMorningSlots, afternoon: filteredAfternoonSlots } = useMemo(
+    () => splitSlotsByPeriod(filteredSlots, scheduleConfig),
+    [filteredSlots, scheduleConfig]
   );
 
   const allSlots = useMemo(() => {

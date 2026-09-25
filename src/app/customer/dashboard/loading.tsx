@@ -4,7 +4,14 @@ export default function Loading() {
       <main className="max-w-7xl mx-auto px-4 md:px-6 pt-4 md:pt-6">
         {/* Promotional Carousel Banner skeleton */}
         <div className="mb-6 md:mb-10">
-          <div className="w-full aspect-[2.2/1] bg-surface-container-high rounded-2xl animate-pulse" />
+          <div className="flex overflow-x-auto no-scrollbar -mx-4 px-4 md:-mx-6 md:px-6 gap-3 md:gap-4">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div
+                key={index}
+                className="shrink-0 w-[88%] md:w-[75%] lg:w-[calc((100%_-_2rem)/3)] aspect-video bg-surface-container-high rounded-2xl animate-pulse"
+              />
+            ))}
+          </div>
         </div>
 
         {/* Explore Categories skeleton */}

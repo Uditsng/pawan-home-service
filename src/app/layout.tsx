@@ -53,8 +53,11 @@ export default function RootLayout({
      <html lang="en" className={`${bricolage.variable}`} suppressHydrationWarning>
       <head>
         <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+          rel="preload"
+          href="/fonts/material-symbols-outlined.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
         />
       </head>
       <body className="bg-background font-body text-on-surface antialiased" suppressHydrationWarning>

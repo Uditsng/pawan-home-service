@@ -14,82 +14,154 @@ interface DashboardCarouselProps {
   banners: BannerItem[];
 }
 
+function getSlideElements(container: HTMLDivElement): HTMLAnchorElement[] {
+  return Array.from(container.children).filter(
+    (child): child is HTMLAnchorElement => child instanceof HTMLAnchorElement
+  );
+}
+
+function getScrollPositionForIndex(container: HTMLDivElement, index: number): number | null {
+  const slide = getSlideElements(container)[index];
+  if (!slide) return null;
+
+  const containerRect = container.getBoundingClientRect();
+  const slideRect = slide.getBoundingClientRect();
+  const slideOffset = slideRect.left - containerRect.left + container.scrollLeft;
+  const alignmentOffset = (container.clientWidth - slide.offsetWidth) / 2;
+
+  return slideOffset - alignmentOffset;
+}
+
+function getCenteredSlideIndex(container: HTMLDivElement): number | null {
+  const slides = getSlideElements(container);
+  if (slides.length === 0) return null;
+
+  const containerRect = container.getBoundingClientRect();
+  const containerCenter = containerRect.left + container.clientWidth / 2;
+  let closestIndex = 0;
+  let closestDistance = Number.POSITIVE_INFINITY;
+
+  slides.forEach((slide, index) => {
+    const slideRect = slide.getBoundingClientRect();
+    const slideCenter = slideRect.left + slideRect.width / 2;
+    const distance = Math.abs(slideCenter - containerCenter);
+
+    if (distance < closestDistance) {
+      closestIndex = index;
+      closestDistance = distance;
+    }
+  });
+
+  return closestIndex;
+}
+
+function getLogicalIndex(physicalIndex: number, count: number): number {
+  return ((physicalIndex % count) + count) % count;
+}
+
+function getClosestPhysicalIndex(logicalIndex: number, count: number, currentPhysicalIndex: number): number {
+  let closestIndex = logicalIndex;
+  let closestDistance = Math.abs(logicalIndex - currentPhysicalIndex);
+
+  [count + logicalIndex, count * 2 + logicalIndex].forEach((candidate) => {
+    const distance = Math.abs(candidate - currentPhysicalIndex);
+    if (distance < closestDistance) {
+      closestIndex = candidate;
+      closestDistance = distance;
+    }
+  });
+
+  return closestIndex;
+}
+
+function scrollToPhysicalIndex(
+  container: HTMLDivElement,
+  index: number,
+  behavior: ScrollBehavior
+): boolean {
+  const left = getScrollPositionForIndex(container, index);
+  if (left === null) return false;
+
+  container.scrollTo({ left, behavior });
+  return true;
+}
+
 export default function DashboardCarousel({ banners }: DashboardCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [centerIndex, setCenterIndex] = useState(banners.length);
   const [activeIndex, setActiveIndex] = useState(0);
   const count = banners.length;
 
-  // Initialize carousel to start centered in the duplicated array for infinite swiping
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || count <= 0) return;
 
-    const childWidth = el.firstElementChild?.clientWidth || 0;
-    const gap = 16;
-    const scrollStep = childWidth + gap;
+    let resizeFrameId: number | undefined;
+    const positionAtCurrentSlide = () => {
+      const currentIndex = getCenteredSlideIndex(el) ?? count;
+      scrollToPhysicalIndex(el, currentIndex, "instant" as ScrollBehavior);
+      setCenterIndex(currentIndex);
+      setActiveIndex(getLogicalIndex(currentIndex, count));
+    };
 
-    el.scrollTo({ left: scrollStep * count, behavior: "instant" as ScrollBehavior });
-    setCenterIndex(count);
-    setActiveIndex(0);
+    const initialFrameId = window.requestAnimationFrame(() => {
+      scrollToPhysicalIndex(el, count, "instant" as ScrollBehavior);
+      setCenterIndex(count);
+      setActiveIndex(0);
+    });
+
+    const handleResize = () => {
+      if (resizeFrameId !== undefined) {
+        window.cancelAnimationFrame(resizeFrameId);
+      }
+      resizeFrameId = window.requestAnimationFrame(positionAtCurrentSlide);
+    };
+
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(handleResize) : null;
+    observer?.observe(el);
+    if (el.firstElementChild) observer?.observe(el.firstElementChild);
+
+    return () => {
+      window.cancelAnimationFrame(initialFrameId);
+      if (resizeFrameId !== undefined) {
+        window.cancelAnimationFrame(resizeFrameId);
+      }
+      observer?.disconnect();
+    };
   }, [count]);
 
-  // Tracking center card and active index during scroll events
   const handleScroll = () => {
     const el = scrollRef.current;
-    if (!el) return;
+    if (!el || count <= 0) return;
 
-    const childWidth = el.firstElementChild?.clientWidth || 0;
-    const gap = 16;
-    const scrollStep = childWidth + gap;
+    const currentIndex = getCenteredSlideIndex(el);
+    if (currentIndex === null) return;
 
-    if (scrollStep > 0) {
-      const currentScrolledIndex = Math.round(el.scrollLeft / scrollStep);
-      setCenterIndex(currentScrolledIndex);
-      setActiveIndex(currentScrolledIndex % count);
-    }
+    setCenterIndex(currentIndex);
+    setActiveIndex(getLogicalIndex(currentIndex, count));
   };
 
-  // Modern auto-play with interaction resetting
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || count <= 0) return;
 
-    const interval = setInterval(() => {
-      const childWidth = el.firstElementChild?.clientWidth || 0;
-      const gap = 16;
-      const scrollStep = childWidth + gap;
-      let nextScroll = el.scrollLeft + scrollStep;
-
-      const maxScroll = scrollStep * count * 2;
-      const minScroll = scrollStep * count;
-
-      // Infinite scroll wrap reset
-      if (el.scrollLeft >= maxScroll) {
-        el.scrollTo({ left: el.scrollLeft - minScroll, behavior: "instant" as ScrollBehavior });
-        nextScroll = (el.scrollLeft - minScroll) + scrollStep;
-      }
-
-      el.scrollTo({ left: nextScroll, behavior: "smooth" });
+    const interval = window.setInterval(() => {
+      const currentIndex = getCenteredSlideIndex(el) ?? centerIndex;
+      const nextLogicalIndex = (getLogicalIndex(currentIndex, count) + 1) % count;
+      const targetIndex = getClosestPhysicalIndex(nextLogicalIndex, count, currentIndex);
+      scrollToPhysicalIndex(el, targetIndex, "smooth");
     }, 5000);
 
-    return () => clearInterval(interval);
+    return () => window.clearInterval(interval);
   }, [centerIndex, count]);
 
-  // Click handler for pagination progress indicators
   const scrollToSlide = (index: number) => {
     const el = scrollRef.current;
-    if (!el) return;
+    if (!el || count <= 0) return;
 
-    const childWidth = el.firstElementChild?.clientWidth || 0;
-    const gap = 16;
-    const scrollStep = childWidth + gap;
-
-    const currentScrolledIndex = Math.round(el.scrollLeft / scrollStep);
-    const currentBase = Math.floor(currentScrolledIndex / count) * count;
-    const targetScrollIndex = currentBase + index;
-
-    el.scrollTo({ left: targetScrollIndex * scrollStep, behavior: "smooth" });
+    const currentIndex = getCenteredSlideIndex(el) ?? centerIndex;
+    const targetIndex = getClosestPhysicalIndex(index, count, currentIndex);
+    scrollToPhysicalIndex(el, targetIndex, "smooth");
   };
 
   if (count === 0) return null;
@@ -119,7 +191,7 @@ export default function DashboardCarousel({ banners }: DashboardCarouselProps) {
             <Link
               key={idx}
               href={banner.link}
-              className={`shrink-0 snap-center w-[88%] md:w-[75%] lg:w-[60%] max-w-3xl aspect-video rounded-2xl overflow-hidden relative border transition-all duration-700 ease-out block group cursor-pointer ${
+              className={`shrink-0 snap-center w-[88%] md:w-[75%] lg:w-[calc((100%-2rem)/3)] max-w-3xl aspect-video rounded-2xl overflow-hidden relative border transition-all duration-700 ease-out block group cursor-pointer ${
                 isCenter
                   ? "scale-100 opacity-100 z-10 shadow-[0_16px_36px_rgba(0,34,97,0.12)] border-outline-variant/30"
                   : "scale-[0.93] sm:scale-[0.91] opacity-45 blur-[0.4px] z-0 border-transparent"
@@ -140,7 +212,7 @@ export default function DashboardCarousel({ banners }: DashboardCarouselProps) {
                     fill
                     priority={idx === count}
                     className="object-cover transform group-hover:scale-[1.03] transition-transform duration-700 ease-out"
-                    sizes="(max-w-768px) 88vw, (max-w-1024px) 75vw, 60vw"
+                    sizes="(max-width: 767px) 88vw, (max-width: 1023px) 75vw, 32vw"
                   />
                 )}
 

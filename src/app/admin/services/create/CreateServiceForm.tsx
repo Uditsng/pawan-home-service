@@ -7,7 +7,7 @@ import { GalleryUploadField } from "@/components/ui/GalleryUploadField";
 import ServiceCardThumbnail from "@/components/ServiceCardThumbnail";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
 import { PricingModel } from "@/lib/types";
-import { calculatePricingBreakdown, formatDuration, PricingInput } from "@/lib/pricing";
+import { calculatePricingBreakdown, formatDuration, getHourlyDurations, PricingInput } from "@/lib/pricing";
 import { FormFieldConfig } from "@/utils/bookingValidation";
 
 type Subcategory = {
@@ -65,7 +65,8 @@ export function CreateServiceForm({
   const [faqs, setFaqs] = useState<{ question: string; answer: string }[]>([{ question: "", answer: "" }]);
 
   // Pricing Specific States
-  // Hourly Duration Table
+  // Hourly Duration Table & Max Hours
+  const [hourlyMaxHours, setHourlyMaxHours] = useState(10);
   const [durationRates, setDurationRates] = useState<{ duration: number; price: number }[]>([{ duration: 60, price: 199 }]);
 
   // Area Builder Configuration
@@ -176,7 +177,7 @@ export function CreateServiceForm({
     } else if (pricingModel === "hourly") {
       cfg.price_per_hour = basePrice;
       cfg.min_hours = 0.5; // Always show from 30min
-      cfg.max_hours = 3.0; // Always show up to 3 hours
+      cfg.max_hours = hourlyMaxHours > 0 ? hourlyMaxHours : 10;
     } else if (pricingModel === "distance") {
       cfg.base_distance_fee = distanceBaseFee;
       cfg.free_km = distanceFreeKm;
@@ -194,7 +195,7 @@ export function CreateServiceForm({
     return cfg;
   }, [
     pricingModel, areaMin, areaMax, areaStrategy, areaPricePerSqft, areaSlabs,
-    qtyRate, qtyMin, qtyMax, qtyUnitName, basePrice,
+    qtyRate, qtyMin, qtyMax, qtyUnitName, basePrice, hourlyMaxHours,
     distanceBaseFee, distanceFreeKm, distanceRatePerKm, inspectionFee,
     hybridBaseFee, hybridHourlyRate, hybridDistanceRate, hybridQtyRate
   ]);
@@ -668,11 +669,43 @@ export function CreateServiceForm({
             {/* Hourly Config Builder */}
             {pricingModel === "hourly" && (
               <div className="p-5 bg-surface rounded-2xl border border-outline-variant/15 space-y-4">
-                <h3 className="text-sm font-bold text-primary font-headline flex items-center gap-2">
-                  <span className="material-symbols-outlined text-sm">schedule</span> Duration Rates configuration
-                </h3>
-                <p className="text-xs text-on-surface-variant font-medium">Configure duration options and respective prices.</p>
-                <div className="space-y-2">
+                <div>
+                  <h3 className="text-sm font-bold text-primary font-headline flex items-center gap-2">
+                    <span className="material-symbols-outlined text-sm">schedule</span> Hourly Booking Configuration
+                  </h3>
+                  <p className="text-xs text-on-surface-variant font-medium">Configure maximum booking hours and specific duration rate tiers.</p>
+                </div>
+
+                {/* Maximum Booking Hours Setting */}
+                <div className="p-4 bg-surface-container-lowest rounded-xl border border-outline-variant/20 max-w-sm space-y-1.5">
+                  <label className="block text-[10px] font-bold text-on-surface-variant uppercase">
+                    Maximum Booking Hours
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      min={1}
+                      max={24}
+                      step={1}
+                      value={hourlyMaxHours}
+                      onChange={(e) => setHourlyMaxHours(Math.max(1, parseInt(e.target.value, 10) || 10))}
+                      className="w-24 border border-outline-variant/20 rounded-lg p-2 bg-surface-container-lowest focus:ring-2 focus:ring-primary/20 outline-none text-xs font-bold text-on-surface"
+                      placeholder="10"
+                    />
+                    <span className="text-xs font-semibold text-on-surface-variant">Hours (Default: 10 hrs)</span>
+                  </div>
+                  <p className="text-[11px] text-on-surface-variant/70 leading-relaxed">
+                    Customers can select duration blocks from 30 minutes up to this limit (e.g., 30m, 1h, 1.5h, 2h... up to {hourlyMaxHours}h).
+                  </p>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-outline-variant/10">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-primary">Custom Duration Rate Overrides (Optional)</label>
+                  </div>
+                  <p className="text-[11px] text-on-surface-variant">
+                    Optionally set specific prices for individual duration choices to override the standard base hourly rate.
+                  </p>
                   {durationRates.map((rate, i) => (
                     <div key={i} className="flex gap-4 items-center">
                       <div className="flex-1">
@@ -686,11 +719,11 @@ export function CreateServiceForm({
                           }}
                           className="w-full border border-outline-variant/20 rounded-lg p-2 bg-surface-container-lowest focus:ring-2 focus:ring-primary/20 outline-none text-xs font-bold"
                         >
-                          <option value={30}>30min</option>
-                          <option value={60}>60min</option>
-                          <option value={90}>90mins</option>
-                          <option value={120}>2hours</option>
-                          <option value={180}>3 hours</option>
+                          {getHourlyDurations(0.5, Math.max(12, hourlyMaxHours)).map((mins) => (
+                            <option key={mins} value={mins}>
+                              {formatDuration(mins)} ({mins} mins)
+                            </option>
+                          ))}
                         </select>
                       </div>
                       <div className="flex-1">
@@ -1255,7 +1288,7 @@ export function CreateServiceForm({
                   )}
                   {pricingModel === "hourly" && (
                     <div className="flex flex-wrap gap-1.5">
-                      {[30, 60, 90, 120, 180].map((mins) => {
+                      {getHourlyDurations(0.5, hourlyMaxHours).map((mins) => {
                         const isSelected = prevDurationMins === mins;
                         return (
                           <button

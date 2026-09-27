@@ -16,8 +16,8 @@ interface PriceSummaryProps {
 
 const formatSummaryDuration = (minutes: number) => {
   if (minutes === 30) return "30min";
-  if (minutes === 60) return "60min";
-  if (minutes === 90) return "90min";
+  if (minutes === 60) return "1 hr";
+  if (minutes === 90) return "1.5 hrs";
   if (minutes === 120) return "2 hr";
   if (minutes === 180) return "3 hr";
   if (minutes < 60) return `${minutes} min`;

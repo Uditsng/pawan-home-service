@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { Service, ServiceVariant, ServiceAddon, PricingModel, ServicePricingRule } from "@/lib/types";
-import { calculatePricingBreakdown, formatDuration } from "@/lib/pricing";
+import { calculatePricingBreakdown, formatDuration, getHourlyDurations } from "@/lib/pricing";
 import AddToCartButton from "@/components/AddToCartButton";
 import { BookingState } from "@/utils/bookingValidation";
 import VariantSelector from "./booking/VariantSelector";
@@ -60,6 +60,14 @@ export default function DynamicServiceConfigurator({
       formAnswers: {},
     };
   });
+
+  const hourlyDurations = useMemo(() => {
+    if (model !== "hourly") return [];
+    const minH = Number(config.min_hours ?? 0.5);
+    const rawMax = Number(config.max_hours);
+    const maxH = (!rawMax || rawMax <= 3) ? 10 : rawMax;
+    return getHourlyDurations(minH, maxH);
+  }, [model, config.min_hours, config.max_hours]);
 
   // Handlers for state updates
   const handleVariantSelect = (variantId: string) => {
@@ -244,13 +252,8 @@ export default function DynamicServiceConfigurator({
         {model === "hourly" && (
           <div className="space-y-4">
             <div className="flex flex-wrap gap-2.5">
-              {[30, 60, 90, 120, 180].map((mins) => {
-                const hrs = mins / 60;
+              {hourlyDurations.map((mins) => {
                 const isSelected = bookingState.durationMinutes === mins;
-                const minH = Number(config.min_hours || 0.5);
-                const maxH = Number(config.max_hours || 24);
-                if (model !== "hourly" && (hrs < minH || hrs > maxH)) return null;
-
                 const label = formatDuration(mins);
 
                 return (

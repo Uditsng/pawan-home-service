@@ -303,17 +303,38 @@ export function formatStartingPrice(basePrice: number, pricingModel?: string): s
   return `₹${basePrice}`;
 }
 
+export const DEFAULT_HOURLY_DURATIONS: number[] = [30, 60, 90, 120, 180, 240, 300, 360, 420, 480, 540, 600];
+
+export function getHourlyDurations(minHours = 0.5, maxHours = 10): number[] {
+  const minH = Math.max(0.5, Number(minHours || 0.5));
+  const rawMax = Number(maxHours);
+  const maxH = (!rawMax || rawMax <= 0) ? 10 : rawMax;
+  const maxMinutes = Math.round(maxH * 60);
+
+  const set = new Set<number>(DEFAULT_HOURLY_DURATIONS);
+  for (let m = 660; m <= maxMinutes; m += 60) {
+    set.add(m);
+  }
+
+  return Array.from(set)
+    .filter((mins) => {
+      const hrs = mins / 60;
+      return hrs >= minH && hrs <= maxH;
+    })
+    .sort((a, b) => a - b);
+}
+
 export function formatDuration(minutes: number): string {
   if (minutes === 30) return "30min";
-  if (minutes === 60) return "60min";
-  if (minutes === 90) return "90mins";
-  if (minutes === 120) return "2hours";
-  if (minutes === 180) return "3 hours";
+  if (minutes === 60) return "1 hr";
+  if (minutes === 90) return "1.5 hrs";
+  if (minutes === 120) return "2 hrs";
+  if (minutes === 180) return "3 hrs";
 
   if (minutes < 60) return `${minutes}min`;
   const hours = minutes / 60;
   if (hours % 1 === 0) {
-    return `${hours}hour${hours === 1 ? "" : "s"}`;
+    return `${hours} hr${hours === 1 ? "" : "s"}`;
   }
-  return `${hours} hours`;
+  return `${hours} hrs`;
 }

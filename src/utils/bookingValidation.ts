@@ -74,6 +74,14 @@ export function validateBooking(
     case "hourly": {
       if (!state.durationMinutes || isNaN(state.durationMinutes)) {
         errors.durationMinutes = "Please specify service duration.";
+      } else {
+        const minHours = Number(config.min_hours ?? 0.5);
+        const rawMax = Number(config.max_hours);
+        const maxHours = (!rawMax || rawMax <= 3) ? 10 : rawMax;
+        const hoursSelected = state.durationMinutes / 60;
+        if (hoursSelected < minHours || hoursSelected > maxHours) {
+          errors.durationMinutes = `Duration must be between ${minHours} and ${maxHours} hours.`;
+        }
       }
       break;
     }

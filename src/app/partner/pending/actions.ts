@@ -4,14 +4,14 @@ import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { revalidatePath } from "next/cache";
 import type { KycDocumentsData, PartnerDocumentType } from "@/lib/types";
-import { KYC_MANDATORY_TYPES, AADHAAR_GROUP } from "@/lib/documents/partnerDocConfig";
+import { KYC_MANDATORY_TYPES } from "@/lib/documents/partnerDocConfig";
 import { validateKycScalars } from "@/lib/documents/validateDocument";
 import { logAdminAuditAction } from "@/utils/auditLogger";
 
 type ActionResult = { success: boolean; error?: string };
 
 interface UpsertResult {
-  error: { message: string } | null;
+  error: { message: string; code?: string } | null;
   data: unknown;
 }
 
@@ -48,13 +48,17 @@ export async function saveKycDraftAction(payload: {
   const docUpserts: Promise<UpsertResult>[] = [];
   for (const [docType, url] of Object.entries(payload.docUrls)) {
     if (!url) continue;
+    const marker = "/partner-docs/";
+    const idx = url.indexOf(marker);
+    const storagePath = idx !== -1 ? url.slice(idx + marker.length).split("?")[0] : null;
+
     docUpserts.push(
       adminClient.from("partner_documents").upsert(
         {
           partner_id: user.id,
           doc_type: docType,
           file_url: url,
-          storage_path: null,
+          storage_path: storagePath,
           status: "pending",
           uploaded_at: new Date().toISOString(),
         },
@@ -66,8 +70,10 @@ export async function saveKycDraftAction(payload: {
   const results = await Promise.all(docUpserts);
   for (const r of results) {
     if (r.error) {
-      console.error("KYC draft doc upsert error:", r.error.message);
-      return { success: false, error: "Failed to save documents." };
+      console.warn("KYC draft doc upsert warning:", r.error.message);
+      if (r.error.code !== "42P01" && !r.error.message?.includes("does not exist")) {
+        return { success: false, error: "Failed to save documents." };
+      }
     }
   }
 
@@ -86,11 +92,47 @@ export async function saveKycDraftAction(payload: {
   if (payload.scalars.upi_number) scalarsToSave.upi_number = payload.scalars.upi_number;
   if (payload.scalars.upi_qr_url) scalarsToSave.upi_qr_url = payload.scalars.upi_qr_url;
 
-  const { error } = await supabase
+  // Dual-write doc URLs into kyc_documents JSONB for backward compatibility
+  const legacyDocKeyMap: Record<string, string> = {
+    aadhaar_front: "aadhaar_url",
+    aadhaar_back: "aadhaar_back_url",
+    pan: "pan_url",
+    dl: "dl_url",
+    selfie: "selfie_url",
+    address_proof: "address_proof_url",
+    police_verification: "police_verification_url",
+  };
+  for (const [docType, legKey] of Object.entries(legacyDocKeyMap)) {
+    if (payload.docUrls[docType]) {
+      scalarsToSave[legKey] = payload.docUrls[docType];
+    }
+  }
+
+  const { data: currProfile } = await adminClient
+    .from("profiles")
+    .select("kyc_documents")
+    .eq("id", user.id)
+    .single();
+
+  let existingKyc: Record<string, unknown> = {};
+  if (currProfile?.kyc_documents) {
+    if (typeof currProfile.kyc_documents === "string") {
+      try {
+        existingKyc = JSON.parse(currProfile.kyc_documents);
+      } catch {
+        existingKyc = {};
+      }
+    } else if (typeof currProfile.kyc_documents === "object" && currProfile.kyc_documents !== null) {
+      existingKyc = currProfile.kyc_documents as Record<string, unknown>;
+    }
+  }
+  const kycToSave = { ...existingKyc, ...scalarsToSave };
+
+  const { error } = await adminClient
     .from("profiles")
     .update({
       kyc_status: "draft",
-      kyc_documents: scalarsToSave,
+      kyc_documents: kycToSave,
       kyc_rejection_reason: null,
     })
     .eq("id", user.id);
@@ -162,13 +204,17 @@ export async function submitKycDocumentsAction(payload: {
 
   for (const [docType, url] of Object.entries(payload.docUrls)) {
     if (!url) continue;
+    const marker = "/partner-docs/";
+    const idx = url.indexOf(marker);
+    const storagePath = idx !== -1 ? url.slice(idx + marker.length).split("?")[0] : null;
+
     docUpserts.push(
       adminClient.from("partner_documents").upsert(
         {
           partner_id: user.id,
           doc_type: docType,
           file_url: url,
-          storage_path: null,
+          storage_path: storagePath,
           status: "pending",
           uploaded_at: new Date().toISOString(),
         },
@@ -192,13 +238,18 @@ export async function submitKycDocumentsAction(payload: {
     );
   } else {
     // Police uploaded — mark as pending
+    const policeUrl = payload.docUrls["police_verification"];
+    const marker = "/partner-docs/";
+    const idx = policeUrl.indexOf(marker);
+    const policeStoragePath = idx !== -1 ? policeUrl.slice(idx + marker.length).split("?")[0] : null;
+
     docUpserts.push(
       adminClient.from("partner_documents").upsert(
         {
           partner_id: user.id,
           doc_type: "police_verification",
-          file_url: payload.docUrls["police_verification"],
-          storage_path: null,
+          file_url: policeUrl,
+          storage_path: policeStoragePath,
           status: "pending",
           uploaded_at: new Date().toISOString(),
         },
@@ -210,8 +261,10 @@ export async function submitKycDocumentsAction(payload: {
   const results = await Promise.all(docUpserts);
   for (const r of results) {
     if (r.error) {
-      console.error("KYC submit doc upsert error:", r.error.message);
-      return { success: false, error: "Failed to save documents. Please try again." };
+      console.warn("KYC submit doc upsert warning:", r.error.message);
+      if (r.error.code !== "42P01" && !r.error.message?.includes("does not exist")) {
+        return { success: false, error: "Failed to save documents. Please try again." };
+      }
     }
   }
 
@@ -227,11 +280,47 @@ export async function submitKycDocumentsAction(payload: {
   if (payload.scalars.upi_number) scalarsToSave.upi_number = payload.scalars.upi_number;
   if (payload.scalars.upi_qr_url) scalarsToSave.upi_qr_url = payload.scalars.upi_qr_url;
 
-  const { error } = await supabase
+  // Dual-write doc URLs into kyc_documents JSONB for backward compatibility
+  const legacyDocKeyMap: Record<string, string> = {
+    aadhaar_front: "aadhaar_url",
+    aadhaar_back: "aadhaar_back_url",
+    pan: "pan_url",
+    dl: "dl_url",
+    selfie: "selfie_url",
+    address_proof: "address_proof_url",
+    police_verification: "police_verification_url",
+  };
+  for (const [docType, legKey] of Object.entries(legacyDocKeyMap)) {
+    if (payload.docUrls[docType]) {
+      scalarsToSave[legKey] = payload.docUrls[docType];
+    }
+  }
+
+  const { data: currProfile } = await adminClient
+    .from("profiles")
+    .select("kyc_documents")
+    .eq("id", user.id)
+    .single();
+
+  let existingKyc: Record<string, unknown> = {};
+  if (currProfile?.kyc_documents) {
+    if (typeof currProfile.kyc_documents === "string") {
+      try {
+        existingKyc = JSON.parse(currProfile.kyc_documents);
+      } catch {
+        existingKyc = {};
+      }
+    } else if (typeof currProfile.kyc_documents === "object" && currProfile.kyc_documents !== null) {
+      existingKyc = currProfile.kyc_documents as Record<string, unknown>;
+    }
+  }
+  const kycToSave = { ...existingKyc, ...scalarsToSave };
+
+  const { error } = await adminClient
     .from("profiles")
     .update({
       kyc_status: "pending",
-      kyc_documents: scalarsToSave,
+      kyc_documents: kycToSave,
       kyc_rejection_reason: null,
     })
     .eq("id", user.id);

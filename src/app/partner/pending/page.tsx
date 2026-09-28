@@ -26,11 +26,20 @@ export default async function PartnerPendingPage() {
     .select("*")
     .eq("partner_id", user.id);
 
+  let initialKycDocs = profile.kyc_documents;
+  if (typeof initialKycDocs === "string") {
+    try {
+      initialKycDocs = JSON.parse(initialKycDocs);
+    } catch {
+      initialKycDocs = {};
+    }
+  }
+
   return (
     <PendingClient
       initialKycStatus={profile.kyc_status}
       rejectionReason={profile.kyc_rejection_reason}
-      initialKycDocuments={profile.kyc_documents}
+      initialKycDocuments={initialKycDocs}
       initialDocuments={(documents as PartnerDocument[]) || []}
       userId={user.id}
     />

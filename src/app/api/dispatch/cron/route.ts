@@ -89,12 +89,12 @@ export async function GET(request: Request) {
     const now = new Date().toISOString();
     const { data: overdueDocs, error: policeErr } = await supabaseAdmin
       .from("partner_documents")
-      .select("id, partner_id, police_due_at, profiles!inner(full_name, email, status)")
+      .select("id, partner_id, due_at, profiles!inner(full_name, email, status)")
       .eq("doc_type", "police_verification")
       .eq("profiles.status", "active")
       .is("file_url", null)
-      .not("police_due_at", "is", null)
-      .lt("police_due_at", now);
+      .not("due_at", "is", null)
+      .lt("due_at", now);
 
     if (!policeErr && overdueDocs && overdueDocs.length > 0) {
       // Notify admins about overdue police verifications

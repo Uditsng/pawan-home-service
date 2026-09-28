@@ -110,6 +110,21 @@ function getMenuPositionStyle(rect: DOMRect): React.CSSProperties {
   };
 }
 
+function parseKycDoc(kyc: unknown): Record<string, unknown> {
+  if (!kyc) return {};
+  if (typeof kyc === "string") {
+    try {
+      return JSON.parse(kyc) as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+  }
+  if (typeof kyc === "object") {
+    return kyc as Record<string, unknown>;
+  }
+  return {};
+}
+
 export function PartnersConsole({ initialPartners, allServices = [], fleetCounts }: PartnersConsoleProps) {
   const [partners, setPartners] = useState<SerializedPartner[]>(initialPartners);
   const [isPending, startTransition] = useTransition();
@@ -176,7 +191,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
   // Profile Drawer States
   const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
   const [selectedProfilePartner, setSelectedProfilePartner] = useState<SerializedPartner | null>(null);
-  const [activeProfileTab, setActiveProfileTab] = useState<"overview" | "analytics" | "bookings" | "reviews" | "notes">("overview");
+  const [activeProfileTab, setActiveProfileTab] = useState<"overview" | "kyc" | "analytics" | "bookings" | "reviews" | "notes">("overview");
   const [drawerEarnings, setDrawerEarnings] = useState<PartnerEarningsSummary | null>(null);
   const [isLoadingEarnings, setIsLoadingEarnings] = useState(false);
 
@@ -577,9 +592,9 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
     // path extracted from the old public URL and a fresh signed URL created.
     if (doc.id.startsWith("legacy-") && doc.file_url) {
       try {
-        const marker = "/storage/v1/object/public/partner-docs/";
+        const marker = "/partner-docs/";
         const idx = doc.file_url.indexOf(marker);
-        const storagePath = idx !== -1 ? doc.file_url.slice(idx + marker.length) : null;
+        const storagePath = idx !== -1 ? doc.file_url.slice(idx + marker.length).split("?")[0] : null;
 
         if (storagePath) {
           const res = await getAdminStorageSignedUrlAction(storagePath);
@@ -845,23 +860,36 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                         )}
 
                         {/* KYC Status Badge */}
-                        {partner.kyc_status === 'approved' ? (
-                          <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider rounded-full inline-flex items-center gap-1">
-                            KYC Verified
-                          </span>
-                        ) : partner.kyc_status === 'rejected' ? (
-                          <span className="bg-red-100 text-red-800 border border-red-200 px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider rounded-full inline-flex items-center gap-1">
-                            KYC Rejected
-                          </span>
-                        ) : partner.kyc_status === 'action_required' ? (
-                          <span className="bg-orange-100 text-orange-800 border border-orange-200 px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider rounded-full inline-flex items-center gap-1">
-                            <span className="w-1 h-1 bg-orange-500 rounded-full animate-pulse"></span> Action Required
-                          </span>
-                        ) : (
-                          <span className="bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider rounded-full inline-flex items-center gap-1">
-                            KYC Pending
-                          </span>
-                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setReviewKycPartner(partner);
+                            setKycRejectReason(partner.kyc_rejection_reason || "");
+                            setKycSuccess(null);
+                            setKycError(null);
+                          }}
+                          className="cursor-pointer transition-transform hover:scale-105 text-left inline-block"
+                          title="Click to review KYC documents"
+                        >
+                          {partner.kyc_status === 'approved' ? (
+                            <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider rounded-full inline-flex items-center gap-1">
+                              KYC Verified
+                            </span>
+                          ) : partner.kyc_status === 'rejected' ? (
+                            <span className="bg-red-100 text-red-800 border border-red-200 px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider rounded-full inline-flex items-center gap-1">
+                              KYC Rejected
+                            </span>
+                          ) : partner.kyc_status === 'action_required' ? (
+                            <span className="bg-orange-100 text-orange-800 border border-orange-200 px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider rounded-full inline-flex items-center gap-1">
+                              <span className="w-1 h-1 bg-orange-500 rounded-full animate-pulse"></span> Action Required
+                            </span>
+                          ) : (
+                            <span className="bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider rounded-full inline-flex items-center gap-1">
+                              KYC Pending
+                            </span>
+                          )}
+                        </button>
                       </div>
                     </td>
 
@@ -1338,70 +1366,76 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                 </div>
               </div>
 
-              {/* Professional Info (Scalars) */}
-              <div>
-                <h4 className="text-xs font-headline font-black text-secondary uppercase tracking-wider mb-3">Professional Details</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {[
-                    { key: "experience_years", label: "Experience", val: reviewKycPartner.kyc_documents?.experience_years ? `${reviewKycPartner.kyc_documents.experience_years} Years` : null },
-                    { key: "police_station_details", label: "Nearby Police Station", val: reviewKycPartner.kyc_documents?.police_station_details ? String(reviewKycPartner.kyc_documents.police_station_details) : null },
-                  ].map(({ key, label, val }) => (
-                    <div key={key} className={`border rounded-xl p-3 ${val ? "bg-success/5 border-success/20" : "bg-warning/5 border-warning/20"}`}>
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className={`material-symbols-outlined text-sm ${val ? "text-success" : "text-warning"}`}>{val ? "check_circle" : "pending"}</span>
-                        <span className="text-[9px] uppercase tracking-wider text-on-surface-variant/50">{label}</span>
-                      </div>
-                      <p className="text-xs font-bold text-primary">{val || "Missing"}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Bank Info */}
-              <div>
-                <h4 className="text-xs font-headline font-black text-secondary uppercase tracking-wider mb-3">Bank Details</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {[
-                    { key: "bank_name", label: "Bank Name", val: reviewKycPartner.kyc_documents?.bank_name ? String(reviewKycPartner.kyc_documents.bank_name) : null },
-                    { key: "bank_account_no", label: "Account Number", val: reviewKycPartner.kyc_documents?.bank_account_no ? String(reviewKycPartner.kyc_documents.bank_account_no) : null },
-                    { key: "bank_ifsc", label: "IFSC Code", val: reviewKycPartner.kyc_documents?.bank_ifsc ? String(reviewKycPartner.kyc_documents.bank_ifsc) : null },
-                  ].map(({ key, label, val }) => (
-                    <div key={key} className={`border rounded-xl p-3 ${val ? "bg-success/5 border-success/20" : "bg-warning/5 border-warning/20"}`}>
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className={`material-symbols-outlined text-sm ${val ? "text-success" : "text-warning"}`}>{val ? "check_circle" : "pending"}</span>
-                        <span className="text-[9px] uppercase tracking-wider text-on-surface-variant/50">{label}</span>
-                      </div>
-                      <p className="text-xs font-bold text-primary">{val || "Missing"}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* UPI Info */}
+              {/* Professional & Bank Info (Scalars) */}
               {(() => {
-                const upiId = reviewKycPartner.kyc_documents?.upi_id;
-                const upiNumber = reviewKycPartner.kyc_documents?.upi_number;
+                const kyc = parseKycDoc(reviewKycPartner.kyc_documents);
+                const upiId = kyc.upi_id;
+                const upiNumber = kyc.upi_number;
                 const hasUpiId = typeof upiId === "string" && upiId.length > 0;
                 const hasUpiNumber = typeof upiNumber === "string" && upiNumber.length > 0;
-                if (!hasUpiId && !hasUpiNumber) return null;
+
                 return (
-                  <div>
-                    <h4 className="text-xs font-headline font-black text-secondary uppercase tracking-wider mb-3">UPI Details</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {hasUpiId && (
-                        <div className="border rounded-xl p-3 bg-success/5 border-success/20">
-                          <span className="text-[9px] uppercase tracking-wider text-on-surface-variant/50 block mb-1">UPI ID</span>
-                          <p className="text-xs font-bold text-primary">{upiId as string}</p>
-                        </div>
-                      )}
-                      {hasUpiNumber && (
-                        <div className="border rounded-xl p-3 bg-success/5 border-success/20">
-                          <span className="text-[9px] uppercase tracking-wider text-on-surface-variant/50 block mb-1">UPI Phone</span>
-                          <p className="text-xs font-bold text-primary">{upiNumber as string}</p>
-                        </div>
-                      )}
+                  <>
+                    {/* Professional Info (Scalars) */}
+                    <div>
+                      <h4 className="text-xs font-headline font-black text-secondary uppercase tracking-wider mb-3">Professional Details</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {[
+                          { key: "experience_years", label: "Experience", val: kyc.experience_years ? `${kyc.experience_years} Years` : null },
+                          { key: "police_station_details", label: "Nearby Police Station", val: kyc.police_station_details ? String(kyc.police_station_details) : null },
+                        ].map(({ key, label, val }) => (
+                          <div key={key} className={`border rounded-xl p-3 ${val ? "bg-success/5 border-success/20" : "bg-warning/5 border-warning/20"}`}>
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className={`material-symbols-outlined text-sm ${val ? "text-success" : "text-warning"}`}>{val ? "check_circle" : "pending"}</span>
+                              <span className="text-[9px] uppercase tracking-wider text-on-surface-variant/50">{label}</span>
+                            </div>
+                            <p className="text-xs font-bold text-primary">{val || "Missing"}</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+
+                    {/* Bank Info */}
+                    <div>
+                      <h4 className="text-xs font-headline font-black text-secondary uppercase tracking-wider mb-3">Bank Details</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {[
+                          { key: "bank_name", label: "Bank Name", val: kyc.bank_name ? String(kyc.bank_name) : null },
+                          { key: "bank_account_no", label: "Account Number", val: kyc.bank_account_no ? String(kyc.bank_account_no) : null },
+                          { key: "bank_ifsc", label: "IFSC Code", val: kyc.bank_ifsc ? String(kyc.bank_ifsc) : null },
+                        ].map(({ key, label, val }) => (
+                          <div key={key} className={`border rounded-xl p-3 ${val ? "bg-success/5 border-success/20" : "bg-warning/5 border-warning/20"}`}>
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className={`material-symbols-outlined text-sm ${val ? "text-success" : "text-warning"}`}>{val ? "check_circle" : "pending"}</span>
+                              <span className="text-[9px] uppercase tracking-wider text-on-surface-variant/50">{label}</span>
+                            </div>
+                            <p className="text-xs font-bold text-primary">{val || "Missing"}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* UPI Info */}
+                    {(hasUpiId || hasUpiNumber) && (
+                      <div>
+                        <h4 className="text-xs font-headline font-black text-secondary uppercase tracking-wider mb-3">UPI Details</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {hasUpiId && (
+                            <div className="border rounded-xl p-3 bg-success/5 border-success/20">
+                              <span className="text-[9px] uppercase tracking-wider text-on-surface-variant/50 block mb-1">UPI ID</span>
+                              <p className="text-xs font-bold text-primary">{String(upiId)}</p>
+                            </div>
+                          )}
+                          {hasUpiNumber && (
+                            <div className="border rounded-xl p-3 bg-success/5 border-success/20">
+                              <span className="text-[9px] uppercase tracking-wider text-on-surface-variant/50 block mb-1">UPI Phone</span>
+                              <p className="text-xs font-bold text-primary">{String(upiNumber)}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 );
               })()}
 
@@ -1768,7 +1802,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
             </div>
 
             {/* Tab Selectors */}
-            <div className="flex border-b border-outline-variant/10 bg-surface-container-low/50 px-4">
+            <div className="flex border-b border-outline-variant/10 bg-surface-container-low/50 px-4 overflow-x-auto">
               <button
                 onClick={() => setActiveProfileTab("overview")}
                 className={`grow py-3 text-[10px] font-bold uppercase tracking-wider border-b-2 text-center transition-all ${
@@ -1776,6 +1810,14 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                 }`}
               >
                 Overview
+              </button>
+              <button
+                onClick={() => setActiveProfileTab("kyc")}
+                className={`grow py-3 text-[10px] font-bold uppercase tracking-wider border-b-2 text-center transition-all ${
+                  activeProfileTab === "kyc" ? "border-secondary text-primary" : "border-transparent text-on-surface-variant hover:text-primary"
+                }`}
+              >
+                KYC & Docs
               </button>
               <button
                 onClick={() => setActiveProfileTab("bookings")}
@@ -1835,14 +1877,28 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                       </div>
                       <div>
                         <p className="text-[9px] uppercase tracking-wider text-on-surface-variant/50">Compliance (KYC)</p>
-                        <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full inline-block mt-1 ${
-                          selectedProfilePartner.kyc_status === 'approved' ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20' :
-                          selectedProfilePartner.kyc_status === 'rejected' ? 'bg-red-500/10 text-red-600 border border-red-500/20' :
-                          selectedProfilePartner.kyc_status === 'action_required' ? 'bg-orange-500/10 text-orange-600 border border-orange-500/20' :
-                          'bg-amber-500/10 text-amber-700 border border-amber-500/20'
-                        }`}>
-                          {selectedProfilePartner.kyc_status === 'action_required' ? 'Action Required' : selectedProfilePartner.kyc_status}
-                        </span>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full inline-block ${
+                            selectedProfilePartner.kyc_status === 'approved' ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20' :
+                            selectedProfilePartner.kyc_status === 'rejected' ? 'bg-red-500/10 text-red-600 border border-red-500/20' :
+                            selectedProfilePartner.kyc_status === 'action_required' ? 'bg-orange-500/10 text-orange-600 border border-orange-500/20' :
+                            'bg-amber-500/10 text-amber-700 border border-amber-500/20'
+                          }`}>
+                            {selectedProfilePartner.kyc_status === 'action_required' ? 'Action Required' : selectedProfilePartner.kyc_status}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReviewKycPartner(selectedProfilePartner);
+                              setKycRejectReason(selectedProfilePartner.kyc_rejection_reason || "");
+                              setKycSuccess(null);
+                              setKycError(null);
+                            }}
+                            className="bg-primary hover:bg-primary/90 text-white text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer shrink-0"
+                          >
+                            <span className="material-symbols-outlined text-[11px]">verified_user</span> Review
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1989,6 +2045,163 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                       <p className="text-[10px] text-on-surface-variant/60 font-medium italic">Loading bookings...</p>
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* KYC & Documents Tab */}
+              {activeProfileTab === "kyc" && (
+                <div className="space-y-6 text-xs text-primary font-bold">
+                  {/* Status Banner & Action Button */}
+                  <div className="flex items-center justify-between p-3.5 rounded-2xl border border-outline-variant/30 bg-surface-container-low">
+                    <div>
+                      <span className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/60 block">KYC Status</span>
+                      <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full inline-block mt-1 ${
+                        selectedProfilePartner.kyc_status === 'approved' ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20' :
+                        selectedProfilePartner.kyc_status === 'rejected' ? 'bg-red-500/10 text-red-600 border border-red-500/20' :
+                        selectedProfilePartner.kyc_status === 'action_required' ? 'bg-orange-500/10 text-orange-600 border border-orange-500/20' :
+                        'bg-amber-500/10 text-amber-700 border border-amber-500/20'
+                      }`}>
+                        {selectedProfilePartner.kyc_status === 'action_required' ? 'Action Required' : selectedProfilePartner.kyc_status}
+                      </span>
+                      {selectedProfilePartner.kyc_rejection_reason && (
+                        <p className="text-[10px] text-error font-semibold mt-1">Reason: {selectedProfilePartner.kyc_rejection_reason}</p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReviewKycPartner(selectedProfilePartner);
+                        setKycRejectReason(selectedProfilePartner.kyc_rejection_reason || "");
+                        setKycSuccess(null);
+                        setKycError(null);
+                      }}
+                      className="bg-primary hover:bg-primary/90 text-white text-[10px] uppercase font-black tracking-widest px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-sm">verified_user</span>
+                      Review KYC
+                    </button>
+                  </div>
+
+                  {/* Documents List */}
+                  <div>
+                    <h5 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70 mb-3">Submitted Documents</h5>
+                    <div className="space-y-2">
+                      {[
+                        { key: "aadhaar_front", label: "Aadhaar Card — Front" },
+                        { key: "aadhaar_back", label: "Aadhaar Card — Back" },
+                        { key: "pan", label: "PAN Card" },
+                        { key: "dl", label: "Driving Licence" },
+                        { key: "selfie", label: "Selfie Photo" },
+                        { key: "address_proof", label: "Address Proof" },
+                        { key: "police_verification", label: "Police Verification" },
+                      ].map(({ key, label }) => {
+                        const doc = selectedProfilePartner.partner_documents?.find(d => d.doc_type === key);
+                        const isUploaded = Boolean(doc?.file_url);
+                        return (
+                          <div key={key} className="border border-outline-variant/20 rounded-xl p-3 bg-surface-container-low/40 flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-primary block truncate">{label}</span>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className={`text-[8px] font-bold uppercase tracking-wider ${
+                                  !doc || doc.status === "missing" ? "text-warning" :
+                                  doc.status === "approved" ? "text-success" :
+                                  doc.status === "rejected" || doc.status === "resubmit_required" ? "text-error" : "text-primary"
+                                }`}>
+                                  {isUploaded ? (doc?.status ? doc.status.replace(/_/g, " ") : "uploaded") : "Not uploaded"}
+                                </span>
+                                {doc?.rejection_reason && (
+                                  <span className="text-[9px] text-error font-medium truncate max-w-xs">· {doc.rejection_reason}</span>
+                                )}
+                              </div>
+                            </div>
+                            {isUploaded ? (
+                              <button
+                                type="button"
+                                onClick={() => handleLoadDocSignedUrl(doc!)}
+                                className="bg-primary text-white text-[9px] uppercase font-black tracking-widest px-2.5 py-1 rounded-lg hover:brightness-110 flex items-center gap-1 shrink-0 cursor-pointer"
+                              >
+                                <span className="material-symbols-outlined text-[11px]">visibility</span> View
+                              </button>
+                            ) : (
+                              <span className="text-[9px] text-on-surface-variant/40 font-bold uppercase tracking-wider">Missing</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Professional & Bank Info (Scalars) */}
+                  {(() => {
+                    const profileKyc = parseKycDoc(selectedProfilePartner.kyc_documents);
+                    const upiId = profileKyc.upi_id;
+                    const upiNumber = profileKyc.upi_number;
+                    const hasUpiId = typeof upiId === "string" && upiId.length > 0;
+                    const hasUpiNumber = typeof upiNumber === "string" && upiNumber.length > 0;
+
+                    return (
+                      <>
+                        {/* Professional Scalars */}
+                        <div>
+                          <h5 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70 mb-3">Professional Details</h5>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="border border-outline-variant/20 rounded-xl p-3 bg-surface-container-low/40">
+                              <span className="text-[9px] uppercase tracking-wider text-on-surface-variant/60 block mb-1">Experience</span>
+                              <p className="text-xs font-bold text-primary">
+                                {profileKyc.experience_years ? `${profileKyc.experience_years} Years` : "Missing"}
+                              </p>
+                            </div>
+                            <div className="border border-outline-variant/20 rounded-xl p-3 bg-surface-container-low/40">
+                              <span className="text-[9px] uppercase tracking-wider text-on-surface-variant/60 block mb-1">Nearby Police Station</span>
+                              <p className="text-xs font-bold text-primary truncate">
+                                {profileKyc.police_station_details ? String(profileKyc.police_station_details) : "Missing"}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Bank Details */}
+                        <div>
+                          <h5 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70 mb-3">Bank Details</h5>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="border border-outline-variant/20 rounded-xl p-3 bg-surface-container-low/40">
+                              <span className="text-[9px] uppercase tracking-wider text-on-surface-variant/60 block mb-1">Bank Name</span>
+                              <p className="text-xs font-bold text-primary truncate">{profileKyc.bank_name ? String(profileKyc.bank_name) : "Missing"}</p>
+                            </div>
+                            <div className="border border-outline-variant/20 rounded-xl p-3 bg-surface-container-low/40">
+                              <span className="text-[9px] uppercase tracking-wider text-on-surface-variant/60 block mb-1">Account Number</span>
+                              <p className="text-xs font-bold text-primary">{profileKyc.bank_account_no ? String(profileKyc.bank_account_no) : "Missing"}</p>
+                            </div>
+                            <div className="border border-outline-variant/20 rounded-xl p-3 bg-surface-container-low/40">
+                              <span className="text-[9px] uppercase tracking-wider text-on-surface-variant/60 block mb-1">IFSC Code</span>
+                              <p className="text-xs font-bold text-primary">{profileKyc.bank_ifsc ? String(profileKyc.bank_ifsc) : "Missing"}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* UPI Details */}
+                        {(hasUpiId || hasUpiNumber) && (
+                          <div>
+                            <h5 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/70 mb-3">UPI Details</h5>
+                            <div className="grid grid-cols-2 gap-3">
+                              {hasUpiId && (
+                                <div className="border border-outline-variant/20 rounded-xl p-3 bg-surface-container-low/40">
+                                  <span className="text-[9px] uppercase tracking-wider text-on-surface-variant/60 block mb-1">UPI ID</span>
+                                  <p className="text-xs font-bold text-primary truncate">{String(upiId)}</p>
+                                </div>
+                              )}
+                              {hasUpiNumber && (
+                                <div className="border border-outline-variant/20 rounded-xl p-3 bg-surface-container-low/40">
+                                  <span className="text-[9px] uppercase tracking-wider text-on-surface-variant/60 block mb-1">UPI Number</span>
+                                  <p className="text-xs font-bold text-primary">{String(upiNumber)}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               )}
 

@@ -89,6 +89,7 @@ export async function reviewKycAction(
 ): Promise<ActionResult> {
   await requireAdmin();
   const supabase = await createClient();
+  const admin = createAdminClient();
 
   const updateData: Record<string, unknown> = {
     kyc_status: status,
@@ -117,6 +118,28 @@ export async function reviewKycAction(
 
   if (error) {
     return toActionError(error);
+  }
+
+  // Synchronize document statuses in partner_documents
+  if (status === 'approved') {
+    await admin
+      .from('partner_documents')
+      .update({
+        status: 'approved',
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('partner_id', partnerId)
+      .eq('status', 'pending');
+  } else if (status === 'rejected') {
+    await admin
+      .from('partner_documents')
+      .update({
+        status: 'rejected',
+        rejection_reason: reason || null,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('partner_id', partnerId)
+      .eq('status', 'pending');
   }
 
   revalidatePath('/admin/partners');
@@ -199,11 +222,10 @@ export async function onboardPartnerAction(data: {
     return toActionError(profileError);
   }
 
-  // 2b. KYC is NOT auto-approved when the admin adds a partner
-  //     directly. The partner must upload documents via /partner/pending.
+  // 2b. KYC is initialized as 'draft' so the partner can upload documents via /partner/pending.
   const { error: kycError } = await admin
     .from('profiles')
-    .update({ kyc_status: 'pending' })
+    .update({ kyc_status: 'draft' })
     .eq('id', partnerId);
   if (kycError && kycError.code !== '42703' && !kycError.message?.includes('column')) {
     return toActionError(kycError);
@@ -712,10 +734,19 @@ export async function getAdminDocumentSignedUrlAction(
     return { success: false, error: "Document not found." };
   }
 
-  if (doc.storage_path) {
+  let storagePath = doc.storage_path;
+  if (!storagePath && doc.file_url) {
+    const marker = "/partner-docs/";
+    const idx = doc.file_url.indexOf(marker);
+    if (idx !== -1) {
+      storagePath = doc.file_url.slice(idx + marker.length).split("?")[0];
+    }
+  }
+
+  if (storagePath) {
     const { data, error } = await admin.storage
       .from("partner-docs")
-      .createSignedUrl(doc.storage_path, 3600);
+      .createSignedUrl(storagePath, 3600);
 
     if (!error && data?.signedUrl) {
       return { success: true, signedUrl: data.signedUrl };

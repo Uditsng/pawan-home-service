@@ -240,22 +240,20 @@ export function ImageUploadField({
             <button
               type="button"
               onClick={() => setActiveTab("upload")}
-              className={`px-3 py-1 text-[11px] font-bold rounded-md transition-all select-none cursor-pointer ${
-                activeTab === "upload"
+              className={`px-3 py-1 text-[11px] font-bold rounded-md transition-all select-none cursor-pointer ${activeTab === "upload"
                   ? "bg-primary text-white shadow-xs"
                   : "text-on-surface-variant/80 hover:text-primary"
-              }`}
+                }`}
             >
               Upload Image
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("url")}
-              className={`px-3 py-1 text-[11px] font-bold rounded-md transition-all select-none cursor-pointer ${
-                activeTab === "url"
+              className={`px-3 py-1 text-[11px] font-bold rounded-md transition-all select-none cursor-pointer ${activeTab === "url"
                   ? "bg-primary text-white shadow-xs"
                   : "text-on-surface-variant/80 hover:text-primary"
-              }`}
+                }`}
             >
               Pasted URL
             </button>
@@ -403,15 +401,15 @@ export function ImageUploadField({
           <span className="material-symbols-outlined text-secondary text-sm">info</span>
           PHS Service Image Guidelines
         </h4>
-<div className="grid grid-cols-2 gap-2 text-[11px] font-medium leading-relaxed">
-            <div className="flex gap-1.5 items-start">
-              <span className="material-symbols-outlined text-[14px] text-secondary mt-0.5">check_circle</span>
-              <span><strong>Aspect Ratio:</strong> {aspectLabel} ({aspect >= 1 ? "Landscape/Square layout" : "Portrait layout"})</span>
-            </div>
-            <div className="flex gap-1.5 items-start">
-              <span className="material-symbols-outlined text-[14px] text-secondary mt-0.5">check_circle</span>
-              <span><strong>Dimensions:</strong> Fixed {outputWidth} x {outputHeight} px — crop tool lets you pick the exact frame shown to customers</span>
-            </div>
+        <div className="grid grid-cols-2 gap-2 text-[11px] font-medium leading-relaxed">
+          <div className="flex gap-1.5 items-start">
+            <span className="material-symbols-outlined text-[14px] text-secondary mt-0.5">check_circle</span>
+            <span><strong>Aspect Ratio:</strong> {aspectLabel} ({aspect >= 1 ? "Landscape/Square layout" : "Portrait layout"})</span>
+          </div>
+          <div className="flex gap-1.5 items-start">
+            <span className="material-symbols-outlined text-[14px] text-secondary mt-0.5">check_circle</span>
+            <span><strong>Dimensions:</strong> Fixed {outputWidth} x {outputHeight} px — crop tool lets you pick the exact frame shown to customers</span>
+          </div>
           <div className="flex gap-1.5 items-start">
             <span className="material-symbols-outlined text-[14px] text-secondary mt-0.5">check_circle</span>
             <span><strong>Preferred Format:</strong> WebP (Optimized file speed)</span>

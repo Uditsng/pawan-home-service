@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect, useMemo } from "react";
+import { useState, useTransition, useEffect, } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { submitKycDocumentsAction, saveKycDraftAction } from "./actions";
@@ -10,7 +10,6 @@ import {
   DOC_TYPE_CONFIG,
   AADHAAR_GROUP,
   KYC_MANDATORY_TYPES,
-  STATUS_LABELS,
 } from "@/lib/documents/partnerDocConfig";
 import type { PartnerDocument, PartnerDocumentType } from "@/lib/types";
 
@@ -107,9 +106,26 @@ export default function PendingClient({
   const [upiId, setUpiId] = useState((scalars?.upi_id as string) || "");
   const [upiNumber, setUpiNumber] = useState((scalars?.upi_number as string) || "");
 
-  // Document URLs — seeded from existing documents
+  // Document URLs — seeded from existing documents (both normalized table & legacy JSONB fallback)
   const [urls, setUrls] = useState<Record<string, string>>(() => {
     const map: Record<string, string> = {};
+    if (initialKycDocuments) {
+      const legacyMap: Record<string, string> = {
+        aadhaar_front: "aadhaar_url",
+        aadhaar_back: "aadhaar_back_url",
+        pan: "pan_url",
+        dl: "dl_url",
+        selfie: "selfie_url",
+        address_proof: "address_proof_url",
+        police_verification: "police_verification_url",
+      };
+      for (const [docType, legKey] of Object.entries(legacyMap)) {
+        const val = initialKycDocuments[legKey];
+        if (typeof val === "string" && val.startsWith("http")) {
+          map[docType] = val;
+        }
+      }
+    }
     for (const doc of initialDocuments) {
       if (doc.file_url) map[doc.doc_type] = doc.file_url;
     }
@@ -118,6 +134,23 @@ export default function PendingClient({
 
   const [fileNames, setFileNames] = useState<Record<string, string>>(() => {
     const map: Record<string, string> = {};
+    if (initialKycDocuments) {
+      const legacyMap: Record<string, string> = {
+        aadhaar_front: "aadhaar_url",
+        aadhaar_back: "aadhaar_back_url",
+        pan: "pan_url",
+        dl: "dl_url",
+        selfie: "selfie_url",
+        address_proof: "address_proof_url",
+        police_verification: "police_verification_url",
+      };
+      for (const [docType, legKey] of Object.entries(legacyMap)) {
+        const val = initialKycDocuments[legKey];
+        if (typeof val === "string" && val.startsWith("http")) {
+          map[docType] = val.split("/").pop() || "Uploaded";
+        }
+      }
+    }
     for (const doc of initialDocuments) {
       if (doc.file_url) map[doc.doc_type] = doc.file_url.split("/").pop() || "Uploaded";
     }
@@ -291,7 +324,8 @@ export default function PendingClient({
   }
 
   // ─── Pending review ───
-  if (kycStatus === "pending" || kycStatus === "action_required") {
+  const hasUploadedDocs = Object.keys(urls).length > 0 || initialDocuments.length > 0;
+  if ((kycStatus === "pending" && hasUploadedDocs) || kycStatus === "action_required") {
     return (
       <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-6 antialiased">
         <div className="w-full max-w-xl bg-surface-container-lowest p-8 md:p-12 rounded-3xl shadow-xs border border-outline-variant/15 text-center relative overflow-hidden">

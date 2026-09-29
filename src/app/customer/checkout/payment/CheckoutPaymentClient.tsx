@@ -619,7 +619,7 @@ export default function CheckoutPaymentClient({
                 {/* Address */}
                 <div className="flex items-start gap-3 min-w-0">
                   <div className="w-10 h-10 bg-primary/5 rounded-xl flex items-center justify-center shrink-0">
-                    <span className="material-symbols-outlined text-primary text-xl">location_on</span>
+                    <span className="material-symbols-outlined text-primary text-xl">place</span>
                   </div>
                   <div className="min-w-0">
                     <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Service Location</p>

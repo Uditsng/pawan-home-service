@@ -958,7 +958,7 @@ export default function TrackingClient({
                         href={`tel:${booking.partner.phone}`}
                         className="flex-1 py-2 rounded-xl bg-primary text-white text-xs font-bold flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity text-center shadow-xs"
                       >
-                        <span className="material-symbols-outlined text-sm">phone</span>
+                        <span className="material-symbols-outlined text-sm">call</span>
                         Call Professional
                       </a>
                     ) : (
@@ -966,7 +966,7 @@ export default function TrackingClient({
                         disabled
                         className="flex-1 py-2 rounded-xl bg-surface-container text-on-surface-variant text-xs font-bold flex items-center justify-center gap-1.5 opacity-65 cursor-not-allowed"
                       >
-                        <span className="material-symbols-outlined text-sm">phone</span>
+                        <span className="material-symbols-outlined text-sm">call</span>
                         Phone Unavailable
                       </button>
                     )}

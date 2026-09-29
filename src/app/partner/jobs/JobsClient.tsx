@@ -759,7 +759,7 @@ export default function JobsClient({
               {b.services?.title ?? "Service"}
             </h3>
             <div className="flex items-start gap-1.5 mt-1">
-              <span className="material-symbols-outlined text-[14px] text-on-surface-variant mt-0.5 shrink-0">location_on</span>
+              <span className="material-symbols-outlined text-[14px] text-on-surface-variant mt-0.5 shrink-0">place</span>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold text-on-surface-variant leading-tight">{location}</p>
                 {b.latitude && b.longitude && Number(b.latitude) !== 0 && Number(b.longitude) !== 0 ? (
@@ -1133,7 +1133,7 @@ export default function JobsClient({
                     {job.scheduled_date ? new Date(job.scheduled_date).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "Date TBD"}
                   </div>
                   <div className="flex items-start gap-2 text-xs text-on-surface-variant font-semibold">
-                    <span className="material-symbols-outlined text-[15px] text-on-surface-variant/50 mt-0.5 shrink-0">location_on</span>
+                    <span className="material-symbols-outlined text-[15px] text-on-surface-variant/50 mt-0.5 shrink-0">place</span>
                     <div className="flex-1 min-w-0">
                       <p className="leading-tight">
                         {job.address || 
@@ -1222,7 +1222,7 @@ export default function JobsClient({
                         if (latest.status === "payment_pending") {
                           return (
                             <span className="text-blue-600 flex items-center gap-1.5 animate-pulse">
-                              <span className="material-symbols-outlined text-[13px]">pending_payment</span>
+                              <span className="material-symbols-outlined text-[13px]">pending</span>
                               Approved &middot; Waiting for customer payment (₹{latest.additional_amount})
                             </span>
                           );

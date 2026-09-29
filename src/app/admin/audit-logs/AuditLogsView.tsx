@@ -84,7 +84,7 @@ export default function AuditLogsView({ logs }: AuditLogsViewProps) {
       case "settings":
         return "settings";
       case "coupons":
-        return "local_offer";
+        return "sell";
       default:
         return "history";
     }

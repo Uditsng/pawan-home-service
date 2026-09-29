@@ -1,5 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { UpcomingService } from "@/utils/supabase/cachedServiceQueries";
+import { ServiceIconComponent } from "@/utils/serviceIcon";
 import { WaitlistButton } from "./WaitlistButton";
 
 interface ComingSoonPageProps {
@@ -59,18 +61,24 @@ export function ComingSoonPage({
 
                 <div className="relative aspect-9/16 rounded-2xl sm:rounded-3xl overflow-hidden border border-outline-variant/40 shadow-xl shadow-primary/10 bg-surface-container-low">
                   {service.poster_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={service.poster_url}
                       alt={service.title}
-                      className="w-full h-full object-cover"
+                      fill
+                      priority
+                      sizes="(max-width: 768px) 240px, 260px"
+                      className="object-cover"
                     />
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-linear-to-b from-surface-container-low to-surface-container">
                       <div className="w-14 h-14 bg-green-500/10 rounded-2xl flex items-center justify-center mb-3">
-                        <span className="material-symbols-outlined text-2xl text-[#059669]">
-                          {iconName}
-                        </span>
+                        <ServiceIconComponent
+                          iconName={iconName}
+                          width={28}
+                          height={28}
+                          alt=""
+                          aria-hidden
+                        />
                       </div>
                       <p className="text-xs font-bold text-primary">Preview Poster</p>
                       <p className="text-[10px] text-on-surface-variant/70 mt-1">Coming soon</p>
@@ -93,14 +101,6 @@ export function ComingSoonPage({
                     </span>
                     <span>Coming Soon</span>
                   </span>
-
-                  {/* Category Pill */}
-                  {/* <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container border border-outline-variant/30 text-[10px] sm:text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
-                    <span className="material-symbols-outlined text-[13px] text-[#059669]">
-                      {iconName}
-                    </span>
-                    <span className="truncate max-w-45">{categoryName}</span>
-                  </div> */}
                 </div>
 
                 {/* Service Title */}

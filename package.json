@@ -7,6 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "icons:check": "node scripts/check-material-icons.mjs",
+    "icons:audit": "node scripts/audit-icons.mjs --source",
+    "icons:build": "py scripts/build-material-subset.py || python scripts/build-material-subset.py",
     "inspect-db": "ts-node supabase/inspect_schema.ts"
   },
   "dependencies": {

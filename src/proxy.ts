@@ -14,6 +14,10 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // Static assets are served straight from /public and /_next. Running
+    // updateSession on them costs a full supabase.auth.getUser() round-trip per
+    // file, which is why the 4 MB icon font was the slowest request in the HAR.
+    // Fonts matter most here: they are on the critical rendering path.
+    '/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|woff2?|ttf|otf|eot|css|js|mjs|map|webmanifest|txt|xml|mp4|webm|mp3|wav|pdf)$).*)',
   ],
 }

@@ -192,7 +192,7 @@ export default async function PartnerReferralDetailPage({ params }: PartnerRefer
         {[
           { label: "Trigger", value: triggerLabel[trigger] ?? trigger, icon: "bolt", color: "text-primary", bg: "bg-primary/5" },
           { label: "Partner Reward", value: `₹${partnerReward}`, icon: "savings", color: "text-[#059669]", bg: "bg-green-500/5" },
-          { label: "Customer Bonus", value: `₹${customerReward}`, icon: "card_giftcard", color: "text-[#059669]", bg: "bg-green-500/5" },
+          { label: "Customer Bonus", value: `₹${customerReward}`, icon: "redeem", color: "text-[#059669]", bg: "bg-green-500/5" },
           { label: "Wallet Type", value: "Bonus", icon: "account_balance_wallet", color: "text-primary", bg: "bg-primary/5" },
         ].map((m) => (
           <Card key={m.label} className="p-5!">

@@ -415,7 +415,7 @@ export default function ReviewsConsole({ initialReviews }: ReviewsConsoleProps) 
                       onClick={() => handleModerate(review.id, "approved")}
                       className="gap-1 text-xs"
                     >
-                      <span className="material-symbols-outlined text-sm">restore</span>
+                      <span className="material-symbols-outlined text-sm">replay</span>
                       Restore & Approve
                     </Button>
                   )}

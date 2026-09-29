@@ -106,9 +106,11 @@ export async function updateSession(request: NextRequest) {
     throw err
   }
 
-  if (!user) {
-    supabaseResponse.cookies.delete('phs-role-cache');
-  }
+  // No role-cache invalidation for anonymous requests. The cookie is HMAC-signed
+  // and bound to a userId that is re-verified against the session below
+  // (see getSignature / parsed.userId === user.id), so a leftover cookie can
+  // never authorise anyone else. Deleting it here only added a Set-Cookie
+  // header to every guest request and defeated downstream caching.
 
   const pathname = request.nextUrl.pathname
 

@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import SkipToContent from "@/components/SkipToContent";
-import MobileSetup from "@/components/MobileSetup";
+import MobileSetupLoader from "@/components/MobileSetupLoader";
 import SplashLoader from "@/components/SplashLoader";
 import GlobalNumberInputPolicy from "@/components/GlobalNumberInputPolicy";
 import { RefreshProvider } from "@/lib/refresh/RefreshContext";
@@ -16,6 +17,23 @@ const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
   variable: "--font-bricolage",
   display: "swap",
+});
+
+// Material Symbols Outlined, subset by scripts/build-material-subset.py.
+// next/font/local emits the file under /_next/static/media/ with a content
+// hash, so regenerating the subset can never be served from an immutable
+// cache under a stale URL (the old hand-maintained ?v= query could, and did).
+// display:block hides the raw ligature text until the glyphs arrive, and
+// adjustFontFallback is off because an Arial fallback would render the icon
+// names as words.
+const materialSymbols = localFont({
+  src: "../../public/fonts/material-symbols-subset.woff2",
+  weight: "100 700",
+  style: "normal",
+  display: "block",
+  preload: true,
+  adjustFontFallback: false,
+  variable: "--font-material-symbols",
 });
 
 export const metadata: Metadata = {
@@ -50,21 +68,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-     <html lang="en" className={`${bricolage.variable}`} suppressHydrationWarning>
-      <head>
-        <link
-          rel="preload"
-          href="/fonts/material-symbols-outlined.woff2"
-          as="font"
-          type="font/woff2"
-          crossOrigin="anonymous"
-        />
-      </head>
+     <html
+       lang="en"
+       className={`${bricolage.variable} ${materialSymbols.variable}`}
+       suppressHydrationWarning
+     >
       <body className="bg-background font-body text-on-surface antialiased" suppressHydrationWarning>
         <SkipToContent />
         <RefreshProvider>
           <GlobalNumberInputPolicy />
-          <MobileSetup />
+          <MobileSetupLoader />
           <SplashLoader />
           <VersionAlert />
           <OfflineOverlay />

@@ -136,7 +136,7 @@ export default async function PartnerProfilePage() {
           <Link href="/partner/referrals" prefetch={false} className="flex items-center justify-between p-4 sm:p-5 hover:bg-surface-container-low transition-colors group">
             <div className="flex items-center gap-3.5">
               <div className="w-10 h-10 rounded-2xl bg-green-500/10 flex items-center justify-center text-[#059669]">
-                <span className="material-symbols-outlined text-xl drop-shadow-sm">card_giftcard</span>
+                <span className="material-symbols-outlined text-xl drop-shadow-sm">redeem</span>
               </div>
               <span className="font-bold text-sm sm:text-base text-on-surface">Refer & Earn</span>
             </div>

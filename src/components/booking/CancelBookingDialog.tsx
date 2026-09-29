@@ -66,7 +66,7 @@ export default function CancelBookingDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-60 flex items-end justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
       <div
         className="w-full max-w-lg rounded-t-3xl bg-surface-container-lowest border border-outline-variant/20 shadow-2xl p-5 pb-8 max-h-[88vh] overflow-y-auto animate-in slide-in-from-bottom-4 fade-in duration-250"
         onClick={(e) => e.stopPropagation()}

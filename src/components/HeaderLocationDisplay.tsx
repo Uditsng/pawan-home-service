@@ -44,7 +44,7 @@ export default function HeaderLocationDisplay({ defaultAddress }: HeaderLocation
         title={defaultAddress?.formatted_address || "Add your address"}
       >
         <span className="material-symbols-outlined text-secondary text-[20px] shrink-0">
-          location_on
+          place
         </span>
         <div className="text-left min-w-0">
           <div className="flex items-center gap-1">

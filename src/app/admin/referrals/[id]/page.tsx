@@ -184,7 +184,7 @@ export default async function ReferralDetailPage({ params }: ReferralDetailPageP
           { label: "Reward Model", value: rewardModel === "wallet_v1" ? "Wallet v2" : "Legacy", icon: "account_balance_wallet", color: "text-primary", bg: "bg-primary/5" },
           { label: "Source", value: source === "link" ? "Deep Link" : "Referral Code", icon: "link", color: "text-primary", bg: "bg-primary/5" },
           { label: "Referrer Reward", value: `₹${rReferrerReward}`, icon: "savings", color: "text-[#059669]", bg: "bg-green-500/5" },
-          { label: "Referred Bonus", value: `₹${rReferredBonus}`, icon: "card_giftcard", color: "text-[#059669]", bg: "bg-green-500/5" },
+          { label: "Referred Bonus", value: `₹${rReferredBonus}`, icon: "redeem", color: "text-[#059669]", bg: "bg-green-500/5" },
         ].map((m) => (
           <Card key={m.label} className="p-5!">
             <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/60 mb-2">{m.label}</p>

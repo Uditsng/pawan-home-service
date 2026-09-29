@@ -2,6 +2,7 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
+import { ServiceIconComponent } from "@/utils/serviceIcon";
 
 export interface UpcomingServiceRow {
   id: string;
@@ -158,8 +159,14 @@ export function WaitlistClient({
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img src={service.poster_url} alt={service.title} className="w-full h-full object-cover" />
                               ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <span className="material-symbols-outlined text-[#059669]">{iconName}</span>
+                                <div className="w-full h-full flex items-center justify-center p-2">
+                                  <ServiceIconComponent
+                                    iconName={iconName}
+                                    width={24}
+                                    height={24}
+                                    alt=""
+                                    aria-hidden
+                                  />
                                 </div>
                               )}
                             </div>

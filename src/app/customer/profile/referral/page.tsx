@@ -121,7 +121,7 @@ export default async function ReferralPage() {
               </p>
             </div>
             <div className="w-16 h-16 bg-secondary/10 rounded-2xl flex items-center justify-center shrink-0 relative z-10">
-              <span className="material-symbols-outlined text-4xl text-secondary drop-shadow-sm" style={{ fontVariationSettings: "'FILL' 1" }}>card_giftcard</span>
+              <span className="material-symbols-outlined text-4xl text-secondary drop-shadow-sm" style={{ fontVariationSettings: "'FILL' 1" }}>redeem</span>
             </div>
           </div>
         </div>

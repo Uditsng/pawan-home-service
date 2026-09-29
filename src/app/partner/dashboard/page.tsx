@@ -159,7 +159,7 @@ export default async function PartnerDashboardPage() {
             <div className="flex items-center gap-3.5">
               <div className="w-12 h-12 rounded-2xl bg-secondary/10 flex items-center justify-center shrink-0 text-secondary">
                 <span className="material-symbols-outlined text-2xl text-secondary drop-shadow-xs" style={{ fontVariationSettings: "'FILL' 1" }}>
-                  card_giftcard
+                  redeem
                 </span>
               </div>
               <div>
@@ -284,7 +284,7 @@ export default async function PartnerDashboardPage() {
                   </div>
                   <div className="flex items-start gap-3 min-w-0">
                     <span className="material-symbols-outlined text-primary text-2xl shrink-0 mt-0.5">
-                      location_on
+                      place
                     </span>
                     <div className="text-xs sm:text-sm min-w-0">
                       <p className="text-on-surface-variant font-label text-[10px] uppercase font-bold tracking-widest">

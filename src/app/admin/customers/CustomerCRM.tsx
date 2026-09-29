@@ -1097,7 +1097,7 @@ export function CustomerCRM({
 
                   <div className="bg-error/5 p-4 rounded-xl border border-error/20 space-y-2">
                     <p className="text-xs font-bold text-error flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm">security_alert</span>
+                      <span className="material-symbols-outlined text-sm">security</span>
                       Update Risk Reason
                     </p>
                     <p className="text-[10px] text-on-surface-variant/75 font-normal">

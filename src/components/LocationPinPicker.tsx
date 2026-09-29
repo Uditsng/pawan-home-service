@@ -295,7 +295,7 @@ export default function LocationPinPicker({
               color: #a6ce37; 
               font-size: 22px; 
               font-weight: bold;
-            ">location_on</span>
+            ">place</span>
           </div>
         `,
         iconSize: [40, 40],
@@ -392,7 +392,7 @@ export default function LocationPinPicker({
                 className="material-symbols-outlined"
                 style={{ transform: "rotate(45deg)", color: "#a6ce37", fontSize: 22, fontWeight: 700 }}
               >
-                location_on
+                place
               </span>
             </div>
             <div>

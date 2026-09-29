@@ -427,7 +427,7 @@ export default function AdminShoppingAssistant({
                         </td>
                         <td className="py-4 px-4 max-w-xs">
                           <p className="font-semibold text-slate-800 flex items-start gap-1">
-                            <span className="material-symbols-outlined text-xs text-[#059669] shrink-0 mt-0.5">location_on</span>
+                            <span className="material-symbols-outlined text-xs text-[#059669] shrink-0 mt-0.5">place</span>
                             <span className="line-clamp-2">Meet: {b.meeting_location}</span>
                           </p>
                           {b.destination && (

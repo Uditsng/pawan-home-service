@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import { getServiceThumbnailUrl } from "@/utils/serviceThumbnail";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
+import { useImageFallback } from "@/hooks/useImageFallback";
 
 interface ServiceVisualProps {
   imageUrl?: string | null;
@@ -15,8 +15,13 @@ interface ServiceVisualProps {
 
 /**
  * Shared visual tile for categories & subcategories.
- * Shows the admin-uploaded WebP image when present; otherwise falls back to
+ * Shows the admin-uploaded image when present; otherwise falls back to
  * the subcategory SVG icon, then to a generic placeholder shape.
+ *
+ * Uses a plain <img> rather than next/image because Next's optimizer refuses to
+ * proxy Supabase storage URLs (their DNS resolves to a private range, which
+ * trips Next's SSRF protection). An unavailable Supabase transformation
+ * (HTTP 403 with no quota) retries the original object URL first.
  */
 export function ServiceVisual({
   imageUrl,
@@ -26,18 +31,22 @@ export function ServiceVisual({
   iconClassName = "",
   thumbnailSize = 256,
 }: ServiceVisualProps) {
-  const thumb = getServiceThumbnailUrl(imageUrl, thumbnailSize);
+  const { stage, onError } = useImageFallback(imageUrl);
+  const showImage = stage !== "none" && !!imageUrl;
+  const src = stage === "transformed" ? getServiceThumbnailUrl(imageUrl, thumbnailSize) : imageUrl ?? null;
 
-  if (thumb) {
+  if (showImage) {
     return (
       <div className={`relative overflow-hidden ${containerClassName}`}>
-        <Image
-          src={thumb}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src as string}
           alt={alt}
-          fill
-          sizes={`(max-width: 768px) 100vw, ${thumbnailSize}px`}
+          loading="lazy"
+          decoding="async"
           draggable={false}
-          className="object-cover"
+          onError={onError}
+          className="absolute inset-0 w-full h-full object-cover"
         />
       </div>
     );

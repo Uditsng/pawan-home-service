@@ -66,7 +66,7 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
       <div className="min-h-screen flex items-center justify-center font-body bg-surface text-on-surface">
         <div className="text-center">
           <div className="w-20 h-20 bg-surface-container rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="material-symbols-outlined text-4xl text-on-surface-variant/40">error_outline</span>
+            <span className="material-symbols-outlined text-4xl text-on-surface-variant/40">error</span>
           </div>
           <h1 className="text-xl md:text-2xl font-bold mb-4 font-headline">Service Not Found</h1>
           <Link href={`/customer/services/${resolvedParams.category}`} className="text-primary hover:underline font-bold">Go back to category</Link>

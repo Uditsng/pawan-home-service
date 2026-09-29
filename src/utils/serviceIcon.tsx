@@ -5,7 +5,7 @@
  */
 
 import Image from "next/image";
-import type { HTMLAttributes } from "react";
+import type { ImgHTMLAttributes } from "react";
 
 // Normalize database icon_name to clean local SVG filename
 function normalizeIconName(name: string): string {
@@ -16,7 +16,10 @@ function normalizeIconName(name: string): string {
   const map: Record<string, string> = {
     // Database / Legacy / Material Symbols
     water_drop: "water_drop",
-    local_shipping: "local_shipping",
+    // Neither local_shipping.svg nor format_paint.svg exist in public/icons,
+    // so these must land on real files or the caller silently gets the
+    // cleaning_services fallback. Caught by scripts/audit-icons.mjs LAYER 3.
+    local_shipping: "truck-inbound-svgrepo-com",
     celebration: "celebration",
     bed: "bed",
     pest_control: "pest_control",
@@ -25,7 +28,7 @@ function normalizeIconName(name: string): string {
     countertops: "countertops",
     ac_unit: "ac_unit",
     bathroom: "bathroom",
-    format_paint: "format_paint",
+    format_paint: "paint-bucket",
     pest_control_rodent: "pest_control_rodent",
     plumbing: "plumbing",
     electrical_services: "electrical_services",
@@ -87,7 +90,7 @@ function normalizeIconName(name: string): string {
     sofa: "sofa",
     lamp: "lightbulb",
     door: "door",
-    paint: "format_paint",
+    paint: "paint-bucket",
     home: "door",
     frame: "window",
     armchair: "armchair",
@@ -191,29 +194,41 @@ function normalizeIconName(name: string): string {
   return "cleaning_services";
 }
 
-interface ServiceIconProps extends HTMLAttributes<HTMLImageElement> {
+// `src`, `width` and `height` are always supplied by the component itself.
+// `src` in particular is omitted because React 19 types it as an experimental
+// union that includes Blob, which is incompatible with next/image's loader.
+type ServiceIconProps = Omit<
+  ImgHTMLAttributes<HTMLImageElement>,
+  "src" | "width" | "height" | "alt"
+> & {
   iconName: string;
   width?: number;
   height?: number;
-}
+  alt?: string;
+};
 
 /**
  * Renders local SVG icon corresponding to the given iconName.
  * Handles both new picker names and legacy Material Symbol names.
+ *
+ * `alt` defaults to the raw icon name for meaningful images. Decorative usages
+ * should pass `alt=""` together with `aria-hidden` so screen readers announce
+ * nothing instead of the underlying filename (e.g. "cockroach-svgrepo-com").
  */
 export function ServiceIconComponent({
   iconName,
   className,
   width = 48,
   height = 48,
+  alt,
   ...props
 }: ServiceIconProps) {
   const normalizedName = normalizeIconName(iconName);
-  
+
   return (
     <Image
       src={`/icons/${normalizedName}.svg`}
-      alt={iconName}
+      alt={alt ?? iconName}
       width={width}
       height={height}
       className={`${className || ""} object-contain`}

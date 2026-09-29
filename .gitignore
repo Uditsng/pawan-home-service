@@ -40,6 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# python (icon subset builder)
+__pycache__/
+*.pyc
+
 # AI documentation & memory files
 /AGENTS.md
 /play_store_readiness_audit.md

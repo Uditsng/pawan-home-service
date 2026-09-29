@@ -14,7 +14,7 @@ interface AddressListClientProps {
 const LABEL_ICONS: Record<string, string> = {
   Home: "home",
   Work: "work",
-  Other: "location_on",
+  Other: "place",
 };
 
 export default function AddressListClient({ addresses }: AddressListClientProps) {
@@ -90,7 +90,7 @@ export default function AddressListClient({ addresses }: AddressListClientProps)
                   <div className="flex items-start gap-3 min-w-0 flex-1">
                     <div className="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center shrink-0 mt-0.5">
                       <span className="material-symbols-outlined text-secondary text-[20px]">
-                        {LABEL_ICONS[address.label] || "location_on"}
+                        {LABEL_ICONS[address.label] || "place"}
                       </span>
                     </div>
                     <div className="min-w-0 flex-1">

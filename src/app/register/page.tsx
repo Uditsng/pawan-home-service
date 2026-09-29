@@ -335,7 +335,7 @@ function RegisterContent() {
                       onClick={() => setShowReferral(!showReferral)}
                       className="flex items-center gap-1.5 text-xs font-bold text-on-surface-variant hover:text-primary transition-colors cursor-pointer select-none"
                     >
-                      <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>card_giftcard</span>
+                      <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>redeem</span>
                       {showReferral ? "Hide referral code" : "Have a referral code?"}
                       <span className="material-symbols-outlined text-[14px]">{showReferral ? "expand_less" : "expand_more"}</span>
                     </button>

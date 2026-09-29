@@ -67,7 +67,7 @@ export default function AreaSelector({
         {areaSlabs && areaSlabs.length > 0 && (
           <div>
             <span className="text-[10px] text-on-surface-variant font-bold uppercase block mb-1">Slab Rates</span>
-            <div className="bg-surface p-2 rounded-lg border border-outline-variant/15 text-[10px] text-on-surface-variant/80 font-medium space-y-0.5 max-h-[80px] overflow-y-auto">
+            <div className="bg-surface p-2 rounded-lg border border-outline-variant/15 text-[10px] text-on-surface-variant/80 font-medium space-y-0.5 max-h-20 overflow-y-auto">
               {areaSlabs.map((s, idx) => (
                 <div key={idx} className="flex justify-between">
                   <span>{s.min}{s.max ? `-${s.max}` : "+"} sqft</span>

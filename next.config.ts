@@ -50,6 +50,10 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   serverExternalPackages: ["@react-pdf/renderer"],
   images: {
+    // Supabase image transformations are quota-limited and currently return 403
+    // for most service thumbnails, so most of them are served untransformed.
+    // Caching optimized output for a month keeps repeat visits off the origin.
+    minimumCacheTTL: 2678400,
     remotePatterns: [
       {
         protocol: 'https',
@@ -73,6 +77,37 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      // public/fonts is no longer fetched at runtime: the subset reaches the
+      // browser through next/font from /_next/static/media (hashed, already
+      // immutable). The rule stays for anything still requesting /fonts/ - the
+      // files there are byte-stable, so they can be cached forever.
+      {
+        source: "/fonts/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/assets/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=604800, stale-while-revalidate=2592000",
+          },
+        ],
+      },
+      {
+        source: "/icons/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=604800, stale-while-revalidate=2592000",
+          },
+        ],
+      },
       {
         source: "/(.*)",
         headers: [

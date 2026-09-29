@@ -90,7 +90,7 @@ export default function UnserviceableHeroBanner({
             onClick={onChangeLocationClick}
             className="mt-4 text-xs font-bold text-secondary hover:underline cursor-pointer transition-all flex items-center gap-1"
           >
-            <span className="material-symbols-outlined text-[16px]">location_on</span>
+            <span className="material-symbols-outlined text-[16px]">place</span>
             Change location
           </button>
         )}

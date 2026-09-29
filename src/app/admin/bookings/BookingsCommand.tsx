@@ -1049,12 +1049,12 @@ export function BookingsCommand({
                           </p>
                         )}
                         <p className="text-[9px] font-bold text-on-surface-variant/60 uppercase tracking-widest flex items-center gap-0.5 leading-none mt-0.5">
-                          <span className="material-symbols-outlined text-secondary text-xs">location_on</span>
+                          <span className="material-symbols-outlined text-secondary text-xs">place</span>
                           {[booking.city, booking.pincode].filter(Boolean).join(" · ") || "Zone N/A"}
                         </p>
                         {booking.customer?.phone ? (
                           <p className="text-[9px] font-bold text-on-surface-variant/75 flex items-center gap-0.5 leading-none mt-0.5">
-                            <span className="material-symbols-outlined text-secondary text-[10px]">phone</span>
+                            <span className="material-symbols-outlined text-secondary text-[10px]">call</span>
                             {booking.customer.phone}
                           </p>
                         ) : (

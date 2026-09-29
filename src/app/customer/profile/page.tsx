@@ -65,7 +65,7 @@ export default async function ProfilePage() {
         {/* Refer block */}
         <Link href="/customer/profile/referral" className="bg-surface-container-lowest p-4 md:p-5 rounded-2xl shadow-sm flex items-center justify-between hover:bg-surface-container-low transition-colors">
           <div className="flex items-center gap-3 md:gap-4">
-            <span className="material-symbols-outlined text-star text-lg md:text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>card_giftcard</span>
+            <span className="material-symbols-outlined text-star text-lg md:text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>redeem</span>
             <div className="flex items-center flex-wrap gap-y-1">
               <span className="font-bold text-sm md:text-base text-on-surface">Refer & earn</span>
               <span className="bg-star/15 text-star text-[9px] md:text-[10px] font-extrabold px-1.5 py-0.5 rounded-sm ml-1.5 md:ml-2 uppercase">Upto ₹{referralReward}</span>
@@ -86,7 +86,7 @@ export default async function ProfilePage() {
 
           <Link href="/customer/profile/addresses" className="flex items-center justify-between p-4 md:p-5 border-b border-outline-variant hover:bg-surface-container-low transition-colors group">
             <div className="flex items-center gap-3 md:gap-4">
-              <span className="material-symbols-outlined text-on-surface-variant text-lg md:text-xl">location_on</span>
+              <span className="material-symbols-outlined text-on-surface-variant text-lg md:text-xl">place</span>
               <span className="font-semibold text-sm md:text-base text-on-surface">Saved addresses</span>
             </div>
             <span className="material-symbols-outlined text-on-surface-variant/30 text-lg md:text-xl group-hover:text-on-surface-variant/60 transition-colors">chevron_right</span>

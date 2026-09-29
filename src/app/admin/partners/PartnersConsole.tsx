@@ -1933,7 +1933,7 @@ export function PartnersConsole({ initialPartners, allServices = [], fleetCounts
                             key={`area-${idx}`}
                             className="inline-flex items-center gap-1 bg-surface-container-low border border-outline-variant/30 text-on-surface text-[10px] font-bold px-2.5 py-1 rounded-full"
                           >
-                            {/* <span className="material-symbols-outlined text-xs text-on-surface-variant">location_on</span> */}
+                            {/* <span className="material-symbols-outlined text-xs text-on-surface-variant">place</span> */}
                             {area.city || "Area"} · {area.pincode}
                           </span>
                         ))}

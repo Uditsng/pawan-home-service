@@ -336,7 +336,7 @@ export default function WalletClient({
         <div key={`tx-${item.tx.id}`} className="flex items-center gap-4 px-5 py-3.5">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isCredit ? "bg-secondary/10" : "bg-primary/5"}`}>
             <span className={`material-symbols-outlined text-xl ${isCredit ? "text-secondary" : "text-primary"}`} style={{ fontVariationSettings: "'FILL' 1" }}>
-              {isCredit ? "add_circle" : "remove_circle"}
+              {isCredit ? "add_circle" : "remove"}
             </span>
           </div>
           <div className="flex-1 min-w-0">
@@ -496,7 +496,7 @@ export default function WalletClient({
           </div>
           <div className="flex items-center gap-4 p-4 bg-secondary/5 border border-secondary/15 rounded-xl">
             <div className="w-10 h-10 bg-secondary/10 rounded-xl flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-secondary drop-shadow-sm" style={{ fontVariationSettings: "'FILL' 1" }}>card_giftcard</span>
+              <span className="material-symbols-outlined text-secondary drop-shadow-sm" style={{ fontVariationSettings: "'FILL' 1" }}>redeem</span>
             </div>
             <div className="flex-1">
               <p className="text-sm font-bold text-on-surface">Refer friends, earn ₹{referralReward}</p>

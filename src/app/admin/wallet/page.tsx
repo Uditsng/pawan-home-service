@@ -121,7 +121,7 @@ export default async function AdminWalletPage() {
   const metricCards = [
     { label: "Total Wallet", value: `₹${totalWallet.toLocaleString("en-IN")}`, icon: "account_balance_wallet", color: "text-primary", bg: "bg-primary/5" },
     { label: "Cash Balance", value: `₹${totalCash.toLocaleString("en-IN")}`, icon: "payments", color: "text-[#059669]", bg: "bg-green-500/5" },
-    { label: "Bonus Balance", value: `₹${totalBonus.toLocaleString("en-IN")}`, icon: "card_giftcard", color: "text-[#059669]", bg: "bg-green-500/5" },
+    { label: "Bonus Balance", value: `₹${totalBonus.toLocaleString("en-IN")}`, icon: "redeem", color: "text-[#059669]", bg: "bg-green-500/5" },
     { label: "Funded Users", value: fundedUsers, icon: "group", color: "text-primary", bg: "bg-primary/5" },
     { label: "Top-ups", value: rechargeCountRes.count ?? 0, icon: "bolt", color: "text-primary", bg: "bg-primary/5" },
     { label: "Transactions", value: txCountRes.count ?? 0, icon: "receipt_long", color: "text-primary", bg: "bg-primary/5" },
@@ -299,7 +299,7 @@ export default async function AdminWalletPage() {
               <div key={t.id} className="flex items-center gap-3 px-5 py-3">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${t.type === "credit" ? "bg-secondary/10" : "bg-red-500/5"}`}>
                   <span className={`material-symbols-outlined text-base ${t.type === "credit" ? "text-secondary" : "text-red-600"}`}>
-                    {t.type === "credit" ? "add_circle" : "remove_circle"}
+                    {t.type === "credit" ? "add_circle" : "remove"}
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">

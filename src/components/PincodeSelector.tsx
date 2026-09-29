@@ -160,7 +160,7 @@ export default function PincodeSelector({
                 className="flex items-center justify-between p-3 bg-surface rounded-xl border border-outline-variant/30"
               >
                 <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-                  <span className="material-symbols-outlined text-secondary text-[18px]">location_on</span>
+                  <span className="material-symbols-outlined text-secondary text-[18px]">place</span>
                   {area.locality} <span className="text-on-surface-variant text-xs">({area.pincode})</span>
                 </div>
                 <button

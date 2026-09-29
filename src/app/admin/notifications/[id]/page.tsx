@@ -66,7 +66,7 @@ export default async function CampaignDetailsPage({ params }: CampaignDetailsPag
       <div className="space-y-4 max-w-2xl">
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-[20px] p-6 shadow-sm flex items-start gap-4">
           <div className="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-amber-700">database_schema</span>
+            <span className="material-symbols-outlined text-amber-700">storage</span>
           </div>
           <div>
             <h4 className="text-sm font-black text-amber-800 uppercase tracking-tight">Database Schema Upgrade Required</h4>

@@ -379,7 +379,7 @@ export function SettingsConsole({
           <div className="space-y-2.5">
             <div className="flex items-center justify-between border-b border-outline-variant/10 pb-2">
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary text-base">card_giftcard</span>
+                <span className="material-symbols-outlined text-primary text-base">redeem</span>
                 <div>
                   <h3 className="text-xs font-black uppercase tracking-wider text-primary">Referrals</h3>
                   <p className="text-[10px] text-on-surface-variant/60 font-medium">Growth incentives</p>

@@ -25,7 +25,7 @@ interface PostOffice {
 const LABEL_CONFIG: { label: AddressLabel; icon: string }[] = [
   { label: "Home", icon: "home" },
   { label: "Work", icon: "work" },
-  { label: "Other", icon: "location_on" },
+  { label: "Other", icon: "place" },
 ];
 
 export default function AddAddressModal({

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { UpcomingService } from "@/utils/supabase/cachedServiceQueries";
+import { ServiceIconComponent } from "@/utils/serviceIcon";
 import { ComingSoonScroller } from "./ComingSoonScroller";
 
 interface ComingSoonStripProps {
@@ -54,17 +55,20 @@ export function ComingSoonStrip({ services, hrefFor }: ComingSoonStripProps) {
                         src={service.poster_url}
                         alt={service.title}
                         fill
-                        unoptimized
-                        sizes="(max-width: 640px) 280px, 320px"
+                        sizes="(max-width: 640px) 82vw, (max-width: 1024px) 288px, 304px"
                         className="object-cover group-hover/card:scale-105 transition-transform duration-500"
                       />
                     </div>
                   ) : (
                     <div className="flex items-center gap-2.5 mb-2 pb-2 border-b border-outline-variant/15">
                       <div className="w-8 h-8 bg-green-500/10 rounded-lg flex items-center justify-center shrink-0 group-hover/card:scale-105 transition-transform">
-                        <span className="material-symbols-outlined text-[#059669] text-xl drop-shadow-2xs">
-                          {iconName}
-                        </span>
+                        <ServiceIconComponent
+                          iconName={iconName}
+                          width={20}
+                          height={20}
+                          alt=""
+                          aria-hidden
+                        />
                       </div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant truncate">
                         {categoryName}

@@ -226,7 +226,7 @@ export function CouponTable({
                   <td colSpan={8} className="px-4 py-12 text-center text-on-surface-variant">
                     <div className="flex flex-col items-center gap-2">
                       <div className="w-12 h-12 rounded-2xl bg-surface-container flex items-center justify-center text-on-surface-variant/40 mb-1">
-                        <span className="material-symbols-outlined text-2xl">local_offer</span>
+                        <span className="material-symbols-outlined text-2xl">sell</span>
                       </div>
                       <p className="text-sm font-bold text-primary font-headline">No coupons found</p>
                       <p className="text-xs opacity-60">
@@ -249,7 +249,7 @@ export function CouponTable({
                       {/* Code */}
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/10 text-primary border border-primary/20 font-mono font-bold tracking-wider text-xs uppercase">
-                          <span className="material-symbols-outlined text-xs">local_offer</span>
+                          <span className="material-symbols-outlined text-xs">sell</span>
                           {c.code}
                         </div>
                       </td>

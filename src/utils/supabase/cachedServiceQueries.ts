@@ -328,6 +328,69 @@ export const getCachedUpcomingServices = () => unstable_cache(
   }
 )();
 
+export interface LandingService {
+  id: string;
+  title: string;
+  base_price: number;
+  original_price?: number | null;
+  subcategory_id: string;
+  subcategories: {
+    subcategory_name: string;
+    icon_name: string;
+    categories: {
+      id: string;
+      category_name: string;
+    } | null;
+  } | null;
+}
+
+/**
+ * Fetches the compact published-service list rendered on the public landing
+ * page, cached for 30 minutes.
+ *
+ * This deliberately uses the cookie-free anon client via unstable_cache so the
+ * landing page can be statically generated. Reading services through the
+ * request-scoped server client made `/` dynamic, which forced a
+ * `private, no-cache, no-store` document response on every anonymous visit.
+ */
+export const getCachedLandingServices = () => unstable_cache(
+  async () => {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("services")
+      .select(`
+        id,
+        title,
+        base_price,
+        original_price,
+        subcategory_id,
+        subcategories (
+          subcategory_name,
+          icon_name,
+          categories (
+            id,
+            category_name
+          )
+        )
+      `)
+      .eq("is_active", true)
+      .eq("status", "published")
+      .order("title", { ascending: true });
+
+    if (error) {
+      console.error("[cachedLandingServices] Database fetch failed:", error.message);
+      return [] as unknown as LandingService[];
+    }
+
+    return (data || []) as unknown as LandingService[];
+  },
+  ["landing-services"],
+  {
+    revalidate: 1800, // Cache for 30 minutes
+    tags: [TAG_SERVICES],
+  }
+)();
+
 /**
  * Fetches a single upcoming service by ID, cached for 30 minutes.
  * Returns null when the service is not an upcoming (Coming Soon) service.

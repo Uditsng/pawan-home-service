@@ -1,12 +1,15 @@
 @import "tailwindcss";
 
-@font-face {
-  font-family: 'Material Symbols Outlined';
-  font-style: normal;
-  font-weight: 100 700;
-  font-display: block;
-  src: url('/fonts/material-symbols-outlined.woff2') format('woff2');
-}
+/* Material Symbols Outlined (Apache-2.0, see material-symbols-LICENSE.txt).
+   The upstream font is 3.9 MB and ships ~4,000 glyphs; the subset built by
+   scripts/build-material-subset.py keeps only the icons referenced in src/
+   (plus a safety margin), cutting it to ~190 KB while preserving all four
+   variable axes (FILL / GRAD / opsz / wght).
+
+   The @font-face lives in src/app/layout.tsx (next/font/local), which
+   content-hashes the file URL - no cache-busting query to maintain.
+   Regenerate with `npm run icons:build`, then verify every layer with
+   `npm run icons:audit`. */
 
 @theme {
   --color-primary: #002261;
@@ -142,7 +145,7 @@ body {
 
 /* Material Symbols config */
 .material-symbols-outlined {
-  font-family: 'Material Symbols Outlined';
+  font-family: var(--font-material-symbols);
   font-weight: normal;
   font-style: normal;
   font-size: 24px;

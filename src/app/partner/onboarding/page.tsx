@@ -95,7 +95,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
 
           <div className="space-y-4">
             <h3 className="text-base sm:text-lg font-headline font-extrabold text-on-surface flex items-center gap-2">
-              <span className="material-symbols-outlined text-secondary">location_on</span>
+              <span className="material-symbols-outlined text-secondary">place</span>
               Which pincode areas do you serve?
             </h3>
 

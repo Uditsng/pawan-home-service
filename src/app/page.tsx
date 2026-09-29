@@ -1,75 +1,26 @@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Link from "next/link";
-import { createClient } from "@/utils/supabase/server";
-import { redirect } from "next/navigation";
 import HeroConversationalCard from "@/components/HeroConversationalCard";
 import LandingGridClient from "./LandingGridClient";
 import { getCachedCategories } from "@/utils/supabase/cachedCategoryQueries";
-import { getCachedUpcomingServices } from "@/utils/supabase/cachedServiceQueries";
+import { getCachedLandingServices, getCachedUpcomingServices } from "@/utils/supabase/cachedServiceQueries";
 import { ComingSoonStrip } from "@/components/ComingSoonStrip";
-import { getDashboardForRole } from "@/utils/supabase/roles";
 import WhatsAppButton from "@/components/WhatsAppButton";
 
 
 export const revalidate = 300; // ISR: revalidate every 5 minutes
 
-interface ServiceWithSubcategory {
-  id: string;
-  title: string;
-  base_price: number;
-  original_price?: number | null;
-  duration_minutes?: number;
-  category?: string;
-  subcategory_id: string;
-  subcategories: {
-    subcategory_name: string;
-    icon_name: string;
-    categories: {
-      id: string;
-      category_name: string;
-    } | null;
-  } | null;
-}
-
+// No auth check here on purpose. The proxy already redirects signed-in users to
+// their role dashboard (and signs out suspended accounts) for `pathname === '/'`.
+// Repeating it in this page with a cookie-scoped client forced `/` to render
+// dynamically on every anonymous request, which is what the HAR was dominated by.
 export default async function Home() {
-  const supabase = await createClient();
-
-  // Defense-in-depth: redirect authenticated users to their dashboard
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-    const target = getDashboardForRole(profile?.role);
-    redirect(target);
-  }
-
-  // Parallelize independent queries for faster page loads
-  const [servicesResult, categories, upcomingServices] = await Promise.all([
-    supabase
-      .from('services')
-      .select(`
-        id, title, base_price, original_price, subcategory_id,
-        subcategories (
-          subcategory_name,
-          icon_name,
-          categories (
-            id,
-            category_name
-          )
-        )
-      `)
-      .eq('is_active', true)
-      .eq('status', 'published')
-      .order('title', { ascending: true }),
+  const [availableServices, categories, upcomingServices] = await Promise.all([
+    getCachedLandingServices(),
     getCachedCategories(),
     getCachedUpcomingServices(),
   ]);
-
-  const availableServices = (servicesResult.data || []) as unknown as ServiceWithSubcategory[];
 
   // Shared Glassmorphism styles
   const glassBg = "glass-panel";

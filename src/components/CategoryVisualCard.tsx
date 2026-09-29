@@ -1,5 +1,8 @@
+"use client";
+
 import { getServiceThumbnailUrl } from "@/utils/serviceThumbnail";
 import { ServiceIconComponent } from "@/utils/serviceIcon";
+import { useImageFallback } from "@/hooks/useImageFallback";
 
 interface CategoryVisualCardProps {
   imageUrl?: string | null;
@@ -16,6 +19,11 @@ interface CategoryVisualCardProps {
  * heavily-blurred, darker duplicate of that image behind the title + count,
  * so the text stays readable on top of the crisp upper image. Falls back to a
  * navy/mint gradient + icon when no image is uploaded.
+ *
+ * Uses a plain <img> rather than next/image because Next's optimizer refuses to
+ * proxy Supabase storage URLs. If the Supabase transformation is unavailable
+ * (HTTP 403 with no transformation quota) it retries the original object URL
+ * before giving up on the icon treatment.
  */
 export function CategoryVisualCard({
   imageUrl,
@@ -25,7 +33,10 @@ export function CategoryVisualCard({
   thumbnailSize = 512,
   dimmed = false,
 }: CategoryVisualCardProps) {
-  const thumb = getServiceThumbnailUrl(imageUrl, thumbnailSize);
+  const { stage, onError } = useImageFallback(imageUrl);
+  const showImage = stage !== "none" && !!imageUrl;
+  const thumb =
+    stage === "transformed" ? getServiceThumbnailUrl(imageUrl, thumbnailSize) : imageUrl ?? null;
 
   return (
     <div
@@ -34,13 +45,15 @@ export function CategoryVisualCard({
       }`}
     >
       {/* Full-bleed foreground image */}
-      {thumb ? (
+      {showImage ? (
+        // eslint-disable-next-line @next/next/no-img-element -- see component note: Supabase storage hosts cannot be proxied by the Next optimizer
         <img
-          src={thumb}
+          src={thumb as string}
           alt={title}
           loading="lazy"
           decoding="async"
           draggable={false}
+          onError={onError}
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
       ) : (
@@ -60,14 +73,16 @@ export function CategoryVisualCard({
       {/* Frosted-glass bottom panel */}
       <div className="absolute inset-x-0 bottom-0 p-1.5 sm:p-2">
         <div className="relative overflow-hidden rounded-xl">
-          {thumb ? (
+          {showImage ? (
+            // eslint-disable-next-line @next/next/no-img-element -- decorative duplicate of the image above
             <img
-              src={thumb}
+              src={thumb as string}
               alt=""
               aria-hidden
               loading="lazy"
               decoding="async"
               draggable={false}
+              onError={onError}
               className="absolute inset-0 w-full h-full object-cover scale-125 blur-2xl opacity-70"
             />
           ) : (

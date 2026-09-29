@@ -346,7 +346,7 @@ export default async function AdminDashboardPage() {
                       <td className="px-4 py-3.5">
                         <p className="text-[10px] font-bold text-primary tracking-tight truncate max-w-40">{booking.services?.title || "Service"}</p>
                         <p className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-wider mt-0.5 flex items-center gap-0.5">
-                          <span className="material-symbols-outlined text-[10px] text-secondary">location_on</span>
+                          <span className="material-symbols-outlined text-[10px] text-secondary">place</span>
                           {booking.city || "N/A"}
                         </p>
                       </td>

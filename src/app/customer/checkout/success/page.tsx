@@ -236,7 +236,7 @@ export default async function CheckoutSuccessPage({
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <span className="material-symbols-outlined text-primary text-xl mt-0.5">location_on</span>
+                <span className="material-symbols-outlined text-primary text-xl mt-0.5">place</span>
                 <div>
                   <p className="text-[9px] font-bold uppercase tracking-widest text-outline">Address</p>
                   <p className="text-xs font-bold text-on-surface mt-0.5 truncate max-w-[200px]">{bookingsList[0].address}</p>

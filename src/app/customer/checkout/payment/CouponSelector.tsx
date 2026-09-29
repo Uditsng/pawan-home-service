@@ -56,7 +56,7 @@ export function CouponSelector({
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-outline-variant/15 shrink-0 mb-4">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-xl">local_offer</span>
+            <span className="material-symbols-outlined text-primary text-xl">sell</span>
             <h3 className="text-base font-extrabold text-on-surface">Available Coupons</h3>
           </div>
           <button

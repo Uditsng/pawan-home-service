@@ -58,7 +58,7 @@ export function CouponForm({ action, services, coupon, isEdit }: CouponFormProps
       <div className="bg-surface-container-lowest border border-outline-variant/15 rounded-2xl p-6 shadow-xs space-y-4">
         <div className="flex items-center gap-2.5 border-b border-outline-variant/15 pb-3">
           <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-            <span className="material-symbols-outlined text-base">local_offer</span>
+            <span className="material-symbols-outlined text-base">sell</span>
           </div>
           <div>
             <h3 className="text-sm font-bold text-primary font-headline">Discount Details</h3>

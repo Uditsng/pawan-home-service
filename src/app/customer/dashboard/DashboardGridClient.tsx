@@ -175,7 +175,7 @@ export default function DashboardGridClient({
       {!hasAddress && (
         <div className="bg-secondary/15 border border-secondary/30 rounded-2xl p-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-xs md:text-sm font-bold text-primary">
-            <span className="material-symbols-outlined text-secondary text-base">location_on</span>
+            <span className="material-symbols-outlined text-secondary text-base">place</span>
             <span>Check service availability in your area</span>
           </div>
           <button

@@ -72,7 +72,7 @@ export default function EditServiceAreasForm({ initialAreas }: EditServiceAreasF
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-                    <span className="material-symbols-outlined text-lg">location_on</span>
+                    <span className="material-symbols-outlined text-lg">place</span>
                   </div>
                   <span className="font-bold text-sm text-on-surface">
                     {area.locality || "Area"}{" "}

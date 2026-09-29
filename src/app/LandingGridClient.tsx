@@ -2,23 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { CategoryVisualCard } from "@/components/CategoryVisualCard";
-
-interface ServiceWithSubcategory {
-  id: string;
-  title: string;
-  base_price: number;
-  original_price?: number | null;
-  category?: string;
-  subcategory_id: string;
-  subcategories: {
-    subcategory_name: string;
-    icon_name: string;
-    categories: {
-      id: string;
-      category_name: string;
-    } | null;
-  } | null;
-}
+import type { LandingService } from "@/utils/supabase/cachedServiceQueries";
 
 interface Category {
   id: string;
@@ -28,7 +12,7 @@ interface Category {
 
 interface LandingGridClientProps {
   categories: Category[];
-  availableServices: ServiceWithSubcategory[];
+  availableServices: LandingService[];
 }
 
 export default function LandingGridClient({ categories, availableServices }: LandingGridClientProps) {

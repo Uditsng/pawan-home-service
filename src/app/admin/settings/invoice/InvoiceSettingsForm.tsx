@@ -67,7 +67,7 @@ export default function InvoiceSettingsForm({ initialSettings }: InvoiceSettings
         {/* Core Company Details */}
         <Card variant="solid" className="p-6 space-y-4">
           <div className="flex items-center gap-3 border-b border-outline-variant/10 pb-3">
-            <span className="material-symbols-outlined text-primary text-xl">business</span>
+            <span className="material-symbols-outlined text-primary text-xl">apartment</span>
             <h3 className="text-sm font-bold uppercase tracking-wider text-primary">Company Details</h3>
           </div>
 

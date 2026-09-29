@@ -305,7 +305,7 @@ export default function ScheduleClient({
 
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-xl font-bold">location_on</span>
+              <span className="material-symbols-outlined text-primary text-xl font-bold">place</span>
               <h2 className="font-headline text-lg font-bold">Service Location</h2>
             </div>
             {addresses.length > 0 && (
@@ -325,7 +325,7 @@ export default function ScheduleClient({
                 <div className="flex gap-3 min-w-0">
                   <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0">
                     <span className="material-symbols-outlined text-[#059669] text-xl">
-                      {selectedAddress.label === "Home" ? "home" : selectedAddress.label === "Work" ? "work" : "location_on"}
+                      {selectedAddress.label === "Home" ? "home" : selectedAddress.label === "Work" ? "work" : "place"}
                     </span>
                   </div>
                   <div className="min-w-0">
@@ -504,7 +504,7 @@ export default function ScheduleClient({
                   Meeting Location <span className="text-secondary font-black">*</span>
                 </label>
                 <div className="relative flex items-center">
-                  <span className="material-symbols-outlined absolute left-3.5 text-slate-400 text-lg">location_on</span>
+                  <span className="material-symbols-outlined absolute left-3.5 text-slate-400 text-lg">place</span>
                   <input
                     id="meeting-location-input"
                     type="text"

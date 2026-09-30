@@ -11,6 +11,12 @@ export function getServiceThumbnailUrl(
 ): string | null {
   if (!src) return null;
 
+  // Supabase image transformations require a paid plan with transformation quota.
+  // When disabled (default), return the direct public object URL to avoid 403 retries.
+  if (process.env.NEXT_PUBLIC_SUPABASE_IMAGE_TRANSFORM !== "true") {
+    return src;
+  }
+
   if (!STORAGE_OBJECT_PUBLIC.test(src)) return src;
 
   const base = src.replace(STORAGE_OBJECT_PUBLIC, "/storage/v1/render/image/public/");

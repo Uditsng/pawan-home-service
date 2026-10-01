@@ -721,83 +721,127 @@ export default function JobsClient({
     const isBusy = isClaiming || isDeclining;
     const servicePrice = Number(b.total_amount || 0);
     const location = b.address || (b.area ? `${b.area}, ${b.city || ""}` : b.city || "Kanpur Nagar");
+    const scheduleDateObj = b.scheduled_date ? new Date(b.scheduled_date) : null;
+    const scheduleDateStr = scheduleDateObj
+      ? scheduleDateObj.toLocaleDateString("en-IN", {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+          timeZone: "Asia/Kolkata",
+        })
+      : "TBD";
+    const scheduleTimeStr = scheduleDateObj
+      ? scheduleDateObj.toLocaleTimeString("en-IN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+          timeZone: "Asia/Kolkata",
+        })
+      : null;
 
     return (
       <div
         key={offer.id}
-        className="relative bg-white rounded-3xl p-4 shadow-[0_4px_24px_rgba(0,34,97,0.08)] border border-primary/10 overflow-hidden"
+        className="relative bg-surface-container-lowest rounded-3xl p-4 sm:p-5 shadow-xs hover:shadow-md border border-outline-variant/15 transition-all overflow-hidden flex flex-col justify-between gap-3.5"
       >
-        {/* Offer badge */}
-        <div className="absolute top-4 right-4 bg-primary/8 px-2 py-1 rounded-full">
-          <span className="text-[9px] font-black uppercase tracking-widest text-primary">
-            Job Offer {offer.broadcast_tier}
-          </span>
-        </div>
-
-        {/* Live pulse indicator */}
-        <div className="flex items-center gap-2 mb-2.5">
-          <div className="relative">
-            <div className="w-2.5 h-2.5 rounded-full bg-secondary" />
-            <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-secondary animate-ping opacity-60" />
+        {/* Top Status & Tier Header */}
+        <div className="flex items-center justify-between gap-2">
+          {/* Live pulse indicator */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex items-center justify-center">
+              <div className="w-2.5 h-2.5 rounded-full bg-secondary" />
+              <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-secondary animate-ping opacity-60" />
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-widest text-secondary font-label">
+              New Job Available
+            </span>
           </div>
-          <span className="text-[10px] font-black uppercase tracking-widest text-secondary">
-            New Job Available
-          </span>
+
+          {/* Offer Tier Badge */}
+          <div className="flex items-center gap-1 bg-primary/10 text-primary px-2.5 py-1 rounded-full shrink-0">
+            <span className="material-symbols-outlined text-[13px]">bolt</span>
+            <span className="text-[9px] font-black uppercase tracking-widest">
+              Job Offer {offer.broadcast_tier}
+            </span>
+          </div>
         </div>
 
-        {/* Service info */}
-        <div className="flex items-start gap-2.5 mb-3">
+        {/* Service Title & Category Header */}
+        <div className="flex items-start gap-3">
           <ServiceCardThumbnail
             imageUrl={b.services?.image_url}
             iconName={b.services?.subcategories?.icon_name || "home_repair_service"}
-            containerClassName="w-12 h-12 rounded-xl"
-            iconClassName="w-6 h-6 text-[#059669] drop-shadow-sm"
+            containerClassName="w-12 h-12 rounded-2xl shrink-0"
+            iconClassName="w-6 h-6 text-[#059669] drop-shadow-xs"
             alt={b.services?.title || "Service"}
           />
-          <div className="min-w-0">
-            <h3 className="font-headline font-bold text-[16px] text-on-surface leading-tight">
+          <div className="min-w-0 flex-1">
+            <h3 className="font-headline font-black text-base sm:text-lg text-on-surface leading-snug tracking-tight">
               {b.services?.title ?? "Service"}
             </h3>
-            <div className="flex items-start gap-1.5 mt-1">
-              <span className="material-symbols-outlined text-[14px] text-on-surface-variant mt-0.5 shrink-0">place</span>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-on-surface-variant leading-tight">{location}</p>
-                {b.latitude && b.longitude && Number(b.latitude) !== 0 && Number(b.longitude) !== 0 ? (
-                  <a
-                    href={`https://www.google.com/maps/dir/?api=1&destination=${b.latitude},${b.longitude}&travelmode=driving&dir_action=navigate`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-bold text-primary hover:underline cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-[13px]">navigation</span>
-                    Navigate to Customer
-                  </a>
-                ) : null}
-              </div>
-            </div>
+            {b.services?.category && (
+              <p className="text-[11px] font-semibold text-on-surface-variant/80 mt-0.5">
+                {b.services.category}
+              </p>
+            )}
           </div>
         </div>
 
-        {/* Details row */}
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div className="bg-surface-container-lowest rounded-xl p-2.5 border border-outline-variant/15">
-            <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant mb-1">Schedule</p>
-            <p className="text-xs font-bold text-on-surface">
-              {b.scheduled_date
-                ? new Date(b.scheduled_date).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "Asia/Kolkata" })
-                : "TBD"}
-            </p>
+        {/* Full-Width Address & Navigation Block */}
+        <div className="bg-surface-container-low/60 rounded-2xl p-3 border border-outline-variant/10 space-y-2">
+          <div className="flex items-start gap-2">
+            <span className="material-symbols-outlined text-[16px] text-primary mt-0.5 shrink-0">place</span>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-on-surface leading-relaxed break-words">
+                {location}
+              </p>
+            </div>
           </div>
-          <div className="bg-surface-container-lowest rounded-xl p-2.5 border border-outline-variant/15">
-            <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant mb-1">Pincode</p>
-            <p className="text-xs font-bold text-on-surface">{b.pincode || "—"}</p>
+          <div className="flex items-center justify-between gap-2 pt-1 border-t border-outline-variant/10">
+            {b.pincode ? (
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-on-surface-variant">
+                <span className="text-[9px] uppercase tracking-wider text-on-surface-variant/70">Pincode:</span>
+                {b.pincode}
+              </span>
+            ) : <span />}
+
+            {b.latitude && b.longitude && Number(b.latitude) !== 0 && Number(b.longitude) !== 0 ? (
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${b.latitude},${b.longitude}&travelmode=driving&dir_action=navigate`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] font-black text-primary hover:text-primary/80 transition-colors bg-white px-2.5 py-1 rounded-lg border border-outline-variant/15 shadow-2xs"
+              >
+                <span className="material-symbols-outlined text-[13px] text-secondary">navigation</span>
+                Directions
+              </a>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Schedule & Time Metadata Strip */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-surface-container-low/40 rounded-xl px-3 py-2 border border-outline-variant/10 flex items-center gap-2">
+            <span className="material-symbols-outlined text-[16px] text-primary/70 shrink-0">calendar_today</span>
+            <div className="min-w-0">
+              <p className="text-[8px] font-black uppercase tracking-wider text-on-surface-variant/70">Schedule</p>
+              <p className="text-xs font-bold text-on-surface truncate">{scheduleDateStr}</p>
+            </div>
+          </div>
+
+          <div className="bg-surface-container-low/40 rounded-xl px-3 py-2 border border-outline-variant/10 flex items-center gap-2">
+            <span className="material-symbols-outlined text-[16px] text-primary/70 shrink-0">schedule</span>
+            <div className="min-w-0">
+              <p className="text-[8px] font-black uppercase tracking-wider text-on-surface-variant/70">Slot Time</p>
+              <p className="text-xs font-bold text-on-surface truncate">{scheduleTimeStr || "Flexible"}</p>
+            </div>
           </div>
         </div>
 
         {/* CarryBuddy Details (Offers tab) */}
         {Boolean(b.meeting_location || b.expected_bags) && (
-          <div className="mb-3 p-2.5 bg-surface-container-lowest rounded-xl border border-outline-variant/15 space-y-1">
-            <div className="flex items-center gap-1.5 text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
+          <div className="p-3 bg-surface-container-low/50 rounded-xl border border-outline-variant/10 space-y-1">
+            <div className="flex items-center gap-1.5 text-[10px] font-black text-on-surface uppercase tracking-wider">
               <span className="material-symbols-outlined text-secondary text-base">directions_walk</span>
               CarryBuddy Details
             </div>
@@ -815,18 +859,27 @@ export default function JobsClient({
           </div>
         )}
 
-        {/* Payout + Action buttons */}
-        <div className="flex items-center justify-between pt-2.5 border-t border-outline-variant/15 gap-2">
-          <div>
-            <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant">Service Price</p>
-            <p className="text-2xl font-black text-primary tracking-tighter">₹{servicePrice}</p>
+        {/* Payout Header & Ergonomic Action Buttons */}
+        <div className="pt-2 border-t border-outline-variant/10 space-y-2.5">
+          <div className="flex items-baseline justify-between">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant">
+                Service Price
+              </p>
+              <p className="text-2xl sm:text-3xl font-black text-primary tracking-tight">
+                ₹{servicePrice}
+              </p>
+            </div>
+            <p className="text-[10px] text-on-surface-variant/70 font-medium">
+              Received {new Date(offer.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" })}
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => void handleDeclineOffer(b.id)}
               disabled={isBusy}
-              className="flex items-center gap-1 text-on-surface-variant/80 border border-outline-variant/30 hover:border-error/40 hover:text-error hover:bg-error/5 px-3 py-2.5 rounded-xl font-bold text-xs active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-1/3 py-2.5 sm:py-3 rounded-xl border border-outline-variant/30 text-on-surface-variant/90 hover:border-error/40 hover:text-error hover:bg-error/5 px-3 font-bold text-xs active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
               title="Decline Offer"
             >
               {isDeclining ? (
@@ -840,27 +893,22 @@ export default function JobsClient({
             <button
               onClick={() => void handleAcceptOffer(b.id)}
               disabled={isBusy}
-              className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-black text-sm shadow-[0_8px_20px_rgba(0,34,97,0.3)] hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              className="grow py-2.5 sm:py-3 rounded-xl bg-primary text-white px-4 font-black text-sm shadow-[0_4px_16px_rgba(0,34,97,0.25)] hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isClaiming ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Accepting...
+                  <span>Accepting...</span>
                 </>
               ) : (
                 <>
                   <span className="material-symbols-outlined text-lg">check_circle</span>
-                  Accept
+                  <span>Accept</span>
                 </>
               )}
             </button>
           </div>
         </div>
-
-        {/* Time received */}
-        <p className="text-[10px] text-on-surface-variant/60 font-medium mt-2 text-right">
-          Received {new Date(offer.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" })}
-        </p>
       </div>
     );
   }
@@ -1015,7 +1063,7 @@ export default function JobsClient({
       )}
 
       {/* ─── Tab Bar ────────────────────────────────────────── */}
-      <div className="px-4 sm:px-6 lg:px-8 mt-3 flex gap-1.5 overflow-x-auto no-scrollbar max-w-7xl mx-auto">
+      <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-0.5">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -1045,7 +1093,7 @@ export default function JobsClient({
       </div>
 
       {/* ─── Tab Content ────────────────────────────────────── */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-24 lg:pb-12">
+      <div className="pt-2 pb-16">
 
         {/* Job Offers Tab */}
         {activeTab === "offers" && (
@@ -1098,20 +1146,20 @@ export default function JobsClient({
                   return (
                     <div
                       key={job.id}
-                      className="bg-surface-container-lowest rounded-3xl p-4 shadow-xs border border-outline-variant/15 relative group hover:shadow-md hover:-translate-y-0.5 transition-all flex flex-col justify-between"
+                      className="bg-surface-container-lowest rounded-3xl p-4 sm:p-5 shadow-xs border border-outline-variant/15 relative group hover:shadow-md hover:-translate-y-0.5 transition-all flex flex-col justify-between"
                     >
                     <div>
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex items-center gap-2">
+                      <div className="flex justify-between items-start mb-3 gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
                           <ServiceCardThumbnail
                             imageUrl={job.services?.image_url}
                             iconName={job.services?.subcategories?.icon_name || "home_repair_service"}
-                            containerClassName="w-9 h-9 rounded-xl"
-                            iconClassName="w-4 h-4 text-[#059669] drop-shadow-sm"
+                            containerClassName="w-10 h-10 rounded-xl shrink-0"
+                            iconClassName="w-5 h-5 text-[#059669] drop-shadow-sm"
                             alt={job.services?.title || "Service"}
                           />
-                          <div>
-                            <h3 className="font-headline font-bold text-sm leading-tight text-on-surface">
+                          <div className="min-w-0">
+                            <h3 className="font-headline font-bold text-sm leading-tight text-on-surface truncate">
                               {job.services?.title || "Untitled Service"}
                             </h3>
                             <p className="text-[10px] font-bold text-on-surface-variant/70 mt-0.5">
@@ -1119,7 +1167,7 @@ export default function JobsClient({
                             </p>
                           </div>
                         </div>
-                        <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md flex items-center gap-1 ${getStatusColor(job.status)}`}>
+                        <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md flex items-center gap-1 shrink-0 ${getStatusColor(job.status)}`}>
                           {(job.status === "in_progress" || job.status === "confirmed") && (
                             <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
                           )}
@@ -1127,252 +1175,259 @@ export default function JobsClient({
                         </span>
                       </div>
 
-                <div className="space-y-1.5 mb-3.5 pl-0.5">
-                  <div className="flex items-center gap-2 text-xs text-on-surface-variant font-semibold">
-                    <span className="material-symbols-outlined text-[15px] text-on-surface-variant/50">calendar_clock</span>
-                    {job.scheduled_date ? new Date(job.scheduled_date).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "Date TBD"}
-                  </div>
-                  <div className="flex items-start gap-2 text-xs text-on-surface-variant font-semibold">
-                    <span className="material-symbols-outlined text-[15px] text-on-surface-variant/50 mt-0.5 shrink-0">place</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="leading-tight">
-                        {job.address || 
-                          (job.area
-                            ? `${job.area}, ${job.city || ""}`
-                            : job.city || "Location TBD")
-                        }
-                      </p>
-                      {job.latitude && job.longitude && Number(job.latitude) !== 0 && Number(job.longitude) !== 0 ? (
-                        <a
-                          href={`https://www.google.com/maps/dir/?api=1&destination=${job.latitude},${job.longitude}&travelmode=driving&dir_action=navigate`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-lg bg-primary text-on-primary text-[11px] font-bold shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-[14px]">navigation</span>
-                          Navigate to Customer
-                        </a>
-                      ) : null}
-                    </div>
-                  </div>
-                  {job.customer?.full_name && (
-                    <div className="flex items-center gap-2 text-xs text-on-surface-variant font-semibold">
-                      <span className="material-symbols-outlined text-[15px] text-on-surface-variant/50">person</span>
-                      {job.customer.full_name}
-                    </div>
-                  )}
+                      <div className="space-y-2 mb-3.5">
+                        {/* Full-width address panel */}
+                        <div className="bg-surface-container-low/60 rounded-2xl p-2.5 sm:p-3 border border-outline-variant/10 space-y-1.5">
+                          <div className="flex items-start gap-2">
+                            <span className="material-symbols-outlined text-[15px] text-primary mt-0.5 shrink-0">place</span>
+                            <p className="text-xs font-semibold text-on-surface leading-snug break-words">
+                              {job.address || 
+                                (job.area
+                                  ? `${job.area}, ${job.city || ""}`
+                                  : job.city || "Location TBD")
+                              }
+                            </p>
+                          </div>
+                          {job.latitude && job.longitude && Number(job.latitude) !== 0 && Number(job.longitude) !== 0 ? (
+                            <div className="pt-1 border-t border-outline-variant/10 flex justify-end">
+                              <a
+                                href={`https://www.google.com/maps/dir/?api=1&destination=${job.latitude},${job.longitude}&travelmode=driving&dir_action=navigate`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-outline-variant/15 text-primary text-[11px] font-bold shadow-2xs hover:bg-surface-container-low transition-all"
+                              >
+                                <span className="material-symbols-outlined text-[13px] text-secondary">navigation</span>
+                                Navigate to Customer
+                              </a>
+                            </div>
+                          ) : null}
+                        </div>
 
-                  {/* CarryBuddy Details */}
-                  {Boolean(job.meeting_location || job.expected_bags) && (
-                    <div className="flex flex-col gap-1 p-2.5 bg-surface-container-low rounded-xl border border-outline-variant/10 mt-2">
-                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-on-surface">
-                        <span className="material-symbols-outlined text-secondary text-base">directions_walk</span>
-                        CarryBuddy Details
-                      </div>
-                      <p className="text-[11px] text-on-surface-variant font-semibold leading-relaxed">
-                        <span className="font-bold text-on-surface-variant/80">Meet At:</span> {job.meeting_location}
-                      </p>
-                      {job.destination && (
-                        <p className="text-[11px] text-on-surface-variant font-semibold leading-relaxed">
-                          <span className="font-bold text-on-surface-variant/80">Drop At:</span> {job.destination}
-                        </p>
-                      )}
-                      <p className="text-[11px] text-on-surface-variant font-semibold leading-relaxed">
-                        <span className="font-bold text-on-surface-variant/80">Bags/Items:</span> {job.expected_bags || 1}
-                      </p>
-                    </div>
-                  )}
-                  
-                  {/* Hourly Job Countdown Timer */}
-                  {job.pricing_model === "hourly" && (
-                    <div className="flex items-center justify-between p-2.5 bg-primary/5 rounded-xl border border-primary/10 mt-2 font-body">
-                      <div>
-                        <p className="text-[8px] uppercase font-bold text-primary/70 tracking-wider">Booked Duration</p>
-                        <p className="text-[11px] font-extrabold text-primary">{job.selected_duration_minutes} Mins</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[8px] uppercase font-bold text-primary/70 tracking-wider">Time Remaining</p>
-                        {job.status === "in_progress" && job.started_at ? (
-                          <p className={`text-[11px] font-black tracking-tight ${getHourlyTimeRemaining(job) < 600 && getHourlyTimeRemaining(job) > 0 ? "text-red-600 animate-pulse font-extrabold" : "text-primary"}`}>
-                            {formatSecondsLeft(getHourlyTimeRemaining(job))}
-                          </p>
-                        ) : (
-                          <p className="text-[11px] font-bold text-on-surface-variant/70">Not Started Yet</p>
+                        {/* Date & Customer Chips */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div className="flex items-center gap-2 text-xs text-on-surface-variant font-semibold bg-surface-container-low/40 rounded-xl px-2.5 py-2 border border-outline-variant/10">
+                            <span className="material-symbols-outlined text-[15px] text-primary/70 shrink-0">calendar_clock</span>
+                            <span className="truncate">{job.scheduled_date ? new Date(job.scheduled_date).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "Date TBD"}</span>
+                          </div>
+                          {job.customer?.full_name ? (
+                            <div className="flex items-center gap-2 text-xs text-on-surface-variant font-semibold bg-surface-container-low/40 rounded-xl px-2.5 py-2 border border-outline-variant/10">
+                              <span className="material-symbols-outlined text-[15px] text-primary/70 shrink-0">person</span>
+                              <span className="truncate">{job.customer.full_name}</span>
+                            </div>
+                          ) : null}
+                        </div>
+
+                        {/* CarryBuddy Details */}
+                        {Boolean(job.meeting_location || job.expected_bags) && (
+                          <div className="flex flex-col gap-1 p-2.5 bg-surface-container-low rounded-xl border border-outline-variant/10">
+                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-on-surface">
+                              <span className="material-symbols-outlined text-secondary text-base">directions_walk</span>
+                              CarryBuddy Details
+                            </div>
+                            <p className="text-[11px] text-on-surface-variant font-semibold leading-relaxed">
+                              <span className="font-bold text-on-surface-variant/80">Meet At:</span> {job.meeting_location}
+                            </p>
+                            {job.destination && (
+                              <p className="text-[11px] text-on-surface-variant font-semibold leading-relaxed">
+                                <span className="font-bold text-on-surface-variant/80">Drop At:</span> {job.destination}
+                              </p>
+                            )}
+                            <p className="text-[11px] text-on-surface-variant font-semibold leading-relaxed">
+                              <span className="font-bold text-on-surface-variant/80">Bags/Items:</span> {job.expected_bags || 1}
+                            </p>
+                          </div>
+                        )}
+                        
+                        {/* Hourly Job Countdown Timer */}
+                        {job.pricing_model === "hourly" && (
+                          <div className="flex items-center justify-between p-2.5 bg-primary/5 rounded-xl border border-primary/10 font-body">
+                            <div>
+                              <p className="text-[8px] uppercase font-bold text-primary/70 tracking-wider">Booked Duration</p>
+                              <p className="text-[11px] font-extrabold text-primary">{job.selected_duration_minutes} Mins</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[8px] uppercase font-bold text-primary/70 tracking-wider">Time Remaining</p>
+                              {job.status === "in_progress" && job.started_at ? (
+                                <p className={`text-[11px] font-black tracking-tight ${getHourlyTimeRemaining(job) < 600 && getHourlyTimeRemaining(job) > 0 ? "text-red-600 animate-pulse font-extrabold" : "text-primary"}`}>
+                                  {formatSecondsLeft(getHourlyTimeRemaining(job))}
+                                </p>
+                              ) : (
+                                <p className="text-[11px] font-bold text-on-surface-variant/70">Not Started Yet</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Hourly Extension Status Check */}
+                        {job.pricing_model === "hourly" && extensionsMap[job.id]?.length > 0 && (
+                          <div className="p-2.5 bg-surface-container-low rounded-xl border border-outline-variant/15 text-[10px] font-semibold text-on-surface-variant font-body">
+                            {(() => {
+                              const latest = extensionsMap[job.id][0];
+                              const durationStr = latest.additional_minutes >= 60
+                                ? `${latest.additional_minutes / 60} Hr${latest.additional_minutes === 60 ? "" : "s"}`
+                                : `${latest.additional_minutes} Mins`;
+                              if (latest.status === "requested") {
+                                return (
+                                  <span className="text-amber-600 flex items-center gap-1.5 animate-pulse">
+                                    <span className="material-symbols-outlined text-[13px]">hourglass_empty</span>
+                                    Requested +{durationStr} (₹{latest.additional_amount}) &middot; Waiting for customer
+                                  </span>
+                                );
+                              }
+                              if (latest.status === "payment_pending") {
+                                return (
+                                  <span className="text-blue-600 flex items-center gap-1.5 animate-pulse">
+                                    <span className="material-symbols-outlined text-[13px]">pending</span>
+                                    Approved &middot; Waiting for customer payment (₹{latest.additional_amount})
+                                  </span>
+                                );
+                              }
+                              if (latest.status === "rejected") {
+                                return (
+                                  <span className="text-red-600 flex items-center gap-1.5">
+                                    <span className="material-symbols-outlined text-[13px]">cancel</span>
+                                    Extra time declined by customer
+                                  </span>
+                                );
+                              }
+                              if (latest.status === "paid" || latest.status === "active") {
+                                return (
+                                  <span className="text-[#059669] flex items-center gap-1.5">
+                                    <span className="material-symbols-outlined text-[13px]">check_circle</span>
+                                    Extra time added: +{durationStr}
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+                        )}
+
+                        {/* Inspection Quote Creation & Info Section */}
+                        {job.pricing_model === "inspection" && (
+                          <div className="p-2.5 bg-surface-container-low rounded-xl border border-outline-variant/15 text-[10px] font-semibold text-on-surface-variant font-body">
+                            {(() => {
+                              const quote = quotesMap[job.id];
+                              if (!quote) {
+                                return (
+                                  <div className="space-y-2">
+                                    <p className="text-[11px] text-on-surface-variant font-medium">No price quote created yet for this inspection job.</p>
+                                    {activeQuoteFormId === job.id ? (
+                                      <div className="border border-outline-variant/10 rounded-xl p-3 bg-white">
+                                        <QuotationWorkflow
+                                          bookingId={job.id}
+                                          role="partner"
+                                          onSuccess={() => {
+                                            setActiveQuoteFormId(null);
+                                            void forceRefreshJobs();
+                                          }}
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => setActiveQuoteFormId(null)}
+                                          className="mt-2 text-[11px] font-bold text-on-surface-variant hover:underline"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => setActiveQuoteFormId(job.id)}
+                                        className="w-full py-2 bg-primary text-white text-[11px] font-bold rounded-xl hover:opacity-90 transition-opacity"
+                                      >
+                                        Create Price Quote
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              
+                              if (quote.status === "pending_customer_approval") {
+                                return (
+                                  <div className="space-y-1">
+                                    <p className="text-[11px] font-bold text-amber-600 flex items-center gap-1.5">
+                                      <span className="material-symbols-outlined text-[13px]">hourglass_empty</span>
+                                      Quote Pending Approval: ₹{quote.total_amount}
+                                    </p>
+                                    <p className="text-[9px] text-on-surface-variant/65">Please wait for the customer to approve before starting work.</p>
+                                  </div>
+                                );
+                              }
+
+                              if (quote.status === "approved") {
+                                return (
+                                  <p className="text-[11px] font-bold text-green-600 flex items-center gap-1.5">
+                                    <span className="material-symbols-outlined text-[13px]">check_circle</span>
+                                    Customer Approved Quote: ₹{quote.total_amount}
+                                  </p>
+                                );
+                              }
+
+                              if (quote.status === "declined") {
+                                return (
+                                  <div className="space-y-2">
+                                    <p className="text-[11px] font-bold text-red-600 flex items-center gap-1.5">
+                                      <span className="material-symbols-outlined text-[13px]">cancel</span>
+                                      Customer Declined Quote: ₹{quote.total_amount}
+                                    </p>
+                                    {activeQuoteFormId === job.id ? (
+                                      <div className="border border-outline-variant/10 rounded-xl p-3 bg-white">
+                                        <QuotationWorkflow
+                                          bookingId={job.id}
+                                          role="partner"
+                                          onSuccess={() => {
+                                            setActiveQuoteFormId(null);
+                                            void forceRefreshJobs();
+                                          }}
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => setActiveQuoteFormId(null)}
+                                          className="mt-2 text-[11px] font-bold text-on-surface-variant hover:underline"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => setActiveQuoteFormId(job.id)}
+                                        className="w-full py-2 bg-primary text-white text-[11px] font-bold rounded-xl hover:opacity-90 transition-opacity"
+                                      >
+                                        Submit New Quote
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              }
+
+                              return null;
+                            })()}
+                          </div>
                         )}
                       </div>
                     </div>
-                  )}
 
-                  {/* Hourly Extension Status Check */}
-                  {job.pricing_model === "hourly" && extensionsMap[job.id]?.length > 0 && (
-                    <div className="mt-2 p-2.5 bg-surface-container-low rounded-xl border border-outline-variant/15 text-[10px] font-semibold text-on-surface-variant font-body">
-                      {(() => {
-                        const latest = extensionsMap[job.id][0];
-                        const durationStr = latest.additional_minutes >= 60
-                          ? `${latest.additional_minutes / 60} Hr${latest.additional_minutes === 60 ? "" : "s"}`
-                          : `${latest.additional_minutes} Mins`;
-                        if (latest.status === "requested") {
-                          return (
-                            <span className="text-amber-600 flex items-center gap-1.5 animate-pulse">
-                              <span className="material-symbols-outlined text-[13px]">hourglass_empty</span>
-                              Requested +{durationStr} (₹{latest.additional_amount}) &middot; Waiting for customer
-                            </span>
-                          );
-                        }
-                        if (latest.status === "payment_pending") {
-                          return (
-                            <span className="text-blue-600 flex items-center gap-1.5 animate-pulse">
-                              <span className="material-symbols-outlined text-[13px]">pending</span>
-                              Approved &middot; Waiting for customer payment (₹{latest.additional_amount})
-                            </span>
-                          );
-                        }
-                        if (latest.status === "rejected") {
-                          return (
-                            <span className="text-red-600 flex items-center gap-1.5">
-                              <span className="material-symbols-outlined text-[13px]">cancel</span>
-                              Extra time declined by customer
-                            </span>
-                          );
-                        }
-                        if (latest.status === "paid" || latest.status === "active") {
-                          return (
-                            <span className="text-[#059669] flex items-center gap-1.5">
-                              <span className="material-symbols-outlined text-[13px]">check_circle</span>
-                              Extra time added: +{durationStr}
-                            </span>
-                          );
-                        }
-                        return null;
-                      })()}
+                    <div className="pt-3 border-t border-surface-variant/30 flex justify-between items-center bg-white/40 -mx-4 -mb-4 sm:-mx-5 sm:-mb-5 px-4 sm:px-5 py-3 rounded-b-3xl">
+                      <div className="flex flex-col">
+                        <span className="text-[9px] uppercase font-bold text-on-surface-variant tracking-wider">
+                          Service Price
+                        </span>
+                        <span className="text-xl font-black text-on-surface tracking-tight">
+                          ₹{jobPrice}
+                        </span>
+                      </div>
+                      {getActionButton(job)}
                     </div>
-                  )}
-
-                  {/* Inspection Quote Creation & Info Section */}
-                  {job.pricing_model === "inspection" && (
-                    <div className="mt-2 p-2.5 bg-surface-container-low rounded-xl border border-outline-variant/15 text-[10px] font-semibold text-on-surface-variant font-body">
-                      {(() => {
-                        const quote = quotesMap[job.id];
-                        if (!quote) {
-                          return (
-                            <div className="space-y-2">
-                              <p className="text-[11px] text-on-surface-variant font-medium">No price quote created yet for this inspection job.</p>
-                              {activeQuoteFormId === job.id ? (
-                                <div className="border border-outline-variant/10 rounded-xl p-3 bg-white">
-                                  <QuotationWorkflow
-                                    bookingId={job.id}
-                                    role="partner"
-                                    onSuccess={() => {
-                                      setActiveQuoteFormId(null);
-                                      void forceRefreshJobs();
-                                    }}
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => setActiveQuoteFormId(null)}
-                                    className="mt-2 text-[11px] font-bold text-on-surface-variant hover:underline"
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => setActiveQuoteFormId(job.id)}
-                                  className="w-full py-2 bg-primary text-white text-[11px] font-bold rounded-xl hover:opacity-90 transition-opacity"
-                                >
-                                  Create Price Quote
-                                </button>
-                              )}
-                            </div>
-                          );
-                        }
-                        
-                        if (quote.status === "pending_customer_approval") {
-                          return (
-                            <div className="space-y-1">
-                              <p className="text-[11px] font-bold text-amber-600 flex items-center gap-1.5">
-                                <span className="material-symbols-outlined text-[13px]">hourglass_empty</span>
-                                Quote Pending Approval: ₹{quote.total_amount}
-                              </p>
-                              <p className="text-[9px] text-on-surface-variant/65">Please wait for the customer to approve before starting work.</p>
-                            </div>
-                          );
-                        }
-
-                        if (quote.status === "approved") {
-                          return (
-                            <p className="text-[11px] font-bold text-green-600 flex items-center gap-1.5">
-                              <span className="material-symbols-outlined text-[13px]">check_circle</span>
-                              Customer Approved Quote: ₹{quote.total_amount}
-                            </p>
-                          );
-                        }
-
-                        if (quote.status === "declined") {
-                          return (
-                            <div className="space-y-2">
-                              <p className="text-[11px] font-bold text-red-600 flex items-center gap-1.5">
-                                <span className="material-symbols-outlined text-[13px]">cancel</span>
-                                Customer Declined Quote: ₹{quote.total_amount}
-                              </p>
-                              {activeQuoteFormId === job.id ? (
-                                <div className="border border-outline-variant/10 rounded-xl p-3 bg-white">
-                                  <QuotationWorkflow
-                                    bookingId={job.id}
-                                    role="partner"
-                                    onSuccess={() => {
-                                      setActiveQuoteFormId(null);
-                                      void forceRefreshJobs();
-                                    }}
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => setActiveQuoteFormId(null)}
-                                    className="mt-2 text-[11px] font-bold text-on-surface-variant hover:underline"
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => setActiveQuoteFormId(job.id)}
-                                  className="w-full py-2 bg-primary text-white text-[11px] font-bold rounded-xl hover:opacity-90 transition-opacity"
-                                >
-                                  Submit New Quote
-                                </button>
-                              )}
-                            </div>
-                          );
-                        }
-
-                        return null;
-                      })()}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-                <div className="pt-3 border-t border-surface-variant/30 flex justify-between items-center bg-white/40 -mx-4 -mb-4 px-4 py-3 rounded-b-3xl">
-                  <div className="flex flex-col">
-                    <span className="text-[9px] uppercase font-bold text-on-surface-variant tracking-wider">
-                      Service Price
-                    </span>
-                    <span className="text-xl font-black text-on-surface tracking-tight">
-                      ₹{jobPrice}
-                    </span>
                   </div>
-                  {getActionButton(job)}
-                </div>
+                );
+              })}
               </div>
-            );
-          })}
-          </div>
-          )}
+            )}
           </>
         )}
-      </main>
+      </div>
     </>
   );
 }

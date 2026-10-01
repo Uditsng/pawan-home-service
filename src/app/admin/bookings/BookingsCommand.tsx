@@ -623,7 +623,12 @@ export function BookingsCommand({
     setAssignError(null);
     startTransition(async () => {
       try {
-        await manualAssignPartnerAction(bookingId, partnerId);
+        const res = await manualAssignPartnerAction(bookingId, partnerId);
+        if (!res.success) {
+          setAssignError(res.error || "Failed to assign professional.");
+          return;
+        }
+
         const assignedPartner = availablePartners.find((p) => p.id === partnerId);
         setBookings((prev) =>
           prev.map((b) =>

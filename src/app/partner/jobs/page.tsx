@@ -95,13 +95,13 @@ export default async function PartnerJobsPage() {
 
   return (
     <div className="bg-surface font-body text-on-surface antialiased min-h-screen pb-24">
-      <main className="max-w-7xl mx-auto px-4 pt-4 space-y-4">
-        <div className="flex justify-between items-center">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-4 space-y-4">
+        <div className="flex justify-between items-center px-0.5">
           <div>
-            <h1 className="text-xl font-black font-headline tracking-tighter text-on-surface">
+            <h1 className="text-xl sm:text-2xl font-black font-headline tracking-tighter text-on-surface">
               My Jobs
             </h1>
-            <p className="text-xs font-semibold text-on-surface-variant flex items-center gap-1 mt-0.5">
+            <p className="text-xs sm:text-sm font-semibold text-on-surface-variant flex items-center gap-1 mt-0.5">
               Manage offers, assigned, and active jobs.
             </p>
           </div>

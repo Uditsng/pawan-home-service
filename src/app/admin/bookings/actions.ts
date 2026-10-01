@@ -185,12 +185,17 @@ export async function updateBookingStatusAction(
  * atomic assignment, competing offer expiration, availability update,
  * and metric single-ownership.
  */
+export type ManualAssignResult = {
+  success: boolean;
+  error?: string;
+};
+
 export async function manualAssignPartnerAction(
   bookingId: string,
   partnerId: string,
   overrideEligibility: boolean = false,
   overrideReason?: string
-) {
+): Promise<ManualAssignResult> {
   await requireAdmin();
   const supabase = await createClient();
 
@@ -203,26 +208,33 @@ export async function manualAssignPartnerAction(
   });
 
   if (rpcError) {
-    handleDatabaseError(rpcError);
+    if (rpcError.code === "PGRST202" || rpcError.message?.includes("Could not find the function")) {
+      return {
+        success: false,
+        error: "A required database function is missing. Please run the assignment migrations in Supabase.",
+      };
+    }
+    return {
+      success: false,
+      error: rpcError.message || "Database assignment failed.",
+    };
   }
 
   const assignResult = result as { success: boolean; reason?: string };
 
   if (!assignResult || !assignResult.success) {
-    switch (assignResult?.reason) {
-      case "already_assigned":
-        throw new Error("This booking has already been assigned to another professional.");
-      case "service_mismatch":
-        throw new Error("Selected professional does not offer this service. Use force assignment if intentional.");
-      case "pincode_mismatch":
-        throw new Error("Selected professional does not serve this pincode. Use force assignment if intentional.");
-      case "partner_not_active":
-        throw new Error("Selected professional is currently inactive or offline.");
-      case "invalid_partner":
-        throw new Error("Selected user is not an active professional.");
-      default:
-        throw new Error(assignResult?.reason || "Failed to assign professional.");
-    }
+    const errorMap: Record<string, string> = {
+      already_assigned: "This booking has already been assigned to another professional.",
+      service_mismatch: "Selected professional does not offer this service. Use force assignment if intentional.",
+      pincode_mismatch: "Selected professional does not serve this pincode. Use force assignment if intentional.",
+      partner_not_active: "Selected professional is currently inactive or offline.",
+      invalid_partner: "Selected user is not an active professional.",
+    };
+
+    return {
+      success: false,
+      error: errorMap[assignResult?.reason ?? ""] || assignResult?.reason || "Failed to assign professional.",
+    };
   }
 
   // Log assignment event

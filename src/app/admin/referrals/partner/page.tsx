@@ -3,7 +3,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { requireAdmin } from "@/utils/supabase/auth-checks";
-import { format } from "date-fns";
+import { formatBookingCreatedAt } from "@/utils/dateFormat";
 
 export const metadata: Metadata = {
   title: "Partner Referrals | Admin — PHS Cleaning Company",
@@ -202,7 +202,7 @@ export default async function AdminPartnerReferralsPage() {
                       </td>
                       <td className="px-5 py-3.5">
                         <p className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-wider">
-                          {format(new Date(ref.created_at), "dd MMM yyyy")}
+                          {formatBookingCreatedAt(ref.created_at)}
                         </p>
                       </td>
                       <td className="px-5 py-3.5 text-right">
@@ -243,7 +243,7 @@ export default async function AdminPartnerReferralsPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-[10px] font-black text-primary truncate uppercase">{partnerName} → {referredName}</p>
                       <p className="text-[9px] font-bold text-on-surface-variant/50 truncate">
-                        {format(new Date(ref.created_at), "dd MMM yyyy")}
+                        {formatBookingCreatedAt(ref.created_at)}
                       </p>
                     </div>
                     <div className="text-right shrink-0 space-y-1">
@@ -299,7 +299,7 @@ export default async function AdminPartnerReferralsPage() {
                     </td>
                     <td className="px-5 py-3.5">
                       <p className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-wider">
-                        {format(new Date(code.created_at), "dd MMM yyyy")}
+                        {formatBookingCreatedAt(code.created_at)}
                       </p>
                     </td>
                   </tr>

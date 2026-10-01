@@ -3,10 +3,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { formatBookingCreatedAt, formatForCSV, formatBookingScheduledDate } from "@/utils/dateFormat";
 import {
   getAdminNotifications,
   duplicateAdminNotification,
@@ -302,8 +302,8 @@ export function NotificationsConsole({
       n.priority,
       n.audience_type,
       n.status,
-      n.scheduled_at ? format(new Date(n.scheduled_at), "yyyy-MM-dd HH:mm:ss") : "",
-      format(new Date(n.created_at), "yyyy-MM-dd HH:mm:ss"),
+      n.scheduled_at ? formatBookingScheduledDate(n.scheduled_at) : "",
+      formatBookingCreatedAt(n.created_at),
       n.recipient_count,
       n.success_count,
       n.failure_count
@@ -315,7 +315,7 @@ export function NotificationsConsole({
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `phs_notifications_export_${format(new Date(), "yyyyMMdd_HHmmss")}.csv`);
+    link.setAttribute("download", `phs_notifications_export_${formatForCSV(new Date())}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -710,12 +710,12 @@ export function NotificationsConsole({
                         <div className="space-y-1">
                           <div>
                             <span className="text-[9px] text-on-surface-variant/40 block leading-none uppercase">Created</span>
-                            {format(new Date(notif.created_at), "dd MMM yy · hh:mm a")}
+                            {formatBookingCreatedAt(notif.created_at)}
                           </div>
                           {notif.scheduled_at && (
                             <div>
                               <span className="text-[9px] text-amber-700/50 block leading-none uppercase">Scheduled</span>
-                              {format(new Date(notif.scheduled_at), "dd MMM yy · hh:mm a")}
+                              {formatBookingScheduledDate(notif.scheduled_at)}
                             </div>
                           )}
                         </div>

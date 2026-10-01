@@ -2,9 +2,9 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { format } from "date-fns";
 import { regenerateInvoiceAction } from "./actions";
 import type { AdminInvoice } from "./page";
+import { formatBookingCreatedAt, formatBookingScheduledDate, formatForCSV } from "@/utils/dateFormat";
 
 interface CompletedWithoutInvoice {
   id: string;
@@ -159,7 +159,7 @@ export default function InvoicesConsole({
 
     const rows = toExport.map((inv) => [
       inv.invoice_number,
-      format(new Date(inv.created_at), "yyyy-MM-dd HH:mm"),
+      formatBookingCreatedAt(inv.created_at),
       inv.booking ? `BK-${inv.booking.id.substring(0, 6).toUpperCase()}` : "—",
       inv.booking?.services?.title || "—",
       inv.customer?.full_name || "—",
@@ -181,7 +181,7 @@ export default function InvoicesConsole({
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `phs_invoices_${format(new Date(), "yyyy-MM-dd")}.csv`);
+    link.setAttribute("download", `phs_invoices_${formatForCSV(new Date())}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -379,7 +379,7 @@ export default function InvoicesConsole({
                         <td className="px-4 py-3">
                           <p className="text-xs font-black text-primary uppercase font-mono tracking-tighter">{inv.invoice_number}</p>
                           <p className="text-[10px] font-black text-on-surface-variant/40 uppercase tracking-widest mt-0.5">
-                            {format(new Date(inv.created_at), "MMM dd, yyyy")}
+                            {formatBookingCreatedAt(inv.created_at)}
                           </p>
                         </td>
                         <td className="px-3 py-3">
@@ -494,7 +494,7 @@ export default function InvoicesConsole({
                     <div>
                       <p className="text-xs font-black text-primary uppercase font-mono tracking-tighter">{inv.invoice_number}</p>
                       <p className="text-[10px] font-bold text-on-surface-variant/40 mt-0.5">
-                        {format(new Date(inv.created_at), "MMM dd, yyyy")}
+                        {formatBookingCreatedAt(inv.created_at)}
                       </p>
                     </div>
                     <span className="text-sm font-black text-primary tracking-tighter">₹{inv.grand_total.toFixed(2)}</span>
@@ -575,7 +575,7 @@ export default function InvoicesConsole({
                   </div>
                   <div className="text-[9px] text-on-surface-variant/60 font-medium">
                     <p>{b.customer_name} · ₹{b.total_amount.toLocaleString()}</p>
-                    {b.scheduled_date && <p>{format(new Date(b.scheduled_date), "MMM dd, yyyy")}</p>}
+                    {b.scheduled_date && <p>{formatBookingScheduledDate(b.scheduled_date)}</p>}
                   </div>
                   <button
                     onClick={() => handleRegenerate(b.id)}

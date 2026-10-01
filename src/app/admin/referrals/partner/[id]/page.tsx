@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { format } from "date-fns";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -11,6 +10,7 @@ import {
   rewardPartnerReferralAction,
   reversePartnerReferralAction,
 } from "../actions";
+import { formatBookingCreatedAt } from "@/utils/dateFormat";
 
 export const dynamic = "force-dynamic";
 
@@ -100,7 +100,7 @@ const triggerLabel: Record<string, string> = {
 
 function formatWhen(value: string | null): string {
   if (!value) return "—";
-  return format(new Date(value), "dd MMM yyyy, hh:mm a");
+  return formatBookingCreatedAt(value);
 }
 
 export default async function PartnerReferralDetailPage({ params }: PartnerReferralDetailPageProps) {

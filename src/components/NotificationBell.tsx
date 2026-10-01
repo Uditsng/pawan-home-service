@@ -10,6 +10,7 @@ import { playJobAlertTone } from "@/lib/sound";
 import { IN_APP_AUDIBLE_TYPES, shouldChimeInApp } from "@/lib/notifications/types";
 import type { Portal } from "@/lib/notifications/types";
 import { reportNotificationReceipt } from "@/app/actions/notification-receipts";
+import { formatNotificationTime } from "@/utils/dateFormat";
 
 // ─── Icon Map ────────────────────────────────────────────
 const typeIcons: Record<string, string> = {
@@ -39,8 +40,8 @@ const typeColors: Record<string, string> = {
 };
 
 
-// ─── Time Ago ────────────────────────────────────────────────
-function timeAgo(dateStr: string): string {
+// ─── Time Ago with Absolute Fallback ────────────────────────────────────────────────
+function formatNotificationTimeWithFallback(dateStr: string): string {
   const seconds = Math.floor(
     (Date.now() - new Date(dateStr).getTime()) / 1000
   );
@@ -51,10 +52,8 @@ function timeAgo(dateStr: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString("en-IN", {
-    month: "short",
-    day: "numeric",
-  });
+  // Fallback to absolute IST timestamp for older notifications
+  return formatNotificationTime(dateStr);
 }
 
 // ─── Notification Bell Component ────────────────────────────
@@ -514,7 +513,7 @@ export default function NotificationBell() {
                         {notif.body}
                       </p>
                       <p className="text-[10px] text-on-surface-variant/40 mt-1 font-bold uppercase tracking-wider">
-                        {timeAgo(notif.created_at)}
+                        {formatNotificationTimeWithFallback(notif.created_at)}
                       </p>
                     </div>
                   </div>

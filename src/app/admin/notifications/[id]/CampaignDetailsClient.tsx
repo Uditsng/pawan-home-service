@@ -3,10 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { formatBookingCreatedAt, formatBookingScheduledDate } from "@/utils/dateFormat";
 import {
   duplicateAdminNotification,
   cancelScheduledNotification,
@@ -279,14 +279,14 @@ export function CampaignDetailsClient({
               <div>
                 <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase block leading-none mb-1">Created At</span>
                 <span className="font-semibold text-on-surface-variant text-[11px]">
-                  {format(new Date(campaign.created_at), "dd MMM yy · hh:mm a")}
+                  {formatBookingCreatedAt(campaign.created_at)}
                 </span>
               </div>
               {campaign.scheduled_at && (
                 <div>
                   <span className="text-[9px] font-bold text-amber-700/50 block leading-none mb-1">Scheduled At</span>
                   <span className="font-bold text-amber-700 text-[11px]">
-                    {format(new Date(campaign.scheduled_at), "dd MMM yy · hh:mm a")}
+                    {formatBookingScheduledDate(campaign.scheduled_at)}
                   </span>
                 </div>
               )}
@@ -294,7 +294,7 @@ export function CampaignDetailsClient({
                 <div>
                   <span className="text-[9px] font-bold text-on-surface-variant/40 block leading-none mb-1">Expires At</span>
                   <span className="font-semibold text-on-surface-variant text-[11px]">
-                    {format(new Date(campaign.expires_at), "dd MMM yy · hh:mm a")}
+                    {formatBookingScheduledDate(campaign.expires_at)}
                   </span>
                 </div>
               )}
@@ -356,7 +356,7 @@ export function CampaignDetailsClient({
                         )}
                       </td>
                       <td className="px-6 py-3.5 text-right font-medium text-on-surface-variant/50 text-[10px]">
-                        {format(new Date(log.sent_at), "dd MMM yy · hh:mm a")}
+                        {formatBookingCreatedAt(log.sent_at)}
                       </td>
                     </tr>
                   ))

@@ -1,7 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
-import { format } from "date-fns";
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
+import { formatBookingCreatedAt } from "@/utils/dateFormat";
 
 // ─── Interfaces ──────────────────────────────────────────────
 
@@ -365,7 +365,7 @@ export default async function AdminDashboardPage() {
                       </td>
                       <td className="px-5 py-3.5 text-right">
                         <p className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-wider">
-                          {format(new Date(booking.created_at), "dd MMM · hh:mm a")}
+                          {formatBookingCreatedAt(booking.created_at)}
                         </p>
                       </td>
                     </tr>

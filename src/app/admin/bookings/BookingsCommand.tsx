@@ -4,7 +4,6 @@ import React, { useState, useTransition, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
-import { format } from "date-fns";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
@@ -22,6 +21,12 @@ import {
   markCashReceivedAction,
 } from "./actions";
 import type { BookingPricingData } from "./actions";
+import {
+  formatBookingCreatedAt,
+  formatBookingScheduledDate,
+  formatForCSV,
+  formatNotificationTime,
+} from "@/utils/dateFormat";
 
 // ─── Props Interface ─────────────────────────────────────────
 
@@ -100,7 +105,7 @@ const formatMetadataValue = (value: unknown, keyName: string): React.ReactNode =
 
     if (value.length >= 19 && !isNaN(Date.parse(value)) && (value.includes("T") || value.includes("-"))) {
       try {
-        return <span>{format(new Date(value), "PPP · p")}</span>;
+        return <span>{formatBookingCreatedAt(value)}</span>;
       } catch {
         // Fall back
       }
@@ -500,7 +505,7 @@ export function BookingsCommand({
 
     // Date filter
     if (dateFilter && booking.created_at) {
-      const bookingDate = format(new Date(booking.created_at), "yyyy-MM-dd");
+      const bookingDate = formatForCSV(booking.created_at).split(" ")[0];
       if (bookingDate !== dateFilter) return false;
     }
 
@@ -528,9 +533,9 @@ export function BookingsCommand({
       b.city || "",
       `₹${b.total_amount.toLocaleString()}`,
       b.payment_method || "UPI",
-      b.created_at ? format(new Date(b.created_at), "yyyy-MM-dd") : "",
-      b.scheduled_date ? format(new Date(b.scheduled_date), "yyyy-MM-dd") : "",
-      b.completed_at ? format(new Date(b.completed_at), "yyyy-MM-dd") : b.cancelled_at ? format(new Date(b.cancelled_at), "yyyy-MM-dd") : "",
+      b.created_at ? formatForCSV(b.created_at) : "",
+      b.scheduled_date ? formatForCSV(b.scheduled_date) : "",
+      b.completed_at ? formatForCSV(b.completed_at) : b.cancelled_at ? formatForCSV(b.cancelled_at) : "",
     ]);
     const csvContent =
       "data:text/csv;charset=utf-8," +
@@ -1029,7 +1034,7 @@ export function BookingsCommand({
                         </p>
                         <p className="text-[9px] font-bold text-on-surface-variant/50 uppercase tracking-widest leading-none mt-0.5">
                           {booking.created_at
-                            ? format(new Date(booking.created_at), "MMM dd, yyyy · hh:mm a")
+                            ? formatBookingCreatedAt(booking.created_at)
                             : "Unscheduled"}
                         </p>
                       </td>
@@ -1215,7 +1220,7 @@ export function BookingsCommand({
                         BK-{booking.id.slice(0, 8).toUpperCase()}
                       </p>
                       <p className="text-[9px] text-on-surface-variant/50 font-bold uppercase tracking-widest mt-0.5">
-                        {booking.created_at ? format(new Date(booking.created_at), "MMM dd, yyyy") : "N/A"}
+                        {booking.created_at ? formatBookingCreatedAt(booking.created_at) : "N/A"}
                       </p>
                     </div>
                     <Badge variant={statusConf.variant} className="text-[9px] px-1.5 py-0">
@@ -1423,7 +1428,7 @@ export function BookingsCommand({
                         <span className="absolute -left-8 top-0 w-4 h-4 rounded-full bg-secondary border-2 border-white"></span>
                         <p className="text-xs font-bold text-primary">Service Completed</p>
                         <p className="text-[10px] text-on-surface-variant/60 mt-0.5">
-                          {format(new Date(selectedBooking.completed_at), "PPP · p")}
+                          {formatBookingCreatedAt(selectedBooking.completed_at)}
                         </p>
                       </div>
                     )}
@@ -1432,7 +1437,7 @@ export function BookingsCommand({
                         <span className="absolute -left-7.75 top-0 w-4 h-4 rounded-full bg-red-500 border-2 border-white"></span>
                         <p className="text-xs font-bold text-red-600">Booking Cancelled</p>
                         <p className="text-[10px] text-on-surface-variant/60 mt-0.5">
-                          By: {selectedBooking.cancelled_by || "System"} · {format(new Date(selectedBooking.cancelled_at), "PPP · p")}
+                          By: {selectedBooking.cancelled_by || "System"} · {formatBookingCreatedAt(selectedBooking.cancelled_at)}
                         </p>
                         {selectedBooking.cancellation_reason && (
                           <p className="text-[10px] text-on-surface-variant/70 italic mt-1 bg-surface-container p-2 rounded-lg border border-outline-variant/10">
@@ -1446,7 +1451,7 @@ export function BookingsCommand({
                         <span className="absolute -left-7.75 top-0 w-4 h-4 rounded-full bg-blue-500 border-2 border-white"></span>
                         <p className="text-xs font-bold text-primary">Service In Progress</p>
                         <p className="text-[10px] text-on-surface-variant/60 mt-0.5">
-                          {format(new Date(selectedBooking.started_at), "PPP · p")}
+                          {formatBookingCreatedAt(selectedBooking.started_at)}
                         </p>
                       </div>
                     )}
@@ -1455,7 +1460,7 @@ export function BookingsCommand({
                         <span className="absolute -left-7.75 top-0 w-4 h-4 rounded-full bg-primary border-2 border-white"></span>
                         <p className="text-xs font-bold text-primary">Professional Assigned</p>
                         <p className="text-[10px] text-on-surface-variant/60 mt-0.5">
-                          {selectedBooking.partner?.full_name || "Professional"} confirmed · {format(new Date(selectedBooking.accepted_at), "PPP · p")}
+                          {selectedBooking.partner?.full_name || "Professional"} confirmed · {formatBookingCreatedAt(selectedBooking.accepted_at)}
                         </p>
                       </div>
                     )}
@@ -1463,7 +1468,7 @@ export function BookingsCommand({
                       <span className="absolute -left-7.75 top-0 w-4 h-4 rounded-full bg-on-surface-variant/30 border-2 border-white"></span>
                       <p className="text-xs font-bold text-primary">Booking Created</p>
                       <p className="text-[10px] text-on-surface-variant/60 mt-0.5">
-                        {selectedBooking.created_at ? format(new Date(selectedBooking.created_at), "PPP · p") : "N/A"}
+                        {selectedBooking.created_at ? formatBookingCreatedAt(selectedBooking.created_at) : "N/A"}
                       </p>
                     </div>
                   </div>
@@ -1528,7 +1533,7 @@ export function BookingsCommand({
                             </span>
                           </div>
                           <p className="text-[10px] text-on-surface-variant/60">
-                            {format(new Date(log.timestamp), "PPP · p")}
+                            {formatBookingCreatedAt(log.timestamp)}
                           </p>
                           {log.metadata && Object.keys(log.metadata).length > 0 && renderReadableMetadata(log.metadata)}
                         </div>
@@ -1555,7 +1560,7 @@ export function BookingsCommand({
                             </div>
                             <p className="text-xs text-on-surface-variant/85 leading-normal">{notif.message || notif.body}</p>
                             <p className="text-[9px] text-on-surface-variant/50">
-                              Sent: {dateStr ? format(new Date(dateStr), "PPP · p") : "Unknown Date"}
+                              Sent: {dateStr ? formatNotificationTime(dateStr) : "Unknown Date"}
                             </p>
                           </div>
                         );
@@ -1583,8 +1588,8 @@ export function BookingsCommand({
                         <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70">Scheduled Date</p>
                         <p className="text-xs font-bold text-primary mt-1">
                           {selectedBooking.scheduled_date
-                            ? format(new Date(selectedBooking.scheduled_date), "EEE, dd MMM · hh:mm a")
-                            : "Unscheduled"}
+                          ? formatBookingScheduledDate(selectedBooking.scheduled_date)
+                          : "Unscheduled"}
                         </p>
                       </div>
                       <div>
@@ -1812,7 +1817,7 @@ export function BookingsCommand({
                         <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70">Service Started At</p>
                         <p className="text-xs font-bold text-primary mt-1">
                           {selectedBooking.service_started_at
-                            ? format(new Date(selectedBooking.service_started_at), "PPP · p")
+                            ? formatBookingCreatedAt(selectedBooking.service_started_at)
                             : "Not started"}
                         </p>
                       </div>
@@ -1820,7 +1825,7 @@ export function BookingsCommand({
                         <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70">Service Completed At</p>
                         <p className="text-xs font-bold text-primary mt-1">
                           {selectedBooking.service_completed_at
-                            ? format(new Date(selectedBooking.service_completed_at), "PPP · p")
+                            ? formatBookingCreatedAt(selectedBooking.service_completed_at)
                             : "Not completed"}
                         </p>
                       </div>

@@ -742,14 +742,8 @@ export async function verifyRazorpayPaymentAction(payload: {
   if (!addr) return { success: false, error: "Address not found." };
   const typedAddr = addr as unknown as DBAddress;
 
-  // 3. Parse date/time
-  const [timeStr, modifier] = payload.time.split(" ");
-  const [rawHours, minutes] = timeStr.split(":").map(Number);
-  let hours = rawHours;
-  if (modifier === "PM" && hours !== 12) hours += 12;
-  if (modifier === "AM" && hours === 12) hours = 0;
-  const isoStr = `${payload.date}T${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:00+05:30`;
-  const timestamp = new Date(isoStr);
+  // 3. Parse date/time using shared utility
+  const timestamp = new Date(combineDateTimeToISO(payload.date, payload.time));
 
   // 4a. Offer context — the server-side reservation created at order creation.
   let offerContext: {

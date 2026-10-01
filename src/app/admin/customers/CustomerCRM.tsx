@@ -2,10 +2,11 @@
 
 import React, { useState, useTransition, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { updateCustomerStatusAction, saveCustomerNoteAction, getCustomerRatingAction } from "./actions";
+import { formatBookingCreatedAt, formatForCSV } from "@/utils/dateFormat";
 
 interface Booking {
   id: string;
@@ -175,7 +176,7 @@ export function CustomerCRM({
 
       // 5. Date Filter (Registration date checking)
       if (dateFilter) {
-        const regDate = format(new Date(customer.created_at), "yyyy-MM-dd");
+        const regDate = formatForCSV(customer.created_at).split(" ")[0];
         if (regDate !== dateFilter) return false;
       }
 
@@ -826,7 +827,7 @@ export function CustomerCRM({
                         <p className="text-[9px] font-black uppercase tracking-wider text-on-surface-variant/70">Last Booking</p>
                         <p className="text-sm font-bold text-primary mt-1">{lastBooking.services?.title || "Service Job"}</p>
                         <p className="text-[10px] text-on-surface-variant/60 mt-0.5">
-                          {format(new Date(lastBooking.created_at), "MMM dd, yyyy")} · ₹{lastBooking.total_amount}
+                          {formatBookingCreatedAt(lastBooking.created_at)} · ₹{lastBooking.total_amount}
                         </p>
                       </div>
                     )}
@@ -892,7 +893,7 @@ export function CustomerCRM({
                           Amount: ₹{booking.total_amount} · Status: <span className="uppercase font-bold">{booking.status}</span>
                         </p>
                         <p className="text-[9px] text-on-surface-variant/40 mt-0.5">
-                          {format(new Date(booking.created_at), "PPP · p")}
+                          {formatBookingCreatedAt(booking.created_at)}
                         </p>
                       </div>
                     ))}
@@ -902,7 +903,7 @@ export function CustomerCRM({
                       <span className="absolute -left-8 top-0 w-4 h-4 rounded-full bg-[#cbd5e1] border-2 border-white"></span>
                       <p className="text-xs font-bold text-primary">Customer Registered</p>
                       <p className="text-[10px] text-on-surface-variant/60 mt-0.5">
-                        Account created at: {format(new Date(selectedCustomer.created_at), "PPP")}
+                        Account created at: {formatBookingCreatedAt(selectedCustomer.created_at)}
                       </p>
                     </div>
                   </div>
@@ -921,7 +922,7 @@ export function CustomerCRM({
                 const monthAmounts: number[] = [];
                 for (let i = 5; i >= 0; i--) {
                   const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                  monthLabels.push(format(d, "MMM"));
+                  monthLabels.push(d.toLocaleString("en-US", { month: "short" }));
                   const start = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
                   const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59).getTime();
                   const monthBookings = bookings.filter(b => {
@@ -1037,7 +1038,7 @@ export function CustomerCRM({
                             <div key={b.id} className="bg-surface-container p-3 rounded-xl border border-outline-variant/15 flex justify-between items-center gap-3">
                               <div>
                                 <p className="text-xs font-bold text-primary uppercase">{b.services?.title || "Service Job"}</p>
-                                <p className="text-[9px] text-on-surface-variant/50 mt-0.5 font-semibold">{format(new Date(b.created_at), "MMM dd, yyyy")}</p>
+                                <p className="text-[9px] text-on-surface-variant/50 mt-0.5 font-semibold">{formatBookingCreatedAt(b.created_at)}</p>
                               </div>
                               <div className="text-right flex items-center gap-2">
                                 <p className="text-xs font-bold text-primary">₹{b.total_amount}</p>

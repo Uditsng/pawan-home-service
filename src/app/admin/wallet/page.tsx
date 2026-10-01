@@ -1,10 +1,10 @@
 import { createClient } from "@/utils/supabase/server";
 import { Metadata } from "next";
 import { Badge } from "@/components/ui/Badge";
-import { format } from "date-fns";
 import WalletAdminClient from "./WalletAdminClient";
 import { requireAdmin } from "@/utils/supabase/auth-checks";
 import type { AdminWalletCustomer } from "./WalletAdminClient";
+import { formatBookingCreatedAt } from "@/utils/dateFormat";
 
 export const metadata: Metadata = {
   title: "Wallet | Admin — PHS Cleaning Company",
@@ -200,7 +200,7 @@ export default async function AdminWalletPage() {
                     </td>
                     <td className="px-5 py-3.5">
                       <p className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-wider">
-                        {format(new Date(r.created_at), "dd MMM yyyy, HH:mm")}
+                        {formatBookingCreatedAt(r.created_at)}
                       </p>
                     </td>
                   </tr>
@@ -220,7 +220,7 @@ export default async function AdminWalletPage() {
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-black text-primary truncate uppercase">{r.profile?.full_name ?? "Unknown"}</p>
                 <p className="text-[9px] text-on-surface-variant/50 truncate">
-                  ₹{Number(r.amount).toLocaleString("en-IN")} · {format(new Date(r.created_at), "dd MMM, HH:mm")}
+                  ₹{Number(r.amount).toLocaleString("en-IN")} · {formatBookingCreatedAt(r.created_at)}
                 </p>
               </div>
               <Badge variant={rechargeStatusVariant[r.status] ?? "warning"}>{r.status}</Badge>
@@ -285,7 +285,7 @@ export default async function AdminWalletPage() {
                       </td>
                       <td className="px-5 py-3.5">
                         <p className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-wider">
-                          {format(new Date(t.created_at), "dd MMM, HH:mm")}
+                          {formatBookingCreatedAt(t.created_at)}
                         </p>
                       </td>
                     </tr>
@@ -304,7 +304,7 @@ export default async function AdminWalletPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] font-black text-primary truncate uppercase">{sourceLabels[t.source] ?? t.source}</p>
-                  <p className="text-[9px] text-on-surface-variant/50 truncate">{t.profile?.full_name ?? "Unknown"} · {format(new Date(t.created_at), "dd MMM, HH:mm")}</p>
+                  <p className="text-[9px] text-on-surface-variant/50 truncate">{t.profile?.full_name ?? "Unknown"} · {formatBookingCreatedAt(t.created_at)}</p>
                 </div>
                 <p className={`text-xs font-bold shrink-0 ${t.type === "credit" ? "text-[#059669]" : "text-red-600"}`}>
                   {t.type === "credit" ? "+" : "-"}₹{Number(t.amount).toLocaleString("en-IN")}

@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { NotificationImageUploadField } from "@/components/ui/NotificationImageUploadField";
 import { createAdminNotification, sendNotificationCampaignAction, sendTestNotificationAction } from "../actions";
+import { formatForCSV } from "@/utils/dateFormat";
 
 interface UserProfile {
   id: string;
@@ -660,7 +660,7 @@ export function CreateNotificationForm({
                 <input
                   type="date"
                   required
-                  min={format(new Date(), "yyyy-MM-dd")}
+                  min={formatForCSV(new Date())}
                   value={scheduledDate}
                   onChange={(e) => setScheduledDate(e.target.value)}
                   className="w-full p-2.5 bg-surface rounded-xl border border-outline-variant/20 text-xs font-bold text-primary outline-none focus:border-secondary"

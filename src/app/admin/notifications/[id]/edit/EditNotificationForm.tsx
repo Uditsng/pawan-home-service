@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { NotificationImageUploadField } from "@/components/ui/NotificationImageUploadField";
 import { updateAdminNotification, sendNotificationCampaignAction, sendTestNotificationAction } from "../../actions";
+import { formatForCSV, formatForDateTimeLocal } from "@/utils/dateFormat";
 
 interface UserProfile {
   id: string;
@@ -139,13 +139,13 @@ export function EditNotificationForm({
 
     if (campaign.scheduled_at) {
       const dateObj = new Date(campaign.scheduled_at);
-      setScheduledDate(format(dateObj, "yyyy-MM-dd"));
-      setScheduledTime(format(dateObj, "HH:mm"));
+      setScheduledDate(dateObj.toLocaleString("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }));
+      setScheduledTime(dateObj.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false }));
     }
 
     if (campaign.expires_at) {
       setExpiryOption("custom");
-      setCustomExpiryDate(format(new Date(campaign.expires_at), "yyyy-MM-dd'T'HH:mm"));
+      setCustomExpiryDate(formatForDateTimeLocal(campaign.expires_at));
     }
   }, [campaign]);
 
@@ -670,7 +670,7 @@ export function EditNotificationForm({
                 <input
                   type="date"
                   required
-                  min={format(new Date(), "yyyy-MM-dd")}
+                  min={formatForCSV(new Date())}
                   value={scheduledDate}
                   onChange={(e) => setScheduledDate(e.target.value)}
                   className="w-full p-2.5 bg-surface rounded-xl border border-outline-variant/20 text-xs font-bold text-primary outline-none focus:border-secondary"

@@ -85,9 +85,11 @@ const eventLabel: Record<string, string> = {
   retry:     "Reward retry",
 };
 
+import { formatBookingCreatedAt } from "@/utils/dateFormat";
+
 function formatWhen(value: string | null): string {
   if (!value) return "—";
-  return format(new Date(value), "dd MMM yyyy, hh:mm a");
+  return formatBookingCreatedAt(value);
 }
 
 export default async function ReferralDetailPage({ params }: ReferralDetailPageProps) {

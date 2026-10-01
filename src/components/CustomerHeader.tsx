@@ -42,6 +42,7 @@ export default async function CustomerHeader() {
               className="h-12 md:h-14 w-auto"
               width={40}
               height={40}
+              style={{ width: "auto" }}
             />
           </Link>
           <HeaderLocationDisplay defaultAddress={defaultAddress} />

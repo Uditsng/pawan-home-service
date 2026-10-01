@@ -92,7 +92,7 @@ export default function ServiceSelectionDrawer({ services, initialSelectedServic
 
       {/* Slider Drawer (Bottom Sheet) */}
       <div
-        className={`fixed inset-0 z-50 flex items-end justify-center pointer-events-none transition-opacity duration-300 ${isOpen ? "opacity-100" : "opacity-0"
+        className={`fixed inset-0 z-60 flex items-end justify-center pointer-events-none transition-opacity duration-300 ${isOpen ? "opacity-100" : "opacity-0"
           }`}
       >
         {/* Backdrop */}
@@ -165,7 +165,7 @@ export default function ServiceSelectionDrawer({ services, initialSelectedServic
                           : "border-outline-variant/30 bg-surface-container-lowest hover:border-secondary/50 hover:bg-surface-container-low"
                         }`}
                     >
-<ServiceCardThumbnail
+                      <ServiceCardThumbnail
                         imageUrl={service.imageUrl}
                         iconName={service.iconName}
                         containerClassName={`w-9 h-9 rounded-lg ${isSelected ? "scale-105" : ""}`}
@@ -181,13 +181,14 @@ export default function ServiceSelectionDrawer({ services, initialSelectedServic
             )}
           </div>
 
-          <div className="p-6 pt-4 border-t border-outline-variant/20 shrink-0 bg-surface">
+          <div className="p-6 pt-4 pb-28 lg:pb-6 border-t border-outline-variant/20 shrink-0 bg-surface">
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="w-full py-4 bg-primary text-white font-extrabold text-[15px] rounded-xl hover:bg-primary/90 active:scale-[0.98] transition-all duration-300"
+              className="w-full py-3.5 sm:py-4 bg-primary text-white font-extrabold text-[15px] rounded-xl hover:bg-primary/90 active:scale-[0.98] transition-all duration-300 shadow-md flex items-center justify-center gap-2 cursor-pointer"
             >
-              Done
+              <span>Done</span>
+              <span className="material-symbols-outlined text-base">check</span>
             </button>
           </div>
         </div>

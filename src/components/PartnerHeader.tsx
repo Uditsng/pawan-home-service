@@ -87,6 +87,7 @@ export default function PartnerHeader({ initialStatus = "offline", avatarUrl = n
               className="h-10 sm:h-12 md:h-14 w-auto object-contain"
               width={40}
               height={40}
+              style={{ width: "auto" }}
               priority
             />
           </Link>

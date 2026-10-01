@@ -122,7 +122,7 @@ export default function EditServicesForm({ allServices, initialSelectedServices 
             </div>
           )}
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3 pt-2 pb-6">
             <button
               type="button"
               onClick={() => {

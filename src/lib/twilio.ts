@@ -19,8 +19,11 @@ function getBasicAuth(): string {
  * Returns: +919876543210
  */
 export function normaliseIndianPhone(raw: string): string {
-  const digits = raw.replace(/\D/g, '');
-  if (digits.startsWith('91') && digits.length === 12) {
+  let digits = raw.replace(/\D/g, '');
+  if (digits.length === 11 && digits.startsWith('0')) {
+    digits = digits.slice(1);
+  }
+  if (digits.length === 12 && digits.startsWith('91')) {
     return `+${digits}`;
   }
   if (digits.length === 10) {
@@ -34,7 +37,12 @@ export function normaliseIndianPhone(raw: string): string {
  * Must be exactly 10 digits starting with 6-9.
  */
 export function validateIndianPhone(raw: string): boolean {
-  const digits = raw.replace(/\D/g, '').replace(/^91/, '');
+  let digits = raw.replace(/\D/g, '');
+  if (digits.length === 11 && digits.startsWith('0')) {
+    digits = digits.slice(1);
+  } else if (digits.length === 12 && digits.startsWith('91')) {
+    digits = digits.slice(2);
+  }
   return /^[6-9]\d{9}$/.test(digits);
 }
 

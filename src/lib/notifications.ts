@@ -22,6 +22,7 @@
 import "server-only";
 
 import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { getFirebaseMessaging } from "@/lib/firebase-admin";
 import {
@@ -903,16 +904,70 @@ export async function notifyAdmins(
   metadata?: Record<string, unknown>
 ): Promise<void> {
   try {
-    const supabase = await createClient();
-    const { data: admins } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("role", "admin");
+    let adminIds: string[] = [];
 
-    if (!admins || admins.length === 0) return;
+    // Attempt 1: Resolve active admins via service role client (RPC or profiles table)
+    try {
+      const adminClient = supabaseAdmin();
+      const { data: rpcAdmins, error: rpcErr } = await adminClient.rpc("get_active_admin_ids");
+      if (!rpcErr && rpcAdmins && Array.isArray(rpcAdmins) && rpcAdmins.length > 0) {
+        adminIds = (rpcAdmins as Array<{ admin_id?: string; id?: string } | string>)
+          .map((r) => (typeof r === "string" ? r : r.admin_id || r.id || ""))
+          .filter((id): id is string => Boolean(id));
+      } else {
+        const { data: profiles, error: profErr } = await adminClient
+          .from("profiles")
+          .select("id")
+          .eq("role", "admin")
+          .neq("status", "suspended");
+        if (!profErr && profiles && profiles.length > 0) {
+          adminIds = profiles.map((p: { id: string }) => p.id);
+        }
+      }
+    } catch (adminClientErr) {
+      console.warn("[notifications] Service client error in notifyAdmins:", (adminClientErr as Error).message);
+    }
 
-    const adminIds = admins.map((a: { id: string }) => a.id);
-    return sendNotification({ userIds: adminIds, title, body, type, metadata, recipientRole: 'admin' });
+    // Attempt 2: If adminIds still empty, fallback to session client calling get_active_admin_ids RPC
+    if (adminIds.length === 0) {
+      try {
+        const sessionClient = await createClient();
+        const { data: rpcAdmins, error: rpcErr } = await sessionClient.rpc("get_active_admin_ids");
+        if (!rpcErr && rpcAdmins && Array.isArray(rpcAdmins) && rpcAdmins.length > 0) {
+          adminIds = (rpcAdmins as Array<{ admin_id?: string; id?: string } | string>)
+            .map((r) => (typeof r === "string" ? r : r.admin_id || r.id || ""))
+            .filter((id): id is string => Boolean(id));
+        }
+      } catch (sessionErr) {
+        console.warn("[notifications] Session client RPC fallback failed in notifyAdmins:", (sessionErr as Error).message);
+      }
+    }
+
+    // Attempt 3: If adminIds still empty, broadcast directly via notify_admins SECURITY DEFINER RPC
+    if (adminIds.length === 0) {
+      try {
+        const sessionClient = await createClient();
+        await sessionClient.rpc("notify_admins", {
+          p_title: title,
+          p_body: body,
+          p_type: type,
+          p_metadata: metadata || {},
+        });
+        return;
+      } catch (fallbackRpcErr) {
+        console.error("[notifications] Failed to deliver admin notification via fallback RPC:", (fallbackRpcErr as Error).message);
+        return;
+      }
+    }
+
+    return sendNotification({
+      userIds: adminIds,
+      title,
+      body,
+      type,
+      metadata,
+      recipientRole: "admin",
+    });
   } catch (err) {
     console.error("[notifications] notifyAdmins error:", (err as Error).message);
   }

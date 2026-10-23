@@ -115,6 +115,18 @@ export default async function BookingTrackingPage({ params }: TrackingPageProps)
     redirect("/customer/bookings");
   }
 
+  // Fetch secure OTPs from booking_otps (accessible only to customer & admin via RLS)
+  const { data: otpData } = await supabase
+    .from("booking_otps")
+    .select("arrival_otp, completion_otp")
+    .eq("booking_id", bookingId)
+    .maybeSingle();
+
+  if (otpData) {
+    booking.arrival_otp = otpData.arrival_otp ?? null;
+    booking.completion_otp = otpData.completion_otp ?? null;
+  }
+
   // Fetch existing review if booking is completed
   let existingReview: {
     rating: number;

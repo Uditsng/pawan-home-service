@@ -18,7 +18,12 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
+  if (!cronSecret) {
+    // Fail closed in production (see /api/notifications/deliver).
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json({ error: "CRON_SECRET is not configured." }, { status: 500 });
+    }
+  } else {
     const authHeader = request.headers.get("authorization");
     const headerSecret = request.headers.get("x-cron-secret");
     const isBearerValid = authHeader === `Bearer ${cronSecret}`;
@@ -38,13 +43,12 @@ export async function GET(request: Request) {
   try {
     const windowThreshold = new Date(Date.now() - RESPONSE_WINDOW_SECONDS * 1000).toISOString();
 
-    // Query pending paid bookings needing next tier
+    // Query pending bookings needing next tier (both paid online and pay-on-completion cash)
     const { data: bookings, error: fetchErr } = await supabaseAdmin
       .from("bookings")
-      .select("id, broadcast_tier, dispatch_status, last_broadcast_at, services:service_id(title), city, pincode")
+      .select("id, broadcast_tier, dispatch_status, last_broadcast_at, payment_status, payment_method, services:service_id(title), city, pincode")
       .eq("status", "pending")
       .is("partner_id", null)
-      .eq("payment_status", "paid")
       .in("dispatch_status", ["broadcasting", "failed"])
       .lte("last_broadcast_at", windowThreshold)
       .lt("broadcast_tier", MAX_TIERS);
@@ -54,12 +58,19 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: fetchErr.message }, { status: 500 });
     }
 
-    if (!bookings || bookings.length === 0) {
+    // Eligible if payment is completed online OR if payment_method is Cash
+    const eligibleBookings = (bookings || []).filter((b) => {
+      const isPaid = b.payment_status === "paid";
+      const isCash = (b.payment_method || "").toLowerCase() === "cash";
+      return isPaid || isCash;
+    });
+
+    if (eligibleBookings.length === 0) {
       results.dispatch = { processed: 0, message: "No pending bookings due for escalation." };
     } else {
       const dispatchResults = [];
 
-      for (const b of bookings) {
+      for (const b of eligibleBookings) {
         const nextTier = (b.broadcast_tier || 0) + 1;
         const res = await triggerDispatchBatch(b.id, nextTier);
 
@@ -124,3 +135,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }
+
+export const POST = GET;
+

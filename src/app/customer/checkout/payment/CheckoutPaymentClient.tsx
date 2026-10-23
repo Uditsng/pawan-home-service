@@ -376,6 +376,8 @@ export default function CheckoutPaymentClient({
           couponCode: appliedCoupon?.code ?? undefined,
           offerEntitlementId: selectedEntitlement?.id ?? undefined,
           paymentMethod,
+          businessName: bookAsBusiness ? businessName : undefined,
+          businessGstin: bookAsBusiness ? businessGstin : undefined,
         });
 
         // Cash (pay-on-completion) and free (wallet/offer-covered) orders never

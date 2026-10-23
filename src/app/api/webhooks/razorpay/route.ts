@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { notifyCustomer, notifyAdmins } from "@/lib/notifications";
 import { triggerDispatchBatch } from "@/app/actions/dispatch";
+import { fulfillOrderBookings } from "@/lib/orders/orderFulfillment";
 
 export const dynamic = 'force-dynamic';
 
@@ -58,9 +59,14 @@ export async function POST(request: Request) {
   const eventType = (event.event as string) || "unknown";
   const payload = (event.payload || {}) as Record<string, unknown>;
   const paymentEntity = (payload.payment as { entity?: Record<string, unknown> })?.entity || {};
+  const orderEntity = (payload.order as { entity?: Record<string, unknown> })?.entity || {};
 
-  const razorpayOrderId = paymentEntity.order_id as string | undefined;
+  const razorpayOrderId = (paymentEntity.order_id as string | undefined) || (orderEntity.id as string | undefined);
   const razorpayPaymentId = paymentEntity.id as string | undefined;
+  const notes = ((paymentEntity.notes || orderEntity.notes || {}) as Record<string, string>);
+  const internalOrderId = notes.internal_order_id;
+  const capturedAmount = Number(paymentEntity.amount || orderEntity.amount_paid || 0) / 100;
+
   const eventId = (event.account_id ? `${event.account_id}_${razorpayPaymentId || razorpayOrderId}_${eventType}` : null)
     || (razorpayPaymentId ? `${razorpayPaymentId}_${eventType}` : null)
     || `${razorpayOrderId}_${eventType}_${Date.now()}`;
@@ -235,12 +241,12 @@ export async function POST(request: Request) {
       let targetOrderId = existingPayment?.order_id || null;
       const targetBookingId = existingPayment?.booking_id || null;
 
-      // If not in payments, check if order exists with matching razorpay_order_id in notes or id
+      // Check if order exists with matching razorpay_order_id on orders
       if (!targetOrderId && razorpayOrderId) {
         const { data: matchedOrder } = await supabaseAdmin
           .from("orders")
-          .select("id, customer_id, payment_status")
-          .eq("id", razorpayOrderId)
+          .select("id")
+          .eq("razorpay_order_id", razorpayOrderId)
           .limit(1)
           .maybeSingle();
 
@@ -249,134 +255,154 @@ export async function POST(request: Request) {
         }
       }
 
-      // If no internal order/payment matched, safely log unmatched status without mutating arbitrary records
-      if (!targetOrderId && !targetBookingId) {
+      // Check if order exists with matching internal_order_id in notes
+      if (!targetOrderId && internalOrderId) {
+        const { data: matchedOrder } = await supabaseAdmin
+          .from("orders")
+          .select("id")
+          .eq("id", internalOrderId)
+          .limit(1)
+          .maybeSingle();
+
+        if (matchedOrder) {
+          targetOrderId = matchedOrder.id;
+        }
+      }
+
+      // If internal order is found, execute unified order fulfillment
+      if (targetOrderId) {
+        const fulfillResult = await fulfillOrderBookings({
+          orderId: targetOrderId,
+          razorpayOrderId: razorpayOrderId || null,
+          razorpayPaymentId: razorpayPaymentId || null,
+          razorpaySignature: signature,
+          gatewayAmount: capturedAmount,
+          source: "webhook",
+        });
+
+        if (!fulfillResult.success) {
+          console.error("[Razorpay Webhook] Fulfill order error:", fulfillResult.error);
+          if (eventRecordId) {
+            await supabaseAdmin
+              .from("payment_webhook_events")
+              .update({ status: "failed" })
+              .eq("id", eventRecordId);
+          }
+          return NextResponse.json({ error: fulfillResult.error || "Order fulfillment failed" }, { status: 500 });
+        }
+
         if (eventRecordId) {
           await supabaseAdmin
             .from("payment_webhook_events")
-            .update({ status: "unmatched_order", processed_at: new Date().toISOString() })
+            .update({ status: "processed", processed_at: new Date().toISOString() })
             .eq("id", eventRecordId);
         }
 
-        console.warn("[Razorpay Webhook] Received payment for unmatched order/booking:", {
-          razorpayOrderId,
-          razorpayPaymentId,
+        return NextResponse.json({
+          status: "reconciled",
+          order_id: targetOrderId,
+          already_fulfilled: fulfillResult.alreadyFulfilled,
+          recovered: fulfillResult.recovered,
+          bookings: fulfillResult.createdBookingIds,
         });
-
-        return NextResponse.json({ status: "unmatched_order", razorpay_order_id: razorpayOrderId });
       }
 
-      // Reconcile matching child bookings
-      let childBookings: BookingChildRow[] = [];
-      if (targetOrderId) {
-        const { data: bList } = await supabaseAdmin
-          .from("bookings")
-          .select("id, customer_id, payment_status, status")
-          .eq("order_id", targetOrderId);
-        childBookings = (bList || []) as BookingChildRow[];
-      } else if (targetBookingId) {
-        const { data: singleB } = await supabaseAdmin
-          .from("bookings")
-          .select("id, customer_id, payment_status, status")
-          .eq("id", targetBookingId)
-          .limit(1)
-          .maybeSingle();
-        if (singleB) childBookings = [singleB as BookingChildRow];
-      }
-
-      // Reconcile order & bookings payment status
-      if (targetOrderId) {
+      // If legacy single booking matched by payment record
+      if (targetBookingId) {
         await supabaseAdmin
-          .from("orders")
-          .update({ payment_status: "paid", updated_at: new Date().toISOString() })
-          .eq("id", targetOrderId);
-      }
+          .from("bookings")
+          .update({ payment_status: "paid" })
+          .eq("id", targetBookingId);
 
-      for (const booking of childBookings) {
-        if (booking.payment_status !== "paid") {
+        void triggerDispatchBatch(targetBookingId, 1);
+
+        if (eventRecordId) {
           await supabaseAdmin
-            .from("bookings")
-            .update({ payment_status: "paid" })
-            .eq("id", booking.id);
-
-          // Insert or update payment record
-          await supabaseAdmin.from("payments").upsert(
-            {
-              customer_id: booking.customer_id,
-              order_id: targetOrderId,
-              booking_id: booking.id,
-              amount: Number(paymentEntity.amount || 0) / 100,
-              payment_status: "completed",
-              razorpay_order_id: razorpayOrderId || null,
-              razorpay_payment_id: razorpayPaymentId || null,
-              razorpay_signature: signature,
-            },
-            { onConflict: "booking_id" }
-          );
-
-          // Trigger dispatch if booking is still pending without assigned partner
-          if (booking.status === "pending") {
-            void triggerDispatchBatch(booking.id, 1);
-          }
-
-          void notifyCustomer(
-            booking.customer_id,
-            "Payment Confirmed via Gateway",
-            "Your payment has been verified and your booking is active.",
-            "booking_created",
-            { booking_id: booking.id }
-          );
+            .from("payment_webhook_events")
+            .update({ status: "processed", processed_at: new Date().toISOString() })
+            .eq("id", eventRecordId);
         }
+
+        return NextResponse.json({
+          status: "reconciled",
+          booking_id: targetBookingId,
+        });
       }
 
+      // If no internal order/payment matched, safely log unmatched status
       if (eventRecordId) {
         await supabaseAdmin
           .from("payment_webhook_events")
-          .update({ status: "processed", processed_at: new Date().toISOString() })
+          .update({ status: "unmatched_order", processed_at: new Date().toISOString() })
           .eq("id", eventRecordId);
       }
 
-      void notifyAdmins(
-        "Webhook Payment Reconciled",
-        `Payment ${razorpayPaymentId || razorpayOrderId} reconciled for ${childBookings.length} booking(s).`,
-        "booking_created"
-      );
-
-      return NextResponse.json({
-        status: "reconciled",
-        order_id: targetOrderId,
-        reconciled_bookings: childBookings.map((b) => b.id),
+      console.warn("[Razorpay Webhook] Received payment for unmatched order/booking:", {
+        razorpayOrderId,
+        razorpayPaymentId,
+        internalOrderId,
       });
+
+      return NextResponse.json({ status: "unmatched_order", razorpay_order_id: razorpayOrderId });
     }
 
-    // Payment failed → mark any matching wallet recharge or offer purchase as failed.
-    if (eventType === "payment.failed" && razorpayOrderId) {
-      const { data: failedRecharge } = await supabaseAdmin
-        .from("wallet_recharges")
-        .select("id, status")
-        .eq("razorpay_order_id", razorpayOrderId)
-        .limit(1)
-        .maybeSingle();
+    // Payment failed → mark any matching wallet recharge, offer purchase, or order as failed.
+    if (eventType === "payment.failed" && (razorpayOrderId || internalOrderId)) {
+      if (razorpayOrderId) {
+        const { data: failedRecharge } = await supabaseAdmin
+          .from("wallet_recharges")
+          .select("id, status")
+          .eq("razorpay_order_id", razorpayOrderId)
+          .limit(1)
+          .maybeSingle();
 
-      if (failedRecharge && !["success", "refunded"].includes(failedRecharge.status)) {
-        await supabaseAdmin.rpc("update_wallet_recharge_status", {
-          p_recharge_id: failedRecharge.id,
-          p_status: "failed",
-        });
+        if (failedRecharge && !["success", "refunded"].includes(failedRecharge.status)) {
+          await supabaseAdmin.rpc("update_wallet_recharge_status", {
+            p_recharge_id: failedRecharge.id,
+            p_status: "failed",
+          });
+        }
+
+        const { data: failedOfferPurchase } = await supabaseAdmin
+          .from("offer_purchases")
+          .select("id, status")
+          .eq("razorpay_order_id", razorpayOrderId)
+          .limit(1)
+          .maybeSingle();
+
+        if (failedOfferPurchase && !["success", "refunded"].includes(failedOfferPurchase.status)) {
+          await supabaseAdmin.rpc("update_offer_purchase_status", {
+            p_purchase_id: failedOfferPurchase.id,
+            p_status: "failed",
+          });
+        }
       }
 
-      const { data: failedOfferPurchase } = await supabaseAdmin
-        .from("offer_purchases")
-        .select("id, status")
-        .eq("razorpay_order_id", razorpayOrderId)
-        .limit(1)
-        .maybeSingle();
+      // Check matching order
+      let failedOrderId = internalOrderId;
+      if (!failedOrderId && razorpayOrderId) {
+        const { data: oRow } = await supabaseAdmin
+          .from("orders")
+          .select("id, customer_id, payment_status, offer_entitlement_id")
+          .eq("razorpay_order_id", razorpayOrderId)
+          .limit(1)
+          .maybeSingle();
+        if (oRow) {
+          failedOrderId = oRow.id;
+          if (oRow.payment_status === "pending") {
+            await supabaseAdmin
+              .from("orders")
+              .update({ payment_status: "failed", updated_at: new Date().toISOString() })
+              .eq("id", oRow.id);
 
-      if (failedOfferPurchase && !["success", "refunded"].includes(failedOfferPurchase.status)) {
-        await supabaseAdmin.rpc("update_offer_purchase_status", {
-          p_purchase_id: failedOfferPurchase.id,
-          p_status: "failed",
-        });
+            if (oRow.offer_entitlement_id) {
+              await supabaseAdmin.rpc("release_offer_reservation", {
+                p_order_id: oRow.id,
+                p_customer_id: oRow.customer_id,
+              });
+            }
+          }
+        }
       }
 
       if (eventRecordId) {

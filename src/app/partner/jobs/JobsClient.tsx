@@ -651,12 +651,18 @@ export default function JobsClient({
         const enteredOtp = enteredOtps[job.id] || "";
         const completionExpiresAt = job.completion_otp_expires_at ? new Date(job.completion_otp_expires_at) : null;
         const isCompletionExpired = completionExpiresAt ? currentTime > completionExpiresAt : false;
+        const hasUnpaidCashQuote = (quotesMap[job.id]?.payment_method === "Cash" && quotesMap[job.id]?.payment_status === "pending") || Number(job.unpaid_quote_amount || 0) > 0;
+        const cashToCollect = job.payment_method === "Cash"
+          ? Number(job.total_amount || 0)
+          : Number(job.unpaid_quote_amount || quotesMap[job.id]?.total_amount || 0);
+        const requiresCashConfirmation = (job.payment_method === "Cash") || hasUnpaidCashQuote;
+
         return (
           <div className="flex flex-col gap-1 w-full max-w-70">
             <p className="text-[10px] font-bold text-amber-600 mb-1">
               {isCompletionExpired ? "Completion OTP has expired:" : "Enter Completion OTP from customer:"}
             </p>
-            {job.payment_method === "Cash" && (
+            {requiresCashConfirmation && (
               <label className="flex items-start gap-2 text-[10px] font-bold text-[#059669] bg-green-500/10 px-2.5 py-2 rounded-lg border border-secondary/20 cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -665,7 +671,10 @@ export default function JobsClient({
                   onChange={(e) => setCashConfirmIds((prev) => ({ ...prev, [job.id]: e.target.checked }))}
                   className="accent-secondary mt-0.5 shrink-0"
                 />
-                <span>Cash received — ₹{Number(job.total_amount || 0).toLocaleString("en-IN")} paid to me</span>
+                <span>
+                  Cash received — ₹{cashToCollect.toLocaleString("en-IN")} paid to me
+                  {job.payment_method !== "Cash" && " (Quote Cash)"}
+                </span>
               </label>
             )}
             <div className="flex gap-2">
@@ -680,7 +689,7 @@ export default function JobsClient({
               />
               {!isCompletionExpired ? (
                 <button
-                  disabled={isPending || enteredOtp.length !== 6}
+                  disabled={isPending || enteredOtp.length !== 6 || (requiresCashConfirmation && !cashConfirmIds[job.id])}
                   onClick={() => handleAction(() => verifyCompletionOtp(job.id, enteredOtp, !!cashConfirmIds[job.id]), "Completion OTP verified! Service closed.")}
                   className="bg-linear-to-br from-[#00685f] to-[#008378] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md hover:brightness-110 active:scale-95 disabled:opacity-50"
                 >
@@ -1357,10 +1366,19 @@ export default function JobsClient({
 
                               if (quote.status === "approved") {
                                 return (
-                                  <p className="text-[11px] font-bold text-green-600 flex items-center gap-1.5">
-                                    <span className="material-symbols-outlined text-[13px]">check_circle</span>
-                                    Customer Approved Quote: ₹{quote.total_amount}
-                                  </p>
+                                  <div className="space-y-0.5">
+                                    <p className="text-[11px] font-bold text-green-600 flex items-center gap-1.5">
+                                      <span className="material-symbols-outlined text-[13px]">check_circle</span>
+                                      Customer Approved Quote: ₹{quote.total_amount}
+                                    </p>
+                                    <p className="text-[9px] text-on-surface-variant font-medium">
+                                      {quote.payment_method === "Cash"
+                                        ? quote.payment_status === "paid"
+                                          ? "Payment: Cash Collected"
+                                          : "Payment: Collect Cash on Completion"
+                                        : "Payment: Paid Online"}
+                                    </p>
+                                  </div>
                                 );
                               }
 

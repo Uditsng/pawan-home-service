@@ -413,6 +413,11 @@ export function EarningsClient({ bookings, commissionPercent, streak, comparison
                         {isExpanded ? "expand_less" : "expand_more"}
                       </span>
                       <span className="text-xs font-bold text-on-surface truncate">{b.services?.title || "Service"}</span>
+                      {b.payment_method === "Cash" && (
+                        <span className="text-[9px] font-bold text-amber-800 bg-amber-500/10 px-1.5 py-0.5 rounded shrink-0">
+                          Cash
+                        </span>
+                      )}
                       {b.customer?.full_name && (
                         <span className="text-[10px] text-on-surface-variant truncate hidden sm:inline">
                           · {b.customer.full_name}
@@ -434,7 +439,9 @@ export function EarningsClient({ bookings, commissionPercent, streak, comparison
                         <span className="font-semibold text-error">-₹{e.platformCommissionAmount.toFixed(2)}</span>
                       </div>
                       <div className="border-t border-outline-variant/10 pt-0.5 flex justify-between font-bold">
-                        <span className="text-on-surface-variant">Your Payout</span>
+                        <span className="text-on-surface-variant">
+                          {b.payment_method === "Cash" ? "Your Earning (Collected in Cash)" : "Your Payout (Bank Transfer)"}
+                        </span>
                         <span className="text-primary">₹{e.partnerPayoutAmount.toFixed(2)}</span>
                       </div>
                       {b.booking_pricing?.gst_amount ? (

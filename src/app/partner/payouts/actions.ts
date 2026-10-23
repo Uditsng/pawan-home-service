@@ -16,7 +16,10 @@ export type PayoutStatus =
 
 export interface PartnerPayoutEarning {
   id: string;
-  booking_id: string;
+  booking_id: string | null;
+  referral_id?: string | null;
+  earning_type?: "booking" | "referral";
+  description?: string | null;
   total_amount: number;
   gst_amount: number;
   service_revenue: number;
@@ -25,12 +28,16 @@ export interface PartnerPayoutEarning {
   partner_earning_amount: number;
   status: "eligible" | "reserved" | "paid" | "reversed";
   completed_at: string | null;
+  payment_method?: string | null;
+  is_cash?: boolean;
 }
 
 export interface PartnerPayoutEntry {
   id: string;
   payout_number: string;
   requested_amount: number;
+  gross_amount?: number;
+  deductions_amount?: number;
   status: PayoutStatus;
   payment_method: string | null;
   payment_reference: string | null;
@@ -51,6 +58,8 @@ export interface PayoutSummary {
   min_payout: number;
   total_earned: number;
   paid: number;
+  paid_bank?: number;
+  paid_cash?: number;
   processing: number;
   eligible: number;
   clawback_due: number;

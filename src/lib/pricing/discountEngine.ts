@@ -43,6 +43,40 @@ export function applyOrderLevelCoupon(
     return { orderDiscount: 0, perServiceAllocation: {} };
   }
 
+  // Case A: Service-specific coupon (applicable_to_service_id is present)
+  if (coupon.applicable_to_service_id) {
+    const targetServiceId = coupon.applicable_to_service_id;
+    const targetBase = baseByService[targetServiceId] || 0;
+
+    if (targetBase <= 0) {
+      return { orderDiscount: 0, perServiceAllocation: {} };
+    }
+
+    let discount =
+      coupon.discount_type === "percentage"
+        ? Math.round(targetBase * (Number(coupon.discount_value) / 100))
+        : Number(coupon.discount_value);
+
+    if (coupon.max_discount !== undefined && coupon.max_discount !== null) {
+      discount = Math.min(discount, Number(coupon.max_discount));
+    }
+
+    // Never discount more than the eligible service's own base
+    discount = Math.max(0, Math.min(discount, targetBase));
+
+    if (discount === 0) {
+      return { orderDiscount: 0, perServiceAllocation: {} };
+    }
+
+    const perServiceAllocation: Record<string, number> = {};
+    for (const serviceId of Object.keys(baseByService)) {
+      perServiceAllocation[serviceId] = serviceId === targetServiceId ? discount : 0;
+    }
+
+    return { orderDiscount: discount, perServiceAllocation };
+  }
+
+  // Case B: Order-wide coupon (applicable_to_service_id is null/undefined)
   let discount =
     coupon.discount_type === "percentage"
       ? Math.round(orderSubtotal * (Number(coupon.discount_value) / 100))

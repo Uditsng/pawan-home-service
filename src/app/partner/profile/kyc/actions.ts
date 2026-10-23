@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import type { PartnerDocumentType, PartnerDocument } from "@/lib/types";
 import { KYC_ALL_TYPES, DOC_TYPE_CONFIG } from "@/lib/documents/partnerDocConfig";
 import { logAdminAuditAction } from "@/utils/auditLogger";
+import { notifyAdmins } from "@/lib/notifications";
 
 type ActionResult = { success: boolean; error?: string };
 
@@ -72,13 +73,20 @@ export async function uploadPartnerDocumentAction(
     newData: { doc_type: docType, status: "pending" },
   });
 
+  void notifyAdmins(
+    "KYC Document Updated",
+    `Partner ${user.user_metadata?.full_name || user.email} uploaded document: ${cfg.label || docType}.`,
+    "general",
+    { partner_id: user.id, doc_type: docType }
+  );
+
   revalidatePath("/partner/profile/kyc");
   return { success: true };
 }
 
 /**
  * Generate a short-lived signed URL for viewing a partner document.
- * Owner or admin only.
+ * Document owner (partner) or authoritative admin only.
  */
 export async function getPartnerDocumentSignedUrl(
   docId: string
@@ -99,18 +107,38 @@ export async function getPartnerDocumentSignedUrl(
     return { success: false, error: "Document not found." };
   }
 
-  // Ownership check (partner or admin)
-  const isAdmin = user.user_metadata?.role === "admin";
-  if (doc.partner_id !== user.id && !isAdmin) {
+  // Authoritative ownership / role check against profiles table
+  let isAuthorized = doc.partner_id === user.id;
+  if (!isAuthorized) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    isAuthorized = profile?.role === "admin";
+  }
+
+  if (!isAuthorized) {
     return { success: false, error: "Not authorized." };
   }
 
-  // Try signed URL from private bucket first
-  if (doc.storage_path) {
+  // Resolve storage path (with fallback marker extraction if only file_url is present)
+  let storagePath = doc.storage_path;
+  if (!storagePath && doc.file_url) {
+    const marker = "/partner-docs/";
+    const idx = doc.file_url.indexOf(marker);
+    if (idx !== -1) {
+      storagePath = doc.file_url.slice(idx + marker.length).split("?")[0];
+    }
+  }
+
+  // Try signed URL from private partner-docs bucket
+  if (storagePath) {
     const adminClient = createAdminClient();
     const { data, error } = await adminClient.storage
       .from("partner-docs")
-      .createSignedUrl(doc.storage_path, 3600);
+      .createSignedUrl(storagePath, 3600);
 
     if (!error && data?.signedUrl) {
       return { success: true, signedUrl: data.signedUrl };

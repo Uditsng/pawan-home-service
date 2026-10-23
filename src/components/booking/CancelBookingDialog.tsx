@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRefresh } from "@/lib/refresh/RefreshContext";
 import { cancelBookingAction } from "@/app/actions/bookings";
-import { isWithinFreeWindow, formatFreeWindowLabel } from "@/utils/bookingPolicy";
+import { isWithinFreeWindow, formatFreeWindowLabel, evaluateCancellationRefund } from "@/utils/bookingPolicy";
 
 const REASON_OPTIONS = [
   "Changed my mind",
@@ -16,6 +16,8 @@ const REASON_OPTIONS = [
 interface CancelBookingDialogProps {
   bookingId: string;
   createdAt: string;
+  scheduledDate?: string | null;
+  totalAmount?: number;
   cancellationWindowMinutes: number;
   onClose: () => void;
   onSuccess: (info?: { releasedPartnerId?: string | null }) => void;
@@ -24,6 +26,8 @@ interface CancelBookingDialogProps {
 export default function CancelBookingDialog({
   bookingId,
   createdAt,
+  scheduledDate,
+  totalAmount,
   cancellationWindowMinutes,
   onClose,
   onSuccess,
@@ -34,7 +38,9 @@ export default function CancelBookingDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const refundEligible = isWithinFreeWindow(createdAt, cancellationWindowMinutes);
+  const refundPolicy = evaluateCancellationRefund(createdAt, scheduledDate, cancellationWindowMinutes);
+  const estimatedFee = totalAmount != null ? Math.round(totalAmount * (refundPolicy.cancellationFeePercentage / 100)) : null;
+  const estimatedRefund = totalAmount != null ? Math.max(0, totalAmount - (estimatedFee || 0)) : null;
 
   const handleConfirm = async () => {
     if (isSubmitting) return;
@@ -81,20 +87,54 @@ export default function CancelBookingDialog({
         </div>
 
         {/* Refund banner */}
-        <div className={`flex items-start gap-2.5 p-3.5 rounded-2xl border mb-5 ${refundEligible ? "bg-success/10 border-success/25" : "bg-warning/10 border-warning/25"}`}>
-          <span className={`material-symbols-outlined text-base shrink-0 mt-0.5 ${refundEligible ? "text-success" : "text-warning"}`}>
-            {refundEligible ? "account_balance_wallet" : "info"}
+        <div
+          className={`flex items-start gap-2.5 p-3.5 rounded-2xl border mb-5 ${
+            refundPolicy.tier === "full_refund"
+              ? "bg-success/10 border-success/25"
+              : refundPolicy.tier === "partial_refund"
+              ? "bg-primary/5 border-primary/20"
+              : "bg-warning/10 border-warning/25"
+          }`}
+        >
+          <span
+            className={`material-symbols-outlined text-base shrink-0 mt-0.5 ${
+              refundPolicy.tier === "full_refund"
+                ? "text-success"
+                : refundPolicy.tier === "partial_refund"
+                ? "text-primary"
+                : "text-warning"
+            }`}
+          >
+            {refundPolicy.eligible ? "account_balance_wallet" : "info"}
           </span>
           <p className="text-[11px] font-semibold leading-relaxed text-on-surface-variant">
-            {refundEligible ? (
+            {refundPolicy.tier === "full_refund" && (
               <>
-                You are within the {formatFreeWindowLabel(cancellationWindowMinutes)} free-cancellation window.
-                Your full payment will be <span className="text-success font-black">automatically refunded</span> to your wallet.
+                You are within the {formatFreeWindowLabel(cancellationWindowMinutes)} free-cancellation grace period.
+                Your full payment {totalAmount ? `(₹${totalAmount.toLocaleString("en-IN")})` : ""} will be{" "}
+                <span className="text-success font-black">100% refunded</span> to your wallet.
               </>
-            ) : (
+            )}
+            {refundPolicy.tier === "partial_refund" && (
               <>
-                The {formatFreeWindowLabel(cancellationWindowMinutes)} free-cancellation window has passed.
-                <span className="text-warning font-black"> No refund</span> will be issued for this cancellation.
+                You are cancelling in advance (more than 30 minutes before service). A{" "}
+                <span className="text-primary font-black">90% refund</span>{" "}
+                {estimatedRefund ? `(₹${estimatedRefund.toLocaleString("en-IN")})` : ""}{" "}
+                will be credited to your wallet{" "}
+                {estimatedFee ? (
+                  <span className="text-on-surface-variant/80">
+                    (10% cancellation fee: ₹{estimatedFee.toLocaleString("en-IN")})
+                  </span>
+                ) : (
+                  "(10% cancellation fee deducted)"
+                )}
+                .
+              </>
+            )}
+            {refundPolicy.tier === "non_refundable" && (
+              <>
+                Your service is scheduled within 30 minutes. As our Professional is preparing or en route,{" "}
+                <span className="text-warning font-black">no refund</span> will be issued.
               </>
             )}
           </p>

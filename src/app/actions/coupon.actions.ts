@@ -118,7 +118,7 @@ export async function validateCouponAction(
     normalized,
     authoritativeSubtotal,
     user.id,
-    services[0]?.serviceId ?? undefined
+    serviceIds
   );
 
   if (!validationResult.eligible) {
@@ -127,15 +127,15 @@ export async function validateCouponAction(
 
   const coupon = validationResult.coupon!;
 
-  // Service-restriction guard (must match computeServiceBreakdowns in payment.ts):
-  // if the coupon is limited to a specific service, every cart service must match.
+  // Service-restriction guard: if the coupon is limited to a specific service,
+  // at least one cart service must match the restriction.
   if (
     coupon.applicable_to_service_id &&
-    !serviceIds.every((id) => id === coupon.applicable_to_service_id)
+    !serviceIds.includes(coupon.applicable_to_service_id)
   ) {
     return {
       success: false,
-      error: "This coupon is not applicable to the selected services.",
+      error: "This coupon is not applicable to any of the selected services.",
     };
   }
 

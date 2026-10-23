@@ -15,6 +15,7 @@ type Booking = {
   status: string;
   scheduled_date: string;
   created_at: string;
+  total_amount: number;
   services: {
     title: string;
     category: string;
@@ -329,6 +330,8 @@ export default function BookingsClient({
         <CancelBookingDialog
           bookingId={cancelTarget.id}
           createdAt={cancelTarget.created_at}
+          scheduledDate={cancelTarget.scheduled_date}
+          totalAmount={cancelTarget.total_amount}
           cancellationWindowMinutes={cancellationWindowMinutes}
           onClose={() => setCancelTarget(null)}
           onSuccess={() => {

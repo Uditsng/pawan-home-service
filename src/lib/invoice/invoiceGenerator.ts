@@ -166,16 +166,17 @@ export async function compileInvoiceSnapshot(supabase: SupabaseClient, bookingId
     (sum, item) => sum + (item.meta?.type === "fee" ? Number(item.total || 0) : 0),
     0,
   );
-  const chargedTotal = Number(booking.total_amount || 0) + orderFeesTotal;
-  const walletCoverage = Math.min(walletApplied, chargedTotal);
-  const onlineCoverage = Math.max(0, chargedTotal - walletCoverage);
+  // booking.total_amount is the net cash/online amount captured after wallet deduction
+  const onlineCoverage = Math.max(0, Number(booking.total_amount || 0) + orderFeesTotal);
+  const walletCoverage = walletApplied;
+  const chargedTotal = onlineCoverage + walletCoverage;
 
   let invoiceMethod = paymentMethod;
   if (chargedTotal <= 0) {
-    invoiceMethod = bookingPricing?.offer_id ? "Offer (Free)" : walletCoverage > 0 ? "Wallet" : "Razorpay";
+    invoiceMethod = bookingPricing?.offer_id ? "Offer (Free)" : "Razorpay";
   } else if (walletCoverage > 0 && onlineCoverage > 0) {
     invoiceMethod = "Wallet + Razorpay";
-  } else if (walletCoverage > 0) {
+  } else if (walletCoverage > 0 && onlineCoverage <= 0) {
     invoiceMethod = "Wallet";
   }
 

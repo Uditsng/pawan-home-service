@@ -40,16 +40,20 @@ function getFirebaseApp(): App | null {
     return firebaseApp;
   }
 
-  firebaseApp = initializeApp({
-    credential: cert({
-      projectId,
-      clientEmail,
-      // Handle escaped newlines from env variable
-      privateKey: privateKey.replace(/\\n/g, "\n"),
-    }),
-  });
-
-  return firebaseApp;
+  try {
+    firebaseApp = initializeApp({
+      credential: cert({
+        projectId,
+        clientEmail,
+        // Handle escaped newlines from env variable
+        privateKey: privateKey.replace(/\\n/g, "\n"),
+      }),
+    });
+    return firebaseApp;
+  } catch (err) {
+    console.error("[firebase-admin] Failed to initialize Firebase Admin SDK:", (err as Error).message);
+    return null;
+  }
 }
 
 /**

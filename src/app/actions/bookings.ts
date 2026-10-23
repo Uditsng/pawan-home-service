@@ -2,7 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
-import { notifyCustomer, notifyPartner } from "@/lib/notifications";
+import { notifyCustomer, notifyPartner, notifyAdmins } from "@/lib/notifications";
 import { triggerDispatchBatch } from "@/app/actions/dispatch";
 import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 import { isValidBookingSlot } from "@/utils/schedule";
@@ -13,6 +13,9 @@ interface BookingActionResult {
   alreadyCancelled?: boolean;
   alreadyDone?: boolean;
   refunded?: boolean;
+  refundEligible?: boolean;
+  cancellationFee?: number;
+  refundAmount?: number;
   releasedPartnerId?: string | null;
   newScheduledDate?: string | null;
 }
@@ -102,6 +105,8 @@ export async function cancelBookingAction(
     error?: string;
     refunded?: boolean;
     refund_eligible?: boolean;
+    cancellation_fee?: number;
+    refund_amount?: number;
     released_partner_id?: string | null;
   };
 
@@ -132,16 +137,47 @@ export async function cancelBookingAction(
   }
 
   if (booking?.customer_id) {
+    const fee = Number(rpcResult.cancellation_fee || 0);
+    const refund = Number(rpcResult.refund_amount || 0);
+
+    let customerMsg = `Your ${serviceTitle} booking was cancelled.`;
+    if (rpcResult.refund_eligible) {
+      if (fee > 0) {
+        customerMsg = `Your ${serviceTitle} booking was cancelled. A 90% refund of ₹${refund.toLocaleString("en-IN")} (after 10% cancellation fee of ₹${fee.toLocaleString("en-IN")}) has been credited to your wallet.`;
+      } else {
+        customerMsg = `Your ${serviceTitle} booking was cancelled and your full refund of ₹${refund.toLocaleString("en-IN")} has been credited to your wallet.`;
+      }
+    } else {
+      customerMsg = `Your ${serviceTitle} booking was cancelled. No refund applies as it was cancelled within 30 minutes of scheduled service time.`;
+    }
+
     void notifyCustomer(
       booking.customer_id,
       rpcResult.refund_eligible ? "Booking Cancelled · Refunded" : "Booking Cancelled",
-      rpcResult.refund_eligible
-        ? `Your ${serviceTitle} booking was cancelled and the refund has been credited to your wallet.`
-        : `Your ${serviceTitle} booking was cancelled. No refund applies as the free-cancellation window has passed.`,
+      customerMsg,
       "booking_cancelled",
-      { booking_id: bookingId, refund_eligible: rpcResult.refund_eligible, refunded: rpcResult.refunded }
+      {
+        booking_id: bookingId,
+        refund_eligible: rpcResult.refund_eligible,
+        refunded: rpcResult.refunded,
+        cancellation_fee: fee,
+        refund_amount: refund,
+      }
     );
   }
+
+  // Notify Admins
+  void notifyAdmins(
+    "Booking Cancelled by Customer",
+    `Booking #${bookingId.substring(0, 8)} (${serviceTitle}) was cancelled by the customer.`,
+    "booking_cancelled",
+    {
+      booking_id: bookingId,
+      cancelled_by: "customer",
+      cancellation_fee: Number(rpcResult.cancellation_fee || 0),
+      refund_amount: Number(rpcResult.refund_amount || 0),
+    }
+  );
 
   revalidatePath("/customer/bookings", "page");
   revalidatePath(`/customer/bookings/${bookingId}/tracking`, "page");
@@ -153,6 +189,9 @@ export async function cancelBookingAction(
     success: true,
     alreadyCancelled: rpcResult.already_cancelled === true,
     refunded: rpcResult.refunded === true,
+    refundEligible: rpcResult.refund_eligible === true,
+    cancellationFee: rpcResult.cancellation_fee,
+    refundAmount: rpcResult.refund_amount,
     releasedPartnerId: rpcResult.released_partner_id ?? null,
   };
 }

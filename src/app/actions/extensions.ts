@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
 import crypto from "crypto";
 import { notifyCustomer, notifyPartner, notifyAdmins } from "@/lib/notifications";
 import { revalidatePath } from "next/cache";
@@ -128,7 +129,7 @@ export async function requestExtensionAction(
       additional_amount: price,
     });
 
-    await supabase.from("booking_audit_trail").insert({
+    await createAdminClient().from("booking_audit_trail").insert({
       booking_id: bookingId,
       action: "EXTENSION_REQUESTED",
       actor: "PARTNER",
@@ -226,7 +227,7 @@ export async function rejectExtensionAction(
       rejected_by: user.id,
     });
 
-    await supabase.from("booking_audit_trail").insert({
+    await createAdminClient().from("booking_audit_trail").insert({
       booking_id: ext.booking_id,
       action: "EXTENSION_REJECTED",
       actor: isCustomer ? "USER" : "SYSTEM",
@@ -432,7 +433,7 @@ export async function verifyExtensionPaymentAction(payload: {
       new_duration: newDuration,
     });
 
-    await supabase.from("booking_audit_trail").insert({
+    await createAdminClient().from("booking_audit_trail").insert({
       booking_id: ext.booking_id,
       action: "EXTENSION_ACTIVATED",
       actor: "SYSTEM",

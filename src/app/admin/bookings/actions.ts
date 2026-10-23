@@ -46,78 +46,84 @@ export async function updateBookingStatusAction(
   await requireAdmin();
   const supabase = await createClient();
 
-  const updateData: Record<string, unknown> = { status };
-
   if (status === "cancelled") {
-    updateData.cancelled_at = new Date().toISOString();
-    updateData.cancelled_by = "SYSTEM";
-    updateData.refund_eligible = true;
-    if (cancellationReason) {
-      updateData.cancellation_reason = cancellationReason;
+    // 1. Authoritative complete teardown via atomic admin_cancel_booking RPC
+    const { data: cancelResult, error: cancelError } = await supabase.rpc("admin_cancel_booking", {
+      p_booking_id: bookingId,
+      p_reason: cancellationReason?.trim() || "Cancelled by admin",
+      p_refund_eligible: true,
+    });
+
+    if (cancelError) {
+      handleDatabaseError(cancelError);
     }
-  }
 
-  if (status === "completed") {
-    const now = new Date().toISOString();
-    updateData.completed_at = now;
-    updateData.service_completed_at = now;
-    // Set completion_otp_verified so the invoice auto-creation trigger fires
-    updateData.completion_otp_verified = true;
-    updateData.completion_otp_verified_at = now;
-  }
+    const res = cancelResult as { success?: boolean; error?: string };
+    if (!res || !res.success) {
+      throw new Error(res?.error || "Failed to cancel booking via admin RPC");
+    }
+  } else {
+    // 2. Operational updates for other statuses (completed, in_progress, etc.)
+    const updateData: Record<string, unknown> = { status };
 
-  if (status === "in_progress") {
-    updateData.started_at = new Date().toISOString();
-  }
+    if (status === "completed") {
+      const now = new Date().toISOString();
+      updateData.completed_at = now;
+      updateData.service_completed_at = now;
+      // Set completion_otp_verified so the invoice auto-creation trigger fires
+      updateData.completion_otp_verified = true;
+      updateData.completion_otp_verified_at = now;
+    }
 
-  const { error } = await supabase
-    .from("bookings")
-    .update(updateData)
-    .eq("id", bookingId);
+    if (status === "in_progress") {
+      updateData.started_at = new Date().toISOString();
+    }
 
-  if (error) {
-    handleDatabaseError(error);
-  }
-
-  if (status === "completed") {
-    const { data: completedBooking } = await supabase
+    const { error } = await supabase
       .from("bookings")
-      .select("partner_id")
-      .eq("id", bookingId)
-      .single();
-    if (completedBooking?.partner_id) {
-      void supabase.from("profiles").update({ is_available: true }).eq("id", completedBooking.partner_id);
+      .update(updateData)
+      .eq("id", bookingId);
+
+    if (error) {
+      handleDatabaseError(error);
     }
+
+    if (status === "completed") {
+      const { data: completedBooking } = await supabase
+        .from("bookings")
+        .select("partner_id")
+        .eq("id", bookingId)
+        .single();
+      if (completedBooking?.partner_id) {
+        void supabase.from("profiles").update({ is_available: true }).eq("id", completedBooking.partner_id);
+      }
+    }
+
+    // Log booking event for audit trail
+    await supabase.from("booking_events").insert({
+      booking_id: bookingId,
+      event_type:
+        status === "completed"
+          ? "JOB_COMPLETED"
+          : status === "in_progress"
+          ? "JOB_STARTED"
+          : "BOOKING_CREATED",
+      actor: "SYSTEM",
+      metadata: {
+        admin_override: true,
+        new_status: status,
+      },
+    });
+
+    await supabase.from("booking_audit_trail").insert({
+      booking_id: bookingId,
+      action: "ADMIN_OVERRIDE",
+      actor: "ADMIN",
+      metadata: {
+        new_status: status,
+      },
+    });
   }
-
-  // Log booking event for audit trail
-  await supabase.from("booking_events").insert({
-    booking_id: bookingId,
-    event_type:
-      status === "cancelled"
-        ? "JOB_CANCELLED"
-        : status === "completed"
-        ? "JOB_COMPLETED"
-        : status === "in_progress"
-        ? "JOB_STARTED"
-        : "BOOKING_CREATED",
-    actor: "SYSTEM",
-    metadata: {
-      admin_override: true,
-      new_status: status,
-      reason: cancellationReason || null,
-    },
-  });
-
-  await supabase.from("booking_audit_trail").insert({
-    booking_id: bookingId,
-    action: "ADMIN_OVERRIDE",
-    actor: "ADMIN",
-    metadata: {
-      new_status: status,
-      cancellation_reason: cancellationReason || null,
-    },
-  });
 
   // ─── Notifications ─────────────────────────────────────────
   // Fetch booking details for notification context

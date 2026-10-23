@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { notifyPartner } from "@/lib/notifications";
 
@@ -154,7 +155,7 @@ export async function submitReview(
     metadata: { rating: ratingInt, has_comment: !!sanitizedComment },
   });
 
-  void supabase.from("booking_audit_trail").insert({
+  void createAdminClient().from("booking_audit_trail").insert({
     booking_id: bookingId,
     action: "REVIEW_SUBMITTED",
     actor: "USER",

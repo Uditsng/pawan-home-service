@@ -56,7 +56,7 @@ export async function validateCoupon(
   couponCode: string,
   eligibleSubtotal: number,
   customerId?: string,
-  serviceId?: string
+  serviceId?: string | string[]
 ): Promise<ValidateCouponResult> {
   const normalized = normalizeCouponCode(couponCode);
   if (!normalized) {
@@ -127,26 +127,33 @@ export async function validateCoupon(
 
   // 5. Service applicability check
   if (coupon.applicable_to_service_id) {
-    // Coupon is restricted to a specific service
-    if (!serviceId) {
+    const targetServiceId = coupon.applicable_to_service_id;
+    const providedIds = Array.isArray(serviceId)
+      ? serviceId
+      : serviceId
+      ? [serviceId]
+      : [];
+
+    if (providedIds.length === 0) {
       return {
         eligible: false,
         coupon,
         error: "This coupon is restricted to a specific service.",
         eligibleSubtotal,
-        applicableServiceId: coupon.applicable_to_service_id,
+        applicableServiceId: targetServiceId,
       };
     }
-    if (coupon.applicable_to_service_id !== serviceId) {
+
+    if (!providedIds.includes(targetServiceId)) {
       return {
         eligible: false,
         coupon,
-        error: "This coupon is not applicable to the selected service.",
+        error: "This coupon is not applicable to any of the selected services.",
         eligibleSubtotal,
-        applicableServiceId: coupon.applicable_to_service_id,
+        applicableServiceId: targetServiceId,
       };
     }
-    // If serviceId matches, coupon is applicable
+    // If targetServiceId is in providedIds, coupon is applicable to this cart
   }
   // If applicable_to_service_id is NULL, coupon applies to all services — proceed
 

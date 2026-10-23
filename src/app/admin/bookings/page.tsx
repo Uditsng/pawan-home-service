@@ -172,12 +172,19 @@ export default async function AdminBookingsPage() {
     bookingsRaw = data;
   }
 
+  // Fetch secure OTPs from booking_otps table
+  const { data: otpsData } = await supabase
+    .from("booking_otps")
+    .select("booking_id, arrival_otp, completion_otp");
+  const otpMap = new Map((otpsData || []).map((o: { booking_id: string; arrival_otp: string | null; completion_otp: string | null }) => [o.booking_id, o]));
+
   // ─── 2. Serialize bookings with safe typing ────────────────
 
   const bookings: SerializedBooking[] = bookingsRaw.map((b: Record<string, unknown>) => {
     const svc = b.service as Record<string, unknown> | null;
     const cust = b.customer as Record<string, unknown> | null;
     const part = b.partner as Record<string, unknown> | null;
+    const otpRec = otpMap.get(String(b.id || ""));
 
     return {
       id: String(b.id || ""),
@@ -199,9 +206,9 @@ export default async function AdminBookingsPage() {
       cancellation_reason: (b.cancellation_reason as string) || null,
       customer_id: (b.customer_id as string) || null,
       partner_id: (b.partner_id as string) || null,
-      arrival_otp: (b.arrival_otp as string) || null,
+      arrival_otp: otpRec?.arrival_otp || (b.arrival_otp as string) || null,
       arrival_otp_verified: !!b.arrival_otp_verified,
-      completion_otp: (b.completion_otp as string) || null,
+      completion_otp: otpRec?.completion_otp || (b.completion_otp as string) || null,
       completion_otp_verified: !!b.completion_otp_verified,
       failed_otp_attempts: Number(b.failed_otp_attempts || 0),
       service_started_at: (b.service_started_at as string) || null,

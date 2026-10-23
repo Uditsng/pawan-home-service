@@ -220,6 +220,8 @@ export interface Booking {
   payment_method?: string | null;
   payment_status?: 'pending' | 'paid' | 'failed' | 'refunded' | null;
   cash_received_at?: string | null;
+  wallet_discount_applied?: number | null;
+  unpaid_quote_amount?: number | null;
 }
 
 // ─── Cart & Orders ───────────────────────────────────────────
@@ -264,7 +266,7 @@ export interface Order {
   longitude?: number | null;
   scheduled_date: string | null;
   item_count: number;
-  payment_status?: 'pending' | 'paid' | 'failed' | 'refunded' | null;
+  payment_status?: 'pending' | 'processing' | 'paid' | 'failed' | 'refunded' | null;
   coupon_code?: string | null;
   original_subtotal?: number;
   tax_amount?: number;
@@ -273,6 +275,9 @@ export interface Order {
   order_fees?: OrderFeeItem[];
   offer_entitlement_id?: string | null;
   offer_discount?: number;
+  wallet_discount?: number;
+  razorpay_order_id?: string | null;
+  checkout_payload?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }
@@ -589,7 +594,13 @@ export interface BookingQuote {
   expiry_time: string | null;
   notes: string | null;
   created_at: string;
+  payment_method?: 'Online' | 'Cash' | null;
+  payment_status?: 'pending' | 'paid' | 'failed';
+  razorpay_order_id?: string | null;
+  razorpay_payment_id?: string | null;
+  paid_at?: string | null;
   quote_items?: BookingQuoteItem[];
+  booking_quote_items?: BookingQuoteItem[];
 }
 
 export interface BookingQuoteItem {

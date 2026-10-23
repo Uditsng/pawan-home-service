@@ -1,7 +1,13 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
-import { createBookingQuoteAction, respondToQuoteAction, QuoteItemInput } from "@/app/actions/quotes";
+import {
+  createBookingQuoteAction,
+  respondToQuoteAction,
+  createRazorpayOrderForQuoteAction,
+  verifyQuotePaymentAction,
+  QuoteItemInput,
+} from "@/app/actions/quotes";
 import type { BookingQuote, BookingQuoteItem } from "@/lib/types";
 import { calculateGstBreakdown } from "@/lib/pricing";
 
@@ -15,6 +21,20 @@ interface QuotationWorkflowProps {
   onSuccess?: () => void;
   taxRate?: number;
   gstEnabled?: boolean;
+}
+
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (typeof window !== "undefined" && (window as unknown as { Razorpay?: unknown }).Razorpay) {
+      return resolve(true);
+    }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
 }
 
 export default function QuotationWorkflow({
@@ -92,20 +112,108 @@ export default function QuotationWorkflow({
     });
   };
 
-  const handleRespondQuote = async (approve: boolean) => {
+  const handlePayOnline = async () => {
     if (!activeQuote) return;
     setErrorMessage(null);
     setSuccessMessage(null);
 
     startTransition(async () => {
       try {
-        const res = await respondToQuoteAction(activeQuote.id, approve);
+        const hasLoaded = await loadRazorpayScript();
+        if (!hasLoaded) {
+          setErrorMessage("Failed to load payment gateway. Please check your internet connection.");
+          return;
+        }
+
+        const order = await createRazorpayOrderForQuoteAction(activeQuote.id);
+        const customWindow = window as unknown as {
+          Razorpay: new (options: Record<string, unknown>) => { open: () => void };
+        };
+
+        const options = {
+          key: order.keyId,
+          amount: order.amount,
+          currency: order.currency,
+          name: "PHS Cleaning Company",
+          description: `Quotation Payment (QUOTE-${activeQuote.id.slice(0, 8).toUpperCase()})`,
+          order_id: order.orderId,
+          theme: {
+            color: "#002261",
+          },
+          handler: async function (response: {
+            razorpay_order_id: string;
+            razorpay_payment_id: string;
+            razorpay_signature: string;
+          }) {
+            startTransition(async () => {
+              try {
+                const verifyRes = await verifyQuotePaymentAction({
+                  quoteId: activeQuote.id,
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                });
+
+                if (verifyRes.success) {
+                  setSuccessMessage("Payment verified successfully! Quotation approved.");
+                  if (onSuccess) onSuccess();
+                } else {
+                  setErrorMessage(verifyRes.error || "Payment verification failed.");
+                }
+              } catch (verifyErr) {
+                console.error("Verification error:", verifyErr);
+                setErrorMessage("An error occurred during payment verification.");
+              }
+            });
+          },
+          modal: {
+            ondismiss: function () {
+              setErrorMessage("Online payment was cancelled.");
+            },
+          },
+        };
+
+        const rzp = new customWindow.Razorpay(options);
+        rzp.open();
+      } catch (err) {
+        console.error("Payment init error:", err);
+        setErrorMessage((err as Error).message || "Failed to initialize online payment.");
+      }
+    });
+  };
+
+  const handlePayCash = async () => {
+    if (!activeQuote) return;
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    startTransition(async () => {
+      try {
+        const res = await respondToQuoteAction(activeQuote.id, true, "Cash");
         if (res.success) {
-          setSuccessMessage(approve ? "Quotation approved!" : "Quotation declined.");
+          setSuccessMessage("Quotation approved! Please pay cash directly to the professional upon completion.");
           if (onSuccess) onSuccess();
         }
       } catch (err) {
-        setErrorMessage((err as Error).message || "Failed to update quotation response.");
+        setErrorMessage((err as Error).message || "Failed to approve quotation.");
+      }
+    });
+  };
+
+  const handleDecline = async () => {
+    if (!activeQuote) return;
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    startTransition(async () => {
+      try {
+        const res = await respondToQuoteAction(activeQuote.id, false);
+        if (res.success) {
+          setSuccessMessage("Quotation declined.");
+          if (onSuccess) onSuccess();
+        }
+      } catch (err) {
+        setErrorMessage((err as Error).message || "Failed to decline quotation.");
       }
     });
   };
@@ -130,7 +238,7 @@ export default function QuotationWorkflow({
         <div className="flex justify-between items-start border-b border-outline-variant/15 pb-4">
           <div>
             <h3 className="font-headline text-base font-bold text-primary flex items-center gap-2">
-              <span className="material-symbols-outlined text-emerald-600">receipt</span> Service Quotation
+              <span className="material-symbols-outlined text-[#059669]">receipt</span> Service Quotation
             </h3>
             <p className="text-[10px] text-on-surface-variant/70 font-medium uppercase tracking-wider mt-1">
               Ref: QUOTE-{activeQuote.id.slice(0, 8).toUpperCase()}
@@ -141,7 +249,7 @@ export default function QuotationWorkflow({
               isPendingApproval
                 ? "bg-warning/10 text-warning border-warning/20"
                 : activeQuote.status === "approved"
-                ? "bg-green-500/10 text-emerald-600 border-green-500/20"
+                ? "bg-green-500/10 text-[#059669] border-green-500/20"
                 : "bg-red-500/10 text-red-600 border-red-500/20"
             }`}
           >
@@ -158,7 +266,7 @@ export default function QuotationWorkflow({
         )}
         {successMessage && (
           <div className="bg-green-50 border border-green-200/50 rounded-2xl p-4 flex items-start gap-2 text-emerald-800 text-xs font-semibold">
-            <span className="material-symbols-outlined text-emerald-600 text-sm">check_circle</span>
+            <span className="material-symbols-outlined text-[#059669] text-sm">check_circle</span>
             {successMessage}
           </div>
         )}
@@ -176,7 +284,7 @@ export default function QuotationWorkflow({
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/10">
-                {activeQuote.booking_quote_items?.map((item: BookingQuoteItem) => (
+              {activeQuote.booking_quote_items?.map((item: BookingQuoteItem) => (
                 <tr key={item.id}>
                   <td className="py-3 font-bold text-on-surface">{item.name}</td>
                   <td className="py-3 text-center capitalize">{item.item_type}</td>
@@ -203,7 +311,7 @@ export default function QuotationWorkflow({
             <span>+₹{Math.round(activeQuote.total_amount * (taxRate / 100))}</span>
           </div>
           {activeQuote.discount > 0 && (
-            <div className="flex justify-between font-bold text-emerald-600">
+            <div className="flex justify-between font-bold text-[#059669]">
               <span>Applied Discount</span>
               <span>-₹{activeQuote.discount}</span>
             </div>
@@ -215,22 +323,54 @@ export default function QuotationWorkflow({
           </div>
         </div>
 
+        {/* Approved Payment Details Badge */}
+        {activeQuote.status === "approved" && (
+          <div className="bg-surface-container-low p-3.5 rounded-xl border border-outline-variant/10 text-xs flex items-center justify-between">
+            <span className="text-on-surface-variant font-medium">Payment Mode</span>
+            <span className="font-bold text-primary flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-sm text-[#059669]">
+                {activeQuote.payment_method === "Online" ? "verified" : "payments"}
+              </span>
+              {activeQuote.payment_method === "Online"
+                ? "Paid Online"
+                : activeQuote.payment_status === "paid"
+                ? "Cash Collected by Pro"
+                : "Pay Cash on Completion"}
+            </span>
+          </div>
+        )}
+
         {/* Action Controls for Customer */}
-        {isPendingApproval && isPendingApproval && role === "customer" && (
-          <div className="flex gap-3 pt-2">
+        {isPendingApproval && role === "customer" && (
+          <div className="space-y-3 pt-2">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                type="button"
+                onClick={handlePayOnline}
+                disabled={isPending}
+                className="flex-1 py-3 px-4 bg-primary text-white rounded-xl font-bold text-xs uppercase tracking-wider text-center shadow-md hover:brightness-110 active:scale-[0.99] transition-all disabled:opacity-40 cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-sm">credit_card</span>
+                Pay Online (₹{activeQuote.total_amount})
+              </button>
+              <button
+                type="button"
+                onClick={handlePayCash}
+                disabled={isPending}
+                className="flex-1 py-3 px-4 bg-secondary text-white rounded-xl font-bold text-xs uppercase tracking-wider text-center shadow-md shadow-secondary/15 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-40 cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-sm">payments</span>
+                Pay Cash on Completion
+              </button>
+            </div>
             <button
-              onClick={() => handleRespondQuote(false)}
+              type="button"
+              onClick={handleDecline}
               disabled={isPending}
-              className="flex-1 py-3 border border-outline-variant/20 rounded-xl font-bold text-xs uppercase tracking-wider text-center hover:bg-surface-container-low transition-colors disabled:opacity-40 cursor-pointer text-slate-700"
+              className="w-full py-2.5 border border-outline-variant/20 rounded-xl font-bold text-xs uppercase tracking-wider text-center hover:bg-surface-container-low transition-colors disabled:opacity-40 cursor-pointer text-on-surface-variant flex items-center justify-center gap-1.5"
             >
+              <span className="material-symbols-outlined text-sm text-red-500">close</span>
               Decline Quote
-            </button>
-            <button
-              onClick={() => handleRespondQuote(true)}
-              disabled={isPending}
-              className="flex-1 py-3 bg-secondary text-white rounded-xl font-bold text-xs uppercase tracking-widest text-center shadow-lg shadow-secondary/15 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-40 cursor-pointer"
-            >
-              Approve & Proceed
             </button>
           </div>
         )}
@@ -244,7 +384,7 @@ export default function QuotationWorkflow({
       <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl pointer-events-none" />
 
       <h3 className="font-headline text-base font-bold text-primary border-b border-outline-variant/15 pb-3 flex items-center gap-2">
-        <span className="material-symbols-outlined text-emerald-600">border_color</span> Create Work Quotation
+        <span className="material-symbols-outlined text-[#059669]">border_color</span> Create Work Quotation
       </h3>
 
       {errorMessage && (
@@ -255,7 +395,7 @@ export default function QuotationWorkflow({
       )}
       {successMessage && (
         <div className="bg-green-50 border border-green-200/50 rounded-2xl p-4 flex items-start gap-2 text-emerald-800 text-xs font-semibold">
-          <span className="material-symbols-outlined text-emerald-600 text-sm">check_circle</span>
+          <span className="material-symbols-outlined text-[#059669] text-sm">check_circle</span>
           {successMessage}
         </div>
       )}

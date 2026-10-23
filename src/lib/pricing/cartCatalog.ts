@@ -87,6 +87,7 @@ export function buildCartPricingInput(
     pincode?: string;
     couponAmountForLine?: number;
     offerAmountForLine?: number;
+    walletAmountForLine?: number;
   }
 ): PricingInput | null {
   const service = catalog.services[item.serviceId];
@@ -109,6 +110,7 @@ export function buildCartPricingInput(
     surchargeRules: (catalog.rules[item.serviceId] || []).map(mapPricingRule),
     couponAmountForLine: options?.couponAmountForLine,
     offerAmountForLine: options?.offerAmountForLine,
+    walletBalanceToUse: options?.walletAmountForLine,
     gstRate: catalog.taxRate,
     gstEnabled: catalog.gstEnabled,
     gstApplicable: item.gstApplicable ?? service.gst_applicable ?? true,
@@ -127,6 +129,7 @@ export function computeCartLineItems(
     /** Order-level coupon discount distributed per service (see applyOrderLevelCoupon). */
     couponAllocation?: Record<string, number>;
     offerAmountsByService?: Record<string, number>;
+    walletAmountsByService?: Record<string, number>;
   }
 ): CartLineItem[] {
   const lineItems: CartLineItem[] = [];
@@ -135,6 +138,7 @@ export function computeCartLineItems(
       ...options,
       couponAmountForLine: options?.couponAllocation?.[item.serviceId],
       offerAmountForLine: options?.offerAmountsByService?.[item.serviceId],
+      walletAmountForLine: options?.walletAmountsByService?.[item.serviceId],
     });
     if (!input) continue;
     lineItems.push({ serviceId: item.serviceId, breakdown: calculatePricingBreakdown(input) });

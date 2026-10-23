@@ -128,7 +128,7 @@ export function calculateInvoice(params: {
     {
       description: booking.services?.title || "Home Cleaning Service",
       quantity: 1,
-      unit_price: initialSubtotal + deductionTotal,
+      unit_price: initialSubtotal,
       discount: deductionTotal,
       tax: initialTax,
       total: initialGrandTotal,

@@ -10,6 +10,7 @@ interface RawBooking {
   total_amount: number;
   completed_at: string | null;
   created_at: string;
+  payment_method: string | null;
   services: { title: string } | null;
   customer: { full_name: string } | null;
 }

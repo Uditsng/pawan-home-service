@@ -156,7 +156,7 @@ export default function TrackingClient({
 
   const fetchBookingDetail = useCallback(async () => {
     const supabase = createClient();
-    const [bookingRes, extRes, quoteRes] = await Promise.all([
+    const [bookingRes, extRes, quoteRes, otpRes] = await Promise.all([
       supabase
         .from("bookings")
         .select(`
@@ -208,11 +208,23 @@ export default function TrackingClient({
         .eq("booking_id", initialBooking.id)
         .order("created_at", { ascending: false })
         .limit(1)
-        .maybeSingle()
+        .maybeSingle(),
+
+      supabase
+        .from("booking_otps")
+        .select("arrival_otp, completion_otp")
+        .eq("booking_id", initialBooking.id)
+        .maybeSingle(),
     ]);
 
+    const resolvedBooking = (bookingRes.data || initialBooking) as BookingDetails;
+    if (otpRes?.data) {
+      resolvedBooking.arrival_otp = otpRes.data.arrival_otp ?? null;
+      resolvedBooking.completion_otp = otpRes.data.completion_otp ?? null;
+    }
+
     return {
-      booking: (bookingRes.data || initialBooking) as BookingDetails,
+      booking: resolvedBooking,
       extensions: (extRes.data || []) as BookingExtension[],
       activeQuote: quoteRes.data || null,
     };
@@ -327,10 +339,17 @@ export default function TrackingClient({
       })
       .subscribe();
 
+    const otpChannel = supabase.channel(`rt-otp-${bookingId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "booking_otps", filter: `booking_id=eq.${bookingId}` }, () => {
+        void refresh();
+      })
+      .subscribe();
+
     return () => {
       void supabase.removeChannel(bookingChannel);
       void supabase.removeChannel(extChannel);
       void supabase.removeChannel(quoteChannel);
+      void supabase.removeChannel(otpChannel);
     };
   }, [initialBooking.id, refresh]);
 
@@ -1013,6 +1032,8 @@ export default function TrackingClient({
         <CancelBookingDialog
           bookingId={booking.id}
           createdAt={booking.created_at}
+          scheduledDate={booking.scheduled_date}
+          totalAmount={booking.total_amount}
           cancellationWindowMinutes={cancellationWindowMinutes}
           onClose={() => setShowCancelDialog(false)}
           onSuccess={() => {

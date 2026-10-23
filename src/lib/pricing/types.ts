@@ -103,6 +103,7 @@ export interface CouponInput {
   discount_value: number;
   min_booking_amount?: number | null;
   max_discount?: number | null;
+  applicable_to_service_id?: string | null;
 }
 
 /**

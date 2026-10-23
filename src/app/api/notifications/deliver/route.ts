@@ -72,3 +72,5 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }
+
+export const POST = GET;

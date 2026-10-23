@@ -95,3 +95,57 @@ export function calculateCart(input: {
     finalPayable: payable.finalPayable,
   };
 }
+
+/**
+ * Distributes an order-level wallet debit amount across cart lines
+ * using the largest-remainder method (Hamilton-Hare method) in exact paise.
+ * Lines with zero pre-wallet total receive zero.
+ */
+export function allocateWalletAcrossLines(
+  weights: Record<string, number>,
+  totalWalletApplied: number
+): Record<string, number> {
+  const result: Record<string, number> = {};
+  const total = Math.max(0, totalWalletApplied || 0);
+  if (total === 0) {
+    for (const key of Object.keys(weights)) result[key] = 0;
+    return result;
+  }
+
+  const entries = Object.entries(weights)
+    .map(([key, w]) => ({ key, weight: Math.max(0, Math.round((Number(w) || 0) * 100)) }))
+    .filter((e) => e.weight > 0);
+
+  const weightSum = entries.reduce((sum, e) => sum + e.weight, 0);
+  if (weightSum <= 0) {
+    for (const key of Object.keys(weights)) result[key] = 0;
+    return result;
+  }
+
+  const appliedPaise = Math.round(total * 100);
+
+  // Floor shares in paise, then distribute the remainder by largest fraction.
+  const shares = entries.map((e) => ({
+    ...e,
+    base: Math.floor((e.weight * appliedPaise) / weightSum),
+    remainderKey: (e.weight * appliedPaise) % weightSum,
+  }));
+  const totalBase = shares.reduce((sum, s) => sum + s.base, 0);
+  let leftover = appliedPaise - totalBase;
+
+  shares.sort((a, b) => b.remainderKey - a.remainderKey);
+  for (const s of shares) {
+    if (leftover <= 0) break;
+    s.base += 1;
+    leftover -= 1;
+  }
+
+  for (const s of shares) {
+    result[s.key] = s.base / 100;
+  }
+  for (const key of Object.keys(weights)) {
+    if (result[key] === undefined) result[key] = 0;
+  }
+  return result;
+}
+

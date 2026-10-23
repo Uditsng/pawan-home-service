@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { revalidatePath } from "next/cache";
 import type { BookingStatus } from "@/lib/types";
 import { notifyCustomer, notifyPartner, notifyAdmins } from "@/lib/notifications";
@@ -175,7 +176,8 @@ export async function rejectJob(
     });
 
     // Set booking back to pending and reset dispatch state for fresh Tier 1 broadcast
-    await supabase
+    const adminSupabase = createAdminClient();
+    await adminSupabase
       .from("bookings")
       .update({
         partner_id: null,
@@ -293,58 +295,11 @@ export async function rejectJob(
 export async function startJob(
   bookingId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const { supabase, user, error: authError } = await getAuthenticatedPartner();
-  if (!user) return { success: false, error: authError ?? "Not authenticated" };
-
-  const { data, error } = await supabase
-    .from("bookings")
-    .update({
-      status: "in_progress" as BookingStatus,
-      started_at: new Date().toISOString(),
-    })
-    .eq("id", bookingId)
-    .eq("partner_id", user.id) // Only the assigned partner can start
-    .in("status", ["confirmed", "accepted"]) // Can start from confirmed or accepted
-    .select("id")
-    .single();
-
-  if (error || !data) {
-    return {
-      success: false,
-      error: "Cannot start this job. It must be in 'confirmed' or 'accepted' state.",
-    };
-  }
-
-  await logBookingEvent(supabase, bookingId, "JOB_STARTED", "PARTNER", {
-    partner_id: user.id,
-  });
-
-  // ─── Notification: Customer ────────────────────────────────
-  const { data: startBooking } = await supabase
-    .from("bookings")
-    .select("customer_id, services:service_id(title)")
-    .eq("id", bookingId)
-    .single();
-
-  if (startBooking?.customer_id) {
-    const { data: partnerProfile } = await supabase
-      .from("profiles")
-      .select("full_name")
-      .eq("id", user.id)
-      .single();
-    const proName = partnerProfile?.full_name ?? "Your professional";
-    const svcTitle = (startBooking.services as unknown as { title: string } | null)?.title ?? "your service";
-    void notifyCustomer(
-      startBooking.customer_id,
-      "Service Started",
-      `${proName} has started your ${svcTitle} service.`,
-      "service_started",
-      { booking_id: bookingId }
-    );
-  }
-
-  revalidatePath("/partner", "layout");
-  return { success: true };
+  // Direct bypass is disallowed: partner must reach location and verify arrival OTP
+  return {
+    success: false,
+    error: "Direct status change not permitted. Please reach location and verify the customer's Arrival OTP.",
+  };
 }
 
 // ─── COMPLETE JOB ────────────────────────────────────────────
@@ -353,66 +308,11 @@ export async function startJob(
 export async function completeJob(
   bookingId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const { supabase, user, error: authError } = await getAuthenticatedPartner();
-  if (!user) return { success: false, error: authError ?? "Not authenticated" };
-
-  const { data, error } = await supabase
-    .from("bookings")
-    .update({
-      status: "completed" as BookingStatus,
-      completed_at: new Date().toISOString(),
-    })
-    .eq("id", bookingId)
-    .eq("partner_id", user.id) // Only the assigned partner
-    .eq("status", "in_progress") // Must be in_progress
-    .select("id")
-    .single();
-
-  if (error || !data) {
-    return {
-      success: false,
-      error: "Cannot complete this job. It must be in 'in_progress' state.",
-    };
-  }
-
-  void supabase.from("profiles").update({ is_available: true }).eq("id", user.id);
-
-  await logBookingEvent(supabase, bookingId, "JOB_COMPLETED", "PARTNER", {
-    partner_id: user.id,
-  });
-
-  // Fire legacy referral reward for pre-migration referrals (fire-and-forget — never blocks completion)
-  void supabase.rpc("complete_legacy_referral_reward", { p_booking_id: bookingId });
-
-  // ─── Notification: Customer ────────────────────────────────
-  const { data: completeBooking } = await supabase
-    .from("bookings")
-    .select("customer_id, services:service_id(title)")
-    .eq("id", bookingId)
-    .single();
-
-  if (completeBooking?.customer_id) {
-    const { data: partnerProfile } = await supabase
-      .from("profiles")
-      .select("full_name")
-      .eq("id", user.id)
-      .single();
-    const proName = partnerProfile?.full_name ?? "Your professional";
-    const svcTitle = (completeBooking.services as unknown as { title: string } | null)?.title ?? "your service";
-    void notifyCustomer(
-      completeBooking.customer_id,
-      "Service Completed!",
-      `${proName} has completed your ${svcTitle}. Rate your experience!`,
-      "service_completed",
-      { booking_id: bookingId }
-    );
-
-    // Fire partner referral reward check (fire-and-forget — never blocks completion)
-    void firePartnerReferralCheck(completeBooking.customer_id);
-  }
-
-  revalidatePath("/partner", "layout");
-  return { success: true };
+  // Direct bypass is disallowed: partner must request completion and verify completion OTP
+  return {
+    success: false,
+    error: "Direct status change not permitted. Please request completion and verify the customer's Completion OTP.",
+  };
 }
 
 // ─── CANCEL JOB ──────────────────────────────────────────────
@@ -457,7 +357,8 @@ export async function cancelJob(
     };
   }
 
-  const { error } = await supabase
+  const adminSupabase = createAdminClient();
+  const { error } = await adminSupabase
     .from("bookings")
     .update({
       status: "cancelled" as BookingStatus,
@@ -530,7 +431,8 @@ export async function startRoute(
   const { supabase, user, error: authError } = await getAuthenticatedPartner();
   if (!user) return { success: false, error: authError ?? "Not authenticated" };
 
-  const { data, error } = await supabase
+  const adminSupabase = createAdminClient();
+  const { data, error } = await adminSupabase
     .from("bookings")
     .update({
       status: "professional_en_route",
@@ -550,7 +452,7 @@ export async function startRoute(
 
   // Log to audit trail & events
   await logBookingEvent(supabase, bookingId, "START_ROUTE", "PARTNER", { partner_id: user.id });
-  await supabase.from("booking_audit_trail").insert({
+  await adminSupabase.from("booking_audit_trail").insert({
     booking_id: bookingId,
     action: "START_ROUTE",
     actor: "PARTNER",
@@ -593,8 +495,10 @@ export async function reachLocation(
   // Expires in 15 minutes
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
+  const adminSupabase = createAdminClient();
+
   // First transition status to professional_arrived, then otp_pending
-  const { data: bookingArrived, error: errorArrived } = await supabase
+  const { data: bookingArrived, error: errorArrived } = await adminSupabase
     .from("bookings")
     .update({
       status: "professional_arrived"
@@ -613,19 +517,27 @@ export async function reachLocation(
   }
 
   await logBookingEvent(supabase, bookingId, "PROFESSIONAL_ARRIVED", "PARTNER", { partner_id: user.id });
-  await supabase.from("booking_audit_trail").insert({
+  await adminSupabase.from("booking_audit_trail").insert({
     booking_id: bookingId,
     action: "PROFESSIONAL_ARRIVED",
     actor: "PARTNER",
     metadata: { partner_id: user.id }
   });
 
-  // 2. Generate OTP and transition to otp_pending
-  const { data: bookingOtp, error: errorOtp } = await supabase
+  // 2. Persist OTP in isolated booking_otps table
+  await adminSupabase.from("booking_otps").upsert({
+    booking_id: bookingId,
+    arrival_otp: otp,
+    arrival_otp_generated_at: generatedAt,
+    arrival_otp_expires_at: expiresAt,
+    updated_at: generatedAt,
+  });
+
+  // Transition bookings to otp_pending (no plaintext OTP in bookings)
+  const { data: bookingOtp, error: errorOtp } = await adminSupabase
     .from("bookings")
     .update({
       status: "otp_pending",
-      arrival_otp: otp,
       arrival_otp_generated_at: generatedAt,
       arrival_otp_expires_at: expiresAt,
       arrival_otp_verified: false,
@@ -643,7 +555,7 @@ export async function reachLocation(
   }
 
   await logBookingEvent(supabase, bookingId, "OTP_GENERATED", "SYSTEM", { type: "arrival" });
-  await supabase.from("booking_audit_trail").insert({
+  await adminSupabase.from("booking_audit_trail").insert({
     booking_id: bookingId,
     action: "OTP_GENERATED",
     actor: "SYSTEM",
@@ -681,10 +593,12 @@ export async function verifyArrivalOtp(
   const { supabase, user, error: authError } = await getAuthenticatedPartner();
   if (!user) return { success: false, error: authError ?? "Not authenticated" };
 
+  const adminSupabase = createAdminClient();
+
   // Fetch the booking details
-  const { data: booking, error: fetchError } = await supabase
+  const { data: booking, error: fetchError } = await adminSupabase
     .from("bookings")
-    .select("status, partner_id, arrival_otp, arrival_otp_expires_at, arrival_otp_verified, failed_otp_attempts, customer_id")
+    .select("status, partner_id, arrival_otp_expires_at, arrival_otp_verified, failed_otp_attempts, customer_id")
     .eq("id", bookingId)
     .single();
 
@@ -709,21 +623,30 @@ export async function verifyArrivalOtp(
     };
   }
 
+  // Fetch the true arrival OTP from secure booking_otps table
+  const { data: otpRecord } = await adminSupabase
+    .from("booking_otps")
+    .select("arrival_otp, arrival_otp_expires_at")
+    .eq("booking_id", bookingId)
+    .maybeSingle();
+
+  const otpExpiresAt = otpRecord?.arrival_otp_expires_at || booking.arrival_otp_expires_at;
+
   // Check Expiration
-  if (new Date() > new Date(booking.arrival_otp_expires_at!)) {
+  if (otpExpiresAt && new Date() > new Date(otpExpiresAt)) {
     return { success: false, error: "OTP has expired. Please request a new one." };
   }
 
   // Validate OTP
-  if (booking.arrival_otp !== enteredOtp.trim()) {
+  if (!otpRecord?.arrival_otp || otpRecord.arrival_otp !== enteredOtp.trim()) {
     // Increment failed attempts directly in bookings table
-    await supabase
+    await adminSupabase
       .from("bookings")
       .update({ failed_otp_attempts: attempts + 1 })
       .eq("id", bookingId);
 
     // Log failure event
-    await supabase.from("booking_audit_trail").insert({
+    await adminSupabase.from("booking_audit_trail").insert({
       booking_id: bookingId,
       action: "OTP_VERIFICATION_FAILED",
       actor: "PARTNER",
@@ -738,7 +661,7 @@ export async function verifyArrivalOtp(
 
   // Success: Update booking status to in_progress
   const now = new Date().toISOString();
-  const { error: updateError } = await supabase
+  const { error: updateError } = await adminSupabase
     .from("bookings")
     .update({
       status: "in_progress",
@@ -758,13 +681,13 @@ export async function verifyArrivalOtp(
   await logBookingEvent(supabase, bookingId, "OTP_VERIFIED", "SYSTEM", { type: "arrival" });
   await logBookingEvent(supabase, bookingId, "JOB_STARTED", "PARTNER", { partner_id: user.id });
 
-  await supabase.from("booking_audit_trail").insert({
+  await adminSupabase.from("booking_audit_trail").insert({
     booking_id: bookingId,
     action: "OTP_VERIFIED",
     actor: "SYSTEM",
     metadata: { type: "arrival" }
   });
-  await supabase.from("booking_audit_trail").insert({
+  await adminSupabase.from("booking_audit_trail").insert({
     booking_id: bookingId,
     action: "JOB_STARTED",
     actor: "PARTNER",
@@ -802,15 +725,25 @@ export async function requestCompletion(
   const { supabase, user, error: authError } = await getAuthenticatedPartner();
   if (!user) return { success: false, error: authError ?? "Not authenticated" };
 
+  const adminSupabase = createAdminClient();
+
   const otp = crypto.randomInt(100000, 999999).toString();
   const generatedAt = new Date().toISOString();
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
-  const { data, error } = await supabase
+  // Persist completion OTP in isolated booking_otps table
+  await adminSupabase.from("booking_otps").upsert({
+    booking_id: bookingId,
+    completion_otp: otp,
+    completion_otp_generated_at: generatedAt,
+    completion_otp_expires_at: expiresAt,
+    updated_at: generatedAt,
+  });
+
+  const { data, error } = await adminSupabase
     .from("bookings")
     .update({
       status: "otp_pending",
-      completion_otp: otp,
       completion_otp_generated_at: generatedAt,
       completion_otp_expires_at: expiresAt,
       completion_otp_verified: false,
@@ -830,7 +763,7 @@ export async function requestCompletion(
   }
 
   await logBookingEvent(supabase, bookingId, "COMPLETION_OTP_GENERATED", "SYSTEM");
-  await supabase.from("booking_audit_trail").insert({
+  await adminSupabase.from("booking_audit_trail").insert({
     booking_id: bookingId,
     action: "COMPLETION_OTP_GENERATED",
     actor: "SYSTEM",
@@ -862,9 +795,11 @@ export async function verifyCompletionOtp(
   const { supabase, user, error: authError } = await getAuthenticatedPartner();
   if (!user) return { success: false, error: authError ?? "Not authenticated" };
 
-  const { data: booking, error: fetchError } = await supabase
+  const adminSupabase = createAdminClient();
+
+  const { data: booking, error: fetchError } = await adminSupabase
     .from("bookings")
-    .select("status, partner_id, completion_otp, completion_otp_expires_at, completion_otp_verified, failed_otp_attempts, customer_id, payment_method")
+    .select("status, partner_id, completion_otp_expires_at, completion_otp_verified, failed_otp_attempts, customer_id, payment_method, unpaid_quote_amount, total_amount")
     .eq("id", bookingId)
     .single();
 
@@ -890,17 +825,26 @@ export async function verifyCompletionOtp(
     };
   }
 
-  if (new Date() > new Date(booking.completion_otp_expires_at!)) {
+  // Fetch true completion OTP from secure booking_otps table
+  const { data: otpRecord } = await adminSupabase
+    .from("booking_otps")
+    .select("completion_otp, completion_otp_expires_at")
+    .eq("booking_id", bookingId)
+    .maybeSingle();
+
+  const otpExpiresAt = otpRecord?.completion_otp_expires_at || booking.completion_otp_expires_at;
+
+  if (otpExpiresAt && new Date() > new Date(otpExpiresAt)) {
     return { success: false, error: "OTP has expired. Please request a new one." };
   }
 
-  if (booking.completion_otp !== enteredOtp.trim()) {
-    await supabase
+  if (!otpRecord?.completion_otp || otpRecord.completion_otp !== enteredOtp.trim()) {
+    await adminSupabase
       .from("bookings")
       .update({ failed_otp_attempts: attempts + 1 })
       .eq("id", bookingId);
 
-    await supabase.from("booking_audit_trail").insert({
+    await adminSupabase.from("booking_audit_trail").insert({
       booking_id: bookingId,
       action: "COMPLETION_OTP_VERIFICATION_FAILED",
       actor: "PARTNER",
@@ -917,6 +861,18 @@ export async function verifyCompletionOtp(
   const now = new Date().toISOString();
   const isCashBooking = booking.payment_method === "Cash";
 
+  // Check for pending cash quotes
+  const { data: pendingCashQuotes } = await adminSupabase
+    .from("booking_quotes")
+    .select("id, total_amount")
+    .eq("booking_id", bookingId)
+    .eq("status", "approved")
+    .eq("payment_method", "Cash")
+    .eq("payment_status", "pending");
+
+  const hasPendingCashQuotes = (pendingCashQuotes && pendingCashQuotes.length > 0) || Number(booking.unpaid_quote_amount || 0) > 0;
+  const requiresCashCollection = isCashBooking || hasPendingCashQuotes;
+
   const updateData: Record<string, unknown> = {
     status: "completed",
     completion_otp_verified: true,
@@ -926,18 +882,30 @@ export async function verifyCompletionOtp(
     failed_otp_attempts: 0,
   };
 
-  // Cash bookings settle only when the partner confirms they received cash.
-  // Unconfirmed cash bookings stay payment_status 'pending' (paid shown later).
-  if (isCashBooking) {
+  // Cash bookings & cash quotes settle when partner confirms cash collection.
+  if (requiresCashCollection) {
     if (cashReceived) {
       updateData.payment_status = "paid";
+      updateData.unpaid_quote_amount = 0;
       updateData.cash_received_at = now;
+
+      // Mark the cash quotes as paid
+      if (pendingCashQuotes && pendingCashQuotes.length > 0) {
+        const quoteIds = pendingCashQuotes.map((q) => q.id);
+        await adminSupabase
+          .from("booking_quotes")
+          .update({
+            payment_status: "paid",
+            paid_at: now,
+          })
+          .in("id", quoteIds);
+      }
     } else {
-      updateData.payment_status = "pending";
+      updateData.payment_status = isCashBooking ? "pending" : "partially_paid";
     }
   }
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await adminSupabase
     .from("bookings")
     .update(updateData)
     .eq("id", bookingId);
@@ -965,13 +933,13 @@ export async function verifyCompletionOtp(
   // Fire legacy referral reward for pre-migration referrals (fire-and-forget — never blocks completion)
   void supabase.rpc("complete_legacy_referral_reward", { p_booking_id: bookingId });
 
-  await supabase.from("booking_audit_trail").insert({
+  await adminSupabase.from("booking_audit_trail").insert({
     booking_id: bookingId,
     action: "COMPLETION_OTP_VERIFIED",
     actor: "SYSTEM",
     metadata: {}
   });
-  await supabase.from("booking_audit_trail").insert({
+  await adminSupabase.from("booking_audit_trail").insert({
     booking_id: bookingId,
     action: "JOB_COMPLETED",
     actor: "PARTNER",
@@ -1128,6 +1096,8 @@ export async function claimJobOffer(
     return { success: false, error: "You have not been offered this booking." };
   }
 
+  const adminSupabase = createAdminClient();
+
   if (offer.status !== "offered") {
     // Log failed claim due to conflict (already claimed/expired)
     await logBookingEvent(supabase, bookingId, "CLAIM_FAILED_ALREADY_CLAIMED", "PARTNER", {
@@ -1135,7 +1105,7 @@ export async function claimJobOffer(
       reason: "offer_not_in_offered_status",
       offer_status: offer.status,
     });
-    await supabase.from("booking_audit_trail").insert({
+    await adminSupabase.from("booking_audit_trail").insert({
       booking_id: bookingId,
       action: "CLAIM_FAILED_ALREADY_CLAIMED",
       actor: "PARTNER",
@@ -1171,7 +1141,7 @@ export async function claimJobOffer(
       partner_id: user.id,
       reason: claimResult.reason || "rpc_claim_failed",
     });
-    await supabase.from("booking_audit_trail").insert({
+    await adminSupabase.from("booking_audit_trail").insert({
       booking_id: bookingId,
       action: "CLAIM_FAILED_ALREADY_CLAIMED",
       actor: "PARTNER",

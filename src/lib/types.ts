@@ -23,7 +23,7 @@ export type BookingStatus =
   | 'expired'
   | 'refunded';
 
-export type CancelledBy = 'USER' | 'PARTNER' | 'SYSTEM';
+export type CancelledBy = 'USER' | 'PARTNER' | 'SYSTEM' | 'ADMIN';
 
 export type EventType =
   | 'BOOKING_CREATED'

@@ -574,7 +574,7 @@ export function BookingsCommand({
         const changedAt = new Date().toISOString();
         const statusPatch: Partial<SerializedBooking> =
           newStatus === "cancelled"
-            ? { cancelled_at: changedAt, cancelled_by: "SYSTEM", cancellation_reason: reason || null }
+            ? { cancelled_at: changedAt, cancelled_by: "ADMIN", cancellation_reason: reason || null }
             : newStatus === "completed"
               ? {
                 completed_at: changedAt,

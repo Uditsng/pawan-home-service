@@ -571,22 +571,23 @@ export function BookingsCommand({
     startTransition(async () => {
       try {
         await updateBookingStatusAction(bookingId, newStatus, reason);
-        setBookings((prev) =>
-          prev.map((b) =>
-            b.id === bookingId
+        const changedAt = new Date().toISOString();
+        const statusPatch: Partial<SerializedBooking> =
+          newStatus === "cancelled"
+            ? { cancelled_at: changedAt, cancelled_by: "SYSTEM", cancellation_reason: reason || null }
+            : newStatus === "completed"
               ? {
-                ...b,
-                status: newStatus,
-                ...(newStatus === "cancelled"
-                  ? { cancelled_at: new Date().toISOString(), cancelled_by: "SYSTEM", cancellation_reason: reason || null }
-                  : {}),
-                ...(newStatus === "completed" ? { completed_at: new Date().toISOString() } : {}),
+                completed_at: changedAt,
+                service_completed_at: changedAt,
+                completion_otp_verified: true,
               }
-              : b
-          )
+              : {};
+
+        setBookings((prev) =>
+          prev.map((b) => (b.id === bookingId ? { ...b, status: newStatus, ...statusPatch } : b))
         );
         if (selectedBooking?.id === bookingId) {
-          setSelectedBooking((prev) => (prev ? { ...prev, status: newStatus } : null));
+          setSelectedBooking((prev) => (prev ? { ...prev, status: newStatus, ...statusPatch } : null));
         }
         setActionError(null);
         setCancelReason("");
@@ -752,47 +753,51 @@ export function BookingsCommand({
 
   return (
     <div className="space-y-4">
-      {/* Error Banner */}
-      {actionError && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center justify-between gap-4 text-xs font-semibold text-red-700 animate-in fade-in slide-in-from-top-4 duration-300">
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-red-600 text-lg">error</span>
-            <p className="leading-relaxed">{actionError}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setActionError(null)}
-            className="p-1 rounded-lg hover:bg-red-500/20 text-red-700 transition-colors shrink-0 cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-base font-bold block">close</span>
-          </button>
-        </div>
-      )}
+      {/* Action feedback — fixed + above the detail drawer (z-50) so a failed
+          override is never hidden behind the open panel. */}
+      {(actionError || actionNotice) && (
+        <div className="fixed inset-x-4 top-20 z-60 mx-auto flex max-w-md flex-col gap-2 md:inset-x-auto md:right-6 md:mx-0">
+          {actionError && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center justify-between gap-4 text-xs font-semibold text-red-700 shadow-lg backdrop-blur-sm animate-in fade-in slide-in-from-top-4 duration-300">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-red-600 text-lg">error</span>
+                <p className="leading-relaxed">{actionError}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActionError(null)}
+                className="p-1 rounded-lg hover:bg-red-500/20 text-red-700 transition-colors shrink-0 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-base font-bold block">close</span>
+              </button>
+            </div>
+          )}
 
-      {/* Outcome Notice Banner */}
-      {actionNotice && (
-        <div
-          className={`${actionNotice.tone === "success"
-              ? "bg-secondary/10 border-secondary/40"
-              : "bg-warning/10 border-warning/40"
-            } border rounded-xl p-4 flex items-center justify-between gap-4 text-xs font-semibold text-primary animate-in fade-in slide-in-from-top-4 duration-300`}
-        >
-          <div className="flex items-center gap-3">
-            <span
-              className={`material-symbols-outlined text-lg ${actionNotice.tone === "success" ? "text-secondary" : "text-warning"
-                }`}
+          {actionNotice && (
+            <div
+              className={`${actionNotice.tone === "success"
+                  ? "bg-secondary/10 border-secondary/40"
+                  : "bg-warning/10 border-warning/40"
+                } border rounded-xl p-4 flex items-center justify-between gap-4 text-xs font-semibold text-primary shadow-lg backdrop-blur-sm animate-in fade-in slide-in-from-top-4 duration-300`}
             >
-              {actionNotice.tone === "success" ? "check_circle" : "warning"}
-            </span>
-            <p className="leading-relaxed">{actionNotice.text}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setActionNotice(null)}
-            className="p-1 rounded-lg hover:bg-surface-container-low text-primary transition-colors shrink-0 cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-base font-bold block">close</span>
-          </button>
+              <div className="flex items-center gap-3">
+                <span
+                  className={`material-symbols-outlined text-lg ${actionNotice.tone === "success" ? "text-secondary" : "text-warning"
+                    }`}
+                >
+                  {actionNotice.tone === "success" ? "check_circle" : "warning"}
+                </span>
+                <p className="leading-relaxed">{actionNotice.text}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActionNotice(null)}
+                className="p-1 rounded-lg hover:bg-surface-container-low text-primary transition-colors shrink-0 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-base font-bold block">close</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
 

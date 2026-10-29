@@ -128,6 +128,9 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
     status: invoice.payment_status || "Paid",
     transaction_id: invoice.transaction_id || "—",
     paid_at: invoice.created_at || null,
+    wallet: 0,
+    cash: 0,
+    online: 0,
   };
 
   const bookingRef = booking?.id ? `BK-${booking.id.substring(0, 6).toUpperCase()}` : "BK-PHS";
@@ -152,10 +155,10 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
   }
   summaryRows.push({ label: `GST (${calc.taxRate}%)`, value: CURRENCY(calc.taxAmount) });
 
-  // Payment split — wallet vs online (available on 2.0+ snapshots and dynamic fallback)
+  // Payment split — each medium is rendered only when it actually moved money
   const walletPaid = Math.max(0, Number(payment.wallet ?? 0));
+  const cashPaid = Math.max(0, Number(payment.cash ?? 0));
   const onlinePaid = Math.max(0, Number(payment.online ?? 0));
-  const hasPaymentSplit = walletPaid > 0 || onlinePaid > 0;
 
   return (
     <div className="bg-surface text-on-surface antialiased min-h-screen pb-24 font-body">
@@ -296,17 +299,23 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
                   <span>Payment Mode</span>
                   <span className="font-bold text-on-surface uppercase">{payment.method}</span>
                 </p>
-                {hasPaymentSplit ? (
-                  <>
-                    <p className="flex justify-between">
-                      <span>Paid from Wallet</span>
-                      <span className="font-bold text-success">{CURRENCY(walletPaid)}</span>
-                    </p>
-                    <p className="flex justify-between">
-                      <span>Paid Online</span>
-                      <span className="font-bold text-on-surface">{CURRENCY(onlinePaid)}</span>
-                    </p>
-                  </>
+                {walletPaid > 0 ? (
+                  <p className="flex justify-between">
+                    <span>Paid from Wallet</span>
+                    <span className="font-bold text-success">{CURRENCY(walletPaid)}</span>
+                  </p>
+                ) : null}
+                {cashPaid > 0 ? (
+                  <p className="flex justify-between">
+                    <span>Paid in Cash</span>
+                    <span className="font-bold text-on-surface">{CURRENCY(cashPaid)}</span>
+                  </p>
+                ) : null}
+                {onlinePaid > 0 ? (
+                  <p className="flex justify-between">
+                    <span>Paid Online</span>
+                    <span className="font-bold text-on-surface">{CURRENCY(onlinePaid)}</span>
+                  </p>
                 ) : null}
                 <p className="flex justify-between">
                   <span>Transaction ID</span>

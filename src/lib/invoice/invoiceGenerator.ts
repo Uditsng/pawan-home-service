@@ -160,23 +160,25 @@ export async function compileInvoiceSnapshot(supabase: SupabaseClient, bookingId
     taxRatePercent,
   });
 
-  // 6.6 Payment split — wallet vs online (what was actually charged)
-  const walletApplied = Math.max(0, Number(bookingPricing?.wallet_discount ?? booking.wallet_discount_applied ?? 0));
-  const orderFeesTotal = (calculation.lineItems || []).reduce(
-    (sum, item) => sum + (item.meta?.type === "fee" ? Number(item.total || 0) : 0),
-    0,
-  );
-  // booking.total_amount is the net cash/online amount captured after wallet deduction
-  const onlineCoverage = Math.max(0, Number(booking.total_amount || 0) + orderFeesTotal);
-  const walletCoverage = walletApplied;
-  const chargedTotal = onlineCoverage + walletCoverage;
+  // 6.6 Payment split — what the customer actually settled, by medium.
+  // booking.total_amount is stored net of wallet/coupon/offer, so the invoice
+  // grand total is the exact amount collected in cash or through the gateway.
+  const walletCoverage = Math.max(0, Number(bookingPricing?.wallet_discount ?? booking.wallet_discount_applied ?? 0));
+  const chargedTotal = Math.max(0, Number(calculation.grandTotal || 0));
+  const isCash = /^cash$/i.test(String(booking.payment_method || "").trim());
+  // Time extensions are always paid online, even on a cash booking.
+  const extensionOnline = isCash
+    ? Math.min(chargedTotal, extensions.reduce((sum, ext) => sum + Number(ext.additional_amount || 0), 0))
+    : 0;
+  const cashCoverage = isCash ? Math.max(0, chargedTotal - extensionOnline) : 0;
+  const onlineCoverage = isCash ? extensionOnline : chargedTotal;
 
   let invoiceMethod = paymentMethod;
-  if (chargedTotal <= 0) {
-    invoiceMethod = bookingPricing?.offer_id ? "Offer (Free)" : "Razorpay";
-  } else if (walletCoverage > 0 && onlineCoverage > 0) {
+  if (isCash) {
+    invoiceMethod = extensionOnline > 0 ? "Cash + Razorpay" : "Cash";
+  } else if (walletCoverage > 0 && chargedTotal > 0) {
     invoiceMethod = "Wallet + Razorpay";
-  } else if (walletCoverage > 0 && onlineCoverage <= 0) {
+  } else if (walletCoverage > 0) {
     invoiceMethod = "Wallet";
   }
 
@@ -225,6 +227,7 @@ export async function compileInvoiceSnapshot(supabase: SupabaseClient, bookingId
       transaction_id: transactionId,
       paid_at: payment?.created_at || booking.completed_at || new Date().toISOString(),
       wallet: walletCoverage,
+      cash: cashCoverage,
       online: onlineCoverage,
     },
   };
@@ -241,13 +244,16 @@ export async function generateAndSaveInvoice(supabase: SupabaseClient, bookingId
   // Check if invoice row exists
   const { data: existing } = await supabase
     .from("invoices")
-    .select("id, invoice_number")
+    .select("id, invoice_number, snapshot, created_at")
     .eq("booking_id", bookingId)
     .maybeSingle();
 
   if (existing) {
-    // Preserve existing invoice number in the snapshot
+    // Preserve existing invoice number and issue date in the snapshot
     snapshot.invoice_number = existing.invoice_number;
+    const previous = existing.snapshot as unknown as InvoiceSnapshot | null;
+    if (previous?.invoice_date) snapshot.invoice_date = previous.invoice_date;
+    else if (existing.created_at) snapshot.invoice_date = existing.created_at;
 
     const { error: updateError } = await supabase
       .from("invoices")

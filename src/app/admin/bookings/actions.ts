@@ -79,13 +79,20 @@ export async function updateBookingStatusAction(
       updateData.started_at = new Date().toISOString();
     }
 
-    const { error } = await supabase
+    const { data: updatedRows, error } = await supabase
       .from("bookings")
       .update(updateData)
-      .eq("id", bookingId);
+      .eq("id", bookingId)
+      .select("id");
 
     if (error) {
       handleDatabaseError(error);
+    }
+
+    if (!updatedRows || updatedRows.length === 0) {
+      throw new Error(
+        "No booking was updated. It may have been removed, or you no longer have permission to modify it."
+      );
     }
 
     if (status === "completed") {

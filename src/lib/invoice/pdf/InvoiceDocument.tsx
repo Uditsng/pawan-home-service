@@ -111,11 +111,16 @@ function InvoiceDocument({ snapshot, logoDataUri }: { snapshot: InvoiceSnapshot;
   summaryRows.push({ label: `GST (${financials.tax_rate}%)`, value: CURRENCY(financials.tax_amount) });
 
   const walletPaid = Math.max(0, Number(payment.wallet ?? 0));
+  const cashPaid = Math.max(0, Number(payment.cash ?? 0));
   const onlinePaid = Math.max(0, Number(payment.online ?? 0));
-  const hasPaymentSplit = walletPaid > 0 || onlinePaid > 0;
   const paymentRows: { label: string; value: string }[] = [];
-  if (hasPaymentSplit) {
+  if (walletPaid > 0) {
     paymentRows.push({ label: "Paid from Wallet", value: CURRENCY(walletPaid) });
+  }
+  if (cashPaid > 0) {
+    paymentRows.push({ label: "Paid in Cash", value: CURRENCY(cashPaid) });
+  }
+  if (onlinePaid > 0) {
     paymentRows.push({ label: "Paid Online", value: CURRENCY(onlinePaid) });
   }
 

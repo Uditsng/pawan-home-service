@@ -6,7 +6,7 @@
  * Current immutable snapshot schema version. Invoices whose stored version
  * predates this value are auto-regenerated from live data on next view.
  */
-export const INVOICE_SNAPSHOT_VERSION = "2.0";
+export const INVOICE_SNAPSHOT_VERSION = "2.1";
 
 export interface InvoiceSeller {
   company_name: string;
@@ -67,7 +67,9 @@ export interface InvoicePayment {
   paid_at: string | null;
   /** Amount paid from the PHS wallet (0 when no wallet was used). */
   wallet?: number;
-  /** Amount charged through the online gateway (0 when fully covered by wallet/offer). */
+  /** Amount collected in cash on completion (0 when paid online/wallet). */
+  cash?: number;
+  /** Amount charged through the online gateway (0 when fully covered by wallet/offer/cash). */
   online?: number;
 }
 

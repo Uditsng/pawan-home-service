@@ -9,9 +9,9 @@ export default function DateSelector({
   selectedDate,
   onChange,
 }: DateSelectorProps) {
-  const next4Days = useMemo(() => {
+  const availableDays = useMemo(() => {
     const baseDate = new Date();
-    return Array.from({ length: 4 }).map((_, i) => {
+    return Array.from({ length: 15 }).map((_, i) => {
       const d = new Date(baseDate);
       d.setDate(d.getDate() + i);
       return d;
@@ -20,7 +20,7 @@ export default function DateSelector({
 
   return (
     <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
-      {next4Days.map((d, idx) => {
+      {availableDays.map((d, idx) => {
         const isSelected =
           d.getDate() === selectedDate.getDate() &&
           d.getMonth() === selectedDate.getMonth() &&

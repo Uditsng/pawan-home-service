@@ -2,7 +2,7 @@
   "source": "public/fonts/material-symbols-outlined.woff2",
   "output": "public/fonts/material-symbols-subset.woff2",
   "sourceBytes": 4001608,
-  "outputBytes": 192356,
+  "outputBytes": 193568,
   "icons": [
     "account_balance",
     "account_balance_wallet",
@@ -165,6 +165,7 @@
     "play_arrow",
     "play_circle",
     "point_of_sale",
+    "print",
     "progress_activity",
     "public",
     "qr_code",

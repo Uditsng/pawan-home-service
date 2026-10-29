@@ -521,7 +521,7 @@ BEGIN
       SELECT id, payout_number, requested_amount, gross_amount, deductions_amount,
              status, payment_method, payment_reference, requested_at, approved_at,
              processed_at, paid_at, rejected_at, cancelled_at, rejection_reason,
-             cancellation_reason, admin_note
+             cancellation_reason, admin_note, created_at
         FROM public.payouts
        WHERE partner_id = p_partner_id
        ORDER BY created_at DESC

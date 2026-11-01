@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -57,6 +57,29 @@ interface EditNotificationFormProps {
   services: ServiceItem[];
 }
 
+function parseInitialDeepLink(dl = "") {
+  if (dl.includes("/services/detail?id=")) {
+    return { type: "service", serviceId: dl.split("id=")[1] || "", categoryName: "", custom: "" };
+  } else if (dl.includes("/services?category=")) {
+    return { type: "category", serviceId: "", categoryName: dl.split("category=")[1] || "", custom: "" };
+  } else if (dl === "/") {
+    return { type: "home", serviceId: "", categoryName: "", custom: "" };
+  } else if (dl === "/offers") {
+    return { type: "offers", serviceId: "", categoryName: "", custom: "" };
+  } else if (dl === "/customer/bookings") {
+    return { type: "bookings", serviceId: "", categoryName: "", custom: "" };
+  } else if (dl === "/customer/wallet") {
+    return { type: "wallet", serviceId: "", categoryName: "", custom: "" };
+  } else if (dl === "/customer/referrals") {
+    return { type: "refer_earn", serviceId: "", categoryName: "", custom: "" };
+  } else if (dl === "/customer/subscriptions") {
+    return { type: "subscriptions", serviceId: "", categoryName: "", custom: "" };
+  } else if (dl && dl !== "") {
+    return { type: "custom", serviceId: "", categoryName: "", custom: dl };
+  }
+  return { type: "home", serviceId: "", categoryName: "", custom: "" };
+}
+
 export function EditNotificationForm({
   campaign,
   users,
@@ -73,10 +96,11 @@ export function EditNotificationForm({
   const [priority, setPriority] = useState(campaign.priority);
 
   // Deep Link States (Parsed on mount)
-  const [deepLinkType, setDeepLinkType] = useState("home");
-  const [selectedServiceId, setSelectedServiceId] = useState("");
-  const [selectedCategoryName, setSelectedCategoryName] = useState("");
-  const [customDeepLink, setCustomDeepLink] = useState("");
+  const initialDeepLink = parseInitialDeepLink(campaign.deep_link || "");
+  const [deepLinkType, setDeepLinkType] = useState(initialDeepLink.type);
+  const [selectedServiceId, setSelectedServiceId] = useState(initialDeepLink.serviceId);
+  const [selectedCategoryName, setSelectedCategoryName] = useState(initialDeepLink.categoryName);
+  const [customDeepLink, setCustomDeepLink] = useState(initialDeepLink.custom);
 
   // Audience States
   const [audienceType, setAudienceType] = useState(campaign.audience_type);
@@ -88,10 +112,18 @@ export function EditNotificationForm({
   const [deliveryOption, setDeliveryOption] = useState<"now" | "schedule" | "draft">(
     campaign.status === "scheduled" ? "schedule" : "draft"
   );
-  const [scheduledDate, setScheduledDate] = useState("");
-  const [scheduledTime, setScheduledTime] = useState("");
-  const [expiryOption, setExpiryOption] = useState("never");
-  const [customExpiryDate, setCustomExpiryDate] = useState("");
+  const [scheduledDate, setScheduledDate] = useState(() => {
+    if (!campaign.scheduled_at) return "";
+    const dateObj = new Date(campaign.scheduled_at);
+    return dateObj.toLocaleString("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" });
+  });
+  const [scheduledTime, setScheduledTime] = useState(() => {
+    if (!campaign.scheduled_at) return "";
+    const dateObj = new Date(campaign.scheduled_at);
+    return dateObj.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false });
+  });
+  const [expiryOption, setExpiryOption] = useState(() => (campaign.expires_at ? "custom" : "never"));
+  const [customExpiryDate, setCustomExpiryDate] = useState(() => (campaign.expires_at ? formatForDateTimeLocal(campaign.expires_at) : ""));
 
   // Interaction / Modal States
   const [loading, setLoading] = useState(false);
@@ -102,7 +134,6 @@ export function EditNotificationForm({
   
   // Confirmation Modal
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [resolvedRecipientCount, setResolvedRecipientCount] = useState(0);
 
   // Send Progress Modal
   const [isSendingProgressOpen, setIsSendingProgressOpen] = useState(false);
@@ -110,44 +141,6 @@ export function EditNotificationForm({
   const [sentCount, setSentCount] = useState(0);
   const [successCount, setSuccessCount] = useState(0);
   const [failureCount, setFailureCount] = useState(0);
-
-  // Parse Initial Deep Link on Mount
-  useEffect(() => {
-    const dl = campaign.deep_link || "";
-    if (dl.includes("/services/detail?id=")) {
-      setDeepLinkType("service");
-      setSelectedServiceId(dl.split("id=")[1] || "");
-    } else if (dl.includes("/services?category=")) {
-      setDeepLinkType("category");
-      setSelectedCategoryName(dl.split("category=")[1] || "");
-    } else if (dl === "/") {
-      setDeepLinkType("home");
-    } else if (dl === "/offers") {
-      setDeepLinkType("offers");
-    } else if (dl === "/customer/bookings") {
-      setDeepLinkType("bookings");
-    } else if (dl === "/customer/wallet") {
-      setDeepLinkType("wallet");
-    } else if (dl === "/customer/referrals") {
-      setDeepLinkType("refer_earn");
-    } else if (dl === "/customer/subscriptions") {
-      setDeepLinkType("subscriptions");
-    } else if (dl && dl !== "") {
-      setDeepLinkType("custom");
-      setCustomDeepLink(dl);
-    }
-
-    if (campaign.scheduled_at) {
-      const dateObj = new Date(campaign.scheduled_at);
-      setScheduledDate(dateObj.toLocaleString("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }));
-      setScheduledTime(dateObj.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false }));
-    }
-
-    if (campaign.expires_at) {
-      setExpiryOption("custom");
-      setCustomExpiryDate(formatForDateTimeLocal(campaign.expires_at));
-    }
-  }, [campaign]);
 
   // Calculate deep link parameter string
   const getResolvedDeepLink = () => {
@@ -204,20 +197,19 @@ export function EditNotificationForm({
   };
 
   // Resolve total recipient count
-  useEffect(() => {
-    let count = 0;
+  const resolvedRecipientCount = useMemo(() => {
     if (audienceType === "all") {
-      count = users.length;
+      return users.length;
     } else if (audienceType === "customers") {
-      count = users.filter(u => u.role === "customer").length;
+      return users.filter(u => u.role === "customer").length;
     } else if (audienceType === "partners") {
-      count = users.filter(u => u.role === "partner").length;
+      return users.filter(u => u.role === "partner").length;
     } else if (audienceType === "admins") {
-      count = users.filter(u => u.role === "admin").length;
+      return users.filter(u => u.role === "admin").length;
     } else if (audienceType === "selected") {
-      count = selectedUserIds.length;
+      return selectedUserIds.length;
     }
-    setResolvedRecipientCount(count);
+    return 0;
   }, [audienceType, selectedUserIds, users]);
 
   // Handle Save / Submit

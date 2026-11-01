@@ -6,6 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
 import Image from "next/image";
 import { updatePartnerProfile } from "../../actions";
+import { compressAvatarImage } from "@/utils/imageCompressor";
 
 interface ProfileData {
   full_name: string;
@@ -38,15 +39,22 @@ export default function EditProfileForm({ initialData, userId }: EditProfileForm
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
 
-      // Check file size (50KB limit as per AGENTS.md rule)
-      if (file.size > 50 * 1024) {
+      // Validate format
+      if (!file.type.startsWith("image/")) {
+        setAlertMsg({ type: "error", text: "Please select an image file (JPG, PNG, or WebP)." });
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+
+      // Check file size (10MB ceiling)
+      if (file.size > 10 * 1024 * 1024) {
         setAlertMsg({
           type: "error",
-          text: "Image size must be less than 50KB. Please choose a smaller image.",
+          text: "Image is too large. Please choose a photo smaller than 10MB.",
         });
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
@@ -54,9 +62,16 @@ export default function EditProfileForm({ initialData, userId }: EditProfileForm
         return;
       }
 
-      setAlertMsg(null);
-      setAvatarFile(file);
-      setAvatarPreview(URL.createObjectURL(file));
+      try {
+        setAlertMsg(null);
+        const { file: compressedFile, previewUrl } = await compressAvatarImage(file);
+        setAvatarFile(compressedFile);
+        setAvatarPreview(previewUrl);
+      } catch (err) {
+        console.error("Compression error:", err);
+        setAlertMsg({ type: "error", text: "Unable to process the selected photo. Please try a different image." });
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
     }
   };
 
@@ -82,18 +97,17 @@ export default function EditProfileForm({ initialData, userId }: EditProfileForm
         // 1. Upload Avatar if a new file was chosen
         if (avatarFile) {
           setIsUploading(true);
-          const fileExt = avatarFile.name.split(".").pop();
-          const filePath = `partner-${userId}-${Date.now()}.${fileExt}`;
+          const filePath = `partner-${userId}-${Date.now()}.webp`;
 
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from("Avatar")
-            .upload(filePath, avatarFile, { upsert: true });
+            .upload(filePath, avatarFile, { upsert: true, contentType: "image/webp" });
 
           setIsUploading(false);
 
           if (uploadError) {
-            console.error("Upload error:", uploadError);
-            setAlertMsg({ type: "error", text: `Error uploading image: ${uploadError.message}` });
+            console.error("Storage upload error:", uploadError);
+            setAlertMsg({ type: "error", text: "Unable to upload profile photo right now. Please check your connection or try again later." });
             return;
           }
 
@@ -101,7 +115,7 @@ export default function EditProfileForm({ initialData, userId }: EditProfileForm
             const { data: { publicUrl } } = supabase.storage
               .from("Avatar")
               .getPublicUrl(filePath);
-            finalAvatarUrl = publicUrl;
+            finalAvatarUrl = `${publicUrl}?v=${Date.now()}`;
           }
         }
 
@@ -122,9 +136,8 @@ export default function EditProfileForm({ initialData, userId }: EditProfileForm
         router.push("/partner/profile");
         router.refresh();
       } catch (err) {
-        const error = err as Error;
-        console.error("Error updating profile:", error.message);
-        setAlertMsg({ type: "error", text: error.message || "An unexpected error occurred." });
+        console.error("Error updating profile:", err);
+        setAlertMsg({ type: "error", text: "Unable to update profile. Please check your connection and try again." });
       }
     });
   };

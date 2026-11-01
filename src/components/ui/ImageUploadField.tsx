@@ -54,13 +54,6 @@ export function ImageUploadField({
   const supabase = createClient();
   const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
 
-  // Load metadata for default value on mount
-  useEffect(() => {
-    if (defaultValue) {
-      validateImageUrl(defaultValue);
-    }
-  }, [defaultValue]);
-
   // Synchronize internal URL with parent when it changes
   const updateUrl = (url: string) => {
     setImageUrl(url);
@@ -69,7 +62,7 @@ export function ImageUploadField({
     }
   };
 
-  // Helper to validate and load dimensions of any URL
+  // Helper to validate and load dimensions of any URL entered interactively
   function validateImageUrl(url: string) {
     if (!url) {
       setPreviewUrl("");
@@ -133,6 +126,68 @@ export function ImageUploadField({
 
     img.src = url;
   }
+
+  // Probe metadata asynchronously for default value on mount
+  useEffect(() => {
+    if (!defaultValue) return;
+
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (cancelled) return;
+      const w = img.width;
+      const h = img.height;
+      const isAspectOk = Math.abs(w / h - aspect) <= 0.03;
+      const warnings: string[] = [];
+
+      if (!isAspectOk) {
+        warnings.push(`Aspect ratio is not ${aspectLabel} (${w}x${h}). The image might be stretched on service detail banners.`);
+      }
+      if (w < outputWidth || h < outputHeight) {
+        warnings.push(`Resolution is below ${outputWidth}x${outputHeight} (${w}x${h}). Standardized high-density screens prefer ${outputWidth}px minimum.`);
+      }
+
+      setImageMeta(prev => ({
+        ...prev,
+        width: w,
+        height: h,
+        format: defaultValue.endsWith(".webp") || defaultValue.includes(".webp") ? "WebP" : defaultValue.endsWith(".avif") || defaultValue.includes(".avif") ? "AVIF" : defaultValue.endsWith(".png") ? "PNG" : "JPG/JPEG",
+      }));
+
+      if (defaultValue.startsWith("http")) {
+        fetch(defaultValue, { method: "HEAD" })
+          .then((res) => {
+            if (cancelled) return;
+            const contentLength = res.headers.get("Content-Length");
+            if (contentLength) {
+              const kb = Math.round(parseInt(contentLength) / 1024);
+              setImageMeta(prev => ({ ...prev, sizeKb: kb }));
+              if (kb > 250) {
+                setValidationWarnings(prev => [
+                  ...prev,
+                  `File size is ${kb} KB, which exceeds our recommended 250 KB limit for faster load speeds.`,
+                ]);
+              }
+            }
+          })
+          .catch(() => {});
+      }
+
+      setValidationWarnings(prev => [...prev, ...warnings]);
+    };
+
+    img.onerror = () => {
+      if (cancelled) return;
+      setValidationWarnings(["The image URL is invalid or inaccessible. Ensure the link points directly to a valid image file."]);
+      setImageMeta({});
+    };
+
+    img.src = defaultValue;
+
+    return () => {
+      cancelled = true;
+    };
+  }, [aspect, aspectLabel, defaultValue, outputHeight, outputWidth]);
 
   // Open the interactive crop modal for a locally picked image.
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -1,18 +1,11 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { createAdminClient } from "@/utils/supabase/admin";
-import { notifyCustomer, notifyAdmins } from "@/lib/notifications";
+import { notifyCustomer } from "@/lib/notifications";
 import { triggerDispatchBatch } from "@/app/actions/dispatch";
 import { fulfillOrderBookings } from "@/lib/orders/orderFulfillment";
 
 export const dynamic = 'force-dynamic';
-
-interface BookingChildRow {
-  id: string;
-  customer_id: string;
-  payment_status: string;
-  status: string;
-}
 
 /**
  * Razorpay Webhook Handler
@@ -116,7 +109,7 @@ export async function POST(request: Request) {
           .maybeSingle();
 
         if (recharge) {
-          const captured = Number(paymentEntity.amount || 0) / 100;
+          const captured = capturedAmount;
           const { data: rzResult } = await supabaseAdmin.rpc(
             "complete_wallet_recharge",
             {
@@ -176,7 +169,7 @@ export async function POST(request: Request) {
           .maybeSingle();
 
         if (offerPurchase) {
-          const captured = Number(paymentEntity.amount || 0) / 100;
+          const captured = capturedAmount;
           const { data: ofrResult } = await supabaseAdmin.rpc(
             "complete_offer_purchase",
             {
@@ -227,6 +220,209 @@ export async function POST(request: Request) {
             reason: ofr.error || (ofr.already_completed ? "already_activated" : undefined),
             offer_purchase_id: offerPurchase.id,
           });
+        }
+      }
+
+      // ── Booking quote payment path ──────────────────────────────
+      if (razorpayOrderId) {
+        const { data: quote } = await supabaseAdmin
+          .from("booking_quotes")
+          .select("*, booking:booking_id(*)")
+          .eq("razorpay_order_id", razorpayOrderId)
+          .limit(1)
+          .maybeSingle();
+
+        if (quote) {
+          const now = new Date().toISOString();
+          const quoteAmt = Number(quote.total_amount || 0);
+
+          if (quote.payment_status === "paid") {
+            return NextResponse.json({ status: "already_processed", reason: "quote_already_paid" });
+          }
+
+          if (Math.abs(capturedAmount - quoteAmt) <= 0.01) {
+            // Atomically claim the quote so a simultaneous client verification
+            // or duplicate webhook cannot apply it twice.
+            const { data: claimedQuote } = await supabaseAdmin
+              .from("booking_quotes")
+              .update({
+                status: "approved",
+                payment_method: "Online",
+                payment_status: "paid",
+                razorpay_payment_id: razorpayPaymentId,
+                paid_at: now,
+                updated_at: now,
+              })
+              .eq("id", quote.id)
+              .neq("payment_status", "paid")
+              .select("id")
+              .maybeSingle();
+
+            if (!claimedQuote) {
+              return NextResponse.json({ status: "already_processed", reason: "quote_already_paid" });
+            }
+
+            // Update booking
+            const booking = quote.booking as { id: string; payment_method: string; payment_status: string; total_amount: number; pricing_model?: string } | null;
+            if (booking) {
+              const isInitialInspection = booking.pricing_model === "inspection";
+              // Cash approvals already applied the quote totals via
+              // respondToQuoteAction. Online payments on a still-pending quote
+              // must apply them exactly once here.
+              const totalsAlreadyApplied = quote.status === "approved";
+              const newBookingTotal = totalsAlreadyApplied
+                ? Number(booking.total_amount)
+                : isInitialInspection
+                  ? quoteAmt
+                  : Number(booking.total_amount) + quoteAmt;
+              const isCashBase =
+                booking.payment_method.trim().toLowerCase() === "cash" &&
+                booking.payment_status !== "paid";
+              const resolvedPaymentStatus = isCashBase ? "partially_paid" : "paid";
+
+              const bookingUpdatePayload: Record<string, unknown> = {
+                total_amount: newBookingTotal,
+                final_price: newBookingTotal,
+                unpaid_quote_amount: 0,
+                payment_status: resolvedPaymentStatus,
+              };
+              if (isInitialInspection) bookingUpdatePayload.status = "in_progress";
+
+              await supabaseAdmin.from("bookings").update(bookingUpdatePayload).eq("id", booking.id);
+
+              if (!totalsAlreadyApplied) {
+                // Update booking_pricing
+                const { data: pricing } = await supabaseAdmin
+                  .from("booking_pricing")
+                  .select("*")
+                  .eq("booking_id", booking.id)
+                  .maybeSingle();
+
+                const taxRateNum = Number(quote.tax_rate || 18);
+                const quoteGst = Math.round((quoteAmt * taxRateNum) / (100 + taxRateNum));
+                const quoteBase = quoteAmt - quoteGst;
+
+                if (pricing) {
+                  if (isInitialInspection) {
+                    await supabaseAdmin.from("booking_pricing").update({
+                      base_price: quoteBase,
+                      gst_amount: quoteGst,
+                      total_price: newBookingTotal,
+                    }).eq("id", pricing.id);
+                  } else {
+                    const currentSurcharges = Array.isArray(pricing.surcharges) ? pricing.surcharges : [];
+                    await supabaseAdmin.from("booking_pricing").update({
+                      surcharges: [...currentSurcharges, { name: `Approved Extra Work: ${quote.notes || "Additional charges"}`, amount: quoteAmt }],
+                      gst_amount: Number(pricing.gst_amount || 0) + quoteGst,
+                      total_price: newBookingTotal,
+                    }).eq("id", pricing.id);
+                  }
+                }
+              }
+
+              // Insert payment row
+              await supabaseAdmin.from("payments").insert({
+                customer_id: quote.customer_id,
+                booking_id: booking.id,
+                amount: quoteAmt,
+                payment_status: "completed",
+                razorpay_order_id: razorpayOrderId,
+                razorpay_payment_id: razorpayPaymentId,
+                razorpay_signature: signature,
+              });
+            }
+
+            if (eventRecordId) {
+              await supabaseAdmin.from("payment_webhook_events").update({
+                status: "processed",
+                processed_at: new Date().toISOString(),
+              }).eq("id", eventRecordId);
+            }
+
+            return NextResponse.json({ status: "reconciled", quote_id: quote.id });
+          }
+        }
+      }
+
+      // ── Booking extension payment path ──────────────────────────
+      if (razorpayOrderId) {
+        const { data: ext } = await supabaseAdmin
+          .from("booking_extensions")
+          .select("*, bookings(*)")
+          .eq("razorpay_order_id", razorpayOrderId)
+          .limit(1)
+          .maybeSingle();
+
+        if (ext) {
+          const now = new Date().toISOString();
+          const additionalAmount = Number(ext.additional_amount || 0);
+
+          if (ext.status === "active") {
+            return NextResponse.json({ status: "already_processed", reason: "extension_already_active" });
+          }
+
+          if (Math.abs(capturedAmount - additionalAmount) <= 0.01) {
+            const { data: claimedExtension } = await supabaseAdmin
+              .from("booking_extensions")
+              .update({
+                status: "active",
+                approved_at: now,
+                paid_at: now,
+                razorpay_payment_id: razorpayPaymentId,
+              })
+              .eq("id", ext.id)
+              .in("status", ["requested", "payment_pending"])
+              .select("id")
+              .maybeSingle();
+
+            if (!claimedExtension) {
+              return NextResponse.json({ status: "already_processed", reason: "extension_already_active" });
+            }
+
+            const booking = ext.bookings as { id: string; selected_duration_minutes?: number; total_amount: number; customer_id: string } | null;
+            if (booking) {
+              const currentDuration = Number(booking.selected_duration_minutes || 0);
+              const newDuration = currentDuration + Number(ext.additional_minutes);
+              const newPrice = Number(booking.total_amount || 0) + additionalAmount;
+
+              await supabaseAdmin.from("bookings").update({
+                selected_duration_minutes: newDuration,
+                total_amount: newPrice,
+                final_price: newPrice,
+              }).eq("id", booking.id);
+
+              const { data: pricing } = await supabaseAdmin
+                .from("booking_pricing")
+                .select("id, total_price")
+                .eq("booking_id", booking.id)
+                .maybeSingle();
+
+              if (pricing) {
+                await supabaseAdmin.from("booking_pricing").update({
+                  total_price: Number(pricing.total_price || 0) + additionalAmount,
+                }).eq("id", pricing.id);
+              }
+
+              await supabaseAdmin.from("payments").insert({
+                customer_id: booking.customer_id,
+                booking_id: booking.id,
+                amount: additionalAmount,
+                payment_status: "completed",
+                razorpay_order_id: razorpayOrderId,
+                razorpay_payment_id: razorpayPaymentId,
+                razorpay_signature: signature,
+              });
+            }
+
+            if (eventRecordId) {
+              await supabaseAdmin.from("payment_webhook_events").update({
+                status: "processed",
+                processed_at: new Date().toISOString(),
+              }).eq("id", eventRecordId);
+            }
+
+            return NextResponse.json({ status: "reconciled", extension_id: ext.id });
+          }
         }
       }
 

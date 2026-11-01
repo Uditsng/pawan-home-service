@@ -292,9 +292,7 @@ export async function rejectJob(
 // ─── START JOB ───────────────────────────────────────────────
 // Transition: CONFIRMED/ACCEPTED → IN_PROGRESS
 
-export async function startJob(
-  bookingId: string
-): Promise<{ success: boolean; error?: string }> {
+export async function startJob(): Promise<{ success: boolean; error?: string }> {
   // Direct bypass is disallowed: partner must reach location and verify arrival OTP
   return {
     success: false,
@@ -305,9 +303,7 @@ export async function startJob(
 // ─── COMPLETE JOB ────────────────────────────────────────────
 // Transition: IN_PROGRESS → COMPLETED
 
-export async function completeJob(
-  bookingId: string
-): Promise<{ success: boolean; error?: string }> {
+export async function completeJob(): Promise<{ success: boolean; error?: string }> {
   // Direct bypass is disallowed: partner must request completion and verify completion OTP
   return {
     success: false,
@@ -883,25 +879,29 @@ export async function verifyCompletionOtp(
   };
 
   // Cash bookings & cash quotes settle when partner confirms cash collection.
-  if (requiresCashCollection) {
-    if (cashReceived) {
-      updateData.payment_status = "paid";
-      updateData.unpaid_quote_amount = 0;
-      updateData.cash_received_at = now;
+  // Locked Decision 3: Partner completion is blocked until required cash is confirmed.
+  if (requiresCashCollection && !cashReceived) {
+    return {
+      success: false,
+      error: "Cash payment collection must be confirmed before completing this booking.",
+    };
+  }
 
-      // Mark the cash quotes as paid
-      if (pendingCashQuotes && pendingCashQuotes.length > 0) {
-        const quoteIds = pendingCashQuotes.map((q) => q.id);
-        await adminSupabase
-          .from("booking_quotes")
-          .update({
-            payment_status: "paid",
-            paid_at: now,
-          })
-          .in("id", quoteIds);
-      }
-    } else {
-      updateData.payment_status = isCashBooking ? "pending" : "partially_paid";
+  if (requiresCashCollection && cashReceived) {
+    updateData.payment_status = "paid";
+    updateData.unpaid_quote_amount = 0;
+    updateData.cash_received_at = now;
+
+    // Mark the cash quotes as paid
+    if (pendingCashQuotes && pendingCashQuotes.length > 0) {
+      const quoteIds = pendingCashQuotes.map((q) => q.id);
+      await adminSupabase
+        .from("booking_quotes")
+        .update({
+          payment_status: "paid",
+          paid_at: now,
+        })
+        .in("id", quoteIds);
     }
   }
 

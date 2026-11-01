@@ -70,6 +70,10 @@ export async function createBookingQuoteAction(
   const gstBreakdown = calculateGstBreakdown({ subtotal, taxRatePercent: taxRate });
   const finalTotal = Math.max(0, gstBreakdown.totalWithGst - discount);
 
+  const taxRateNum = Number(taxRate) || 18;
+  const quoteGst = Math.round((finalTotal * taxRateNum) / (100 + taxRateNum));
+  const quoteSubtotal = finalTotal - quoteGst;
+
   // Insert quote record via privileged admin client
   const { data: quote, error: quoteErr } = await adminSupabase
     .from("booking_quotes")
@@ -80,6 +84,8 @@ export async function createBookingQuoteAction(
       status: "pending_customer_approval",
       tax_rate: taxRate,
       discount: discount,
+      subtotal: quoteSubtotal,
+      gst_amount: quoteGst,
       total_amount: finalTotal,
       notes: notes || null,
       expiry_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours expiry
@@ -290,12 +296,16 @@ export async function respondToQuoteAction(
       .single();
 
     if (pricing) {
+      const taxRateNum = Number(quote.tax_rate || 18);
+      const quoteGst = Math.round((quoteAmt * taxRateNum) / (100 + taxRateNum));
+      const quoteBase = quoteAmt - quoteGst;
+
       if (isInitialInspection) {
         await adminSupabase
           .from("booking_pricing")
           .update({
-            base_price: quoteAmt,
-            gst_amount: Math.round(quoteAmt * (Number(quote.tax_rate || 18) / 100)),
+            base_price: quoteBase,
+            gst_amount: quoteGst,
             total_price: newBookingTotal,
           })
           .eq("id", pricing.id);
@@ -313,6 +323,7 @@ export async function respondToQuoteAction(
           .from("booking_pricing")
           .update({
             surcharges: updatedSurcharges,
+            gst_amount: Number(pricing.gst_amount || 0) + quoteGst,
             total_price: newBookingTotal,
           })
           .eq("id", pricing.id);
@@ -387,6 +398,12 @@ export async function createRazorpayOrderForQuoteAction(
       amount: amountPaise,
       currency: "INR",
       receipt: `rcpt_quote_${quote.id.slice(0, 8)}_${Date.now()}`,
+      notes: {
+        purpose: "booking_quote",
+        quote_id: quote.id,
+        booking_id: quote.booking_id,
+        customer_id: quote.customer_id,
+      },
     }),
   });
 
@@ -454,6 +471,10 @@ export async function verifyQuotePaymentAction(payload: {
       return { success: false, error: "Forbidden: You are not authorized." };
     }
 
+    if (quote.payment_status === "paid") {
+      return { success: true };
+    }
+
     if (quote.status !== "pending" && quote.status !== "pending_customer_approval") {
       return { success: false, error: `Quotation has already been ${quote.status}.` };
     }
@@ -461,7 +482,7 @@ export async function verifyQuotePaymentAction(payload: {
     // 2. Verify signature
     const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.trim();
     const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim();
-    if (!keySecret) return { success: false, error: "Razorpay credentials missing on server." };
+    if (!keyId || !keySecret) return { success: false, error: "Razorpay credentials missing on server." };
 
     const generatedSignature = crypto
       .createHmac("sha256", keySecret)
@@ -499,18 +520,24 @@ export async function verifyQuotePaymentAction(payload: {
     }
     const rzOrderData = (await rzOrderResponse.json()) as { amount?: number };
     const rzQuotedAmount = (rzOrderData.amount || 0) / 100;
-    if (isNaN(quoteAmt) || Math.abs(rzQuotedAmount - quoteAmt) > 1) {
+    if (isNaN(quoteAmt) || Math.abs(rzQuotedAmount - quoteAmt) > 0.01) {
       console.error("[quotes] Quote payment amount mismatch:", { rzQuotedAmount, quoteAmt });
       return { success: false, error: "Paid amount does not match this quotation." };
     }
 
-    let newBookingTotal = quoteAmt;
-    if (!isInitialInspection) {
-      newBookingTotal = Number(booking.total_amount) + quoteAmt;
+    // A cash-approved quote already applied its totals in respondToQuoteAction.
+    // Online payment on a still-pending quote applies them exactly once here.
+    const totalsAlreadyApplied = quote.status === "approved";
+    let newBookingTotal = Number(booking.total_amount);
+    if (!totalsAlreadyApplied) {
+      newBookingTotal = isInitialInspection
+        ? quoteAmt
+        : Number(booking.total_amount) + quoteAmt;
     }
 
-    // 3. Update quote record to approved & paid
-    const { error: quoteUpdateErr } = await adminSupabase
+    // 3. Atomically claim the quote for payment finalization. A concurrent
+    // webhook or retry cannot apply the same quote twice.
+    const { data: claimedQuote, error: quoteUpdateErr } = await adminSupabase
       .from("booking_quotes")
       .update({
         status: "approved",
@@ -521,11 +548,18 @@ export async function verifyQuotePaymentAction(payload: {
         paid_at: now,
         updated_at: now,
       })
-      .eq("id", payload.quoteId);
+      .eq("id", payload.quoteId)
+      .neq("payment_status", "paid")
+      .select("id")
+      .maybeSingle();
 
     if (quoteUpdateErr) {
       console.error("[verifyQuotePaymentAction] Failed to update quote:", quoteUpdateErr);
       return { success: false, error: "Failed to update quotation status." };
+    }
+
+    if (!claimedQuote) {
+      return { success: true };
     }
 
     // Auto-decline sibling quotations: only one quote may be approved per booking
@@ -537,11 +571,18 @@ export async function verifyQuotePaymentAction(payload: {
       .neq("id", payload.quoteId);
 
     // 4. Update booking
+    // A cash booking only becomes partially_paid when the online quote is paid;
+    // the base service amount is still collected in cash by the Professional.
+    const isCashBase =
+      booking.payment_method.trim().toLowerCase() === "cash" &&
+      booking.payment_status !== "paid";
+    const resolvedPaymentStatus = isCashBase ? "partially_paid" : "paid";
+
     const bookingUpdatePayload: Record<string, unknown> = {
       total_amount: newBookingTotal,
       final_price: newBookingTotal,
       unpaid_quote_amount: 0,
-      payment_status: "paid",
+      payment_status: resolvedPaymentStatus,
     };
 
     if (isInitialInspection) {
@@ -560,13 +601,17 @@ export async function verifyQuotePaymentAction(payload: {
       .eq("booking_id", bookingId)
       .single();
 
-    if (pricing) {
+    const taxRateNum = Number(quote.tax_rate || 18);
+    const quoteGst = Math.round((quoteAmt * taxRateNum) / (100 + taxRateNum));
+    const quoteBase = quoteAmt - quoteGst;
+
+    if (pricing && !totalsAlreadyApplied) {
       if (isInitialInspection) {
         await adminSupabase
           .from("booking_pricing")
           .update({
-            base_price: quoteAmt,
-            gst_amount: Math.round(quoteAmt * (Number(quote.tax_rate || 18) / 100)),
+            base_price: quoteBase,
+            gst_amount: quoteGst,
             total_price: newBookingTotal,
           })
           .eq("id", pricing.id);
@@ -583,11 +628,23 @@ export async function verifyQuotePaymentAction(payload: {
           .from("booking_pricing")
           .update({
             surcharges: updatedSurcharges,
+            gst_amount: Number(pricing.gst_amount || 0) + quoteGst,
             total_price: newBookingTotal,
           })
           .eq("id", pricing.id);
       }
     }
+
+    // 6. Record payment in payments ledger
+    await adminSupabase.from("payments").insert({
+      customer_id: booking.customer_id,
+      booking_id: bookingId,
+      amount: quoteAmt,
+      payment_status: "completed",
+      razorpay_order_id: payload.razorpay_order_id,
+      razorpay_payment_id: payload.razorpay_payment_id,
+      razorpay_signature: payload.razorpay_signature,
+    });
 
     // 6. Log history & audit trail
     await adminSupabase.from("booking_status_history").insert({

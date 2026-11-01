@@ -272,7 +272,7 @@ export function PayoutsClient({ summary, paymentDetails, kycStatus, kycBank, fal
               </div>
               <Button
                 variant="secondary"
-                disabled={isPending || summary.available < minPayout || summary.clawback_due > 0}
+                disabled={isPending || summary.available < minPayout}
                 onClick={handleRequestPayout}
                 className="shrink-0"
               >

@@ -8,6 +8,8 @@ import { calculatePartnerEarningsBreakdown} from "@/lib/engines/commissionEngine
 export interface FinanceTransaction {
   id: string;
   total_amount: number;
+  payment_method?: string | null;
+  payment_status?: string | null;
   created_at: string;
   status: string;
   services: { title: string } | null;
@@ -19,6 +21,8 @@ export interface FinanceTransaction {
     gst_amount: number;
     discount_amount: number;
     total_price: number;
+    wallet_discount?: number;
+    order_fee?: number;
   } | null;
 }
 
@@ -71,13 +75,16 @@ function filterPeriod(bookings: FinanceTransaction[], period: Period) {
 
 function computeMetrics(bookings: FinanceTransaction[], commPct: number) {
   let totalCollected = 0, totalGst = 0, totalServiceRev = 0;
-  let totalComm = 0, totalPayout = 0, pendingPayout = 0;
+  let totalComm = 0, totalOrderFees = 0, totalPayout = 0, pendingPayout = 0;
   for (const b of bookings) {
     const amt = Number(b.total_amount || 0);
     const gst = Number(b.booking_pricing?.gst_amount || 0);
-    const breakdown = calculatePartnerEarningsBreakdown(amt, gst, commPct);
+    const orderFee = Number(b.booking_pricing?.order_fee || 0);
+    const wallet = Number(b.booking_pricing?.wallet_discount || 0);
+    const breakdown = calculatePartnerEarningsBreakdown(amt, gst, commPct, orderFee, wallet);
     totalCollected += amt;
     totalGst += gst;
+    totalOrderFees += orderFee;
     totalServiceRev += breakdown.serviceRevenue;
     totalComm += breakdown.platformCommissionAmount;
     totalPayout += breakdown.partnerPayoutAmount;
@@ -85,7 +92,7 @@ function computeMetrics(bookings: FinanceTransaction[], commPct: number) {
       pendingPayout += breakdown.partnerPayoutAmount;
     }
   }
-  return { totalCollected, totalGst, totalServiceRev, totalComm, totalPayout, pendingPayout };
+  return { totalCollected, totalGst, totalServiceRev, totalComm, totalOrderFees, totalPayout, pendingPayout };
 }
 
 function buildChartData(bookings: FinanceTransaction[], period: Period) {
@@ -167,7 +174,9 @@ function buildTrends(bookings: FinanceTransaction[], commPct: number) {
     const g = groups.get(key)!;
     const amt = Number(b.total_amount || 0);
     const gst = Number(b.booking_pricing?.gst_amount || 0);
-    const breakdown = calculatePartnerEarningsBreakdown(amt, gst, commPct);
+    const orderFee = Number(b.booking_pricing?.order_fee || 0);
+    const wallet = Number(b.booking_pricing?.wallet_discount || 0);
+    const breakdown = calculatePartnerEarningsBreakdown(amt, gst, commPct, orderFee, wallet);
     g.jobs++;
     g.collected += amt;
     g.gst += gst;
@@ -217,13 +226,15 @@ export function FinanceConsole({ initialBookings, commissionPercent = 20 }: Prop
     setExportError(null);
     const headers = [
       "Date", "Transaction ID", "Service", "Customer", "Professional",
-      "Base Price", "Add-ons", "GST", "Discount", "Total Paid",
+      "Base Price", "Add-ons", "GST", "Order Fee", "Wallet Applied", "Discount", "Total Paid",
       `Commission (${commissionPercent}%)`, "Partner Payout", "Status",
     ];
     const rows = filtered.map((tx) => {
       const amt = Number(tx.total_amount || 0);
       const gst = Number(tx.booking_pricing?.gst_amount || 0);
-      const breakdown = calculatePartnerEarningsBreakdown(amt, gst, commissionPercent);
+      const orderFee = Number(tx.booking_pricing?.order_fee || 0);
+      const wallet = Number(tx.booking_pricing?.wallet_discount || 0);
+      const breakdown = calculatePartnerEarningsBreakdown(amt, gst, commissionPercent, orderFee, wallet);
       return [
         new Date(tx.created_at).toISOString().slice(0, 10),
         `TX-${tx.id.slice(0, 8).toUpperCase()}`,
@@ -233,6 +244,8 @@ export function FinanceConsole({ initialBookings, commissionPercent = 20 }: Prop
         (tx.booking_pricing?.base_price ?? 0).toFixed(2),
         (tx.booking_pricing?.addons_total ?? 0).toFixed(2),
         gst.toFixed(2),
+        orderFee.toFixed(2),
+        wallet.toFixed(2),
         (tx.booking_pricing?.discount_amount ?? 0).toFixed(2),
         amt.toFixed(2),
         breakdown.platformCommissionAmount.toFixed(2),
@@ -309,11 +322,16 @@ export function FinanceConsole({ initialBookings, commissionPercent = 20 }: Prop
         </div>
         <div className="bg-surface-container-lowest border border-outline-variant/15 rounded-2xl p-4">
           <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/60">
-            Platform Commission ({commissionPercent}%)
+            Platform Revenue ({commissionPercent}% Comm{metrics.totalOrderFees > 0 ? " + Fees" : ""})
           </p>
           <p className="text-lg sm:text-xl font-black font-headline tracking-tight text-secondary mt-1">
-            ₹{metrics.totalComm.toLocaleString()}
+            ₹{(metrics.totalComm + metrics.totalOrderFees).toLocaleString()}
           </p>
+          {metrics.totalOrderFees > 0 && (
+            <p className="text-[10px] text-on-surface-variant/60 mt-0.5">
+              ₹{metrics.totalComm.toLocaleString()} comm + ₹{metrics.totalOrderFees.toLocaleString()} order fees
+            </p>
+          )}
         </div>
         <div className="bg-surface-container-lowest border border-outline-variant/15 rounded-2xl p-4">
           <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/60">Professional Payouts</p>
@@ -521,7 +539,9 @@ export function FinanceConsole({ initialBookings, commissionPercent = 20 }: Prop
         .map((tx) => {
           const amt = Number(tx.total_amount || 0);
           const gst = Number(tx.booking_pricing?.gst_amount || 0);
-          const breakdown = calculatePartnerEarningsBreakdown(amt, gst, commissionPercent);
+          const orderFee = Number(tx.booking_pricing?.order_fee || 0);
+          const wallet = Number(tx.booking_pricing?.wallet_discount || 0);
+          const breakdown = calculatePartnerEarningsBreakdown(amt, gst, commissionPercent, orderFee, wallet);
           return (
             <div key={`detail-${tx.id}`} className="bg-surface-container-low border border-outline-variant/15 rounded-2xl p-4 -mt-4 mb-2 text-xs space-y-1.5">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -541,6 +561,18 @@ export function FinanceConsole({ initialBookings, commissionPercent = 20 }: Prop
                   <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/50">Discount</p>
                   <p className="font-bold">-₹{(tx.booking_pricing?.discount_amount ?? 0).toFixed(2)}</p>
                 </div>
+                {orderFee > 0 && (
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/50">Order Fee (Platform)</p>
+                    <p className="font-bold text-primary">₹{orderFee.toFixed(2)}</p>
+                  </div>
+                )}
+                {wallet > 0 && (
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/50">Wallet Applied</p>
+                    <p className="font-bold text-secondary">₹{wallet.toFixed(2)}</p>
+                  </div>
+                )}
               </div>
               <div className="border-t border-outline-variant/10 pt-1.5 grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <div>

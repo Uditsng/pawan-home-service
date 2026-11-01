@@ -65,7 +65,7 @@ export async function createOfferPurchaseAction(
   // 1. Fetch the offer, confirm it is purchasable right now.
   const { data: offerData, error: offerError } = await supabase
     .from("offers")
-    .select("title, purchase_price, status")
+    .select("id, code, title, offer_type, benefit_value, max_discount, min_booking_amount, validity_model, valid_days, valid_from, valid_until, usage_limit_type, max_redemptions_per_customer, eligibility, purchase_price, status, metadata")
     .eq("id", offerId)
     .maybeSingle();
 
@@ -73,9 +73,68 @@ export async function createOfferPurchaseAction(
     return { success: false, error: "This offer could not be found." };
   }
 
-  const offer = offerData as unknown as OfferRow;
+  interface FullOfferRow {
+    id: string;
+    code: string;
+    title: string;
+    offer_type: string;
+    benefit_value: number;
+    max_discount: number;
+    min_booking_amount: number;
+    validity_model: string;
+    valid_days: number;
+    valid_from?: string | null;
+    valid_until?: string | null;
+    usage_limit_type: string;
+    max_redemptions_per_customer: number;
+    eligibility: string;
+    purchase_price: number;
+    status: string;
+    metadata?: Record<string, unknown> | null;
+  }
+
+  const offer = offerData as unknown as FullOfferRow;
   if (offer.status !== "active") {
     return { success: false, error: "This offer is not currently available." };
+  }
+
+  const now = new Date();
+  if (offer.valid_from && now < new Date(offer.valid_from)) {
+    return { success: false, error: "This offer has not started yet." };
+  }
+  if (offer.valid_until && now > new Date(offer.valid_until)) {
+    return { success: false, error: "This offer has ended." };
+  }
+
+  // Arbitrage prevention: SERVICE_CREDIT cannot yield more credit than purchase price unless promotional
+  if (offer.offer_type === "SERVICE_CREDIT" && Number(offer.benefit_value || 0) > Number(offer.purchase_price || 0)) {
+    if (!offer.metadata?.is_promotional) {
+      return { success: false, error: "This offer configuration requires promotional authorization." };
+    }
+  }
+
+  // Customer eligibility validation
+  const { data: isEligible } = await supabase.rpc("is_customer_offer_eligible", {
+    p_offer_id: offerId,
+    p_customer_id: user.id,
+  });
+  if (isEligible === false) {
+    return {
+      success: false,
+      error: offer.eligibility === "new" ? "This offer is for new customers only." : "This offer is for existing customers only.",
+    };
+  }
+
+  // Enforce per-customer redemption cap across all existing entitlements
+  const { count: existingEntitlementsCount } = await supabase
+    .from("offer_entitlements")
+    .select("id", { count: "exact", head: true })
+    .eq("customer_id", user.id)
+    .eq("offer_id", offerId);
+
+  const maxRedemptions = Number(offer.max_redemptions_per_customer || 1);
+  if ((existingEntitlementsCount || 0) >= maxRedemptions) {
+    return { success: false, error: "You have already reached the maximum purchase limit for this offer." };
   }
 
   const amount = normalizeAmount(Number(offer.purchase_price) || 0);
@@ -129,7 +188,23 @@ export async function createOfferPurchaseAction(
         amount,
         status: "created",
         razorpay_order_id: orderId,
-        metadata: { currency: orderData.currency || "INR" },
+        metadata: {
+          currency: orderData.currency || "INR",
+          offer_snapshot: {
+            id: offer.id,
+            code: offer.code,
+            title: offer.title,
+            offer_type: offer.offer_type,
+            benefit_value: offer.benefit_value,
+            max_discount: offer.max_discount,
+            min_booking_amount: offer.min_booking_amount,
+            validity_model: offer.validity_model,
+            valid_days: offer.valid_days,
+            usage_limit_type: offer.usage_limit_type,
+            max_redemptions_per_customer: offer.max_redemptions_per_customer,
+            eligibility: offer.eligibility,
+          },
+        },
       })
       .select("id")
       .single();
@@ -236,8 +311,8 @@ export async function verifyOfferPurchaseAction(payload: {
     return { success: false, error: "Unable to verify the order with the gateway." };
   }
 
-  // 5. Amount mismatch guard — the server decides what is activated.
-  if (Math.abs(gatewayAmount - Number(typedPurchase.amount)) > 1) {
+  // 5. Amount mismatch guard — tight 0.01 tolerance
+  if (Math.abs(gatewayAmount - Number(typedPurchase.amount)) > 0.01) {
     console.error(
       `[Razorpay] Offer purchase amount mismatch: gateway ₹${gatewayAmount}, expected ₹${typedPurchase.amount}.`
     );

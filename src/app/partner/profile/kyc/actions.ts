@@ -3,8 +3,8 @@
 import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { revalidatePath } from "next/cache";
-import type { PartnerDocumentType, PartnerDocument } from "@/lib/types";
-import { KYC_ALL_TYPES, DOC_TYPE_CONFIG } from "@/lib/documents/partnerDocConfig";
+import type { PartnerDocumentType } from "@/lib/types";
+import { DOC_TYPE_CONFIG } from "@/lib/documents/partnerDocConfig";
 import { logAdminAuditAction } from "@/utils/auditLogger";
 import { notifyAdmins } from "@/lib/notifications";
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -81,7 +81,6 @@ export function CreateNotificationForm({
   
   // Confirmation Modal
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [resolvedRecipientCount, setResolvedRecipientCount] = useState(0);
 
   // Send Progress Modal
   const [isSendingProgressOpen, setIsSendingProgressOpen] = useState(false);
@@ -157,20 +156,13 @@ export function CreateNotificationForm({
   };
 
   // Resolve total recipient count
-  useEffect(() => {
-    let count = 0;
-    if (audienceType === "all") {
-      count = users.length;
-    } else if (audienceType === "customers") {
-      count = users.filter(u => u.role === "customer").length;
-    } else if (audienceType === "partners") {
-      count = users.filter(u => u.role === "partner").length;
-    } else if (audienceType === "admins") {
-      count = users.filter(u => u.role === "admin").length;
-    } else if (audienceType === "selected") {
-      count = selectedUserIds.length;
-    }
-    setResolvedRecipientCount(count);
+  const resolvedRecipientCount = useMemo(() => {
+    if (audienceType === "all") return users.length;
+    if (audienceType === "customers") return users.filter(u => u.role === "customer").length;
+    if (audienceType === "partners") return users.filter(u => u.role === "partner").length;
+    if (audienceType === "admins") return users.filter(u => u.role === "admin").length;
+    if (audienceType === "selected") return selectedUserIds.length;
+    return 0;
   }, [audienceType, selectedUserIds, users]);
 
   // Handle Save / Submit

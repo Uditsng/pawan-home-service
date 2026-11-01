@@ -15,11 +15,6 @@ interface UpsertResult {
   data: unknown;
 }
 
-interface DraftResult {
-  ok: boolean;
-  error?: string;
-}
-
 /** Required document types at initial submit (excludes police_verification) */
 const REQUIRED_AT_SUBMIT: PartnerDocumentType[] = KYC_MANDATORY_TYPES.filter(
   (t) => t !== "police_verification"

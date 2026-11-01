@@ -51,7 +51,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   className="w-10 h-10 object-contain group-hover:scale-105 transition-transform drop-shadow-sm"
                 />
                 <div>
-                  <h1 className="text-xl font-bold tracking-tight text-primary leading-none">PHS Cleaning Company</h1>
+                  <p className="text-xl font-bold tracking-tight text-primary leading-none">PHS Cleaning Company</p>
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant mt-1">Admin</p>
                 </div>
               </Link>
@@ -96,7 +96,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               className="w-12 h-12 object-contain group-hover:scale-105 transition-transform drop-shadow-sm"
             />
             <div>
-              <h1 className="text-2xl font-bold tracking-tighter text-primary leading-none">PHS Cleaning Company</h1>
+              <p className="text-2xl font-bold tracking-tighter text-primary leading-none">PHS Cleaning Company</p>
               <p className="text-[11px] font-black uppercase tracking-[0.2em] text-on-surface-variant mt-1.5 opacity-60">Admin Portal</p>
             </div>
           </Link>

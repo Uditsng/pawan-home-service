@@ -189,8 +189,7 @@ export async function submitReview(
 // Called by admins to approve, reject, or hide reviews.
 export async function moderateReview(
   reviewId: string,
-  status: "approved" | "rejected" | "hidden",
-  adminId: string
+  status: "approved" | "rejected" | "hidden"
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient();
 

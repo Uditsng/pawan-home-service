@@ -142,10 +142,9 @@ export function OfferPurchaseClient({
         },
         modal: {
           ondismiss: function () {
-            if (purchaseId) {
-              void markOfferPurchaseStateAction(purchaseId, "cancelled");
-            }
-            setMessage({ type: "info", text: "Payment cancelled. No amount was charged." });
+            // Leave the pending purchase row intact so webhook can activate the offer
+            // if payment completes after app switch/modal dismissal.
+            setMessage({ type: "info", text: "Payment window closed. If you were charged, your offer will activate shortly." });
             setIsProcessing(null);
           },
         },

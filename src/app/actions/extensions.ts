@@ -311,6 +311,12 @@ export async function createRazorpayOrderForExtensionAction(
       amount: amount * 100, // paise
       currency: "INR",
       receipt: `rcpt_ext_${Date.now()}`,
+      notes: {
+        purpose: "booking_extension",
+        extension_id: extensionId,
+        booking_id: ext.booking_id,
+        customer_id: ext.bookings?.customer_id || user.id,
+      },
     }),
   });
 
@@ -321,6 +327,16 @@ export async function createRazorpayOrderForExtensionAction(
   }
 
   const razorpayOrder = await razorpayResp.json();
+
+  // Persist razorpay_order_id on the extension row to bind payment to this extension
+  await supabase
+    .from("booking_extensions")
+    .update({
+      status: "payment_pending",
+      razorpay_order_id: razorpayOrder.id,
+    })
+    .eq("id", extensionId);
+
   return {
     orderId: razorpayOrder.id,
     amount: razorpayOrder.amount,
@@ -355,9 +371,25 @@ export async function verifyExtensionPaymentAction(payload: {
       return { success: false, error: "Unauthorized." };
     }
 
+    // Idempotency check: already active extensions return success safely
+    if (ext.status === "active") {
+      return { success: true };
+    }
+
+    if (ext.status !== "requested" && ext.status !== "payment_pending") {
+      return { success: false, error: "Invalid extension request status." };
+    }
+
+    // Replay protection: order must be bound to this extension
+    if (ext.razorpay_order_id && ext.razorpay_order_id !== payload.razorpay_order_id) {
+      console.error("[extensions] Razorpay order mismatch on extension — replay prevented.");
+      return { success: false, error: "Payment does not match this extension request." };
+    }
+
     // 2. Verify signature
+    const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.trim();
     const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim();
-    if (!keySecret) return { success: false, error: "Razorpay credentials missing on server." };
+    if (!keyId || !keySecret) return { success: false, error: "Razorpay credentials missing on server." };
 
     const generatedSignature = crypto
       .createHmac("sha256", keySecret)
@@ -369,29 +401,55 @@ export async function verifyExtensionPaymentAction(payload: {
       return { success: false, error: "Payment verification failed (signature mismatch)." };
     }
 
+    // 2b. Authoritative gateway amount check
+    const authHeader = "Basic " + Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+    const rzResp = await fetch(`https://api.razorpay.com/v1/orders/${payload.razorpay_order_id}`, {
+      headers: { Authorization: authHeader },
+    });
+    if (!rzResp.ok) {
+      console.error("[extensions] Failed to fetch gateway order:", await rzResp.text());
+      return { success: false, error: "Unable to verify order with payment gateway." };
+    }
+    const rzOrder = (await rzResp.json()) as { amount: number };
+    const rzAmount = (rzOrder.amount || 0) / 100;
+    const additionalAmount = Number(ext.additional_amount);
+    if (Math.abs(rzAmount - additionalAmount) > 0.01) {
+      console.error(`[extensions] Extension amount mismatch: gateway ₹${rzAmount} vs required ₹${additionalAmount}`);
+      return { success: false, error: "Paid amount does not match extension amount." };
+    }
+
     const now = new Date().toISOString();
 
     // 3. Update database records inside a transaction-like sequence
-    // A. Update extension record
-    const { error: extUpdateErr } = await supabase
+    // A. Atomically claim the extension so a concurrent webhook or retry
+    // cannot apply the same payment twice.
+    const { data: claimedExtension, error: extUpdateErr } = await supabase
       .from("booking_extensions")
       .update({
         status: "active",
         approved_at: now,
         paid_at: now,
+        razorpay_order_id: payload.razorpay_order_id,
+        razorpay_payment_id: payload.razorpay_payment_id,
       })
-      .eq("id", payload.extensionId);
+      .eq("id", payload.extensionId)
+      .in("status", ["requested", "payment_pending"])
+      .select("id")
+      .maybeSingle();
 
     if (extUpdateErr) {
       console.error("[extensions] Extension status update failed:", extUpdateErr);
       return { success: false, error: "Failed to activate extension status." };
     }
 
+    if (!claimedExtension) {
+      return { success: true };
+    }
+
     // B. Update booking duration & pricing
     const currentDuration = Number(ext.bookings.selected_duration_minutes || 0);
     const newDuration = currentDuration + Number(ext.additional_minutes);
     const originalPrice = Number(ext.bookings.total_amount || 0);
-    const additionalAmount = Number(ext.additional_amount);
     const newPrice = originalPrice + additionalAmount;
 
     // Reset notified flags so that they trigger again for the newly extended time limit
@@ -408,7 +466,28 @@ export async function verifyExtensionPaymentAction(payload: {
 
     if (bookingUpdateErr) {
       console.error("[extensions] Booking update failed:", bookingUpdateErr);
+      await supabase
+        .from("booking_extensions")
+        .update({ status: "payment_pending", approved_at: null, paid_at: null })
+        .eq("id", payload.extensionId)
+        .eq("status", "active");
       return { success: false, error: "Failed to apply extension to booking." };
+    }
+
+    // B2. Update authoritative booking_pricing breakdown so extension revenue counts towards commission
+    const { data: pricing } = await supabase
+      .from("booking_pricing")
+      .select("id, total_price")
+      .eq("booking_id", ext.booking_id)
+      .maybeSingle();
+
+    if (pricing) {
+      await supabase
+        .from("booking_pricing")
+        .update({
+          total_price: Number(pricing.total_price || 0) + additionalAmount,
+        })
+        .eq("id", pricing.id);
     }
 
     // C. Record Payment

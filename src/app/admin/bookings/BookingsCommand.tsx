@@ -1664,18 +1664,55 @@ export function BookingsCommand({
                       </div>
                     ) : bookingPricing ? (
                       (() => {
+                        const isNewFeeModel = typeof bookingPricing.order_fee === "number" && bookingPricing.order_fee > 0;
                         const feeItems = (bookingPricing.surcharges || []).filter(
                           (s): s is { id: string; name: string; amount: number } =>
                             !!s?.id && typeof s.amount === "number" && s.amount > 0,
                         );
-                        const orderFeesTotal = feeItems.reduce((sum, f) => sum + f.amount, 0);
+                        const legacyOrderFeesTotal = isNewFeeModel ? 0 : feeItems.reduce((sum, f) => sum + f.amount, 0);
+                        const orderFeeAmount = isNewFeeModel ? Number(bookingPricing.order_fee) : legacyOrderFeesTotal;
+
+                        // Total payable: in new model, selectedBooking.total_amount is already fee-inclusive.
+                        // In legacy model, it was fee-exclusive.
+                        const totalPayable = Number(selectedBooking.total_amount || 0) + (isNewFeeModel ? 0 : legacyOrderFeesTotal);
+
                         const couponAmt = Number(bookingPricing.coupon_discount || 0);
                         const offerAmt = Number(bookingPricing.offer_discount || 0);
                         const walletAmt = Number(bookingPricing.wallet_discount || 0);
-                        const onlineAmt = Math.max(
-                          0,
-                          Number(selectedBooking.total_amount) + orderFeesTotal - walletAmt,
-                        );
+
+                        // Payment breakdown from actual payments or booking method & status
+                        const payments = bookingPricing.payments || [];
+                        const completedPayments = payments.filter((p) => p.status === "completed" || p.status === "captured");
+                        const onlinePaymentsTotal = completedPayments
+                          .filter((p) => p.payment_method !== "Cash" && p.payment_method !== "cash" && p.payment_method !== "wallet")
+                          .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+                        const cashPaymentsTotal = completedPayments
+                          .filter((p) => p.payment_method === "Cash" || p.payment_method === "cash")
+                          .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+
+                        const isCashMethod = (selectedBooking.payment_method || "").toLowerCase() === "cash";
+                        const isPaid = selectedBooking.payment_status === "paid";
+                        const isPartiallyPaid = selectedBooking.payment_status === "partially_paid";
+
+                        let actualOnlinePaid = onlinePaymentsTotal;
+                        let actualCashPaid = cashPaymentsTotal;
+
+                        if (payments.length === 0) {
+                          if (!isCashMethod && isPaid) {
+                            actualOnlinePaid = Math.max(0, totalPayable - walletAmt);
+                          } else if (isCashMethod && isPaid) {
+                            actualCashPaid = Math.max(0, totalPayable - walletAmt);
+                          }
+                        }
+
+                        const cashDue = isCashMethod && !isPaid
+                          ? Math.max(0, totalPayable - walletAmt - actualOnlinePaid)
+                          : (isPartiallyPaid && !isPaid ? Math.max(0, totalPayable - walletAmt - actualOnlinePaid) : 0);
+
+                        const pendingOnline = !isCashMethod && !isPaid && !isPartiallyPaid
+                          ? Math.max(0, totalPayable - walletAmt)
+                          : 0;
+
                         return (
                           <div className="space-y-2">
                             <div className="flex justify-between items-center text-xs">
@@ -1722,40 +1759,69 @@ export function BookingsCommand({
                                 <span className="font-bold text-secondary">-₹{Number(bookingPricing.wallet_discount).toLocaleString()}</span>
                               </div>
                             )}
-                            {feeItems.map((fee) => (
-                              <div key={fee.id} className="flex justify-between items-center text-xs">
-                                <span className="text-on-surface-variant/70 font-semibold">Order Fee — {fee.name}</span>
-                                <span className="font-bold text-primary">+₹{fee.amount.toLocaleString()}</span>
+                            {isNewFeeModel ? (
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="text-on-surface-variant/70 font-semibold">Order Fee</span>
+                                <span className="font-bold text-primary">+₹{orderFeeAmount.toLocaleString()}</span>
                               </div>
-                            ))}
+                            ) : (
+                              feeItems.map((fee) => (
+                                <div key={fee.id} className="flex justify-between items-center text-xs">
+                                  <span className="text-on-surface-variant/70 font-semibold">Order Fee — {fee.name}</span>
+                                  <span className="font-bold text-primary">+₹{fee.amount.toLocaleString()}</span>
+                                </div>
+                              ))
+                            )}
                             <div className="border-t border-outline-variant/10 pt-2 mt-2">
                               <div className="flex justify-between items-center text-xs">
-                                <span className="font-bold text-primary">Total</span>
-                                <span className="font-bold text-primary text-sm">₹{selectedBooking.total_amount.toLocaleString()}</span>
+                                <span className="font-bold text-primary">Total Payable</span>
+                                <span className="font-bold text-primary text-sm">₹{totalPayable.toLocaleString()}</span>
                               </div>
                             </div>
-                            {walletAmt > 0 || onlineAmt > 0 ? (
-                              <div className="border-t border-outline-variant/10 pt-2 mt-1 space-y-1.5">
-                                {walletAmt > 0 ? (
-                                  <div className="flex justify-between items-center text-[11px]">
-                                    <span className="text-on-surface-variant/70 font-medium">Paid from Wallet</span>
-                                    <span className="font-bold text-success">₹{walletAmt.toLocaleString()}</span>
-                                  </div>
-                                ) : null}
-                                {onlineAmt > 0 ? (
-                                  <div className="flex justify-between items-center text-[11px]">
-                                    <span className="text-on-surface-variant/70 font-medium">Paid Online</span>
-                                    <span className="font-bold text-primary">₹{onlineAmt.toLocaleString()}</span>
-                                  </div>
-                                ) : null}
-                                {onlineAmt <= 0 && walletAmt > 0 ? (
-                                  <div className="flex justify-between items-center text-[11px]">
-                                    <span className="text-on-surface-variant/70 font-medium">Remaining</span>
-                                    <span className="font-bold text-success">₹0</span>
-                                  </div>
-                                ) : null}
-                              </div>
-                            ) : null}
+                            <div className="border-t border-outline-variant/10 pt-2 mt-1 space-y-1.5">
+                              {walletAmt > 0 ? (
+                                <div className="flex justify-between items-center text-[11px]">
+                                  <span className="text-on-surface-variant/70 font-medium">Paid from Wallet</span>
+                                  <span className="font-bold text-success">₹{walletAmt.toLocaleString()}</span>
+                                </div>
+                              ) : null}
+                              {actualOnlinePaid > 0 ? (
+                                <div className="flex justify-between items-center text-[11px]">
+                                  <span className="text-on-surface-variant/70 font-medium">Paid Online</span>
+                                  <span className="font-bold text-primary">₹{actualOnlinePaid.toLocaleString()}</span>
+                                </div>
+                              ) : null}
+                              {actualCashPaid > 0 ? (
+                                <div className="flex justify-between items-center text-[11px]">
+                                  <span className="text-on-surface-variant/70 font-medium">Paid in Cash</span>
+                                  <span className="font-bold text-success">₹{actualCashPaid.toLocaleString()}</span>
+                                </div>
+                              ) : null}
+                              {cashDue > 0 ? (
+                                <div className="flex justify-between items-center text-[11px]">
+                                  <span className="text-on-surface-variant/70 font-medium">Cash Due on Completion</span>
+                                  <span className="font-bold text-amber-600">₹{cashDue.toLocaleString()}</span>
+                                </div>
+                              ) : null}
+                              {pendingOnline > 0 ? (
+                                <div className="flex justify-between items-center text-[11px]">
+                                  <span className="text-on-surface-variant/70 font-medium">Payment Pending</span>
+                                  <span className="font-bold text-amber-600">₹{pendingOnline.toLocaleString()}</span>
+                                </div>
+                              ) : null}
+                              {isPartiallyPaid && (
+                                <div className="flex justify-between items-center text-[11px]">
+                                  <span className="text-on-surface-variant/70 font-medium">Status</span>
+                                  <span className="font-bold text-amber-600">Partially Paid</span>
+                                </div>
+                              )}
+                              {!cashDue && !pendingOnline && (walletAmt > 0 || actualOnlinePaid > 0 || actualCashPaid > 0) ? (
+                                <div className="flex justify-between items-center text-[11px]">
+                                  <span className="text-on-surface-variant/70 font-medium">Remaining</span>
+                                  <span className="font-bold text-success">₹0</span>
+                                </div>
+                              ) : null}
+                            </div>
                           </div>
                         );
                       })()

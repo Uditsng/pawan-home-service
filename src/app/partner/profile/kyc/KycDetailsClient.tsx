@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { uploadPartnerDocumentAction, getPartnerDocumentSignedUrl } from "./actions";
-import { Button } from "@/components/ui/Button";
 import {
   DOC_TYPE_CONFIG,
   KYC_ALL_TYPES,

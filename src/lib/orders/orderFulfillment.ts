@@ -3,7 +3,7 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import { triggerDispatchBatch } from "@/app/actions/dispatch";
 import { notifyCustomer, notifyAdmins } from "@/lib/notifications";
 import { Coupon, CartItem, Order } from "@/lib/types";
-import { calculateFinalPayable, allocateWalletAcrossLines } from "@/lib/pricing";
+import { calculateFinalPayable, allocateWalletAcrossLines, allocateOrderFeesAndWallet } from "@/lib/pricing";
 import { allocateOfferAcrossLines } from "@/lib/pricing/offerEngine";
 import { computeCartLineItems } from "@/lib/pricing/cartCatalog";
 import { buildCartCatalog } from "@/lib/catalog/buildCartCatalog";
@@ -396,11 +396,22 @@ export async function fulfillOrderBookings(params: FulfillOrderParams): Promise<
     };
   }
 
-  // 3. Gateway Amount Consistency — reject tampered or stale charges
-  if (!params.isCash && !!params.razorpayOrderId && Number(targetOrder.final_amount) > 0) {
-    const expectedAmount = Number(targetOrder.final_amount);
+  // 3. Gateway Amount & Free-Order Integrity
+  const orderFinalAmount = Number(targetOrder.final_amount || 0);
+
+  if (params.isFree && orderFinalAmount > 0) {
+    console.error(`[orderFulfillment] Free order bypass attempt on non-zero order ${targetOrder.id} (final_amount = ${orderFinalAmount})`);
+    return { success: false, error: "This order is not eligible for free fulfillment." };
+  }
+
+  if (!params.isCash && orderFinalAmount > 0) {
+    if (!params.razorpayOrderId) {
+      console.error(`[orderFulfillment] Missing razorpayOrderId for non-zero paid order ${targetOrder.id}`);
+      return { success: false, error: "Payment verification required for paid orders." };
+    }
+    const expectedAmount = orderFinalAmount;
     const chargedAmount = Number(params.gatewayAmount || 0);
-    if (Math.abs(chargedAmount - expectedAmount) > 1) {
+    if (Math.abs(chargedAmount - expectedAmount) > 0.01) {
       console.error(
         `[orderFulfillment] Payment amount mismatch: gateway charged ₹${chargedAmount} but order total is ₹${expectedAmount}. Aborting fulfillment.`
       );
@@ -520,21 +531,27 @@ export async function fulfillOrderBookings(params: FulfillOrderParams): Promise<
     const { originalSubtotal: snapshotOriginalSubtotal, discountAmount: snapshotDiscountAmount, taxAmount: snapshotTaxAmount, couponValid } = pricingSummary;
 
     const walletRequested = params.isCash ? 0 : Math.max(0, Number(rawPayload.walletAmountToUse ?? targetOrder.wallet_discount ?? 0));
-    const { walletApplied, finalPayable } = calculateFinalPayable({
-      totalBeforeWallet: totalAmount,
-      orderFees,
-      walletAmountToUse: walletRequested,
-    });
-    const finalOrderAmount = finalPayable;
-    const walletDebit = Math.max(0, walletApplied);
+    const orderFeesTotalAmt = orderFees.reduce((sum, f) => sum + Math.max(0, Number(f.amount || 0)), 0);
+
+    const lineInputs = services.map((s) => ({
+      serviceId: s.serviceId,
+      serviceTotal: computePass.breakdowns[s.serviceId]?.total_price || 0,
+    }));
+
+    const feeAllocation = allocateOrderFeesAndWallet(
+      lineInputs,
+      orderFeesTotalAmt,
+      walletRequested
+    );
+
+    const finalOrderAmount = feeAllocation.finalOrderAmount;
+    const walletDebit = feeAllocation.walletAppliedTotal;
 
     if (walletDebit > 0) {
-      const preWalletLineTotals: Record<string, number> = {};
-      for (const s of services) {
-        preWalletLineTotals[s.serviceId] = computePass.breakdowns[s.serviceId]?.total_price || 0;
+      const allocatedWallet: Record<string, number> = {};
+      for (const line of feeAllocation.lines) {
+        allocatedWallet[line.serviceId] = line.walletServiceDiscount;
       }
-      const totalWalletForLines = Math.min(walletDebit, totalAmount);
-      const allocatedWallet = allocateWalletAcrossLines(preWalletLineTotals, totalWalletForLines);
       computePass = await computeServiceBreakdowns(supabaseAdmin, services, {
         date: dateStr,
         time: timeStr,
@@ -630,12 +647,18 @@ export async function fulfillOrderBookings(params: FulfillOrderParams): Promise<
     }
 
     // 10. Prepare Atomic Batch Payload
-    let isFirstBooking = true;
     const preparedBookings = services.map((item) => {
       const breakdown = breakdowns[item.serviceId];
+      const alloc = feeAllocation.lines.find((l) => l.serviceId === item.serviceId);
+      const lineTotal = alloc ? alloc.lineTotal : breakdown.total_price;
+      // booking_pricing.order_fee is the GROSS platform fee. Wallet paid against
+      // the fee is captured separately in wallet_discount so the completion
+      // trigger can reconstruct gross service revenue without double counting.
+      const lineAllocatedFee = alloc ? alloc.grossFee : 0;
+      const lineWalletDiscount = alloc ? alloc.totalWalletDiscount : breakdown.wallet_discount;
+
       const bookingSurcharges = [
         ...(breakdown.surcharges || []),
-        ...(isFirstBooking && orderFees.length > 0 ? orderFees : []),
       ];
 
       let formAnswersList: Array<{ field_name: string; field_label: string; field_value: string }> = [];
@@ -657,7 +680,7 @@ export async function fulfillOrderBookings(params: FulfillOrderParams): Promise<
       const bookingRecord = {
         service_id: item.serviceId,
         status: "pending",
-        total_amount: breakdown.total_price,
+        total_amount: lineTotal,
         city: addr.city,
         area: addr.area ?? null,
         address: addr.formatted_address,
@@ -667,8 +690,8 @@ export async function fulfillOrderBookings(params: FulfillOrderParams): Promise<
         payment_method: bookingPaymentMethod,
         selected_duration_minutes: item.duration ?? null,
         base_price: breakdown.base_price,
-        final_price: breakdown.total_price,
-        wallet_discount_applied: breakdown.wallet_discount,
+        final_price: lineTotal,
+        wallet_discount_applied: lineWalletDiscount,
         business_name: rawPayload.businessName || null,
         business_gstin: rawPayload.businessGstin || null,
         meeting_location: item.meetingLocation || null,
@@ -681,7 +704,7 @@ export async function fulfillOrderBookings(params: FulfillOrderParams): Promise<
         event_metadata: {
           customer_id: targetOrder.customer_id,
           service_id: item.serviceId,
-          amount: breakdown.total_price,
+          amount: lineTotal,
           order_id: targetOrder.id,
           payment_verified: true,
           source: params.source,
@@ -700,16 +723,16 @@ export async function fulfillOrderBookings(params: FulfillOrderParams): Promise<
           gst_amount: breakdown.gst_amount,
           discount_amount: breakdown.discount_amount,
           coupon_discount: breakdown.coupon_discount,
-          wallet_discount: breakdown.wallet_discount,
+          wallet_discount: lineWalletDiscount,
           offer_id: offerContext?.offerId ?? null,
           offer_entitlement_id: offerContext?.entitlementId ?? null,
           offer_discount: breakdown.offer_discount || 0,
-          total_price: breakdown.total_price,
+          order_fee: lineAllocatedFee,
+          total_price: lineTotal,
         },
         form_answers: formAnswersList,
       };
 
-      isFirstBooking = false;
       return bookingRecord;
     });
 
@@ -776,12 +799,15 @@ export async function fulfillOrderBookings(params: FulfillOrderParams): Promise<
       // Trigger partner auto-dispatch
       void triggerDispatchBatch(bookingId, 1);
 
+      const alloc = feeAllocation.lines.find((l) => l.serviceId === item.serviceId);
+      const lineFinalPrice = alloc ? alloc.lineTotal : breakdown.total_price;
+
       // Customer Notification
       void notifyCustomer(
         targetOrder.customer_id,
         params.isCash ? "Booking Confirmed!" : "Booking Confirmed & Paid!",
         params.isCash
-          ? `Your booking for ${title} on ${dateStr} at ${timeStr} has been placed. Please keep ₹${breakdown.total_price.toLocaleString("en-IN")} ready in cash for your Professional.`
+          ? `Your booking for ${title} on ${dateStr} at ${timeStr} has been placed. Please keep ₹${lineFinalPrice.toLocaleString("en-IN")} ready in cash for your Professional.`
           : `Your booking for ${title} on ${dateStr} at ${timeStr} has been placed. We are matching a professional.`,
         "booking_created",
         { booking_id: bookingId, service_title: title }

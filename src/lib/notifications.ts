@@ -22,7 +22,6 @@
 import "server-only";
 
 import { createClient } from "@/utils/supabase/server";
-import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { getFirebaseMessaging } from "@/lib/firebase-admin";
 import {

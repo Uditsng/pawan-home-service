@@ -33,6 +33,7 @@ export function calculateInvoice(params: {
     offer_id?: string | null;
     offer_entitlement_id?: string | null;
     offer_discount?: number;
+    order_fee?: number;
     total_price?: number;
     surcharges?: { id?: string; name: string; amount: number }[] | unknown;
   } | null;
@@ -110,16 +111,18 @@ export function calculateInvoice(params: {
       typeof (sur as { name?: string }).name === "string" &&
       typeof (sur as { amount?: number }).amount === "number",
   );
-  const orderFeesTotal = feeItems.reduce((sum, fee) => sum + Math.max(0, fee.amount), 0);
+  const legacyOrderFeesTotal = feeItems.reduce((sum, fee) => sum + Math.max(0, fee.amount), 0);
+  const isNewFeeInclusive = Number(bookingPricing?.order_fee || 0) > 0;
+  const effectiveOrderFees = isNewFeeInclusive ? Number(bookingPricing?.order_fee) : legacyOrderFeesTotal;
 
-  // The invoice grand total is what was actually charged for this booking =
-  // stored booking total + additive order fees.
-  const grandTotal = Number(booking.total_amount || 0) + orderFeesTotal;
+  // The invoice grand total: for new rows, booking.total_amount is already fee-inclusive.
+  // For legacy rows where order_fee = 0, add legacyOrderFeesTotal.
+  const grandTotal = isNewFeeInclusive
+    ? Number(booking.total_amount || 0)
+    : Number(booking.total_amount || 0) + legacyOrderFeesTotal;
 
-  // Back-calculate subtotal and tax amounts for the main booking (excluding extensions)
-  // Formula: booking_total = subtotal * (1 + tax_rate/100) - deductions
-  // So: subtotal = (booking_total + deductions) / (1 + tax_rate/100)
-  const initialGrandTotal = grandTotal - totalExtensionAmount - orderFeesTotal;
+  // Back-calculate subtotal and tax amounts for the main booking (excluding extensions and fees)
+  const initialGrandTotal = grandTotal - totalExtensionAmount - effectiveOrderFees;
   const initialSubtotal = Math.round(((initialGrandTotal + deductionTotal) / (1 + (taxRatePercent / 100))) * 100) / 100;
   const initialTax = Math.round(((initialGrandTotal + deductionTotal) - initialSubtotal) * 100) / 100;
 
@@ -136,19 +139,30 @@ export function calculateInvoice(params: {
     },
   ];
 
-  // Include additive order fees as their own line items (already excluded from
-  // the main line through initialGrandTotal, so the table reconciles).
-  for (const fee of feeItems) {
-    const feeAmount = Math.max(0, fee.amount);
-    if (feeAmount <= 0) continue;
+  // Include additive order fees as their own line items
+  if (feeItems.length > 0) {
+    for (const fee of feeItems) {
+      const feeAmount = Math.max(0, fee.amount);
+      if (feeAmount <= 0) continue;
+      lineItems.push({
+        description: fee.name,
+        quantity: 1,
+        unit_price: feeAmount,
+        discount: 0,
+        tax: 0,
+        total: feeAmount,
+        meta: { id: fee.id, type: "fee" },
+      });
+    }
+  } else if (isNewFeeInclusive && effectiveOrderFees > 0) {
     lineItems.push({
-      description: fee.name,
+      description: "Platform & Convenience Fee",
       quantity: 1,
-      unit_price: feeAmount,
+      unit_price: effectiveOrderFees,
       discount: 0,
       tax: 0,
-      total: feeAmount,
-      meta: { id: fee.id, type: "fee" },
+      total: effectiveOrderFees,
+      meta: { type: "fee" },
     });
   }
 

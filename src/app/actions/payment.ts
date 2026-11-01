@@ -173,8 +173,7 @@ export async function createRazorpayOrderAction(payload: {
   const walletAppliedAmount = isCash ? 0 : payableCalc.walletApplied;
 
   if (finalOrderAmount <= 0) {
-    // Free order. When an offer is reserved, keep the seeded order row and
-    // reservation so verify can confirm and redeem it against the zero amount.
+    // Free order. Always ensure authoritative order row exists with final_amount = 0.
     if (offerSnapshot) {
       await supabase.from("orders").update({
         total_amount: 0,
@@ -186,6 +185,35 @@ export async function createRazorpayOrderAction(payload: {
         wallet_discount: walletAppliedAmount,
         checkout_payload: checkoutPayload,
       }).eq("id", internalOrderId);
+    } else {
+      const { error: freeOrderError } = await supabase.from("orders").insert({
+        id: internalOrderId,
+        customer_id: user.id,
+        status: "pending",
+        total_amount: totalAmount,
+        city: addr.city,
+        address: addr.formatted_address,
+        pincode: addr.pincode,
+        latitude: addr.latitude && Number(addr.latitude) !== 0 ? addr.latitude : null,
+        longitude: addr.longitude && Number(addr.longitude) !== 0 ? addr.longitude : null,
+        scheduled_date: new Date().toISOString(),
+        item_count: payload.services.length,
+        payment_status: "pending",
+        coupon_code: payload.couponCode || null,
+        original_subtotal: originalSubtotal,
+        tax_amount: taxAmount,
+        final_amount: 0,
+        coupon_valid_at_creation: couponValid,
+        order_fees: computeResult.orderFees,
+        offer_entitlement_id: null,
+        offer_discount: 0,
+        wallet_discount: walletAppliedAmount,
+        checkout_payload: checkoutPayload,
+      });
+      if (freeOrderError) {
+        console.error("[payment] Free order seed failed:", freeOrderError);
+        throw new Error("Could not initialize your order.");
+      }
     }
     return { freeOrder: true, amount: 0, currency: "INR", internalOrderId };
   }
@@ -396,83 +424,105 @@ export async function verifyRazorpayPaymentAction(payload: {
     return { success: false, error: "No services specified." };
   }
 
-  let rzAmount = 0;
-
-  // 1. Signature Verification & Gateway Order Retrieval
-  if (!payload.isFree && !isCash) {
-    if (!payload.razorpay_order_id || !payload.razorpay_payment_id || !payload.razorpay_signature) {
-      return { success: false, error: "Missing payment credentials." };
-    }
-    const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.trim();
-    const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim();
-    if (!keyId || !keySecret) return { success: false, error: "Razorpay credentials missing on server." };
-
-    const generatedSignature = crypto
-      .createHmac("sha256", keySecret)
-      .update(`${payload.razorpay_order_id}|${payload.razorpay_payment_id}`)
-      .digest("hex");
-
-    if (generatedSignature !== payload.razorpay_signature) {
-      console.error("[Razorpay] Invalid signature detected. Possible tampering attempt.");
-      return { success: false, error: "Payment verification failed (signature mismatch)." };
-    }
-
-    // 1a. Fetch authoritative order from Razorpay API to obtain the exact charged amount
-    const authHeader = "Basic " + Buffer.from(keyId + ":" + keySecret).toString("base64");
-    const rzResponse = await fetch(`https://api.razorpay.com/v1/orders/${payload.razorpay_order_id}`, {
-      headers: { Authorization: authHeader },
-    });
-
-    if (!rzResponse.ok) {
-      const errBody = await rzResponse.text();
-      console.error("[Razorpay] Failed to fetch order from Razorpay API:", errBody);
-      return { success: false, error: "Unable to verify order with payment gateway." };
-    }
-
-    const rzOrder = (await rzResponse.json()) as { amount: number; notes?: Record<string, string> };
-    rzAmount = (rzOrder.amount || 0) / 100;
-  }
-
-  // 2. Resolve Target Order (ownership-scoped)
+  // 1. Resolve Target Order (ownership-scoped)
   let targetOrderId = payload.orderId;
+  let targetOrder: { id: string; final_amount: number; status: string; payment_status: string } | null = null;
+
   if (targetOrderId) {
-    // Authoritative ownership check: an explicitly supplied orderId must belong to the caller
     const { data: ownedOrder } = await supabase
       .from("orders")
-      .select("id")
+      .select("id, final_amount, status, payment_status")
       .eq("id", targetOrderId)
       .eq("customer_id", user.id)
       .limit(1)
       .maybeSingle();
-    if (!ownedOrder) {
+    if (ownedOrder) {
+      targetOrder = ownedOrder;
+    } else {
       console.warn("[payment] Explicit orderId does not belong to caller — ignoring and resolving safely.");
       targetOrderId = undefined;
     }
   }
-  if (!targetOrderId && payload.razorpay_order_id) {
+
+  if (!targetOrder && payload.razorpay_order_id) {
     const { data: matchedOrder } = await supabase
       .from("orders")
-      .select("id")
+      .select("id, final_amount, status, payment_status")
       .eq("razorpay_order_id", payload.razorpay_order_id)
       .eq("customer_id", user.id)
       .limit(1)
       .maybeSingle();
     if (matchedOrder) {
+      targetOrder = matchedOrder;
       targetOrderId = matchedOrder.id;
     }
   }
 
-  if (!targetOrderId) {
+  if (!targetOrder) {
     const { data: pendingOrder } = await supabase
       .from("orders")
-      .select("id")
+      .select("id, final_amount, status, payment_status")
       .eq("customer_id", user.id)
       .eq("status", "pending")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
     if (pendingOrder) {
+      targetOrder = pendingOrder;
       targetOrderId = pendingOrder.id;
+    }
+  }
+
+  if (!targetOrder) {
+    return { success: false, error: "Order not found." };
+  }
+
+  const expectedAmount = Number(targetOrder.final_amount || 0);
+  // Server-authoritative free determination: ONLY when stored order final_amount is 0.
+  const isGenuinelyFree = expectedAmount === 0;
+
+  let rzAmount = 0;
+
+  // 2. Gateway Verification: required for non-cash, non-zero orders
+  if (!isCash) {
+    if (!isGenuinelyFree) {
+      if (!payload.razorpay_order_id || !payload.razorpay_payment_id || !payload.razorpay_signature) {
+        return { success: false, error: "Missing payment credentials." };
+      }
+      const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.trim();
+      const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim();
+      if (!keyId || !keySecret) return { success: false, error: "Razorpay credentials missing on server." };
+
+      const generatedSignature = crypto
+        .createHmac("sha256", keySecret)
+        .update(`${payload.razorpay_order_id}|${payload.razorpay_payment_id}`)
+        .digest("hex");
+
+      if (generatedSignature !== payload.razorpay_signature) {
+        console.error("[Razorpay] Invalid signature detected. Possible tampering attempt.");
+        return { success: false, error: "Payment verification failed (signature mismatch)." };
+      }
+
+      // Fetch authoritative order from Razorpay API to obtain the exact charged amount
+      const authHeader = "Basic " + Buffer.from(keyId + ":" + keySecret).toString("base64");
+      const rzResponse = await fetch(`https://api.razorpay.com/v1/orders/${payload.razorpay_order_id}`, {
+        headers: { Authorization: authHeader },
+      });
+
+      if (!rzResponse.ok) {
+        const errBody = await rzResponse.text();
+        console.error("[Razorpay] Failed to fetch order from Razorpay API:", errBody);
+        return { success: false, error: "Unable to verify order with payment gateway." };
+      }
+
+      const rzOrder = (await rzResponse.json()) as { amount: number; notes?: Record<string, string> };
+      rzAmount = (rzOrder.amount || 0) / 100;
+
+      // Tight amount tolerance (0.01)
+      if (Math.abs(rzAmount - expectedAmount) > 0.01) {
+        console.error(`[Razorpay] Payment amount mismatch: charged ₹${rzAmount} but expected ₹${expectedAmount}`);
+        return { success: false, error: "Payment amount does not match the order total." };
+      }
     }
   }
 
@@ -483,7 +533,7 @@ export async function verifyRazorpayPaymentAction(payload: {
     razorpayPaymentId: payload.razorpay_payment_id,
     razorpaySignature: payload.razorpay_signature,
     gatewayAmount: rzAmount,
-    isFree: payload.isFree,
+    isFree: isGenuinelyFree,
     isCash,
     source: "client",
     fallbackPayload: {

@@ -50,10 +50,6 @@ interface Campaign {
   expires_at: string | null;
 }
 
-interface CampaignDetails {
-  campaign: Campaign;
-}
-
 export default async function EditNotificationPage({ params }: EditNotificationPageProps) {
   const { id } = await params;
   

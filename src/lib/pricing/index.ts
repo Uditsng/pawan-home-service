@@ -13,3 +13,4 @@ export * from "./offerEngine";
 export * from "./payableEngine";
 export * from "./validators";
 export * from "./cartCatalog";
+export * from "./feeAllocation";

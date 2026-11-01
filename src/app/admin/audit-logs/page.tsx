@@ -1,6 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
 import { requireAdmin } from "@/utils/supabase/auth-checks";
-import { redirect } from "next/navigation";
 import AuditLogsView, { AuditLogRow } from "./AuditLogsView";
 
 export default async function AdminAuditLogsPage() {

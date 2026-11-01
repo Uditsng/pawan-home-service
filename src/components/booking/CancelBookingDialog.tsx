@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRefresh } from "@/lib/refresh/RefreshContext";
 import { cancelBookingAction } from "@/app/actions/bookings";
-import { isWithinFreeWindow, formatFreeWindowLabel, evaluateCancellationRefund } from "@/utils/bookingPolicy";
+import { formatFreeWindowLabel, evaluateCancellationRefund } from "@/utils/bookingPolicy";
 
 const REASON_OPTIONS = [
   "Changed my mind",

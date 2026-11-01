@@ -46,6 +46,8 @@ export function formatPartnerShareBadge(commissionPercent: number = 20): string 
 export interface PartnerEarningsBreakdown {
   totalAmount: number;
   gstAmount: number;
+  orderFeeAmount: number;
+  walletDiscount: number;
   serviceRevenue: number;
   commissionPercent: number;
   platformCommissionAmount: number;
@@ -55,16 +57,22 @@ export interface PartnerEarningsBreakdown {
 export function calculatePartnerEarningsBreakdown(
   totalAmount: number,
   gstAmount: number = 0,
-  commissionPercent: number = 20
+  commissionPercent: number = 20,
+  orderFeeAmount: number = 0,
+  walletDiscount: number = 0
 ): PartnerEarningsBreakdown {
   const validTotal = Math.max(0, Number(totalAmount || 0));
   const validGst = Math.max(0, Number(gstAmount || 0));
+  const validOrderFee = Math.max(0, Number(orderFeeAmount || 0));
+  const validWallet = Math.max(0, Number(walletDiscount || 0));
   const validCommission = Math.max(0, Math.min(100, Number(commissionPercent ?? 20)));
-  const serviceRevenue = Math.max(0, validTotal - validGst);
+  const serviceRevenue = Math.max(0, validTotal + validWallet - validGst - validOrderFee);
 
   return {
     totalAmount: validTotal,
     gstAmount: validGst,
+    orderFeeAmount: validOrderFee,
+    walletDiscount: validWallet,
     serviceRevenue,
     commissionPercent: validCommission,
     platformCommissionAmount: Math.round(serviceRevenue * (validCommission / 100)),

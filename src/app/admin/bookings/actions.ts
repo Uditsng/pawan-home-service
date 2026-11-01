@@ -427,6 +427,15 @@ export async function reassignPartnerAction(
 /**
  * Fetch Pricing Breakdown for a Booking (on-demand in detail drawer)
  */
+export interface BookingPaymentItem {
+  id: string;
+  amount: number;
+  status: string;
+  payment_method: string;
+  gateway?: string | null;
+  created_at: string;
+}
+
 export interface BookingPricingData {
   base_price: number;
   addons_total: number;
@@ -441,6 +450,8 @@ export interface BookingPricingData {
   coupon_code: string | null;
   order_id: string | null;
   wallet_discount: number;
+  order_fee?: number;
+  payments?: BookingPaymentItem[];
   surcharges?: { id?: string; name: string; amount: number }[] | null;
   total_amount?: number;
   pricing_config?: Record<string, unknown> | null;
@@ -495,9 +506,17 @@ export async function getBookingPricingAction(bookingId: string) {
     offerTitle = offer?.title || null;
   }
 
+  // Fetch actual payment records for this booking
+  const { data: paymentsData } = await supabase
+    .from('payments')
+    .select('id, amount, status, payment_method, gateway, created_at')
+    .eq('booking_id', bookingId);
+
   const pricing = data as unknown as BookingPricingData;
   return {
     ...pricing,
+    order_fee: Number((data as { order_fee?: number | null } | null)?.order_fee || 0),
+    payments: (paymentsData as BookingPaymentItem[]) || [],
     order_id: orderId,
     coupon_code: couponCode,
     offer_title: offerTitle,
@@ -520,31 +539,62 @@ export async function markCashReceivedAction(formData: FormData) {
 
   const { data: booking, error: fetchError } = await supabase
     .from("bookings")
-    .select("id, payment_method, payment_status, cash_received_at")
+    .select("id, payment_method, payment_status, cash_received_at, unpaid_quote_amount")
     .eq("id", bookingId)
     .single();
 
-  if (fetchError) {
-    return { error: fetchError.message };
+  if (fetchError || !booking) {
+    return { error: fetchError?.message || "Booking not found." };
   }
 
-  if (!booking || booking.payment_method !== "Cash") {
-    return { error: "This booking is not a cash booking." };
+  const isCashBooking = booking.payment_method === "Cash";
+  const hasUnpaidQuote = Number(booking.unpaid_quote_amount || 0) > 0;
+
+  if (!isCashBooking && !hasUnpaidQuote) {
+    return { error: "This booking has no pending cash payments to settle." };
   }
 
-  if (booking.payment_status === "paid" && booking.cash_received_at) {
+  if (isCashBooking && booking.payment_status === "paid" && booking.cash_received_at && !hasUnpaidQuote) {
     return { error: "Cash already marked as received for this booking." };
   }
 
   const now = new Date().toISOString();
+
+  // 1. Settle booking cash and clear unpaid quote amount
   const { error: updateError } = await supabase
     .from("bookings")
-    .update({ payment_status: "paid", cash_received_at: now })
+    .update({
+      payment_status: "paid",
+      cash_received_at: now,
+      unpaid_quote_amount: 0,
+    })
     .eq("id", bookingId);
 
   if (updateError) {
     return { error: updateError.message };
   }
+
+  // 2. Settle all approved cash quotes on this booking
+  await supabase
+    .from("booking_quotes")
+    .update({
+      payment_status: "paid",
+      paid_at: now,
+    })
+    .eq("booking_id", bookingId)
+    .eq("status", "approved")
+    .eq("payment_method", "Cash")
+    .eq("payment_status", "pending");
+
+  // 3. Mark cash partner earning as paid
+  await supabase
+    .from("partner_earnings")
+    .update({
+      status: "paid",
+    })
+    .eq("booking_id", bookingId)
+    .eq("is_cash", true)
+    .eq("status", "pending");
 
   await supabase.from("booking_audit_trail").insert({
     booking_id: bookingId,

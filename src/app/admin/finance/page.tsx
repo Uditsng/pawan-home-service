@@ -5,6 +5,8 @@ import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 interface RawBooking {
   id: string;
   total_amount: number;
+  payment_method?: string | null;
+  payment_status?: string | null;
   created_at: string;
   status: string;
   services: { title: string } | null;
@@ -19,6 +21,8 @@ interface RawPricing {
   gst_amount: number;
   discount_amount: number;
   total_price: number;
+  wallet_discount?: number;
+  order_fee?: number;
 }
 
 export interface EnrichedBooking extends RawBooking {
@@ -34,6 +38,8 @@ export default async function AdminFinancePage() {
       .select(`
         id,
         total_amount,
+        payment_method,
+        payment_status,
         created_at,
         status,
         services:service_id(title),
@@ -44,7 +50,7 @@ export default async function AdminFinancePage() {
       .order("created_at", { ascending: false }),
     supabase
       .from("booking_pricing")
-      .select("booking_id, base_price, addons_total, gst_amount, discount_amount, total_price"),
+      .select("booking_id, base_price, addons_total, gst_amount, discount_amount, total_price, wallet_discount, order_fee"),
     fetchPlatformSettings(supabase),
   ]);
 

@@ -56,7 +56,7 @@ export default function ReviewsConsole({ initialReviews }: ReviewsConsoleProps) 
 
     startTransition(async () => {
       try {
-        const res = await moderateReview(reviewId, newStatus, "");
+        const res = await moderateReview(reviewId, newStatus);
         if (res.success) {
           setReviews((prev) =>
             prev.map((r) =>

@@ -73,7 +73,7 @@ export default function RootLayout({
        className={`${bricolage.variable} ${materialSymbols.variable}`}
        suppressHydrationWarning
      >
-      <body className="bg-background font-body text-on-surface antialiased" suppressHydrationWarning>
+      <body className="bg-background font-body text-on-surface antialiased w-full max-w-full overflow-x-hidden" suppressHydrationWarning>
         <SkipToContent />
         <RefreshProvider>
           <GlobalNumberInputPolicy />

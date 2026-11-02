@@ -1,6 +1,12 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
+import { Metadata } from "next";
 import EditProfileForm from "@/components/profile/EditProfileForm";
+
+export const metadata: Metadata = {
+  title: "Edit Profile | PHS Cleaning Company",
+  description: "Update your customer profile details, phone number, and photo.",
+};
 
 export default async function EditProfilePage() {
   const supabase = await createClient();
@@ -20,7 +26,7 @@ export default async function EditProfilePage() {
   };
 
   return (
-    <div className="bg-[#f5f6f8] text-on-background min-h-screen flex flex-col font-sans">
+    <div className="bg-surface-dim text-on-background min-h-screen flex flex-col font-body w-full max-w-full overflow-x-hidden min-w-0">
       <EditProfileForm initialData={initialData} userId={user.id} />
     </div>
   );

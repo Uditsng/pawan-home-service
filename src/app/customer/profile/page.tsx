@@ -4,7 +4,7 @@ import Image from "next/image";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import LogoutButton from "@/components/LogoutButton";
-import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
+import { getCachedPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -16,7 +16,7 @@ export default async function ProfilePage() {
 
   const [profileResult, platformSettings] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
-    fetchPlatformSettings(supabase),
+    getCachedPlatformSettings(),
   ]);
 
   const profile = {
@@ -27,37 +27,37 @@ export default async function ProfilePage() {
   const referralReward = String(platformSettings.referralRewardReferrer);
 
   return (
-    <div className="bg-surface-dim text-on-background min-h-screen pb-24 flex flex-col font-body">
-      {/* Header Section */}
-      <div className="bg-primary text-on-primary pt-5 md:pt-6 pb-6 md:pb-8 px-4 md:px-6 flex gap-4">
-        <div className="flex items-center gap-3 md:gap-4 max-w-3xl mx-auto">
-          <div className="w-15 h-15 md:w-19 md:h-19 rounded-full overflow-hidden bg-primary-fixed/20 flex items-center justify-center shrink-0 relative">
+    <div className="bg-surface-dim text-on-background min-h-screen pb-24 flex flex-col font-body w-full max-w-full overflow-x-hidden min-w-0">
+      <main className="flex-1 max-w-xl mx-auto w-full max-w-full px-4 md:px-5 pt-4 pb-8 relative z-10 space-y-3 md:space-y-4 min-w-0">
+        {/* Profile Header Card */}
+        <div className="bg-primary text-on-primary rounded-3xl p-5 md:p-6 shadow-sm flex items-center gap-3.5 md:gap-4 w-full min-w-0 relative overflow-hidden">
+          <div className="absolute -top-8 -right-8 w-36 h-36 bg-secondary/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-white/5 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="w-16 h-16 md:w-18 md:h-18 rounded-full overflow-hidden bg-primary-fixed/20 flex items-center justify-center shrink-0 relative z-10 border-2 border-white/10">
             {profile.avatar_url ? (
               <Image src={profile.avatar_url} alt={profile.full_name} fill className="object-cover" sizes="76px" />
             ) : (
-              <span className="material-symbols-outlined text-[32px] md:text-[40px] text-on-primary/40">person</span>
+              <span className="material-symbols-outlined text-[32px] md:text-[38px] text-on-primary/40">person</span>
             )}
           </div>
-          <div>
-            <h1 className="text-lg md:text-xl font-extrabold tracking-wide mb-0.5 md:mb-1">{profile.full_name}</h1>
-            <p className="text-xs md:text-sm text-on-primary/50 mb-1.5 md:mb-2 font-medium break-all">{user.email}</p>
-            <Link href="/customer/profile/edit" className="text-xs md:text-sm text-on-primary font-bold flex items-center hover:opacity-80 transition-opacity">
+          <div className="min-w-0 flex-1 relative z-10">
+            <h1 className="text-lg md:text-xl font-extrabold tracking-wide mb-0.5 truncate">{profile.full_name}</h1>
+            <p className="text-xs md:text-sm text-on-primary/70 mb-1.5 font-medium truncate">{user.email}</p>
+            <Link href="/customer/profile/edit" className="text-xs md:text-sm text-secondary font-bold inline-flex items-center hover:opacity-80 transition-opacity">
               Edit profile <span className="material-symbols-outlined text-sm ml-0.5">edit_square</span>
             </Link>
           </div>
         </div>
-      </div>
-
-      <main className="flex-1 max-w-3xl mx-auto w-full px-4 md:px-5 pt-4 md:pt-5 relative z-10 space-y-3 md:space-y-4">
 
         {/* Top 2 Action Blocks */}
-        <div className="grid grid-cols-2 gap-3 md:gap-4">
-          <Link href="/customer/bookings" className="bg-surface-container-lowest p-4 md:p-5 rounded-2xl shadow-sm flex flex-col justify-between hover:bg-surface-container-low transition-colors h-24 md:h-28">
-            <span className="material-symbols-outlined text-on-surface-variant text-xl md:text-2xl">assignment</span>
+        <div className="grid grid-cols-2 gap-3 md:gap-4 w-full min-w-0">
+          <Link href="/customer/bookings" className="bg-surface-container-lowest p-4 md:p-5 rounded-2xl shadow-sm flex flex-col justify-between hover:bg-surface-container-low transition-colors h-24 md:h-28 min-w-0">
+            <span className="material-symbols-outlined text-on-surface-variant text-xl md:text-2xl shrink-0">assignment</span>
             <span className="font-bold text-sm md:text-base text-on-surface leading-tight">My<br />bookings</span>
           </Link>
-          <Link href="/customer/support" className="bg-surface-container-lowest p-4 md:p-5 rounded-2xl shadow-sm flex flex-col justify-between hover:bg-surface-container-low transition-colors h-24 md:h-28">
-            <span className="material-symbols-outlined text-on-surface-variant text-xl md:text-2xl">support_agent</span>
+          <Link href="/customer/support" className="bg-surface-container-lowest p-4 md:p-5 rounded-2xl shadow-sm flex flex-col justify-between hover:bg-surface-container-low transition-colors h-24 md:h-28 min-w-0">
+            <span className="material-symbols-outlined text-on-surface-variant text-xl md:text-2xl shrink-0">support_agent</span>
             <span className="font-bold text-sm md:text-base text-on-surface leading-tight">Help &<br />Support</span>
           </Link>
         </div>

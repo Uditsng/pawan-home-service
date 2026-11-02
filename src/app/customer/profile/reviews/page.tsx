@@ -3,6 +3,12 @@ import BottomNav from "@/components/BottomNav";
 import Image from "next/image";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "My Reviews | PHS Cleaning Company",
+  description: "View your submitted ratings and feedback for completed services.",
+};
 
 interface ReviewDetails {
   id: string;
@@ -82,28 +88,28 @@ export default async function CustomerReviewsPage() {
   const reviews = (reviewsData || []) as unknown as ReviewDetails[];
 
   return (
-    <div className="bg-[#f5f6f8] text-on-background min-h-screen pb-24 flex flex-col font-sans">
+    <div className="bg-surface-dim text-on-background min-h-screen pb-24 flex flex-col font-body w-full max-w-full overflow-x-hidden min-w-0">
       {/* Navy Header Section */}
-      <div className="bg-primary text-on-primary pt-5 md:pt-6 pb-6 md:pb-8 px-4 md:px-6">
-        <div className="max-w-3xl mx-auto flex items-center gap-3">
+      <div className="bg-primary text-on-primary pt-5 md:pt-6 pb-6 md:pb-8 px-4 md:px-6 w-full max-w-full min-w-0">
+        <div className="max-w-3xl mx-auto flex items-center gap-3 w-full min-w-0">
           <Link
             href="/customer/profile"
-            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors"
+            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors shrink-0"
           >
             <span className="material-symbols-outlined text-[24px]">arrow_back</span>
           </Link>
-          <div>
-            <h1 className="text-[20px] md:text-[24px] font-extrabold tracking-wide">My Reviews</h1>
-            <p className="text-[12px] text-on-primary/60 font-medium">Your ratings and feedback</p>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-[20px] md:text-[24px] font-extrabold tracking-wide truncate">My Reviews</h1>
+            <p className="text-[12px] text-on-primary/60 font-medium truncate">Your ratings and feedback</p>
           </div>
         </div>
       </div>
 
       {/* Main Reviews Container */}
-      <main className="flex-1 max-w-3xl mx-auto w-full px-4 md:px-5 pt-5 space-y-4">
+      <main className="flex-1 max-w-3xl mx-auto w-full px-4 md:px-5 pt-5 space-y-4 min-w-0">
         {reviews.length === 0 ? (
           /* Empty State */
-          <div className="glass-panel p-10 rounded-[20px] bg-white/60 backdrop-blur-xl border border-outline-variant/10 flex flex-col items-center justify-center text-center mt-6">
+          <div className="glass-panel p-10 rounded-2xl md:rounded-[20px] bg-surface-container-lowest/80 backdrop-blur-xl border border-outline-variant/15 flex flex-col items-center justify-center text-center mt-6 w-full min-w-0">
             <div className="w-16 h-16 bg-green-500/10 rounded-2xl flex items-center justify-center mb-4">
               <span className="material-symbols-outlined text-[#059669] text-3xl">rate_review</span>
             </div>
@@ -131,7 +137,7 @@ export default async function CustomerReviewsPage() {
             return (
               <div
                 key={review.id}
-                className="glass-panel p-5 rounded-[20px] bg-white/60 backdrop-blur-xl border border-outline-variant/10 shadow-sm hover:translate-y-[-2px] transition-transform duration-200"
+                className="glass-panel p-5 rounded-2xl md:rounded-[20px] bg-surface-container-lowest/80 backdrop-blur-xl border border-outline-variant/15 shadow-sm hover:translate-y-[-2px] transition-transform duration-200 w-full min-w-0"
               >
                 {/* Top Row: Service & Date */}
                 <div className="flex justify-between items-start gap-4 mb-2.5">

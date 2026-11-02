@@ -94,7 +94,7 @@ export default function DashboardCarousel({ banners }: DashboardCarouselProps) {
 
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el || count <= 0) return;
+    if (!el || count <= 1) return;
 
     let resizeFrameId: number | undefined;
     const positionAtCurrentSlide = () => {
@@ -132,7 +132,7 @@ export default function DashboardCarousel({ banners }: DashboardCarouselProps) {
 
   const handleScroll = () => {
     const el = scrollRef.current;
-    if (!el || count <= 0) return;
+    if (!el || count <= 1) return;
 
     const currentIndex = getCenteredSlideIndex(el);
     if (currentIndex === null) return;
@@ -143,7 +143,7 @@ export default function DashboardCarousel({ banners }: DashboardCarouselProps) {
 
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el || count <= 0) return;
+    if (!el || count <= 1) return;
 
     const interval = window.setInterval(() => {
       const currentIndex = getCenteredSlideIndex(el) ?? centerIndex;
@@ -157,7 +157,7 @@ export default function DashboardCarousel({ banners }: DashboardCarouselProps) {
 
   const scrollToSlide = (index: number) => {
     const el = scrollRef.current;
-    if (!el || count <= 0) return;
+    if (!el || count <= 1) return;
 
     const currentIndex = getCenteredSlideIndex(el) ?? centerIndex;
     const targetIndex = getClosestPhysicalIndex(index, count, currentIndex);
@@ -165,6 +165,39 @@ export default function DashboardCarousel({ banners }: DashboardCarouselProps) {
   };
 
   if (count === 0) return null;
+
+  if (count === 1) {
+    const banner = banners[0];
+    return (
+      <section className="mb-6 md:mb-10 relative overflow-hidden">
+        <Link
+          href={banner.link}
+          className="w-full max-w-3xl aspect-video rounded-2xl overflow-hidden relative border border-outline-variant/30 shadow-[0_16px_36px_rgba(0,34,97,0.12)] block group mx-auto cursor-pointer"
+        >
+          <div className="relative w-full h-full">
+            {banner.src.startsWith("http") ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={banner.src}
+                alt={banner.title}
+                className="object-cover absolute inset-0 w-full h-full transform group-hover:scale-[1.03] transition-transform duration-700 ease-out"
+              />
+            ) : (
+              <Image
+                src={banner.src}
+                alt={banner.title}
+                fill
+                priority
+                className="object-cover transform group-hover:scale-[1.03] transition-transform duration-700 ease-out"
+                sizes="(max-width: 767px) 100vw, 768px"
+              />
+            )}
+            <div className="absolute inset-0 border-2 border-white/0 group-hover:border-white/10 rounded-2xl transition-colors duration-300 pointer-events-none" />
+          </div>
+        </Link>
+      </section>
+    );
+  }
 
   return (
     <section className="mb-6 md:mb-10 relative overflow-hidden">

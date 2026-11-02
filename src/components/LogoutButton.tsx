@@ -17,12 +17,10 @@ export default function LogoutButton({
 }: LogoutButtonProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const supabase = createClient();
 
   const handleLogout = async () => {
     if (isLoading) return;
-    setError(null);
     
     setIsLoading(true);
     try {
@@ -35,7 +33,6 @@ export default function LogoutButton({
       router.refresh();
     } catch (error) {
       console.error("Error logging out:", error);
-      setError("Failed to log out. Please try again.");
     } finally {
       setIsLoading(false);
     }

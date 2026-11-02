@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
+import Link from "next/link";
+import Script from "next/script";
 import BottomNav from "@/components/BottomNav";
 import { useRefreshableData } from "@/lib/refresh/RefreshContext";
 import { createClient } from "@/utils/supabase/client";
@@ -160,17 +162,6 @@ export default function WalletClient({
     );
   }, [recharges, transactions]);
 
-  // Razorpay checkout script.
-  useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.async = true;
-    document.body.appendChild(script);
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, []);
-
   const effectiveAmount = useMemo(() => {
     if (customAmount.trim() !== "") {
       const parsed = Number(customAmount.replace(/,/g, ""));
@@ -269,11 +260,9 @@ export default function WalletClient({
         },
         modal: {
           ondismiss: function () {
-            // Fire-and-forget: tidy the in-flight recharge row as cancelled.
-            if (rechargeId) {
-              void markWalletRechargeStateAction(rechargeId, "cancelled");
-            }
-            setMessage({ type: "info", text: "Payment cancelled. No amount was charged." });
+            // Keep the pending recharge row alive so asynchronous webhook recovery
+            // can credit the wallet if payment succeeds after window blur/dismissal.
+            setMessage({ type: "info", text: "Payment window closed. If your payment was deducted, it will credit automatically." });
             setIsProcessing(false);
             void refresh();
           },
@@ -307,9 +296,9 @@ export default function WalletClient({
     const status = item.row.status;
     const statusMeta =
       status === "pending" || status === "created"
-        ? { chip: "bg-amber-500/10 text-amber-600", label: "Pending" }
+        ? { chip: "bg-warning/10 text-warning", label: "Pending" }
         : status === "failed"
-        ? { chip: "bg-red-500/10 text-red-500", label: "Failed" }
+        ? { chip: "bg-error/10 text-error", label: "Failed" }
         : status === "cancelled"
         ? { chip: "bg-outline-variant/30 text-on-surface-variant", label: "Cancelled" }
         : { chip: "bg-surface-container-high text-on-surface-variant", label: status };
@@ -371,8 +360,8 @@ export default function WalletClient({
 
     return (
       <div key={`rc-${item.row.id}`} className="flex items-center gap-4 px-5 py-3.5">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-amber-500/10">
-          <span className="material-symbols-outlined text-xl text-amber-600" style={{ fontVariationSettings: "'FILL' 1" }}>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-warning/10">
+          <span className="material-symbols-outlined text-xl text-warning" style={{ fontVariationSettings: "'FILL' 1" }}>
             {status === "failed" || status === "cancelled" ? "error" : "hourglass_top"}
           </span>
         </div>
@@ -389,8 +378,8 @@ export default function WalletClient({
   };
 
   return (
-    <div className="bg-surface-dim text-on-surface antialiased min-h-screen pb-24 font-body">
-      <main className="max-w-xl mx-auto px-4 md:px-5 pt-4 pb-8 space-y-4">
+    <div className="bg-surface-dim text-on-surface antialiased min-h-screen pb-24 font-body w-full max-w-full overflow-x-hidden">
+      <main className="max-w-xl mx-auto px-4 md:px-5 pt-4 pb-8 space-y-4 w-full min-w-0 overflow-x-hidden">
         {/* ── BALANCE HERO ──────────────────────────────────────── */}
         <div className="bg-primary rounded-3xl p-6 relative overflow-hidden">
           <div className="absolute -top-8 -right-8 w-40 h-40 bg-secondary/15 rounded-full blur-3xl pointer-events-none" />
@@ -427,10 +416,10 @@ export default function WalletClient({
         </div>
 
         {/* ── ADD MONEY ────────────────────────────────────────── */}
-        <div className="bg-surface-container-lowest rounded-2xl shadow-sm p-5">
+        <div className="bg-surface-container-lowest rounded-2xl shadow-sm p-5 border border-outline-variant/10">
           <div className="flex items-center gap-2 pb-3 border-b border-outline-variant/10 mb-4">
             <span className="material-symbols-outlined text-primary text-lg">add_card</span>
-            <h2 className="font-bold text-sm text-primary tracking-tight">Add Money</h2>
+            <h2 className="font-bold text-sm text-primary tracking-tight font-headline">Add Money</h2>
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -439,7 +428,7 @@ export default function WalletClient({
                 key={preset}
                 type="button"
                 onClick={() => { setSelectedAmount(preset); setCustomAmount(""); setMessage(null); }}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition-colors ${
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                   selectedAmount === preset && customAmount.trim() === ""
                     ? "bg-primary text-white"
                     : "bg-surface-container-low text-on-surface-variant hover:bg-primary/10"
@@ -468,10 +457,10 @@ export default function WalletClient({
             <p
               className={`mt-3 px-3 py-2 rounded-xl text-xs font-semibold ${
                 message.type === "success"
-                  ? "bg-secondary/10 text-emerald-700"
+                  ? "bg-secondary/15 text-primary"
                   : message.type === "error"
-                  ? "bg-red-500/5 text-red-600"
-                  : "bg-amber-500/10 text-amber-700"
+                  ? "bg-error/10 text-error"
+                  : "bg-warning/10 text-warning"
               }`}
             >
               {message.text}
@@ -482,37 +471,40 @@ export default function WalletClient({
             type="button"
             disabled={isProcessing || !Number.isFinite(effectiveAmount) || effectiveAmount <= 0}
             onClick={handleRecharge}
-            className="mt-4 w-full py-3 bg-primary text-white rounded-lg text-sm font-extrabold uppercase tracking-widest hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="mt-4 w-full py-3 bg-primary text-white rounded-lg text-sm font-extrabold uppercase tracking-widest hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
           >
             {isProcessing ? "Adding…" : "Add money"}
           </button>
         </div>
 
         {/* ── HOW TO EARN MORE ─────────────────────────────────── */}
-        <div className="bg-surface-container-lowest rounded-2xl shadow-sm p-5">
+        <div className="bg-surface-container-lowest rounded-2xl shadow-sm p-5 border border-outline-variant/10">
           <div className="flex items-center gap-2 pb-3 border-b border-outline-variant/10 mb-4">
             <span className="material-symbols-outlined text-primary text-lg">tips_and_updates</span>
-            <h2 className="font-bold text-sm text-primary tracking-tight">Earn Bonus</h2>
+            <h2 className="font-bold text-sm text-primary tracking-tight font-headline">Earn Bonus</h2>
           </div>
           <div className="flex items-center gap-4 p-4 bg-secondary/5 border border-secondary/15 rounded-xl">
             <div className="w-10 h-10 bg-secondary/10 rounded-xl flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-secondary drop-shadow-sm" style={{ fontVariationSettings: "'FILL' 1" }}>redeem</span>
             </div>
-            <div className="flex-1">
-              <p className="text-sm font-bold text-on-surface">Refer friends, earn ₹{referralReward}</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-on-surface truncate">Refer friends, earn ₹{referralReward}</p>
               <p className="text-xs text-on-surface-variant mt-0.5">When a friend joins with your code, you both get bonus money.</p>
             </div>
-            <a href="/customer/profile/referral" className="px-3 py-1.5 bg-primary text-on-primary text-[10px] font-extrabold uppercase tracking-widest rounded-lg shrink-0 hover:bg-primary/90 transition-colors">
+            <Link
+              href="/customer/profile/referral"
+              className="px-3 py-1.5 bg-primary text-on-primary text-[10px] font-extrabold uppercase tracking-widest rounded-lg shrink-0 hover:bg-primary/90 transition-colors cursor-pointer"
+            >
               Refer
-            </a>
+            </Link>
           </div>
         </div>
 
         {/* ── TRANSACTION HISTORY ──────────────────────────────── */}
-        <div className="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden border border-outline-variant/10">
           <div className="px-5 py-4 border-b border-outline-variant/10 flex items-center gap-2">
             <span className="material-symbols-outlined text-primary text-lg">receipt_long</span>
-            <h2 className="font-bold text-sm text-primary tracking-tight">Activity</h2>
+            <h2 className="font-bold text-sm text-primary tracking-tight font-headline">Activity</h2>
             {activity.length > 0 && (
               <span className="ml-auto text-[9px] font-black uppercase tracking-widest text-on-surface-variant/40">
                 {activity.length} records
@@ -521,13 +513,32 @@ export default function WalletClient({
           </div>
 
           {activity.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 px-6 text-center gap-3">
+            <div className="flex flex-col items-center justify-center py-10 px-6 text-center gap-3">
               <div className="w-14 h-14 bg-secondary/10 rounded-2xl flex items-center justify-center">
                 <span className="material-symbols-outlined text-3xl text-secondary drop-shadow-sm" style={{ fontVariationSettings: "'FILL' 1" }}>receipt_long</span>
               </div>
               <div>
                 <p className="font-bold text-sm text-on-surface">No activity yet</p>
                 <p className="text-[11px] text-on-surface-variant mt-0.5">Add money or refer a friend to get started.</p>
+              </div>
+              <div className="flex gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const preset = validPresets[0] || 500;
+                    setSelectedAmount(preset);
+                    setCustomAmount("");
+                  }}
+                  className="px-4 py-2 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary/90 transition-colors cursor-pointer"
+                >
+                  Add {formatINR(validPresets[0] || 500)}
+                </button>
+                <Link
+                  href="/customer/profile/referral"
+                  className="px-4 py-2 bg-surface-container-low text-on-surface text-xs font-bold rounded-lg border border-outline-variant/15 hover:bg-surface-container transition-colors"
+                >
+                  Refer Friends
+                </Link>
               </div>
             </div>
           ) : (
@@ -538,13 +549,16 @@ export default function WalletClient({
         </div>
 
         {/* ── NOTICE ───────────────────────────────────────────── */}
-        <div className="flex items-start gap-3 p-4 bg-amber-500/5 border border-amber-500/20 rounded-2xl">
-          <span className="material-symbols-outlined text-amber-600 text-[18px] shrink-0 mt-0.5">info</span>
-          <p className="text-[11px] text-amber-800 font-medium leading-relaxed">
+        <div className="flex items-start gap-3 p-4 bg-surface-container-low border border-outline-variant/15 rounded-2xl">
+          <span className="material-symbols-outlined text-primary text-[18px] shrink-0 mt-0.5">info</span>
+          <p className="text-[11px] text-on-surface-variant font-medium leading-relaxed">
             You can use this money to pay for bookings. Cash and bonus money can&apos;t be withdrawn or transferred.
           </p>
         </div>
       </main>
+
+      {/* Razorpay Checkout Script: lazy-loaded in background for fast page speed */}
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
 
       <BottomNav />
     </div>

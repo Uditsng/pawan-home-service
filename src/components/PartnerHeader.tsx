@@ -80,14 +80,13 @@ export default function PartnerHeader({ initialStatus = "offline", avatarUrl = n
       <div className="flex flex-col w-full max-w-7xl mx-auto">
         <div className="flex justify-between items-center px-5 sm:px-6 lg:px-8 py-3 ">
           {/* Platform Logo */}
-          <Link href="/partner/dashboard" className="flex items-center gap-2">
+          <Link href="/partner/dashboard" className="flex items-center gap-2 shrink-0">
             <Image
               src="/PHS.png"
               alt="PHS Cleaning Company Logo"
-              className="h-10 sm:h-12 md:h-14 w-auto object-contain"
-              width={40}
-              height={40}
-              style={{ width: "auto" }}
+              className="h-10 sm:h-12 md:h-14 w-auto object-contain shrink-0"
+              width={140}
+              height={56}
               priority
             />
           </Link>

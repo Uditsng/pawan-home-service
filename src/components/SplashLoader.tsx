@@ -37,6 +37,7 @@ export default function SplashLoader() {
 
   return (
     <div
+      aria-hidden="true"
       className={`fixed inset-0 z-9999 flex flex-col items-center justify-center bg-primary transition-opacity duration-500 ease-in-out pb-safe pt-safe ${
         isFading ? "opacity-0 pointer-events-none" : "opacity-100"
       }`}
@@ -56,9 +57,9 @@ export default function SplashLoader() {
 
         {/* Text Brand and Spinner */}
         <div className="flex flex-col items-center space-y-4">
-          <h1 className="text-2xl font-bold text-on-primary tracking-wide">
+          <p className="text-2xl font-bold text-on-primary tracking-wide">
             PHS Cleaning Company
-          </h1>
+          </p>
           <p className="text-sm text-on-primary/60 font-medium">
             Premium Home Services
           </p>

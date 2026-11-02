@@ -44,6 +44,19 @@ interface ServiceResult {
   } | null;
 }
 
+const DEFAULT_POPULAR_TERMS = [
+  "AC Service",
+  "Sofa Cleaning",
+  "Bathroom Cleaning",
+  "Pest Control",
+  "Electrician",
+  "Plumber",
+  "Painting",
+];
+
+const sanitizePostgrestTerm = (term: string) =>
+  term.replace(/[,()"\\]/g, " ").trim();
+
 export default async function SearchPage({
   searchParams,
 }: {
@@ -62,52 +75,51 @@ export default async function SearchPage({
     const parsed = parseSearchTokens(searchQuery);
     const { normalizedQuery, shortTokens, longTokens, expandedTerms } = parsed;
 
-    // Record this real search for the dynamic "Popular Searches" feed
+    // Record search telemetry (safely capped to 80 chars)
     try {
-      await supabase.rpc("record_search", { p_term: searchQuery });
+      await supabase.rpc("record_search", { p_term: searchQuery.slice(0, 80) });
     } catch {
       // Best-effort: analytics must never block the search page
     }
 
-    // Build targeted query filters
-    const serviceFilterParts: string[] = [
-      `title.ilike.%${normalizedQuery}%`,
-      `title.ilike.${normalizedQuery}%`,
-    ];
+    // Build targeted query filters with PostgREST syntax sanitization
+    const sanitizedQuery = sanitizePostgrestTerm(normalizedQuery);
+    const serviceFilterParts: string[] = [];
+    const subcategoryFilterParts: string[] = [];
+    const categoryFilterParts: string[] = [];
 
-    const subcategoryFilterParts: string[] = [
-      `subcategory_name.ilike.%${normalizedQuery}%`,
-      `subcategory_name.ilike.${normalizedQuery}%`,
-    ];
+    if (sanitizedQuery.length > 0) {
+      serviceFilterParts.push(`title.ilike.%${sanitizedQuery}%`, `title.ilike.${sanitizedQuery}%`);
+      subcategoryFilterParts.push(`subcategory_name.ilike.%${sanitizedQuery}%`, `subcategory_name.ilike.${sanitizedQuery}%`);
+      categoryFilterParts.push(`category_name.ilike.%${sanitizedQuery}%`, `category_name.ilike.${sanitizedQuery}%`);
+    }
 
-    const categoryFilterParts: string[] = [
-      `category_name.ilike.%${normalizedQuery}%`,
-      `category_name.ilike.${normalizedQuery}%`,
-    ];
-
-    // Acronym & Short Token Filters (word boundary only)
+    // Acronym & Short Token Filters (word boundary)
     for (const st of shortTokens) {
-      serviceFilterParts.push(`title.ilike.${st}%`);
-      serviceFilterParts.push(`title.ilike.% ${st}%`);
-      subcategoryFilterParts.push(`subcategory_name.ilike.${st}%`);
-      subcategoryFilterParts.push(`subcategory_name.ilike.% ${st}%`);
-      categoryFilterParts.push(`category_name.ilike.${st}%`);
-      categoryFilterParts.push(`category_name.ilike.% ${st}%`);
+      const cleanSt = sanitizePostgrestTerm(st);
+      if (cleanSt.length > 0) {
+        serviceFilterParts.push(`title.ilike.${cleanSt}%`, `title.ilike.% ${cleanSt}%`);
+        subcategoryFilterParts.push(`subcategory_name.ilike.${cleanSt}%`, `subcategory_name.ilike.% ${cleanSt}%`);
+        categoryFilterParts.push(`category_name.ilike.${cleanSt}%`, `category_name.ilike.% ${cleanSt}%`);
+      }
     }
 
     // Long Tokens (>3 chars)
     for (const lt of longTokens) {
-      serviceFilterParts.push(`title.ilike.%${lt}%`);
-      serviceFilterParts.push(`description.ilike.%${lt}%`);
-      subcategoryFilterParts.push(`subcategory_name.ilike.%${lt}%`);
-      categoryFilterParts.push(`category_name.ilike.%${lt}%`);
+      const cleanLt = sanitizePostgrestTerm(lt);
+      if (cleanLt.length > 0) {
+        serviceFilterParts.push(`title.ilike.%${cleanLt}%`, `description.ilike.%${cleanLt}%`);
+        subcategoryFilterParts.push(`subcategory_name.ilike.%${cleanLt}%`);
+        categoryFilterParts.push(`category_name.ilike.%${cleanLt}%`);
+      }
     }
 
     // Synonyms & Intent Expansions
     for (const exp of expandedTerms.slice(0, 8)) {
-      if (exp.length > 3) {
-        serviceFilterParts.push(`title.ilike.%${exp}%`);
-        subcategoryFilterParts.push(`subcategory_name.ilike.%${exp}%`);
+      const cleanExp = sanitizePostgrestTerm(exp);
+      if (cleanExp.length > 3) {
+        serviceFilterParts.push(`title.ilike.%${cleanExp}%`);
+        subcategoryFilterParts.push(`subcategory_name.ilike.%${cleanExp}%`);
       }
     }
 
@@ -118,48 +130,54 @@ export default async function SearchPage({
     // Perform queries in parallel with generous fetch limits
     const [servicesRes, subcategoriesRes, categoriesRes] = await Promise.all([
       // Search Services (limit 80 candidates for high precision scoring)
-      supabase
-        .from("services")
-        .select(`
-          *,
-          subcategories (
-            subcategory_name,
-            icon_name,
-            categories (
-              category_name
-            )
-          )
-        `)
-        .or(serviceOrFilter)
-        .eq("is_active", true)
-        .in("status", ["published", "upcoming"])
-        .limit(80),
+      serviceOrFilter.length > 0
+        ? supabase
+            .from("services")
+            .select(`
+              *,
+              subcategories (
+                subcategory_name,
+                icon_name,
+                categories (
+                  category_name
+                )
+              )
+            `)
+            .or(serviceOrFilter)
+            .eq("is_active", true)
+            .in("status", ["published", "upcoming"])
+            .limit(80)
+        : Promise.resolve({ data: [] }),
 
       // Search Subcategories
-      supabase
-        .from("subcategories")
-        .select(`
-          id,
-          subcategory_name,
-          icon_name,
-          image_url,
-          categories (
-            category_name
-          )
-        `)
-        .or(subcategoryOrFilter)
-        .limit(15),
+      subcategoryOrFilter.length > 0
+        ? supabase
+            .from("subcategories")
+            .select(`
+              id,
+              subcategory_name,
+              icon_name,
+              image_url,
+              categories (
+                category_name
+              )
+            `)
+            .or(subcategoryOrFilter)
+            .limit(15)
+        : Promise.resolve({ data: [] }),
 
       // Search Categories
-      supabase
-        .from("categories")
-        .select("id, category_name, image_url")
-        .or(categoryOrFilter)
-        .limit(8),
+      categoryOrFilter.length > 0
+        ? supabase
+            .from("categories")
+            .select("id, category_name, image_url")
+            .or(categoryOrFilter)
+            .limit(8)
+        : Promise.resolve({ data: [] }),
     ]);
 
     if (servicesRes.data) {
-      const rawList = servicesRes.data as unknown as ServiceResult[];
+      const rawList = servicesRes.data as ServiceResult[];
       servicesResults = rawList
         .map((s) => ({
           service: s,
@@ -176,11 +194,11 @@ export default async function SearchPage({
         .filter((item) => item.score > 0)
         .sort((a, b) => b.score - a.score)
         .map((item) => item.service)
-        .slice(0, 25); // Increased from 15 to 25 results
+        .slice(0, 25);
     }
 
     if (subcategoriesRes.data) {
-      const rawSubList = subcategoriesRes.data as unknown as SubcategoryResult[];
+      const rawSubList = subcategoriesRes.data as SubcategoryResult[];
       subcategoriesResults = rawSubList
         .map((sub) => ({
           ...sub,
@@ -218,7 +236,7 @@ export default async function SearchPage({
   }
 
   if (!q) {
-    // Load real popular search terms ranked by actual search volume
+    // Load real popular search terms ranked by search volume
     try {
       const { data: popularData } = await supabase.rpc("get_popular_search_terms", {
         p_limit: 10,
@@ -228,7 +246,7 @@ export default async function SearchPage({
         popularSearchTerms = popularRows.map((row) => row.term).filter((t) => t.length > 0);
       }
     } catch {
-      // Keep the section empty on failure rather than blocking the page
+      // Keep section fallback on failure
     }
   }
 
@@ -240,15 +258,28 @@ export default async function SearchPage({
   const getSlug = (name: string) =>
     name.toLowerCase().replace(/[,\s]+/g, "-").replace(/&/g, "and");
 
+  const displayPopularTerms =
+    popularSearchTerms.length > 0 ? popularSearchTerms : DEFAULT_POPULAR_TERMS;
+
   return (
-    <div className="bg-surface font-body text-on-surface min-h-screen pb-24">
-      <main className="max-w-7xl mx-auto px-4 md:px-6 pt-4 md:pt-6">
+    <div className="bg-surface font-body text-on-surface min-h-screen pb-24 w-full max-w-full overflow-x-hidden">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 pt-4 md:pt-6 w-full min-w-0 overflow-x-hidden">
+        {/* Semantic Page Header */}
+        <section className="mb-4">
+          <h1 className="font-headline text-xl sm:text-2xl font-black text-on-surface tracking-tight">
+            Find Services & Repairs
+          </h1>
+          <p className="text-on-surface-variant text-xs sm:text-sm font-medium mt-0.5">
+            Search verified professionals across cleaning, maintenance & pest control
+          </p>
+        </section>
+
         <SearchInput defaultValue={q || ""} />
 
         {q ? (
           <div className="mt-4 md:mt-6 space-y-8">
             <div className="flex items-center justify-between">
-              <h2 className="font-bold text-base md:text-lg text-on-surface">
+              <h2 className="font-headline font-bold text-base md:text-lg text-on-surface">
                 Results for &quot;{q}&quot;
               </h2>
               {hasResults && (
@@ -265,7 +296,7 @@ export default async function SearchPage({
                   <section>
                     <div className="flex items-center gap-2 mb-3 pl-1">
                       <span className="material-symbols-outlined text-sm text-secondary">category</span>
-                      <h3 className="text-xs uppercase tracking-wider text-on-surface-variant font-bold">
+                      <h3 className="text-xs uppercase tracking-wider text-on-surface-variant font-bold font-headline">
                         Matching Subcategories
                       </h3>
                     </div>
@@ -287,7 +318,7 @@ export default async function SearchPage({
                                   iconName={sub.icon_name || "sparkles"}
                                   alt={sub.subcategory_name}
                                   containerClassName="w-full h-full"
-                                  iconClassName="w-5 h-5 text-[#059669]"
+                                  iconClassName="w-5 h-5 text-secondary"
                                   thumbnailSize={96}
                                 />
                               </div>
@@ -315,11 +346,11 @@ export default async function SearchPage({
                   <section>
                     <div className="flex items-center gap-2 mb-3 pl-1">
                       <span className="material-symbols-outlined text-sm text-secondary">home_repair_service</span>
-                      <h3 className="text-xs uppercase tracking-wider text-on-surface-variant font-bold">
+                      <h3 className="text-xs uppercase tracking-wider text-on-surface-variant font-bold font-headline">
                         Services ({servicesResults.length})
                       </h3>
                     </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 w-full max-w-full min-w-0">
                       {servicesResults.map((service) => {
                         const iconName = service.subcategories?.icon_name || "sparkles";
                         const catSlug = getSlug(
@@ -333,7 +364,7 @@ export default async function SearchPage({
                           <Link
                             href={`/customer/services/${catSlug}/${service.id}`}
                             key={service.id}
-                            className="bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant/10 shadow-xs flex items-center gap-3 md:gap-4 hover:border-primary/30 hover:shadow-sm transition-all group"
+                            className="bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant/10 shadow-xs flex items-center gap-3 md:gap-4 hover:border-primary/30 hover:shadow-sm transition-all group w-full max-w-full min-w-0 overflow-hidden"
                           >
                             <ServiceCardThumbnail
                               imageUrl={service.image_url || service.poster_url}
@@ -341,7 +372,7 @@ export default async function SearchPage({
                               alt={service.title}
                               status={service.status}
                               containerClassName="w-16 h-14 md:w-20 md:h-16 rounded-xl shrink-0"
-                              iconClassName="w-5 h-5 md:w-6 md:h-6 text-[#059669] drop-shadow-sm"
+                              iconClassName="w-5 h-5 md:w-6 md:h-6 text-secondary drop-shadow-sm"
                             />
                             <div className="flex-1 min-w-0">
                               <h3 className="font-bold text-on-surface leading-tight text-sm md:text-base truncate group-hover:text-primary transition-colors">
@@ -365,11 +396,11 @@ export default async function SearchPage({
                                 <>
                                   {service.original_price && (
                                     <span className="text-[10px] md:text-xs text-on-surface-variant/50 line-through">
-                                      ₹{service.original_price}
+                                      ₹{Math.round(service.original_price)}
                                     </span>
                                   )}
                                   <span className="font-bold text-primary text-sm md:text-base">
-                                    ₹{service.base_price}
+                                    ₹{Math.round(service.base_price)}
                                   </span>
                                 </>
                               )}
@@ -386,7 +417,7 @@ export default async function SearchPage({
                   <section>
                     <div className="flex items-center gap-2 mb-3 pl-1">
                       <span className="material-symbols-outlined text-sm text-secondary">grid_view</span>
-                      <h3 className="text-xs uppercase tracking-wider text-on-surface-variant font-bold">
+                      <h3 className="text-xs uppercase tracking-wider text-on-surface-variant font-bold font-headline">
                         Browse by Category
                       </h3>
                     </div>
@@ -400,23 +431,23 @@ export default async function SearchPage({
                             href={`/customer/services/${catSlug}`}
                             className="bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant/10 shadow-xs flex items-center justify-between hover:border-primary/30 transition-all group"
                           >
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
                               <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0 overflow-hidden">
                                 <ServiceVisual
                                   imageUrl={cat.image_url}
                                   alt={cat.category_name}
                                   containerClassName="w-full h-full"
-                                  iconClassName="w-5 h-5 text-[#059669]"
+                                  iconClassName="w-5 h-5 text-secondary"
                                   thumbnailSize={96}
                                 />
                               </div>
-                              <div>
-                                <span className="font-bold text-on-surface text-sm md:text-base group-hover:text-primary transition-colors">
+                              <div className="min-w-0">
+                                <span className="font-bold text-on-surface text-sm md:text-base group-hover:text-primary transition-colors block truncate">
                                   {cat.category_name}
                                 </span>
                               </div>
                             </div>
-                            <span className="material-symbols-outlined text-on-surface-variant/40 group-hover:text-primary transition-colors">
+                            <span className="material-symbols-outlined text-on-surface-variant/40 group-hover:text-primary transition-colors shrink-0">
                               chevron_right
                             </span>
                           </Link>
@@ -427,37 +458,59 @@ export default async function SearchPage({
                 )}
               </div>
             ) : (
-              <div className="text-center py-12 md:py-16 bg-surface-container-lowest rounded-2xl border border-outline-variant/10">
-                <span className="material-symbols-outlined text-4xl md:text-5xl text-on-surface-variant/40 mb-4">
-                  search_off
-                </span>
-                <h3 className="font-bold text-base md:text-lg text-on-surface">No results found</h3>
-                <p className="text-on-surface-variant mt-2 text-sm md:text-base max-w-sm mx-auto">
-                  Try searching for something like &quot;AC&quot;, &quot;Sofa Cleaning&quot;, &quot;Cockroach&quot; or &quot;Plumber&quot;.
+              /* Elevated Empty State with Illustration, Suggestions & Actionable CTA */
+              <div className="glass-panel text-center py-10 sm:py-14 px-4 sm:px-8 bg-surface-container-lowest/80 rounded-2xl border border-outline-variant/15 flex flex-col items-center">
+                <div className="w-14 h-14 bg-green-500/10 rounded-2xl flex items-center justify-center mb-4">
+                  <span className="material-symbols-outlined text-2xl sm:text-3xl text-secondary">
+                    search_off
+                  </span>
+                </div>
+                <h3 className="font-headline font-bold text-base sm:text-lg text-primary">
+                  No services found for &quot;{q}&quot;
+                </h3>
+                <p className="text-on-surface-variant mt-1.5 text-xs sm:text-sm max-w-sm mx-auto">
+                  We couldn&apos;t find matching services. Try searching with different keywords or tap a popular suggestion below.
                 </p>
+                <div className="flex flex-wrap gap-2 justify-center mt-5 mb-6 max-w-md">
+                  {DEFAULT_POPULAR_TERMS.slice(0, 5).map((term) => (
+                    <Link
+                      key={term}
+                      href={`/customer/search?q=${encodeURIComponent(term)}`}
+                      className="px-3 py-1 bg-surface-container-low rounded-full text-xs font-semibold text-on-surface-variant border border-outline-variant/15 hover:border-primary/50 hover:bg-surface-container transition-colors"
+                    >
+                      {term}
+                    </Link>
+                  ))}
+                </div>
+                <Link
+                  href="/customer/dashboard"
+                  className="px-5 py-2.5 bg-primary text-white font-bold rounded-xl text-xs sm:text-sm transition-transform active:scale-95 hover:bg-primary/90 shadow-md flex items-center gap-2"
+                >
+                  <span>Browse All Categories</span>
+                  <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                </Link>
               </div>
             )}
           </div>
         ) : (
           <div className="mt-6 md:mt-8">
-            <h2 className="font-bold text-base md:text-lg mb-3 md:mb-4 text-on-surface-variant">Popular Searches</h2>
-            {popularSearchTerms.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {popularSearchTerms.map((term) => (
-                  <Link
-                    key={term}
-                    href={`/customer/search?q=${encodeURIComponent(term)}`}
-                    className="px-3 md:px-4 py-1.5 md:py-2 bg-surface-container-low rounded-full text-xs md:text-sm font-medium text-on-surface-variant border border-outline-variant/10 hover:border-primary/50 transition-colors"
-                  >
-                    {term}
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <p className="text-on-surface-variant text-sm">
-                No searches recorded yet — start typing above to find a service.
-              </p>
-            )}
+            <div className="flex items-center gap-2 mb-3 md:mb-4">
+              <span className="material-symbols-outlined text-sm text-secondary">trending_up</span>
+              <h2 className="font-bold text-sm md:text-base text-on-surface uppercase tracking-wider font-headline">
+                Popular Searches
+              </h2>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {displayPopularTerms.map((term) => (
+                <Link
+                  key={term}
+                  href={`/customer/search?q=${encodeURIComponent(term)}`}
+                  className="px-3 md:px-4 py-1.5 md:py-2 bg-surface-container-low rounded-full text-xs md:text-sm font-medium text-on-surface-variant border border-outline-variant/10 hover:border-primary/50 hover:bg-surface-container transition-colors"
+                >
+                  {term}
+                </Link>
+              ))}
+            </div>
           </div>
         )}
       </main>

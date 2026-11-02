@@ -72,13 +72,14 @@ export default function Header() {
   return (
     <header className="sticky top-0 w-full z-50 bg-surface/95 backdrop-blur-md shadow-sm pt-safe">
       <nav className="flex justify-between items-center px-4 md:px-6 lg:px-8 py-3 md:py-4 max-w-7xl mx-auto">
-        <Link href="/" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2 shrink-0">
           <Image
             src="/PHS.png"
             alt="PHS Cleaning Company Logo"
-            className="h-12 md:h-14 w-auto"
-            width={40}
-            height={40}
+            className="h-10 sm:h-12 md:h-14 w-auto object-contain shrink-0"
+            width={140}
+            height={56}
+            priority
           />
 
           <div className="text-lg md:text-xl font-bold tracking-tighter text-primary font-headline hidden sm:block">

@@ -4,12 +4,11 @@ import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
 import ReferralCodeCopyClient from "@/components/ReferralCodeCopyClient";
-import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
+import { getCachedPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 import { getReferralRewardConfig } from "@/lib/pricing";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const supabase = await createClient();
-  const settings = await fetchPlatformSettings(supabase);
+  const settings = await getCachedPlatformSettings();
   const reward = settings.referralRewardReferrer;
 
   return {
@@ -43,7 +42,7 @@ export default async function ReferralPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Fetch stats, history, and referral settings in parallel
+  // Fetch stats, history, and cached referral settings in parallel
   const [statsResult, historyResult, platformSettings] = await Promise.all([
     supabase.rpc("get_referral_stats", { p_user_id: user.id }),
     supabase
@@ -52,7 +51,7 @@ export default async function ReferralPage() {
       .eq("referrer_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20),
-    fetchPlatformSettings(supabase),
+    getCachedPlatformSettings(),
   ]);
 
   const stats: ReferralStats = statsResult.data ?? {
@@ -77,21 +76,21 @@ export default async function ReferralPage() {
   const isReferralEnabled = referralConfig.isEnabled;
 
   const statusConfig: Record<string, { label: string; className: string }> = {
-    pending:   { label: "Pending",   className: "bg-amber-500/10 text-amber-700 border border-amber-500/20" },
-    rewarded:  { label: "Rewarded",  className: "bg-secondary/10 text-on-secondary border border-secondary/20" },
-    completed: { label: "Rewarded",  className: "bg-secondary/10 text-on-secondary border border-secondary/20" },
-    cancelled: { label: "Cancelled", className: "bg-red-500/10 text-red-600 border border-red-200" },
-    rejected:  { label: "Rejected",  className: "bg-red-500/10 text-red-600 border border-red-200" },
-    reversed:  { label: "Reversed",  className: "bg-red-500/10 text-red-600 border border-red-200" },
+    pending:   { label: "Pending",   className: "bg-warning/10 text-warning border border-warning/20" },
+    rewarded:  { label: "Rewarded",  className: "bg-secondary/15 text-primary border border-secondary/25" },
+    completed: { label: "Rewarded",  className: "bg-secondary/15 text-primary border border-secondary/25" },
+    cancelled: { label: "Cancelled", className: "bg-error/10 text-error border border-error/20" },
+    rejected:  { label: "Rejected",  className: "bg-error/10 text-error border border-error/20" },
+    reversed:  { label: "Reversed",  className: "bg-error/10 text-error border border-error/20" },
   };
 
   return (
-    <div className="bg-[#f5f6f8] text-on-surface antialiased min-h-screen pb-24 font-body">
+    <div className="bg-surface-dim text-on-surface antialiased min-h-screen pb-24 font-body w-full max-w-full overflow-x-hidden min-w-0 flex flex-col">
 
-      <main className="max-w-xl mx-auto px-4 md:px-5 pt-4 pb-8 space-y-4">
+      <main className="w-full max-w-xl mx-auto px-4 md:px-5 pt-4 pb-8 space-y-4 flex-1 min-w-0">
 
         {/* ── HERO BANNER ─────────────────────────────────────── */}
-        <div className="bg-primary rounded-3xl p-6 relative overflow-hidden">
+        <div className="bg-primary rounded-3xl p-6 relative overflow-hidden w-full min-w-0">
           <div className="absolute -top-8 -right-8 w-40 h-40 bg-secondary/15 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-white/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -101,14 +100,14 @@ export default async function ReferralPage() {
           </Link>
 
           {!isReferralEnabled && (
-            <div className="bg-amber-500/20 border border-amber-500/40 rounded-xl p-3 mb-4 text-amber-200 text-xs font-semibold flex items-center gap-2">
+            <div className="bg-warning/20 border border-warning/40 rounded-xl p-3 mb-4 text-warning text-xs font-semibold flex items-center gap-2">
               <span className="material-symbols-outlined text-sm">pause_circle</span>
               Referral program is currently paused by administrator. New code activations are disabled.
             </div>
           )}
 
           <div className="flex items-start justify-between gap-4">
-            <div className="relative z-10">
+            <div className="relative z-10 min-w-0 flex-1">
               <div className="inline-flex items-center gap-1.5 bg-secondary/20 border border-secondary/30 rounded-full px-3 py-1 text-[10px] font-extrabold text-secondary uppercase tracking-widest mb-3">
                 <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
                 Referral Program
@@ -116,7 +115,7 @@ export default async function ReferralPage() {
               <h1 className="text-2xl md:text-3xl font-black text-white tracking-tighter leading-tight mb-1">
                 Earn <span className="text-secondary">₹{referrerReward}</span><br />per friend!
               </h1>
-              <p className="text-white/60 text-sm font-medium">
+              <p className="text-white/70 text-sm font-medium">
                 Your friend gets <span className="text-white font-bold">₹{referredDiscount} wallet credit</span> the moment they sign up.
               </p>
             </div>
@@ -127,7 +126,7 @@ export default async function ReferralPage() {
         </div>
 
         {/* ── REFERRAL CODE CARD ───────────────────────────────── */}
-        <div className="bg-white rounded-[20px] shadow-sm p-5 space-y-4">
+        <div className="bg-surface-container-lowest rounded-2xl md:rounded-[20px] shadow-sm p-5 space-y-4 w-full min-w-0">
           <div className="flex items-center gap-2 pb-3 border-b border-outline-variant/10">
             <span className="material-symbols-outlined text-primary text-[18px]">qr_code</span>
             <h2 className="font-bold text-[14px] text-primary tracking-tight">Your Referral Code</h2>
@@ -143,22 +142,22 @@ export default async function ReferralPage() {
         </div>
 
         {/* ── STATS ROW ────────────────────────────────────────── */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2.5 sm:gap-3 w-full min-w-0">
           {[
             { label: "Total Referrals",  value: stats.total_referrals,    icon: "group_add",   color: "text-primary" },
-            { label: "Rewarded",         value: stats.rewarded_referrals ?? stats.completed_referrals, icon: "verified", color: "text-[#059669]" },
-            { label: "Total Earned",     value: `₹${stats.total_earned}`, icon: "account_balance_wallet", color: "text-secondary" },
+            { label: "Rewarded",         value: stats.rewarded_referrals ?? stats.completed_referrals, icon: "verified", color: "text-secondary" },
+            { label: "Total Earned",     value: `₹${stats.total_earned}`, icon: "account_balance_wallet", color: "text-primary" },
           ].map((stat) => (
-            <div key={stat.label} className="bg-white rounded-2xl shadow-sm p-3.5 flex flex-col items-center text-center gap-1.5">
-              <span className={`material-symbols-outlined text-[22px] ${stat.color}`} style={{ fontVariationSettings: "'FILL' 1" }}>{stat.icon}</span>
-              <span className={`text-xl font-black tracking-tight ${stat.color}`}>{stat.value}</span>
-              <span className="text-[9px] font-extrabold text-on-surface-variant/60 uppercase tracking-widest leading-tight">{stat.label}</span>
+            <div key={stat.label} className="bg-surface-container-lowest rounded-2xl shadow-sm p-3 sm:p-3.5 flex flex-col items-center text-center gap-1.5 min-w-0">
+              <span className={`material-symbols-outlined text-[20px] sm:text-[22px] ${stat.color} shrink-0`} style={{ fontVariationSettings: "'FILL' 1" }}>{stat.icon}</span>
+              <span className={`text-lg sm:text-xl font-black tracking-tight ${stat.color} truncate w-full`}>{stat.value}</span>
+              <span className="text-[9px] font-extrabold text-on-surface-variant/70 uppercase tracking-widest leading-tight truncate w-full">{stat.label}</span>
             </div>
           ))}
         </div>
 
         {/* ── HOW IT WORKS ─────────────────────────────────────── */}
-        <div className="bg-white rounded-[20px] shadow-sm p-5 space-y-4">
+        <div className="bg-surface-container-lowest rounded-2xl md:rounded-[20px] shadow-sm p-5 space-y-4 w-full min-w-0">
           <div className="flex items-center gap-2 pb-3 border-b border-outline-variant/10">
             <span className="material-symbols-outlined text-primary text-[18px]">help</span>
             <h2 className="font-bold text-[14px] text-primary tracking-tight">How It Works</h2>
@@ -173,7 +172,7 @@ export default async function ReferralPage() {
                 <div className="w-9 h-9 rounded-xl bg-primary/5 flex items-center justify-center shrink-0 mt-0.5">
                   <span className="material-symbols-outlined text-primary text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>{item.icon}</span>
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="text-[9px] font-black text-primary/40 uppercase tracking-widest">Step {item.step}</span>
                   </div>
@@ -186,7 +185,7 @@ export default async function ReferralPage() {
         </div>
 
         {/* ── REFERRAL HISTORY ─────────────────────────────────── */}
-        <div className="bg-white rounded-[20px] shadow-sm overflow-hidden">
+        <div className="bg-surface-container-lowest rounded-2xl md:rounded-[20px] shadow-sm overflow-hidden w-full min-w-0">
           <div className="px-5 py-4 border-b border-outline-variant/10 flex items-center gap-2">
             <span className="material-symbols-outlined text-primary text-[18px]">history</span>
             <h2 className="font-bold text-[14px] text-primary tracking-tight">Referral History</h2>
@@ -197,8 +196,8 @@ export default async function ReferralPage() {
 
           {referralHistory.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 px-6 text-center gap-3">
-              <div className="w-14 h-14 bg-green-500/10 rounded-2xl flex items-center justify-center">
-                <span className="material-symbols-outlined text-3xl text-[#059669] drop-shadow-sm" style={{ fontVariationSettings: "'FILL' 1" }}>group_add</span>
+              <div className="w-14 h-14 bg-secondary/15 rounded-2xl flex items-center justify-center">
+                <span className="material-symbols-outlined text-3xl text-secondary drop-shadow-sm" style={{ fontVariationSettings: "'FILL' 1" }}>group_add</span>
               </div>
               <div>
                 <p className="font-bold text-sm text-on-surface">No referrals yet</p>
@@ -216,20 +215,20 @@ export default async function ReferralPage() {
                 const date = new Date(ref.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
                 return (
                   <div key={ref.id} className="flex items-center justify-between px-5 py-3.5 gap-4">
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className="w-9 h-9 rounded-xl bg-primary/5 flex items-center justify-center shrink-0">
                         <span className="material-symbols-outlined text-primary text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="font-bold text-[13px] text-on-surface truncate">{maskedName}</p>
                         <p className="text-[10px] text-on-surface-variant">{date}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 min-w-fit">
                       {ref.status === "completed" || ref.status === "rewarded" ? (
-                        <span className="text-[11px] font-black text-[#059669]">+₹{ref.referrer_reward}</span>
+                        <span className="text-[11px] font-black text-secondary shrink-0">+₹{ref.referrer_reward}</span>
                       ) : null}
-                      <span className={`text-[9px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wide ${cfg.className}`}>
+                      <span className={`text-[9px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wide shrink-0 min-w-fit whitespace-nowrap ${cfg.className}`}>
                         {cfg.label}
                       </span>
                     </div>

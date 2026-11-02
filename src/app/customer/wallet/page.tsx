@@ -2,7 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
 import WalletClient from "./WalletClient";
-import { fetchPlatformSettings } from "@/lib/engines/platformSettingsEngine";
+import { getCachedPlatformSettings } from "@/lib/engines/platformSettingsEngine";
 
 export const metadata: Metadata = {
   title: "My Wallet | PHS Cleaning Company",
@@ -54,7 +54,7 @@ export default async function WalletPage() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20),
-    fetchPlatformSettings(supabase),
+    getCachedPlatformSettings(),
   ]);
 
   const walletBalance = Number(profileResult.data?.wallet_balance ?? 0);

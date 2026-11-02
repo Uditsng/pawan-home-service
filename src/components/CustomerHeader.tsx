@@ -32,25 +32,25 @@ export default async function CustomerHeader() {
   const firstName = profile.full_name ? profile.full_name.split(" ")[0] : "There";
 
   return (
-    <header className="sticky top-0 w-full z-50 bg-surface/90 backdrop-blur-lg pt-safe">
-      <div className="flex justify-between items-center w-full px-4 md:px-6 py-3 md:py-4 max-w-7xl mx-auto">
-        <div className="flex items-center gap-4 md:gap-6">
-          <Link href="/customer/dashboard" className="flex items-center gap-2">
+    <header className="sticky top-0 w-full max-w-full z-50 bg-surface/90 backdrop-blur-lg pt-safe overflow-hidden">
+      <div className="flex justify-between items-center w-full px-3 sm:px-4 md:px-6 py-2.5 sm:py-3 md:py-4 max-w-7xl mx-auto gap-1.5 sm:gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 md:gap-6 min-w-0 flex-1">
+          <Link href="/customer/dashboard" className="flex items-center shrink-0">
             <Image
               src="/PHS.png"
               alt="PHS Cleaning Company Logo"
-              className="h-12 md:h-14 w-auto"
+              className="h-9 w-9 sm:h-10 sm:w-10 md:h-12 md:w-12 object-contain shrink-0"
               width={40}
               height={40}
-              style={{ width: "auto" }}
+              priority
             />
           </Link>
           <HeaderLocationDisplay defaultAddress={defaultAddress} />
         </div>
-        <div className="flex items-center gap-3 md:gap-4">
+        <div className="flex items-center gap-1.5 sm:gap-3 md:gap-4 shrink-0">
           <CartHeaderButton />
           <NotificationBell />
-          <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-surface-container-high overflow-hidden border border-outline-variant/20 flex items-center justify-center font-bold text-primary shrink-0 relative">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full bg-surface-container-high overflow-hidden border border-outline-variant/20 flex items-center justify-center font-bold text-primary shrink-0 relative text-xs sm:text-sm">
             {profile.avatar_url ? (
               <Image src={profile.avatar_url} alt={firstName} fill className="object-cover" sizes="40px" />
             ) : (

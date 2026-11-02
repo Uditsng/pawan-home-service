@@ -217,11 +217,16 @@ export default function TrackingClient({
         .maybeSingle(),
     ]);
 
-    const resolvedBooking = (bookingRes.data || initialBooking) as BookingDetails;
-    if (otpRes?.data) {
-      resolvedBooking.arrival_otp = otpRes.data.arrival_otp ?? null;
-      resolvedBooking.completion_otp = otpRes.data.completion_otp ?? null;
-    }
+    const baseBooking = (bookingRes.data || initialBooking) as BookingDetails;
+    const resolvedBooking: BookingDetails = {
+      ...baseBooking,
+      ...(otpRes?.data
+        ? {
+            arrival_otp: otpRes.data.arrival_otp ?? null,
+            completion_otp: otpRes.data.completion_otp ?? null,
+          }
+        : {}),
+    };
 
     return {
       booking: resolvedBooking,

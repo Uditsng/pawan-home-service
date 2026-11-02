@@ -25,6 +25,28 @@ export default async function Home() {
   // Shared Glassmorphism styles
   const glassBg = "glass-panel";
 
+  // Hero concierge chips: only categories that actually have services, ranked by
+  // how much of the catalog they hold so the first suggestion is never empty.
+  const heroCategoryOptions = categories
+    .map((category) => ({
+      category,
+      serviceCount: availableServices.filter(
+        (service) => service.subcategories?.categories?.id === category.id
+      ).length,
+    }))
+    .filter(({ serviceCount }) => serviceCount > 0)
+    .sort(
+      (a, b) =>
+        b.serviceCount - a.serviceCount ||
+        a.category.category_name.localeCompare(b.category.category_name)
+    )
+    .slice(0, 3)
+    .map(({ category }) => ({ label: category.category_name, value: category.category_name }));
+
+  const heroOptions = heroCategoryOptions.length
+    ? heroCategoryOptions
+    : [{ label: "Browse all services", value: "__all__" }];
+
   return (
     <>
 
@@ -33,9 +55,9 @@ export default async function Home() {
       
 
       {/* Atmospheric Background Orbs */}
-      <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden">
-        <div className="animate-orb-float-1 absolute top-[-5%] right-[-5%] w-75 md:w-150 h-75 md:h-150 rounded-full bg-[radial-gradient(circle,#c4b5fd_0%,transparent_70%)] blur-[60px] opacity-30 md:opacity-40"></div>
-        <div className="animate-orb-float-2 absolute bottom-[10%] left-[-10%] w-63 md:w-125 h-63 md:h-125 rounded-full bg-[radial-gradient(circle,#93c5fd_0%,transparent_70%)] blur-[60px] opacity-30 md:opacity-40"></div>
+      <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden" aria-hidden>
+        <div className="animate-orb-float-1 absolute top-[-5%] right-[-5%] w-75 md:w-150 h-75 md:h-150 rounded-full bg-[radial-gradient(circle,var(--color-secondary)_0%,transparent_70%)] blur-2xl opacity-20 md:opacity-30"></div>
+        <div className="animate-orb-float-2 absolute bottom-[10%] left-[-10%] w-63 md:w-125 h-63 md:h-125 rounded-full bg-[radial-gradient(circle,var(--color-primary)_0%,transparent_70%)] blur-2xl opacity-15 md:opacity-20"></div>
       </div>
 
       <main className="relative z-10 px-4 sm:px-6 md:px-8 lg:px-12 max-w-7xl mx-auto flex flex-col gap-6 md:gap-12 pb-6 md:pb-8 pt-6 md:pt-16 w-full overflow-hidden md:overflow-visible">
@@ -43,15 +65,10 @@ export default async function Home() {
         {/* Section 1: Hero */}
         <section className="relative text-center md:text-left flex flex-col md:flex-row items-center gap-10 lg:gap-16 w-full pt-4 md:pt-0">
 
-          {/* Floating 3D Elements (Hidden on very small screens to avoid clutter) */}
-          <div className="hidden sm:flex absolute -left-4 top-10 animate-float-1 text-[4rem] z-20">🧽</div>
-          <div className="hidden sm:flex absolute right-1/2 top-4 animate-float-2 text-[3rem] z-20">✨</div>
-          <div className="hidden lg:flex absolute left-1/3 bottom-0 animate-float-1 text-[3.5rem] z-20">🔧</div>
-
           <div className="flex-1 w-full relative z-30">
-            <div className="inline-flex items-center gap-1 px-4 py-2 bg-white/70 backdrop-blur-md border border-white/60 rounded-full mb-6 shadow-sm mx-auto md:mx-0">
-              <span className="flex h-2.5 w-2.5 rounded-full bg-secondary shadow-secondary animate-pulse"></span>
-              <span className="text-[11px] sm:text-xs md:text-sm font-bold text-primary">Verified Professionals • Ready to Serve</span>
+            <div className="inline-flex items-center gap-1 px-4 py-2 bg-surface-container-lowest/70 backdrop-blur-md border border-outline-variant/40 rounded-full mb-6 shadow-sm mx-auto md:mx-0">
+              <span className="flex h-2.5 w-2.5 rounded-full bg-secondary shadow-secondary animate-pulse" aria-hidden></span>
+              <span className="text-xs md:text-sm font-bold text-primary">Verified Professionals • Ready to Serve</span>
             </div>
 
             <h1 className="text-[2.5rem] leading-[1.1] sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-primary mb-4 md:mb-6">
@@ -59,14 +76,31 @@ export default async function Home() {
               <span className="text-transparent bg-clip-text bg-linear-to-r from-secondary to-teal-500 drop-shadow-sm">Our Responsibility.</span>
             </h1>
 
-            <p className="text-sm sm:text-base md:text-lg text-on-surface-variant mb-8 max-w-xl mx-auto md:mx-0 font-medium leading-relaxed px-2 md:px-0">
+            <p className="text-sm sm:text-base md:text-lg text-on-surface-variant mb-6 max-w-xl mx-auto md:mx-0 font-medium leading-relaxed px-2 md:px-0">
               Sit back and relax. We’ll take care of your home, just like it’s our own.</p>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center md:justify-start gap-2 sm:gap-3 mb-2">
+              <Link
+                href="/services"
+                className="inline-flex items-center justify-center gap-2 bg-primary text-white rounded-full px-6 py-3 text-sm font-bold hover:bg-primary/90 active:scale-[0.98] transition-all shadow-ambient"
+              >
+                <span className="material-symbols-outlined text-[18px]" aria-hidden>calendar_month</span>
+                Book a Service
+              </Link>
+              <Link
+                href="#how-it-works"
+                className="inline-flex items-center justify-center gap-1 rounded-full px-5 py-3 text-sm font-bold text-primary hover:bg-surface-container-low transition-colors"
+              >
+                How it works
+                <span className="material-symbols-outlined text-[18px]" aria-hidden>arrow_forward</span>
+              </Link>
+            </div>
 
           </div>
 
           {/* Interactive 3D Conversational Promo Banner */}
           <div className="flex-1 w-full hidden md:block relative perspective-[1000px]">
-            <HeroConversationalCard />
+            <HeroConversationalCard initialOptions={heroOptions} />
           </div>
         </section>
 
@@ -80,7 +114,7 @@ export default async function Home() {
         />
 
         {/* Section 4: How It Works (Interactive Steps) */}
-        <section className="w-full">
+        <section id="how-it-works" className="w-full scroll-mt-24">
           <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-primary mb-4 md:mb-6">How It Works</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
             {[
@@ -88,13 +122,13 @@ export default async function Home() {
               { num: "2", title: "Choose a Slot", desc: "Schedule at your convenience." },
               { num: "3", title: "We Show Up", desc: "Vetted pros arrive on time." },
             ].map((step, idx) => (
-              <div key={idx} className={`flex items-center gap-4 p-4 sm:p-5 rounded-[20px] sm:rounded-3xl group ${glassBg} hover:bg-white/90 hover:scale-[1.02] transition-all cursor-default`}>
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl shrink-0 bg-linear-to-br from-secondary to-[#08e07a] flex items-center justify-center text-base sm:text-lg font-extrabold text-primary shadow-[0_4px_10px_rgba(42,245,152,0.4)] group-hover:rotate-12 transition-transform">
+              <div key={idx} className={`flex items-center gap-4 p-4 sm:p-5 rounded-3xl group ${glassBg} hover:bg-surface-container-lowest/90 hover:scale-[1.02] transition-all cursor-default`}>
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl shrink-0 bg-linear-to-br from-secondary to-secondary/70 flex items-center justify-center text-base sm:text-lg font-extrabold text-primary shadow-lg shadow-secondary/30 group-hover:rotate-12 transition-transform">
                   {step.num}
                 </div>
                 <div>
-                  <h4 className="text-[15px] sm:text-base font-bold text-primary">{step.title}</h4>
-                  <p className="text-[12px] sm:text-xs text-[#64748B] font-medium mt-0.5">{step.desc}</p>
+                  <h3 className="text-base font-bold text-primary">{step.title}</h3>
+                  <p className="text-xs text-on-surface-variant font-medium mt-0.5">{step.desc}</p>
                 </div>
               </div>
             ))}
@@ -105,7 +139,7 @@ export default async function Home() {
         <section className={`flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 sm:gap-6 p-5 sm:p-6 md:p-8 rounded-[20px] sm:rounded-3xl w-full ${glassBg} shadow-inner`}>
           <div className="text-center flex-1 min-w-25">
             <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-primary flex items-center justify-center gap-1.5">
-              <span className="material-symbols-outlined text-secondary text-xl sm:text-2xl md:text-3xl">verified</span>
+              <span className="material-symbols-outlined text-secondary text-xl sm:text-2xl md:text-3xl" aria-hidden>verified</span>
               100<span className="text-secondary">%</span>
             </div>
             <div className="text-[11px] sm:text-xs md:text-sm text-on-surface-variant font-bold uppercase tracking-wide mt-1">Verified Pros</div>
@@ -113,7 +147,7 @@ export default async function Home() {
           <div className="w-px h-10 bg-primary/10 hidden sm:block"></div>
           <div className="text-center flex-1 min-w-25">
             <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-primary flex items-center justify-center gap-1.5">
-              <span className="material-symbols-outlined text-secondary text-xl sm:text-2xl md:text-3xl">payments</span>
+              <span className="material-symbols-outlined text-secondary text-xl sm:text-2xl md:text-3xl" aria-hidden>payments</span>
               Upfront
             </div>
             <div className="text-[11px] sm:text-xs md:text-sm text-on-surface-variant font-bold uppercase tracking-wide mt-1">Transparent Pricing</div>
@@ -121,7 +155,7 @@ export default async function Home() {
           <div className="w-px h-10 bg-primary/10 hidden sm:block"></div>
           <div className="text-center flex-1 min-w-full sm:min-w-25 mt-2 sm:mt-0">
             <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-primary flex items-center justify-center gap-1.5">
-              <span className="material-symbols-outlined text-secondary text-xl sm:text-2xl md:text-3xl">health_and_safety</span>
+              <span className="material-symbols-outlined text-secondary text-xl sm:text-2xl md:text-3xl" aria-hidden>health_and_safety</span>
               100<span className="text-secondary">%</span>
             </div>
             <div className="text-[11px] sm:text-xs md:text-sm text-on-surface-variant font-bold uppercase tracking-wide mt-1">Quality Guaranteed</div>
@@ -129,20 +163,22 @@ export default async function Home() {
         </section>
 
         {/* Section 7: Modern Glowing CTA */}
-        <section className="relative rounded-3xl sm:rounded-[36px] overflow-hidden p-6 sm:p-8 md:p-12 bg-primary text-center shadow-[0_20px_50px_rgba(30,41,59,0.3)] w-full perspective-1000">
+        <section className="relative rounded-3xl sm:rounded-4xl overflow-hidden p-6 sm:p-8 md:p-12 bg-primary text-center shadow-ambient-hover w-full perspective-[1000px]">
           {/* Animated 3D Glow */}
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(42,245,152,0.25)_0%,transparent_70%)] animate-pulse"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,var(--color-secondary)_0%,transparent_70%)] opacity-25 animate-pulse" aria-hidden></div>
 
           <div className="relative z-10 flex flex-col items-center transform-3d hover:translate-z-2.5 transition-transform duration-500">
-            <div className="text-4xl sm:text-5xl mb-4 animate-float-1">✨</div>
+            <div className="w-14 h-14 mb-4 rounded-2xl bg-secondary/15 flex items-center justify-center">
+              <span className="material-symbols-outlined text-secondary text-3xl" aria-hidden>auto_awesome</span>
+            </div>
             <h2 className="text-2xl sm:text-3xl md:text-5xl font-extrabold text-white mb-3 leading-tight tracking-tight">
               Trusted Home Services <br className="hidden sm:block" /><span className="text-secondary">At Your Doorstep</span>
             </h2>
-            <p className="text-[13px] sm:text-sm md:text-base text-white/70 mb-6 sm:mb-8 max-w-md font-medium px-4">
+            <p className="text-sm md:text-base text-white/70 mb-6 sm:mb-8 max-w-md font-medium px-4">
               Book cleaning, pest control, repairs, maintenance, and more from verified professionals in just a few clicks.
             </p>
-            <Link href="/services" className="inline-flex items-center justify-center gap-2 bg-secondary rounded-full px-6 sm:px-8 py-3 sm:py-4 text-[14px] sm:text-[15px] font-extrabold text-primary hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(42,245,152,0.5)] active:scale-95 transition-all w-full sm:w-auto">
-              <span className="material-symbols-outlined text-[18px]">calendar_month</span>
+            <Link href="/services" className="inline-flex items-center justify-center gap-2 bg-secondary rounded-full px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-extrabold text-primary hover:-translate-y-1 hover:shadow-lg hover:shadow-secondary/40 active:scale-95 transition-all w-full sm:w-auto">
+              <span className="material-symbols-outlined text-[18px]" aria-hidden>calendar_month</span>
               Book a Service Now
             </Link>
           </div>

@@ -71,35 +71,43 @@ export async function GET(request: Request) {
   const parsed = parseSearchTokens(q);
   const { normalizedQuery, shortTokens, longTokens, expandedTerms } = parsed;
 
-  // Build targeted search filters
-  const serviceFilterParts: string[] = [
-    `title.ilike.%${normalizedQuery}%`,
-    `title.ilike.${normalizedQuery}%`,
-  ];
+  const sanitizePostgrestTerm = (term: string) =>
+    term.replace(/[,()"\\]/g, " ").trim();
 
-  const subcategoryFilterParts: string[] = [
-    `subcategory_name.ilike.%${normalizedQuery}%`,
-    `subcategory_name.ilike.${normalizedQuery}%`,
-  ];
+  const sanitizedQuery = sanitizePostgrestTerm(normalizedQuery);
+
+  // Build targeted search filters
+  const serviceFilterParts: string[] = [];
+  const subcategoryFilterParts: string[] = [];
+
+  if (sanitizedQuery.length > 0) {
+    serviceFilterParts.push(`title.ilike.%${sanitizedQuery}%`, `title.ilike.${sanitizedQuery}%`);
+    subcategoryFilterParts.push(`subcategory_name.ilike.%${sanitizedQuery}%`, `subcategory_name.ilike.${sanitizedQuery}%`);
+  }
 
   // Acronym & Short Token Filters (word-level matching only)
   for (const st of shortTokens) {
-    serviceFilterParts.push(`title.ilike.${st}%`);
-    serviceFilterParts.push(`title.ilike.% ${st}%`);
-    subcategoryFilterParts.push(`subcategory_name.ilike.${st}%`);
-    subcategoryFilterParts.push(`subcategory_name.ilike.% ${st}%`);
+    const cleanSt = sanitizePostgrestTerm(st);
+    if (cleanSt.length > 0) {
+      serviceFilterParts.push(`title.ilike.${cleanSt}%`, `title.ilike.% ${cleanSt}%`);
+      subcategoryFilterParts.push(`subcategory_name.ilike.${cleanSt}%`, `subcategory_name.ilike.% ${cleanSt}%`);
+    }
   }
 
   // Long Tokens & Synonyms
   for (const lt of longTokens) {
-    serviceFilterParts.push(`title.ilike.%${lt}%`);
-    subcategoryFilterParts.push(`subcategory_name.ilike.%${lt}%`);
+    const cleanLt = sanitizePostgrestTerm(lt);
+    if (cleanLt.length > 0) {
+      serviceFilterParts.push(`title.ilike.%${cleanLt}%`);
+      subcategoryFilterParts.push(`subcategory_name.ilike.%${cleanLt}%`);
+    }
   }
 
   for (const term of expandedTerms.slice(0, 5)) {
-    if (term.length > 3) {
-      serviceFilterParts.push(`title.ilike.%${term}%`);
-      subcategoryFilterParts.push(`subcategory_name.ilike.%${term}%`);
+    const cleanTerm = sanitizePostgrestTerm(term);
+    if (cleanTerm.length > 3) {
+      serviceFilterParts.push(`title.ilike.%${cleanTerm}%`);
+      subcategoryFilterParts.push(`subcategory_name.ilike.%${cleanTerm}%`);
     }
   }
 

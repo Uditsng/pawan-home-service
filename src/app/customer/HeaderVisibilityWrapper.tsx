@@ -15,7 +15,7 @@ export default function HeaderVisibilityWrapper({
   const isCheckout = pathname?.includes("/customer/checkout");
 
   return (
-    <div className="min-h-screen w-full brand-identity bg-surface text-on-surface">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden brand-identity bg-surface text-on-surface">
       {!isCheckout && header}
       {children}
     </div>

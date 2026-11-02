@@ -371,7 +371,7 @@ export default function NotificationBell() {
             fetchNotifications(0);
           }
         }}
-        className="relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-2xl bg-surface-container text-on-surface-variant hover:bg-secondary hover:text-primary transition-all active:scale-95 cursor-pointer"
+        className="relative w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center rounded-xl md:rounded-2xl bg-surface-container text-on-surface-variant hover:bg-secondary hover:text-primary transition-all active:scale-95 cursor-pointer shrink-0"
         aria-label="Notifications"
       >
         <span

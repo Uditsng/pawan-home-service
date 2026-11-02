@@ -165,7 +165,7 @@ export default function SearchInput({ defaultValue = "" }: { defaultValue?: stri
                             iconName={sub.icon_name}
                             alt={sub.subcategory_name}
                             containerClassName="w-full h-full"
-                            iconClassName="w-4 h-4 text-[#059669]"
+                            iconClassName="w-4 h-4 text-secondary"
                             thumbnailSize={64}
                           />
                         </div>
@@ -210,7 +210,7 @@ export default function SearchInput({ defaultValue = "" }: { defaultValue?: stri
                             alt={srv.title}
                             status={srv.status}
                             containerClassName="w-10 h-10 rounded-lg shrink-0"
-                            iconClassName="w-4 h-4 text-[#059669] drop-shadow-sm"
+                            iconClassName="w-4 h-4 text-secondary drop-shadow-sm"
                           />
                           <div className="min-w-0">
                             <div className="text-xs md:text-sm font-bold text-on-surface truncate group-hover:text-primary transition-colors">

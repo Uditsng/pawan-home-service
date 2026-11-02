@@ -1,34 +1,13 @@
 "use client";
-import ServiceCardThumbnail from "@/components/ServiceCardThumbnail";
+
+import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import UnserviceableHeroBanner from "@/components/UnserviceableHeroBanner";
 import DashboardCarousel, { type BannerItem } from "./DashboardCarousel";
 import { ComingSoonStrip } from "@/components/ComingSoonStrip";
 import { UpcomingService } from "@/utils/supabase/cachedServiceQueries";
-
-
-import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { CategoryVisualCard } from "@/components/CategoryVisualCard";
-
-interface ServiceWithSubcategory {
-  id: string;
-  title: string;
-  base_price: number;
-  original_price?: number | null;
-  category?: string;
-  image_url?: string | null;
-  poster_url?: string | null;
-  subcategory_id: string;
-  subcategories: {
-    subcategory_name: string;
-    icon_name: string;
-    categories: {
-      id: string;
-      category_name: string;
-    } | null;
-  } | null;
-}
 
 interface Category {
   id: string;
@@ -36,9 +15,18 @@ interface Category {
   image_url?: string | null;
 }
 
+interface ServiceCountLookup {
+  subcategories?: {
+    categories?: {
+      id?: string;
+    } | null;
+  } | null;
+}
+
 interface DashboardGridClientProps {
   categories: Category[];
-  availableServices: ServiceWithSubcategory[];
+  categoryServiceCounts?: Record<string, number>;
+  availableServices?: ServiceCountLookup[];
   upcomingServices?: UpcomingService[];
   banners?: BannerItem[];
   isServiceable?: boolean;
@@ -49,7 +37,8 @@ interface DashboardGridClientProps {
 
 export default function DashboardGridClient({
   categories,
-  availableServices,
+  categoryServiceCounts,
+  availableServices = [],
   upcomingServices = [],
   banners = [],
   isServiceable = true,
@@ -57,109 +46,29 @@ export default function DashboardGridClient({
   userPincode = "",
   userCity = "",
 }: DashboardGridClientProps) {
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
   const router = useRouter();
 
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
+
   const triggerChangeLocation = () => {
-    // Trigger location header button or navigate to addresses
-    const headerBtn = document.querySelector('button[title*="address"], header button') as HTMLButtonElement | null;
-    if (headerBtn) {
-      headerBtn.click();
-    } else {
-      router.push("/customer/profile/addresses");
-    }
+    router.push("/customer/profile/addresses");
   };
 
   const handleBlockedClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    e.stopPropagation();
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     const msg = userPincode
-      ? `⚠️ PHS service is not yet live in pincode ${userPincode}. Click "Notify Me!" to request launch.`
-      : `⚠️ PHS service is not yet live in your area. Click "Notify Me!" to request launch.`;
+      ? `⚠️ Service is not yet live in pincode ${userPincode}. Click "Notify Me!" above.`
+      : `⚠️ Service is not yet live in your area. Click "Notify Me!" above.`;
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 4000);
+    toastTimerRef.current = setTimeout(() => setToastMessage(null), 4000);
   };
-
-  if (selectedCategoryId) {
-    const servicesForCategory = availableServices.filter(
-      (s) => s.subcategories?.categories?.id === selectedCategoryId
-    );
-    const activeCategoryName = categories.find((c) => c.id === selectedCategoryId)?.category_name || "Services";
-
-    return (
-      <section className="mb-8 md:mb-12">
-        {/* Category Header with Back Button */}
-        <div className="flex items-center gap-3 mb-5 md:mb-6">
-          <button
-            onClick={() => setSelectedCategoryId(null)}
-            className="w-10 h-10 rounded-xl bg-surface-container-low border border-outline-variant/15 flex items-center justify-center text-on-surface active:bg-surface-container-high cursor-pointer transition-all active:scale-95"
-            aria-label="Back to categories"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <div>
-            <h3 className="font-headline text-lg md:text-xl font-extrabold text-on-surface">{activeCategoryName}</h3>
-            <p className="text-on-surface-variant text-xs md:text-sm">Available services in this category</p>
-          </div>
-        </div>
-
-        {/* Services Grid (keeping same layout style without sticking hovers) */}
-        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
-          {servicesForCategory.map((service) => {
-            const iconName = service.subcategories?.icon_name || "sparkles";
-            const catSlug = (service.subcategories?.categories?.category_name || service.category || "services")
-              .toLowerCase().replace(/[,\s]+/g, "-").replace(/&/g, "and");
-            const isUpcoming = service.base_price === 0 || !service.base_price;
-
-            return (
-              <Link
-                href={`/customer/services/${catSlug}/${service.id}`}
-                key={service.id}
-                className="glass-panel group relative block w-full overflow-hidden rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
-              >
-                <div className="relative w-full aspect-4/3 bg-surface-container-low">
-                  <ServiceCardThumbnail
-                    imageUrl={service.image_url || service.poster_url}
-                    iconName={iconName}
-                    alt={service.title}
-                    status={isUpcoming ? "upcoming" : undefined}
-                    containerClassName="absolute inset-0 w-full h-full"
-                    iconClassName="w-10 h-10 md:w-12 md:h-12 text-emerald-600 drop-shadow-sm"
-                  />
-                </div>
-                <div className="p-2.5 sm:p-3 text-center">
-                  <span className="block font-headline font-bold text-xs md:text-sm text-on-surface line-clamp-2 leading-tight min-h-9 items-center justify-center">{service.title}</span>
-                  <div className="flex items-center justify-center gap-1.5 mt-1">
-                    {isUpcoming ? (
-                      <span className="text-[10px] sm:text-[11px] text-secondary font-black tracking-tight leading-none uppercase bg-primary/95 px-2 py-0.5 rounded-md shadow-xs">
-                        Coming Soon
-                      </span>
-                    ) : (
-                      <>
-                        {service.original_price && (
-                          <span className="text-[9px] md:text-[10px] text-on-surface-variant/50 line-through">₹{service.original_price}</span>
-                        )}
-                        <span className="text-[10px] md:text-[11px] text-primary font-bold tracking-tight">₹{service.base_price}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            );
-          })}
-
-          {servicesForCategory.length === 0 && (
-            <div className="col-span-3 md:col-span-4 lg:col-span-5 text-center py-8 text-on-surface-variant text-sm">
-              No active services available in this category right now.
-            </div>
-          )}
-        </div>
-      </section>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -196,18 +105,16 @@ export default function DashboardGridClient({
           onChangeLocationClick={triggerChangeLocation}
         />
       ) : (
-        <>
-          <DashboardCarousel banners={banners} />
-        </>
+        <DashboardCarousel banners={banners} />
       )}
 
       {/* Services We Offer Section */}
       <section className="mb-8 md:mb-12">
         <div className="mb-4 md:mb-6 flex items-center justify-between">
           <div>
-            <h3 className="font-headline text-lg md:text-xl font-extrabold text-on-surface">
-              {!isServiceable ? "Services we offer" : "Explore Categories"}
-            </h3>
+            <h2 className="font-headline text-lg md:text-xl font-extrabold text-on-surface">
+              {!isServiceable ? "Services We Offer" : "Explore Categories"}
+            </h2>
             <p className="text-on-surface-variant text-xs md:text-sm">
               {!isServiceable
                 ? "Services will be available as soon as PHS launches in your area"
@@ -219,40 +126,53 @@ export default function DashboardGridClient({
         {/* Categories Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {categories.map((cat) => {
-            const serviceCount = availableServices.filter(
-              (s) => s.subcategories?.categories?.id === cat.id
-            ).length;
+            const serviceCount =
+              categoryServiceCounts?.[cat.id] ??
+              availableServices.filter((s) => s.subcategories?.categories?.id === cat.id).length;
+
+            const catSlug = cat.category_name
+              .toLowerCase()
+              .replace(/[,\s]+/g, "-")
+              .replace(/&/g, "and");
+
+            if (!isServiceable) {
+              return (
+                <div
+                  key={cat.id}
+                  onClick={handleBlockedClick}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      handleBlockedClick(e as unknown as React.MouseEvent);
+                    }
+                  }}
+                  className="cursor-not-allowed active:scale-98 transition-transform"
+                >
+                  <CategoryVisualCard
+                    imageUrl={cat.image_url}
+                    iconName="category"
+                    title={cat.category_name}
+                    footerText="Coverage Pending"
+                    dimmed
+                  />
+                </div>
+              );
+            }
 
             return (
-              <div
+              <Link
                 key={cat.id}
-                onClick={(e) => {
-                  if (!isServiceable) {
-                    handleBlockedClick(e);
-                    return;
-                  }
-                  const catSlug = cat.category_name
-                    .toLowerCase()
-                    .replace(/[,\s]+/g, "-")
-                    .replace(/&/g, "and");
-                  router.push(`/customer/services/${catSlug}`);
-                }}
-                className={
-                  !isServiceable
-                    ? "cursor-not-allowed active:scale-95 transition-transform"
-                    : "cursor-pointer active:scale-95 transition-transform"
-                }
+                href={`/customer/services/${catSlug}`}
+                className="cursor-pointer active:scale-98 transition-transform block group"
               >
                 <CategoryVisualCard
                   imageUrl={cat.image_url}
                   iconName="category"
                   title={cat.category_name}
-                  footerText={
-                    !isServiceable ? "Coverage Pending" : `${serviceCount} ${serviceCount === 1 ? "Service" : "Services"}`
-                  }
-                  dimmed={!isServiceable}
+                  footerText={`${serviceCount} ${serviceCount === 1 ? "Service" : "Services"}`}
                 />
-              </div>
+              </Link>
             );
           })}
 
@@ -266,16 +186,14 @@ export default function DashboardGridClient({
 
       {/* Upcoming Services (Coming Soon) */}
       {upcomingServices.length > 0 && (
-        <div className="bg-yellow-100 rounded-2xl">
-          <ComingSoonStrip
-            services={upcomingServices}
-            hrefFor={(service) => {
-              const catName = service.subcategories?.categories?.category_name || "services";
-              const catSlug = catName.toLowerCase().replace(/\s+/g, "-").replace(/&/g, "and");
-              return `/customer/services/${catSlug}/${service.id}`;
-            }}
-          />
-        </div>
+        <ComingSoonStrip
+          services={upcomingServices}
+          hrefFor={(service) => {
+            const catName = service.subcategories?.categories?.category_name || "services";
+            const catSlug = catName.toLowerCase().replace(/\s+/g, "-").replace(/&/g, "and");
+            return `/customer/services/${catSlug}/${service.id}`;
+          }}
+        />
       )}
     </div>
   );

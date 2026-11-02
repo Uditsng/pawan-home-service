@@ -40,7 +40,7 @@ export default function HeaderLocationDisplay({ defaultAddress }: HeaderLocation
             setIsModalOpen(true);
           }
         }}
-        className="flex items-center gap-2 hover:opacity-80 transition-all group max-w-[180px] md:max-w-[260px]"
+        className="flex items-center gap-1 sm:gap-2 hover:opacity-80 transition-all group min-w-0 max-w-[110px] min-[360px]:max-w-[130px] sm:max-w-[180px] md:max-w-[260px] cursor-pointer"
         title={defaultAddress?.formatted_address || "Add your address"}
       >
         <span className="material-symbols-outlined text-secondary text-[20px] shrink-0">

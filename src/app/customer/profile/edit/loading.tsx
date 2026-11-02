@@ -1,37 +1,36 @@
 export default function Loading() {
   return (
-    <div className="bg-[#f5f6f8] min-h-screen flex flex-col font-sans">
-      {/* Header */}
-      <div className="bg-primary text-on-primary pt-5 pb-6 px-4 md:px-6">
-        <div className="max-w-3xl mx-auto flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-white/10 animate-pulse" />
-          <h1 className="text-[18px] md:text-[22px] font-extrabold tracking-wide animate-pulse bg-white/20 w-32 h-6 rounded" />
-        </div>
+    <div className="bg-surface-dim min-h-screen flex flex-col font-body w-full max-w-full overflow-x-hidden min-w-0">
+      {/* Header bar */}
+      <div className="bg-surface-container-lowest p-3 md:p-4 border-b border-outline-variant/10 w-full min-w-0 flex items-center gap-3 md:gap-4 animate-pulse">
+        <div className="w-8 h-8 rounded-xl bg-surface-container-highest shrink-0" />
+        <div className="w-32 h-6 bg-surface-container-highest rounded" />
       </div>
 
       {/* Form Content */}
-      <main className="flex-1 max-w-xl mx-auto w-full px-4 md:px-5 pt-8 space-y-6">
-        {/* Avatar Upload */}
-        <div className="flex flex-col items-center gap-3 mb-6 animate-pulse">
-          <div className="w-25 h-25 rounded-full bg-slate-200" />
-          <div className="w-24 h-4 bg-slate-200 rounded" />
-        </div>
+      <div className="p-3 md:p-4 flex-1 w-full max-w-full min-w-0">
+        <div className="bg-surface-container-lowest rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-sm w-full mx-auto max-w-lg mb-24 min-w-0 border border-outline-variant/10 space-y-6 animate-pulse">
+          {/* Avatar Upload */}
+          <div className="flex flex-col items-center gap-3 mb-6">
+            <div className="w-25 h-25 rounded-full bg-surface-container-highest" />
+          </div>
 
-        {/* Form Fields */}
-        <div className="space-y-4 animate-pulse">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="space-y-1.5">
-              <div className="w-24 h-4 bg-slate-200 rounded" />
-              <div className="w-full h-11 bg-white rounded-lg border border-slate-100" />
-            </div>
-          ))}
-
-          {/* Submit Button */}
-          <div className="pt-4">
-            <div className="w-full h-11 bg-slate-200 rounded-lg" />
+          {/* Form Fields */}
+          <div className="space-y-4 w-full min-w-0">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="space-y-1.5">
+                <div className="w-20 h-3 bg-surface-container-highest rounded ml-1" />
+                <div className="w-full h-12 bg-surface-container rounded-xl border border-outline-variant/20" />
+              </div>
+            ))}
           </div>
         </div>
-      </main>
+      </div>
+
+      {/* Sticky Bottom Action */}
+      <div className="fixed bottom-0 left-0 right-0 p-3 md:p-4 bg-surface-container-lowest border-t border-outline-variant/10 flex justify-center pb-safe z-30">
+        <div className="w-full max-w-lg h-12 md:h-14 bg-surface-container-highest rounded-xl animate-pulse" />
+      </div>
     </div>
   );
 }

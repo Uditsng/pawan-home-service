@@ -205,7 +205,7 @@ export default function ForgotPasswordPage() {
               {step === "phone" && (
                 <>
                   <div className="relative z-10">
-                    <h2 className="text-3xl font-extrabold tracking-tight text-primary">Forgot password?</h2>
+                    <h1 className="text-3xl font-extrabold tracking-tight text-primary">Forgot password?</h1>
                     <p className="text-on-surface-variant text-sm font-medium mt-1">Enter your registered mobile number to receive a verification code.</p>
                   </div>
                   <div className="space-y-5 relative z-10">
@@ -262,7 +262,7 @@ export default function ForgotPasswordPage() {
                     <button type="button" onClick={() => { setStep("phone"); setError(""); }} className="inline-flex items-center gap-1 text-xs font-bold text-on-surface-variant hover:text-primary transition-colors">
                       <span className="material-symbols-outlined text-[16px]">arrow_back</span>Change number
                     </button>
-                    <h2 className="text-3xl font-extrabold tracking-tight text-primary">Enter OTP</h2>
+                    <h1 className="text-3xl font-extrabold tracking-tight text-primary">Enter OTP</h1>
                     <p className="text-on-surface-variant text-sm font-medium">Sent to <span className="font-bold text-primary">+91 {phone}</span></p>
                   </div>
                   <div className="space-y-6 relative z-10">
@@ -304,7 +304,7 @@ export default function ForgotPasswordPage() {
                     <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center mb-4">
                       <span className="material-symbols-outlined text-[#059669] drop-shadow-sm">lock_reset</span>
                     </div>
-                    <h2 className="text-3xl font-extrabold tracking-tight text-primary">New password</h2>
+                    <h1 className="text-3xl font-extrabold tracking-tight text-primary">New password</h1>
                     <p className="text-on-surface-variant text-sm font-medium mt-1">OTP verified. Set your new password.</p>
                   </div>
                   <div className="space-y-5 relative z-10">
@@ -362,7 +362,7 @@ export default function ForgotPasswordPage() {
                     <span className="material-symbols-outlined text-[#059669] text-5xl drop-shadow-sm">check_circle</span>
                   </div>
                   <div>
-                    <h2 className="text-3xl font-extrabold tracking-tight text-primary">Password reset!</h2>
+                    <h1 className="text-3xl font-extrabold tracking-tight text-primary">Password reset!</h1>
                     {info ? (
                       <p className="text-on-surface-variant font-medium mt-2">{info}</p>
                     ) : (

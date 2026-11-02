@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 
 interface PullToRefreshProps {
   onRefresh: () => Promise<void>;
@@ -49,7 +49,7 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
     }
   };
 
-  const handleTouchEnd = async () => {
+  const handleTouchEnd = useCallback(async () => {
     if (!isPulling.current) return;
     isPulling.current = false;
 
@@ -73,7 +73,7 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
       setPullDistance(0);
       setStatus("idle");
     }
-  };
+  }, [onRefresh, pullDistance]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -89,10 +89,10 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
       el.removeEventListener("touchmove", handleTouchMove);
       el.removeEventListener("touchend", handleTouchEnd);
     };
-  }, [pullDistance]);
+  }, [handleTouchEnd]);
 
   return (
-    <div ref={containerRef} className="relative w-full min-h-screen select-none touch-pan-y">
+    <div ref={containerRef} className="relative w-full max-w-full overflow-x-hidden min-h-screen select-none touch-pan-y">
       {/* PTR Loading/Progress indicator panel */}
       <div
         className="absolute left-0 right-0 flex items-center justify-center overflow-hidden transition-all duration-150 z-50 pointer-events-none"
@@ -137,7 +137,7 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
 
       {/* Main Content Area */}
       <div
-        className="transition-transform duration-150"
+        className="w-full max-w-full min-w-0 transition-transform duration-150"
         style={{
           transform: pullDistance > 0 ? `translateY(${pullDistance}px)` : "none",
         }}

@@ -22,12 +22,11 @@ export default async function BookingsPage() {
   const settings = await getCachedPlatformSettings();
 
   return (
-    <div className="bg-surface text-on-surface antialiased min-h-screen pb-24">
-
-      <main className="max-w-7xl mx-auto pb-8">
+    <div className="bg-surface text-on-surface antialiased min-h-screen pb-24 w-full max-w-full overflow-x-hidden">
+      <main className="max-w-7xl mx-auto pb-8 w-full min-w-0 overflow-x-hidden">
         {/* Page Title */}
-        <section className="mt-6 md:mt-8 mb-4 md:mb-6 px-4 md:px-6">
-          <h2 className="font-headline text-2xl md:text-3xl font-extrabold tracking-tight text-on-surface">Bookings</h2>
+        <section className="mt-6 md:mt-8 mb-4 md:mb-6 px-3 sm:px-4 md:px-6">
+          <h1 className="font-headline text-2xl md:text-3xl font-extrabold tracking-tight text-on-surface">Bookings</h1>
           <p className="text-on-surface-variant font-medium mt-1 text-sm md:text-base">Manage your professional services</p>
         </section>
 

@@ -45,16 +45,16 @@ export default function AddressListClient({ addresses }: AddressListClientProps)
   };
 
   return (
-    <>
+    <div className="w-full max-w-full min-w-0">
       {/* Add Address button */}
       <button
         onClick={() => setIsModalOpen(true)}
-        className="w-full flex items-center gap-3 p-4 md:p-5 bg-surface-container-lowest rounded-xl shadow-sm mb-4 border border-dashed border-secondary/40 hover:border-secondary hover:bg-secondary/5 transition-all group"
+        className="w-full flex items-center gap-3 p-4 md:p-5 bg-surface-container-lowest rounded-xl shadow-sm mb-4 border border-dashed border-secondary/40 hover:border-secondary hover:bg-secondary/5 transition-all group min-w-0"
       >
         <div className="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center shrink-0 group-hover:bg-secondary/20 transition-colors">
           <span className="material-symbols-outlined text-secondary text-[22px]">add</span>
         </div>
-        <span className="text-[14px] font-bold text-secondary">Add New Address</span>
+        <span className="text-[14px] font-bold text-secondary truncate">Add New Address</span>
       </button>
 
       {/* Addresses list */}
@@ -77,7 +77,7 @@ export default function AddressListClient({ addresses }: AddressListClientProps)
           </button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 w-full min-w-0">
           {addresses.map((address) => (
             <div
               key={address.id}
@@ -94,12 +94,12 @@ export default function AddressListClient({ addresses }: AddressListClientProps)
                       </span>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className="text-[14px] font-bold text-on-surface">
                           {address.label}
                         </span>
                         {address.is_default && (
-                          <span className="text-[9px] font-bold text-secondary bg-secondary/10 px-2 py-0.5 rounded-full uppercase tracking-widest">
+                          <span className="text-[9px] font-bold text-secondary bg-secondary/10 px-2 py-0.5 rounded-full uppercase tracking-widest shrink-0 min-w-fit whitespace-nowrap">
                             Default
                           </span>
                         )}
@@ -189,6 +189,6 @@ export default function AddressListClient({ addresses }: AddressListClientProps)
           />,
           document.body
         )}
-    </>
+    </div>
   );
 }

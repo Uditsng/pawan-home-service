@@ -71,7 +71,7 @@ export default async function AdminWalletPage() {
         .limit(50),
       supabase
         .from("profiles")
-        .select("id, full_name, phone, wallet_balance, wallet_cash_balance, wallet_bonus_balance")
+        .select("id, full_name, phone, email, wallet_balance, wallet_cash_balance, wallet_bonus_balance")
         .eq("role", "customer")
         .order("wallet_balance", { ascending: false })
         .limit(300),
@@ -93,6 +93,7 @@ export default async function AdminWalletPage() {
     id: string;
     full_name: string | null;
     phone: string | null;
+    email: string | null;
     wallet_balance: number | null;
     wallet_cash_balance: number | null;
     wallet_bonus_balance: number | null;
@@ -100,6 +101,7 @@ export default async function AdminWalletPage() {
     id: c.id,
     full_name: c.full_name,
     phone: c.phone,
+    email: c.email,
     wallet_cash: Number(c.wallet_cash_balance ?? 0),
     wallet_bonus: Number(c.wallet_bonus_balance ?? 0),
     wallet_total: Number(c.wallet_balance ?? 0),

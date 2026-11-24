@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { format } from "date-fns";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -58,31 +57,31 @@ function first<T>(entity: T | T[] | null | undefined): T | null {
 }
 
 const statusVariant: Record<string, "warning" | "success" | "danger"> = {
-  pending:   "warning",
-  rewarded:  "success",
+  pending: "warning",
+  rewarded: "success",
   completed: "success",
   cancelled: "danger",
-  rejected:  "danger",
-  reversed:  "danger",
+  rejected: "danger",
+  reversed: "danger",
 };
 
 const statusLabel: Record<string, string> = {
-  pending:   "Pending",
-  rewarded:  "Rewarded",
+  pending: "Pending",
+  rewarded: "Rewarded",
   completed: "Rewarded",
   cancelled: "Cancelled",
-  rejected:  "Rejected",
-  reversed:  "Reversed",
+  rejected: "Rejected",
+  reversed: "Reversed",
 };
 
 const eventLabel: Record<string, string> = {
-  created:   "Referral created",
-  rewarded:  "Wallet reward issued",
+  created: "Referral created",
+  rewarded: "Wallet reward issued",
   completed: "Legacy reward issued",
   cancelled: "Cancelled",
-  rejected:  "Rejected",
-  reversed:  "Reversed",
-  retry:     "Reward retry",
+  rejected: "Rejected",
+  reversed: "Reversed",
+  retry: "Reward retry",
 };
 
 import { formatBookingCreatedAt } from "@/utils/dateFormat";

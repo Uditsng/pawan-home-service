@@ -107,7 +107,7 @@ export function CampaignDetailsClient({
       setLoading(false);
     }
   };
-  
+
   // Cancel Scheduled handler
   const handleCancelScheduled = async () => {
     if (!confirm("Are you sure you want to cancel this scheduled dispatch?")) return;
@@ -132,7 +132,7 @@ export function CampaignDetailsClient({
     try {
       setSendProgressStep("sending");
       const dispatchResult = await sendNotificationCampaignAction(campaign.id);
-      
+
       if (dispatchResult.success) {
         setSuccessCount(dispatchResult.successCount);
         setFailureCount(dispatchResult.failureCount);
@@ -225,7 +225,7 @@ export function CampaignDetailsClient({
         {/* Campaign Info */}
         <Card variant="solid" className="p-6 space-y-4">
           <h3 className="text-sm font-bold text-primary font-headline tracking-tight">Campaign Metadata</h3>
-          
+
           <div className="space-y-3.5 divide-y divide-outline-variant/10 text-xs">
             {/* Title */}
             <div>
@@ -372,7 +372,7 @@ export function CampaignDetailsClient({
         {/* Campaign Control Console */}
         <Card variant="solid" className="p-6 space-y-4">
           <h3 className="text-sm font-bold text-primary font-headline tracking-tight">Campaign Console</h3>
-          
+
           <div className="flex flex-col gap-2.5">
             {isDraft && (
               <Link href={`/admin/notifications/${campaign.id}/edit`} className="w-full">
@@ -437,7 +437,7 @@ export function CampaignDetailsClient({
             <h3 className="text-sm font-bold text-primary font-headline tracking-tight">Test Delivery</h3>
             <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase">Debug Dispatcher</span>
           </div>
-          
+
           <div className="space-y-3">
             <div>
               <label className="text-[9px] font-bold text-on-surface-variant/60 uppercase block mb-1">Target User</label>

@@ -78,7 +78,7 @@ export function CreateNotificationForm({
   const [testUserId, setTestUserId] = useState("");
   const [testSuccess, setTestSuccess] = useState("");
   const [testError, setTestError] = useState("");
-  
+
   // Confirmation Modal
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
@@ -129,7 +129,7 @@ export function CreateNotificationForm({
       setImageUrl(t.image_url || "");
       setCategory(t.category);
       setPriority(t.priority);
-      
+
       // Parse deep link if matches standard pattern
       const dl = t.deep_link || "";
       if (dl.includes("/services/detail?id=")) {
@@ -252,7 +252,7 @@ export function CreateNotificationForm({
       // 2. Trigger send
       setSendProgressStep("sending");
       const dispatchResult = await sendNotificationCampaignAction(campaign.id);
-      
+
       if (dispatchResult.success) {
         setSuccessCount(dispatchResult.successCount);
         setFailureCount(dispatchResult.failureCount);
@@ -304,7 +304,7 @@ export function CreateNotificationForm({
       <form onSubmit={handleSaveClick} className="lg:col-span-2 space-y-6">
         <Card variant="solid" className="p-6 space-y-4">
           <h2 className="text-base font-bold text-primary font-headline">Campaign Content</h2>
-          
+
           {/* Template Selection */}
           {templates.length > 0 && (
             <div>
@@ -413,7 +413,7 @@ export function CreateNotificationForm({
         {/* ─── TARGET AUDIENCE CONSOLE ─── */}
         <Card variant="solid" className="p-6 space-y-4">
           <h2 className="text-base font-bold text-primary font-headline">Audience Targeting</h2>
-          
+
           <div>
             <label className="text-[10px] font-bold text-on-surface-variant/60 uppercase block mb-2">
               Select Audience Group
@@ -424,16 +424,15 @@ export function CreateNotificationForm({
                   key={type}
                   type="button"
                   onClick={() => setAudienceType(type)}
-                  className={`px-3 py-2 rounded-xl text-center text-xs font-bold transition-all border select-none cursor-pointer ${
-                    audienceType === type
+                  className={`px-3 py-2 rounded-xl text-center text-xs font-bold transition-all border select-none cursor-pointer ${audienceType === type
                       ? "bg-primary text-white border-primary shadow-xs"
                       : "bg-surface text-on-surface border-outline-variant/20 hover:border-primary"
-                  }`}
+                    }`}
                 >
                   {type === "all" ? "All Users" :
-                   type === "customers" ? "Customers" :
-                   type === "partners" ? "Professionals" :
-                   type === "admins" ? "Admins" : "Custom List"}
+                    type === "customers" ? "Customers" :
+                      type === "partners" ? "Professionals" :
+                        type === "admins" ? "Admins" : "Custom List"}
                 </button>
               ))}
             </div>
@@ -614,7 +613,7 @@ export function CreateNotificationForm({
         {/* ─── DELIVERY OPTIONS & EXPIRY ─── */}
         <Card variant="solid" className="p-6 space-y-4">
           <h2 className="text-base font-bold text-primary font-headline">Delivery Scheduling</h2>
-          
+
           <div>
             <label className="text-[10px] font-bold text-on-surface-variant/60 uppercase block mb-2">
               Dispatch Action
@@ -629,11 +628,10 @@ export function CreateNotificationForm({
                   key={opt.type}
                   type="button"
                   onClick={() => setDeliveryOption(opt.type as "now" | "schedule" | "draft")}
-                  className={`px-3 py-3 rounded-xl text-center text-xs font-bold transition-all border flex flex-col items-center justify-center gap-1 cursor-pointer select-none ${
-                    deliveryOption === opt.type
+                  className={`px-3 py-3 rounded-xl text-center text-xs font-bold transition-all border flex flex-col items-center justify-center gap-1 cursor-pointer select-none ${deliveryOption === opt.type
                       ? "bg-primary text-white border-primary shadow-xs"
                       : "bg-surface text-on-surface border-outline-variant/20 hover:border-primary"
-                  }`}
+                    }`}
                 >
                   <span className="material-symbols-outlined text-base leading-none">{opt.icon}</span>
                   <span>{opt.label}</span>

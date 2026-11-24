@@ -96,7 +96,7 @@ export function NotificationImageUploadField({
               }
             }
           })
-          .catch(() => {});
+          .catch(() => { });
       }
 
       setValidationWarnings(prev => [...prev, ...warnings]);
@@ -117,7 +117,7 @@ export function NotificationImageUploadField({
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement("canvas");
-          
+
           // Enforce 1024x512 standard landscape ratio
           canvas.width = 1024;
           canvas.height = 512;
@@ -249,22 +249,20 @@ export function NotificationImageUploadField({
           <button
             type="button"
             onClick={() => setActiveTab("upload")}
-            className={`px-3 py-1 text-[11px] font-bold rounded-md transition-all select-none cursor-pointer ${
-              activeTab === "upload"
+            className={`px-3 py-1 text-[11px] font-bold rounded-md transition-all select-none cursor-pointer ${activeTab === "upload"
                 ? "bg-primary text-white shadow-xs"
                 : "text-on-surface-variant/80 hover:text-primary"
-            }`}
+              }`}
           >
             Upload Banner
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("url")}
-            className={`px-3 py-1 text-[11px] font-bold rounded-md transition-all select-none cursor-pointer ${
-              activeTab === "url"
+            className={`px-3 py-1 text-[11px] font-bold rounded-md transition-all select-none cursor-pointer ${activeTab === "url"
                 ? "bg-primary text-white shadow-xs"
                 : "text-on-surface-variant/80 hover:text-primary"
-            }`}
+              }`}
           >
             Pasted URL
           </button>

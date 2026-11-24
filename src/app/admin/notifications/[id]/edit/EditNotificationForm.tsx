@@ -131,7 +131,7 @@ export function EditNotificationForm({
   const [testUserId, setTestUserId] = useState("");
   const [testSuccess, setTestSuccess] = useState("");
   const [testError, setTestError] = useState("");
-  
+
   // Confirmation Modal
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
@@ -171,7 +171,7 @@ export function EditNotificationForm({
       setImageUrl(t.image_url || "");
       setCategory(t.category);
       setPriority(t.priority);
-      
+
       const dl = t.deep_link || "";
       if (dl.includes("/services/detail?id=")) {
         setDeepLinkType("service");
@@ -291,7 +291,7 @@ export function EditNotificationForm({
       await updateAdminNotification(campaign.id, campaignData);
       setSendProgressStep("sending");
       const dispatchResult = await sendNotificationCampaignAction(campaign.id);
-      
+
       if (dispatchResult.success) {
         setSuccessCount(dispatchResult.successCount);
         setFailureCount(dispatchResult.failureCount);
@@ -341,10 +341,10 @@ export function EditNotificationForm({
       <form onSubmit={handleSaveClick} className="lg:col-span-2 space-y-6">
         <Card variant="solid" className="p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-primary font-headline font-semibold">Campaign Content</h2>
+            <h2 className="text-base font-bold text-primary font-headline ">Campaign Content</h2>
             <Badge variant="primary" className="text-[10px]">Editing Draft</Badge>
           </div>
-          
+
           {templates.length > 0 && (
             <div>
               <label className="text-[10px] font-bold text-on-surface-variant/60 uppercase block mb-1">
@@ -447,7 +447,7 @@ export function EditNotificationForm({
         {/* ─── TARGET AUDIENCE CONSOLE ─── */}
         <Card variant="solid" className="p-6 space-y-4">
           <h2 className="text-base font-bold text-primary font-headline">Audience Targeting</h2>
-          
+
           <div>
             <label className="text-[10px] font-bold text-on-surface-variant/60 uppercase block mb-2">
               Select Audience Group
@@ -458,16 +458,15 @@ export function EditNotificationForm({
                   key={type}
                   type="button"
                   onClick={() => setAudienceType(type)}
-                  className={`px-3 py-2 rounded-xl text-center text-xs font-bold transition-all border select-none cursor-pointer ${
-                    audienceType === type
+                  className={`px-3 py-2 rounded-xl text-center text-xs font-bold transition-all border select-none cursor-pointer ${audienceType === type
                       ? "bg-primary text-white border-primary shadow-xs"
                       : "bg-surface text-on-surface border-outline-variant/20 hover:border-primary"
-                  }`}
+                    }`}
                 >
                   {type === "all" ? "All Users" :
-                   type === "customers" ? "Customers" :
-                   type === "partners" ? "Professionals" :
-                   type === "admins" ? "Admins" : "Custom List"}
+                    type === "customers" ? "Customers" :
+                      type === "partners" ? "Professionals" :
+                        type === "admins" ? "Admins" : "Custom List"}
                 </button>
               ))}
             </div>
@@ -625,7 +624,7 @@ export function EditNotificationForm({
         {/* ─── DELIVERY OPTIONS & EXPIRY ─── */}
         <Card variant="solid" className="p-6 space-y-4">
           <h2 className="text-base font-bold text-primary font-headline">Delivery Scheduling</h2>
-          
+
           <div>
             <label className="text-[10px] font-bold text-on-surface-variant/60 uppercase block mb-2">
               Dispatch Action
@@ -640,11 +639,10 @@ export function EditNotificationForm({
                   key={opt.type}
                   type="button"
                   onClick={() => setDeliveryOption(opt.type as "now" | "schedule" | "draft")}
-                  className={`px-3 py-3 rounded-xl text-center text-xs font-bold transition-all border flex flex-col items-center justify-center gap-1 cursor-pointer select-none ${
-                    deliveryOption === opt.type
+                  className={`px-3 py-3 rounded-xl text-center text-xs font-bold transition-all border flex flex-col items-center justify-center gap-1 cursor-pointer select-none ${deliveryOption === opt.type
                       ? "bg-primary text-white border-primary shadow-xs"
                       : "bg-surface text-on-surface border-outline-variant/20 hover:border-primary"
-                  }`}
+                    }`}
                 >
                   <span className="material-symbols-outlined text-base leading-none">{opt.icon}</span>
                   <span>{opt.label}</span>

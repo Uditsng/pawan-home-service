@@ -106,7 +106,7 @@ export default function MobileSetup() {
             routerRef.current.push("/");
           } else {
             const exitPaths = ["/customer/dashboard", "/partner/dashboard", "/admin/dashboard", "/"];
-            
+
             if (exitPaths.includes(pathname) || !data.canGoBack) {
               App.exitApp();
             } else {
@@ -217,7 +217,7 @@ export default function MobileSetup() {
         });
 
         // 2e. On registration error
-        errorListener = await PushNotifications.addListener("registrationError", () => {});
+        errorListener = await PushNotifications.addListener("registrationError", () => { });
 
         // 2e2. Register on mount if user is already logged in (race-free check)
         const supabase = createClient();
@@ -273,7 +273,7 @@ export default function MobileSetup() {
           if (!data) return;
 
           let bookingId: unknown = data.booking_id;
-          
+
           if (!bookingId && data.metadata) {
             if (typeof data.metadata === "string") {
               try {
